@@ -9,14 +9,12 @@ If your development is on macOS, here are [extra steps](https://github.com/2600h
 
 ### Packages Required
 
+Erlang/OTP is required for both run time and build time. Usually the official Erlang package provided by your distribution is not up-to-date, please follow [Erlang](#erlang) section to install it from source code or using other options.
+
+* Kazoo version 4.3 requires Erlang version 19 specifically 19.3.x
+* Kazoo version 5 (master) requires Erlang version 21+
+
 #### Build time requirement
-
-Erlang/OTP is required for both run time and build time. Usually the official Erlang package provided by your distribution is enough if it is up-to-date, otherwise please follow [Erlang](#erlang) section to install it from source code.
-
-* Kazoo v4.3 requires Erlang version 19
-* Kazoo v5 (master) requires Erlang version 21+
-
-Other required packages are as follow:
 
 * General Linux development build packages (GNU Make v4+ is recommended):
     * `autoconf`, `automake`, `make`, `gcc`
@@ -29,29 +27,37 @@ Other required packages are as follow:
         * `yaml`, `markdown`, `pyembed`
         * `mkdocs-bootstrap`, `mkdocs-bootswatch`, `pymdown-extensions`
     * `couchdb` (`validate-js` required `couchjs` command from CouchDB 2 to validate CouchDB view JavaScript codes)
-    * Python 3 packages `jsonschema`, `jsonschema` for validating JSON schemas and formatting CouchDB views
+    * Python 3 packages `jsonschema`, `jsbeautifier` for validating JSON schemas and formatting CouchDB views
     * `silversearcher-ag` required by `scripts/edocify.escript`
 
 #### Run time requirements
 
 Main functionality requirements:
 
+* CouchDB 2
+    * **Note:** Old abandoned BigCouch can be used too but this is not recommended for new clusters
+* RabbitMQ
+    * Recommended official 2600Hz [RabbitMQ configurations](https://github.com/2600hz/kazoo-configs-rabbitmq)
+    * **Note:** Kazoo 5 (master) requires `rabbitmq_consistent_hash_exchange` plug-in to be enabled for Kazoo Fax application
 
-* CouchDB 2 or BigCouch
-* RabbitMQ (Kazoo 5 (master) requires `rabbitmq_consistent_hash_exchange` plug-in to be enabled)
+Voice/Video and SIP functionality requirements:
 
-Voice/Video and SIP functionality requirement:
-
-* FreeSWITCH version 1.8+
-* Kamailio 5+
+* FreeSWITCH version 1.10+
+    * It is required `mod_kazoo` plug-in to be enabled
+    * Official 2600Hz [FreeSWITCH configurations](https://github.com/2600hz/kazoo-configs-freeswitch) is required
+* Kamailio version 5.2+
+    * It is required `kazoo` module to be enabled
+    * Official 2600Hz [Kamailio configurations](https://github.com/2600hz/kazoo-configs-kamailio) is required
+    * It is recommended to install Kamailio from 2600Hz [CentOS repository](https://docs.2600hz.com/sysadmin/doc/install/install_via_centos7/#setup-the-server) to ease the installation.
+    * If you're installing the official Kamailio packages, you have to change the database in 2600Hz Kamailio configurations to use `sqlite` or you're choice of database.
 
 
 Other packages:
 
 * `zip`, `unzip`
 * `htmldoc` required if [you want to be able to download PDFs](./announcements.md#company-directory-pdf)
-* `sox`, `libsox-fmt-all` for normalizing audio files
-* `ghostscript`, `imagemagick` `libtiff-tools`, jre-8, `libreoffice-writer` for Fax functionality and fax media file conversions
+* `sox` for normalizing audio files (Debian needs `libsox-fmt-all` to support MP3 audio format)
+* `ghostscript`, `imagemagick` `libtiff-tools`, `libreoffice-writer` with Java Run time environment for Fax functionality and fax media file conversions
 
 Useful commands:
 
@@ -109,13 +115,14 @@ enabled=1
 EOF
 
 
-sudo yum install -y epel-release
-sudo yum update -y --exclude shadow-utils.\*
+sudo yum install epel-release
+sudo yum update
 
 ## kazoo master (5.0+) needs git2
 sudo yum remove -y git*
-sudo yum -y install https://centos7.iuscommunity.org/ius-release.rpm
+sudo yum install https://centos7.iuscommunity.org/ius-release.rpm
 
+## Kazoo buildtime dependencies
 sudo yum install \
     autoconf automake bzip2-devel elfutils expat-devel gcc-c++ gcc \
     git2u-all glibc-devel libcurl libcurl-devel libstdc++-devel \
@@ -123,7 +130,7 @@ sudo yum install \
     patchutils readline readline-devel unzip wget zip zlib-devel \
     python36-pip the_silver_searcher jq cpio
 
-## installing required (and optional docs) python packages
+## installing required (and optional docs building) python packages
 sudo pip3 install pyyaml markdown jsonschema jsbeautifier
 
 ## doc build target
