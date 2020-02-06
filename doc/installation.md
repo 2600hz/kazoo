@@ -136,7 +136,7 @@ sudo locale-gen
 
 ### Installing dependencies on CentOS 7
 
-```
+```shell
 ## Adding useful repos
 sudo cat <<'EOF' > /etc/yum.repos.d/bintray-apache-couchdb-rpm.repo
 [bintray--apache-couchdb-rpm]
