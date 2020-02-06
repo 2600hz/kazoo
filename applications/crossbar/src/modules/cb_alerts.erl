@@ -230,13 +230,12 @@ maybe_check_port_requests(Context) ->
 -spec maybe_check_port_requests(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 maybe_check_port_requests(Context, AccountId) ->
     MasterId = cb_context:master_account_id(Context),
-    AuthId = cb_context:auth_account_id(Context),
-    case AuthId =:= MasterId of
-        'true' ->
+    case cb_context:auth_account_id(Context) of
+        MasterId ->
             %% Authenticated account is master
             %% show only masqueraded account's port alerts
             do_check_port_requests(fetch_account_active_ports(AccountId), Context);
-        'false' ->
+        _ ->
             IsReseller = kz_services_reseller:is_reseller(AccountId),
             IsPortAuthority = cb_context:fetch(Context, 'is_port_authority'),
             maybe_check_port_requests(Context, IsReseller, IsPortAuthority)

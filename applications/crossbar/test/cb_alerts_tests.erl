@@ -37,8 +37,7 @@ do_check_port_requests() ->
 
     %% 1 submitted, 1 unconfirmed, and 1 rejected.
     Context1 = cb_alerts:do_check_port_requests(ActivePorts, Context),
-    Resp = cb_context:resp_data(Context1),
-    [Alert1, Alert2] = Resp,
+    [Alert1, Alert2] = cb_context:resp_data(Context1),
 
     %% All ports (3) have last comment with `action_required=true' within the last comment
     %% and also there is 1 rejected and 1 unconfirmed.

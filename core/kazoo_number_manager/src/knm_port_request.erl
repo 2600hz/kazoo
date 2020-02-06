@@ -185,7 +185,7 @@ account_active_ports(AccountId) ->
           kz_datamgr:data_error().
 account_ports_by_state(AccountId, PortState) ->
     ViewOptions = [{'startkey', [AccountId, PortState]}
-                  ,{endkey, [AccountId, PortState, kz_json:new()]}
+                  ,{'endkey', [AccountId, PortState, kz_json:new()]}
                   ,'include_docs'
                   ],
     case kz_datamgr:get_results(?KZ_PORT_REQUESTS_DB, ?PORT_LISTING_BY_STATE, ViewOptions) of
