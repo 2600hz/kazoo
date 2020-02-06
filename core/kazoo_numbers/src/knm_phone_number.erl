@@ -1569,27 +1569,35 @@ try_delete_from(GroupFun, T0) ->
 
 -spec try_delete_from(group_by_fun(), knm_pipe:collection(), boolean()) -> knm_pipe:collection().
 try_delete_from(GroupFun, T0, IgnoreDbNotFound) ->
-    F = fun ('undefined', PNs, T) ->
-                ?LOG_DEBUG("skipping: no db for ~s", [[[number(PN),$\s] || PN <- PNs]]),
-                knm_pipe:add_succeeded(T, PNs);
-            (Db, PNs, T) ->
-                ?LOG_DEBUG("deleting from ~s", [Db]),
-                Nums = [number(PN) || PN <- PNs],
-                case delete_docs(Db, Nums) of
-                    {'ok', JObjs} ->
-                        RetryF = fun(Db1, PNs1, Num, T1) ->
-                                         retry_delete(Db1, PNs1, fun database_error/3, Num, T1)
-                                 end,
-                        handle_bulk_change(Db, JObjs, PNs, T, fun database_error/3, RetryF);
-                    {'error', 'not_found'} when IgnoreDbNotFound ->
-                        ?LOG_DEBUG("db ~s does not exist, ignoring", [Db]),
-                        knm_pipe:add_succeeded(T, PNs);
-                    {'error', E} ->
-                        ?LOG_ERROR("failed to delete from ~s (~p): ~p", [Db, E, Nums]),
-                        database_error(Nums, E, T)
-                end
-        end,
+    F = fun(Db, PNs, T) -> delete_from_fold(Db, PNs, T, IgnoreDbNotFound) end,
     maps:fold(F, T0, group_by(knm_pipe:todo(T0), GroupFun)).
+
+delete_from_fold('undefined', PNs, T, _IgnoreDbNotFound) ->
+    ?LOG_DEBUG("skipping: no db for ~s", [[[number(PN),$\s] || PN <- PNs]]),
+    knm_pipe:add_succeeded(T, PNs);
+delete_from_fold(_Db, [], T, _IgnoreDbNotFound) ->
+    ?LOG_DEBUG("skipping, no phone numbers to delete"),
+    knm_pipe:add_succeeded(T, []);
+delete_from_fold(Db, PNs, T, IgnoreDbNotFound) ->
+    Nums = [number(PN) || PN <- PNs],
+    ?LOG_DEBUG("deleting from ~s: ~p", [Db, Nums]),
+    case delete_docs(Db, Nums) of
+        {'ok', []} ->
+            ?LOG_DEBUG("no docs were deleted"),
+            knm_pipe:add_succeeded(T, PNs);
+        {'ok', JObjs} ->
+            ?LOG_DEBUG("deleted docs: ~p", [JObjs]),
+            RetryF = fun(Db1, PNs1, Num, T1) ->
+                             retry_delete(Db1, PNs1, fun database_error/3, Num, T1)
+                     end,
+            handle_bulk_change(Db, JObjs, PNs, T, fun database_error/3, RetryF);
+        {'error', 'not_found'} when IgnoreDbNotFound ->
+            ?LOG_DEBUG("db ~s does not exist, ignoring", [Db]),
+            knm_pipe:add_succeeded(T, PNs);
+        {'error', E} ->
+            ?LOG_ERROR("failed to delete from ~s (~p): ~p", [Db, E, Nums]),
+            database_error(Nums, E, T)
+    end.
 
 -spec existing_db_key(kz_term:ne_binary()) -> kz_term:api_ne_binary().
 existing_db_key(Db) ->
@@ -1627,7 +1635,6 @@ save_to(GroupFun, ErrorF, T0) ->
                 end
         end,
     maps:fold(F, T0, group_by(knm_pipe:todo(T0), GroupFun)).
-
 
 %%------------------------------------------------------------------------------
 %% @doc Works the same with the output of save_docs and del_docs

@@ -93,7 +93,7 @@ set_failed(Collection0, Nums, Reason) when is_list(Nums) ->
     lists:foldl(F, Collection0, Nums);
 set_failed(Collection, PN, Reason) ->
     Num = knm_phone_number:number(PN),
-    lager:debug("number ~s state: ~s", [Num, knm_phone_number:state(PN)]),
+    ?LOG_DEBUG("number ~s state: ~s", [Num, knm_phone_number:state(PN)]),
     set_failed(Collection, Num, Reason).
 
 %%------------------------------------------------------------------------------

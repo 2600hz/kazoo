@@ -201,7 +201,11 @@ get_revisions(Server, DbName, NeedsRev) ->
     end.
 
 get_revision_from_all_docs_result(Result, Acc) ->
-    Doc = kz_doc:setters([{fun kz_doc:set_id/2, kz_doc:id(Result)}
+    get_revision_from_all_docs_result(Result, Acc, kz_doc:id(Result)).
+
+get_revision_from_all_docs_result(_Result, Acc, 'undefined') -> Acc;
+get_revision_from_all_docs_result(Result, Acc, DocId) ->
+    Doc = kz_doc:setters([{fun kz_doc:set_id/2, DocId}
                          ,{fun kz_doc:set_revision/2, kz_json:get_value([<<"value">>, <<"rev">>], Result)}
                          ]),
     [Doc | Acc].

@@ -132,7 +132,7 @@ state_for_create(Options) ->
             AuthBy = knm_number_options:auth_by(Options),
             lists:member(State, allowed_creation_states(Options, AuthBy))
                 orelse knm_errors:unauthorized(),
-            lager:debug("allowing picking state ~s for ~s", [State, AuthBy]),
+            ?LOG_DEBUG("allowing picking state ~s for ~s", [State, AuthBy]),
             State
     end.
 
@@ -187,7 +187,7 @@ ensure_state(PN, AllowedStates) ->
         'true' -> 'true';
         'false' ->
             Num = knm_phone_number:number(PN),
-            lager:error("~s wrong state ~s, expected one of ~p", [Num, State, AllowedStates]),
+            ?LOG_ERROR("~s wrong state ~s, expected one of ~p", [Num, State, AllowedStates]),
             knm_errors:number_exists(Num)
     end.
 
@@ -242,7 +242,7 @@ allow_number_additions(_Options, _AccountId) ->
     kzd_accounts:allow_number_additions(JObj).
 
 ensure_account_can_create(_, ?KNM_DEFAULT_AUTH_BY) ->
-    lager:info("bypassing auth"),
+    ?LOG_INFO("bypassing auth"),
     'true';
 ensure_account_can_create(Options, ?MATCH_ACCOUNT_RAW(AccountId)) ->
     knm_number_options:ported_in(Options)
@@ -251,7 +251,7 @@ ensure_account_can_create(Options, ?MATCH_ACCOUNT_RAW(AccountId)) ->
         orelse knm_phone_number:is_admin(AccountId)
         orelse knm_errors:unauthorized();
 ensure_account_can_create(_, _NotAnAccountId) ->
-    lager:debug("'~p' is not an account id", [_NotAnAccountId]),
+    ?LOG_DEBUG("'~p' is not an account id", [_NotAnAccountId]),
     knm_errors:unauthorized().
 
 -spec ensure_number_is_not_porting(kz_term:ne_binary(), knm_number_options:options()) -> 'true'.
