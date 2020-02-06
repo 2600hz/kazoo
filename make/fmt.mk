@@ -15,7 +15,7 @@ fmt: $(FMT)
 	@$(if $(TO_FMT), @$(FMT) $(TO_FMT))
 
 fmt-views-all:
-	@$(ROOT)/scripts/format-couchdb-views.py core/kazoo_apps/priv/couchdb/account
+	@$(ROOT)/scripts/format-couchdb-views.py $(shell find core/kazoo_apps/priv/couchdb/account -name '*.json')
 	@$(ROOT)/scripts/format-couchdb-views.py $(shell find applications core -wholename '*/couchdb/views/*.json')
 
 fmt-views: TO_FMT_VIEWS ?= $(shell git --no-pager diff --name-only HEAD $(BASE_BRANCH) -- "*/couchdb/views/*.json" "*/couchdb/account/*.json")

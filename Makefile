@@ -332,6 +332,10 @@ raw_json_check:
 check_stacktrace:
 	@$(ROOT)/scripts/check-stacktrace.py $(shell grep -rl "get_stacktrace" scripts applications core --include "*.[e|h]rl" --exclude "kz_types.hrl")
 
+## FIXME: `format-couchdb-view.py` command is a copy-paste from fmt.mk
+## Adding this format couchdb view target to circleci steps for every app is painful
+## also this formatting is better to be done before validate-js ci step to make sure
+## the view is still in correct shape
 apis:
 	@ERL_LIBS=deps:core:applications $(ROOT)/scripts/generate-schemas.escript
 	@$(ROOT)/scripts/format-json.py $(shell find applications core -wholename '*/schemas/*.json')
@@ -341,11 +345,7 @@ apis:
 	@$(ROOT)/scripts/format-json.py $(shell find applications core -wholename '*/api/*.json')
 	@ERL_LIBS=deps:core:applications $(ROOT)/scripts/generate-fs-headers-hrl.escript
 	@ERL_LIBS=deps:core:applications $(ROOT)/scripts/generate-kzd-builders.escript
-	## FIXME: copy-paste from fmt.mk fmt-views-all target
-	## adding that target to circleci steps for every app is painful
-	## also this formatting is better to be done before validate-js ci step to make sure
-	## the view is still in correct shape
-	@$(ROOT)/scripts/format-couchdb-views.py core/kazoo_apps/priv/couchdb/account
+	@$(ROOT)/scripts/format-couchdb-views.py $(shell find core/kazoo_apps/priv/couchdb/account -name '*.json')
 	@$(ROOT)/scripts/format-couchdb-views.py $(shell find applications core -wholename '*/couchdb/views/*.json')
 
 schemas:
