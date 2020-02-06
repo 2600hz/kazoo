@@ -16,7 +16,7 @@ Erlang/OTP is required for both run time and build time. Usually the official Er
 
 #### Installing Erlang/OTP from source code
 
-We recommend to use a tool like [kerl](https://github.com/kerl/kerl) to manage Erlang/OTP installations. If you want to play around with multiple versions of Erlang while hacking on Kazoo, this is probably the best way.
+We recommend to use a tool like [kerl](https://github.com/kerl/kerl) to manage Erlang/OTP installations. If you want to play around with multiple versions of Erlang while hacking on Kazoo, this is probably the best way. For compiling Erlang you need some dependencies, see [Build time requirements](#build-time-requirements)
 
 ```shell
     curl -O https://raw.githubusercontent.com/kerl/kerl/master/kerl
@@ -32,8 +32,6 @@ You will probably want to add the `activate` command to your `.bashrc` or simila
 
 #### Installing from Erlang Solutions repository
 
-You can find OffInstall from the [Erlang Solutions](https://www.erlang-solutions.com/resources/download.html) packages. These tend to be kept up-to-date better than the default distro's packages.
-
 Most OS package managers provide pre-built binary packages. You can also download the latest stable releases [from Erlang Solutions](https://www.erlang-solutions.com/resources/download.html). Erlang Solutions provides [pre-built binary packages](https://www.erlang-solutions.com/resources/download.html) for OS X, Windows, Ubuntu, Debian, Fedora, CentOS, Raspbian and other operating systems.
 
 * For Homebrew on maxOS: `brew install erlang`
@@ -44,11 +42,11 @@ Most OS package managers provide pre-built binary packages. You can also downloa
 
 ### Packages Required
 
-#### Build time requirement
+#### Build time requirements
 
 * General Linux development build packages (GNU Make v4+ is recommended):
-    * `autoconf`, `automake`, `make`, `gcc`
-    * `openssl`, `libcurl`, `ncurses`, `bzip2`, `expat`
+    * `autoconf`, `automake`, `make`, `gcc`, `readline`
+    * `openssl`, `libcurl`, `ncurses`, `zlib`, `bzip2`, `expat`
     * `git`
 * Build time script requirements
     * `cpio` required for building docs
