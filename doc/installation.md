@@ -9,34 +9,134 @@ If your development is on macOS, here are [extra steps](https://github.com/2600h
 
 ### Packages Required
 
-#### Debian 9
+#### Build time requirement
+
+Erlang/OTP is required for both run time and build time. Usually the official Erlang package provided by your distribution is enough if it is up-to-date, otherwise please follow [Erlang](#erlang) section to install it from source code.
+
+* Kazoo v4.3 requires Erlang version 19
+* Kazoo v5 (master) requires Erlang version 21+
+
+Other required packages are as follow:
+
+* General Linux development build packages (GNU Make v4+ is recommended):
+    * `autoconf`, `automake`, `make`, `gcc`
+    * `openssl`, `libcurl`, `ncurses`, `bzip2`, `expat`
+    * `git`
+* Build time script requirements
+    * `cpio` required for building docs
+    * Python 3.5+
+    * Python 3 packages for building docs:
+        * `yaml`, `markdown`, `pyembed`
+        * `mkdocs-bootstrap`, `mkdocs-bootswatch`, `pymdown-extensions`
+    * `couchdb` (`validate-js` required `couchjs` command from CouchDB 2 to validate CouchDB view JavaScript codes)
+    * Python 3 packages `jsonschema`, `jsonschema` for validating JSON schemas and formatting CouchDB views
+    * `silversearcher-ag` required by `scripts/edocify.escript`
+
+#### Run time requirements
+
+Main functionality requirements:
+
+
+* CouchDB 2 or BigCouch
+* RabbitMQ (Kazoo 5 (master) requires `rabbitmq_consistent_hash_exchange` plug-in to be enabled)
+
+Voice/Video and SIP functionality requirement:
+
+* FreeSWITCH version 1.8+
+* Kamailio 5+
+
+
+Other packages:
+
+* `zip`, `unzip`
+* `htmldoc` required if [you want to be able to download PDFs](./announcements.md#company-directory-pdf)
+* `sox`, `libsox-fmt-all` for normalizing audio files
+* `ghostscript`, `imagemagick` `libtiff-tools`, jre-8, `libreoffice-writer` for Fax functionality and fax media file conversions
+
+Useful commands:
+
+* `sudo`, `less`, `whois`, `strace`, `tcpdump`, `net-tools`
+* `ntpdate`, `bind-utils`, `which`, `file`, `psmisc`, `iproute`, `lsof`
+
+
+#### Installing dependencies on Debian 9+
+
 ```shell
-sudo apt-get install build-essential libxslt-dev \
-     zip unzip expat zlib1g-dev libssl-dev curl \
-     libncurses5-dev git-core libexpat1-dev \
-     htmldoc
+## Adding official CouchDB 2 repo
+sudo apt-get install apt-transport-https
+echo "deb https://apache.bintray.com/couchdb-deb stretch main" | sudo tee -a /etc/apt/sources.list
+curl -L https://couchdb.apache.org/repo/bintray-pubkey.asc | sudo apt-key add -
+
+## Kazoo buildtime dependencies
+sudo apt-get install \
+    build-essential libxslt-dev \
+    zip unzip expat zlib1g-dev libssl-dev curl \
+    libncurses5-dev git-core libexpat1-dev \
+    python3-yaml python3-markdown python3-jsonschema python3-pip \
+    python3-jsbeautifier \
+    cpio mkdocs \
+    couchdb \
+    silversearcher-ag jq
+
+## doc build target
+sudo pip3 install pyembed mkdocs-bootstrap mkdocs-bootswatch pymdown-extensions
+
+## Kazoo runtime dependencies
+sudo apt-get install \
+    htmldoc sox libsox-fmt-all ghostscript \
+    imagemagick libtiff-tools openjdk-8-jre libreoffice-writer
+
+## Linking couchjs so validate-js script can find it
+sudo ln -s /opt/couchdb/bin/couchjs /usr/bin/couchjs
+
+## don't forget to uncomment "en_US.UTF-8 UTF-8" line (and your choice of language)
+## from /etc/locale.gen file and run the command below:
+sudo locale-gen
 ```
 
-#### CentOS 7
-```shell
-sudo yum install openssl-devel automake autoconf ncurses-devel gcc python36-pip fop
+
+#### Installing dependencies on CentOS 7
+
 ```
+## Adding useful repos
+sudo cat <<'EOF' > /etc/yum.repos.d/bintray-apache-couchdb-rpm.repo
+[bintray--apache-couchdb-rpm]
+name=bintray--apache-couchdb-rpm
+baseurl=http://apache.bintray.com/couchdb-rpm/el7/$basearch/
+gpgcheck=0
+repo_gpgcheck=0
+enabled=1
+EOF
 
-Note: `htmldoc` is required only if [you want to be able to download PDFs](./announcements.md#company-directory-pdf).
 
-1.  Docs-related
+sudo yum install -y epel-release
+sudo yum update -y --exclude shadow-utils.\*
 
-    When running `make docs`, some Python libraries are useful:
+## kazoo master (5.0+) needs git2
+sudo yum remove -y git*
+sudo yum -y install https://centos7.iuscommunity.org/ius-release.rpm
 
-    ```shell
-    sudo apt-get install python3 python3-yaml
-    sudo pip install mkdocs mkdocs-bootstrap mkdocs-bootswatch pymdown-extensions
-    ```
+sudo yum install \
+    autoconf automake bzip2-devel elfutils expat-devel gcc-c++ gcc \
+    git2u-all glibc-devel libcurl libcurl-devel libstdc++-devel \
+    libxslt make ncurses-devel openssl openssl-devel patch \
+    patchutils readline readline-devel unzip wget zip zlib-devel \
+    python36-pip the_silver_searcher jq cpio
 
-    You can also run a local version of the docs with `make docs-serve` which will start a local server so you can view how the docs are rendered.
+## installing required (and optional docs) python packages
+sudo pip3 install pyyaml markdown jsonschema jsbeautifier
 
-    If you have a custom theme, you can copy it to `doc/mkdocs/theme` and build the docs again. When you serve the docs the theme should have been applied to the site.
+## doc build target
+sudo pip3 install pyembed mkdocs-bootstrap mkdocs-bootswatch pymdown-extensions
 
+## Kazoo runtime dependencies
+sudo yum install \
+    htmldoc sox ghostscript \
+    ImageMagick libtiff-tools libreoffice-writer
+
+## make sure UTF-8 locale is set correctly
+localedef -v -c -i en_US -f UTF-8 en_US.UTF-8
+```
 
 ### Erlang
 
@@ -74,6 +174,17 @@ git clone https://github.com/2600Hz/kazoo.git
 cd kazoo
 make
 ```
+
+### Building and serving local version of documentation site
+
+You following command to build documentation site:
+
+```shell
+make docs
+```
+
+You can also run a local version of the docs with `make docs-serve` which will start a local server so you can view how the docs are rendered.
+If you have a custom theme, you can copy it to `doc/mkdocs/theme` and build the docs again. When you serve the docs the theme should have been applied to the site.
 
 
 ### Longer version
