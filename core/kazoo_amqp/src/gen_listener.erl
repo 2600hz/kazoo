@@ -853,6 +853,11 @@ code_change(_OldVersion, State, _Extra) ->
 %%%=============================================================================
 %%% Internal functions
 %%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 handle_down({Pid, Ref}, Reason, #state{federators=Fs}=State) ->
     case lists:keytake({Pid, Ref}, 2, Fs) of
         'false' -> handle_callback_info({'DOWN', Ref, 'process', Pid, Reason}, State);
