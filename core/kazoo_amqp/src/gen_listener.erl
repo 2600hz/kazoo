@@ -1594,5 +1594,4 @@ maybe_gc(Heap, Max) when Heap > Max ->
     [{'total_heap_size', NewHeapWords}] = process_info(self(), ['total_heap_size']),
     NewHeap = kz_term:words_to_bytes(NewHeapWords),
     lager:debug("new heap size ~p (delta ~p)", [NewHeap, Heap-NewHeap]);
-maybe_gc(_Heap, _Max) ->
-    lager:debug("current heap ~p", [_Heap]).
+maybe_gc(_Heap, _Max) -> 'ok'.
