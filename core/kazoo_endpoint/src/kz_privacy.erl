@@ -73,10 +73,9 @@ get_method(JObj, Default) ->
     case kz_json:get_first_defined(Keys, JObj, Default) of
         <<"sip">> -> <<"sip">>;
         %% none is set by stepswitch_bridge when the call is emergency
-        % <<"none">> -> <<"none">>;
-        % <<"kazoo">> -> <<"kazoo">>;
-        % _Else -> Default
-        _Else -> <<"kazoo">>
+        <<"none">> -> <<"none">>;
+        <<"kazoo">> -> <<"kazoo">>;
+        _Else -> Default
     end.
 
 -spec get_default_privacy_mode() -> kz_term:ne_binary().
