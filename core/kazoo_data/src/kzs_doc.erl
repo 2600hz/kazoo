@@ -245,7 +245,7 @@ prepare_doc_for_del(Server, DbName, Doc) ->
 %% @returns {PreparedDoc, PublishDoc} where:
 %% PreparedDoc is a JObj containing all the necessary key values and in the
 %% correct format for the save or delete operation.
-%% PublishDoc is the JObj supplied with a possible changed id value.
+%% PublishDoc is a JObj containing a defined set of key value pairs (?PUBLISH_FIELDS + doc rev).
 %% @end
 %%------------------------------------------------------------------------------
 -spec prepare_doc_for_save(kz_term:ne_binary(), kz_json:object()) -> {kz_json:object(), kz_json:object()}.
@@ -262,7 +262,11 @@ prepare_doc_for_save(Db, JObj, 'false') ->
 
 -spec prepare_publish(kz_json:object()) -> {kz_json:object(), kz_json:object()}.
 prepare_publish(JObj) ->
-    {maybe_tombstone(JObj), JObj}.
+    PublishDoc = kz_json:from_list(
+                   [{<<"_rev">>, kz_doc:revision(JObj)}
+                    | kzs_publish:publish_fields(JObj)
+                   ]),
+    {maybe_tombstone(JObj), PublishDoc}.
 
 -spec maybe_tombstone(kz_json:object()) -> kz_json:object().
 maybe_tombstone(JObj) ->
