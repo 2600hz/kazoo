@@ -288,9 +288,7 @@ handle_relay_response(_To, _From, {'exit', Reason}) ->
 
 -spec smtp_options() -> kz_term:proplist().
 smtp_options() ->
-    %% there is a bug in gen_smtp_client which tries convert a string to string character by character
-    %% change this `relay' setting to binary so it would properly convert to string by gen_smtp_client
-    Relay = kapps_config:get_ne_binary(<<"smtp_client">>, <<"relay">>, "localhost"),
+    Relay = kapps_config:get_string(<<"smtp_client">>, <<"relay">>, "localhost"),
     Username = kapps_config:get_string(<<"smtp_client">>, <<"username">>, ""),
     Password = kapps_config:get_string(<<"smtp_client">>, <<"password">>, ""),
     Auth = kapps_config:get_binary(<<"smtp_client">>, <<"auth">>, <<"never">>),

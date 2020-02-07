@@ -41,7 +41,7 @@ send_email(_, 'undefined', _) -> lager:debug("no email to send to");
 send_email(_, <<>>, _) -> lager:debug("empty email to send to");
 send_email(From, To, Email) ->
     Encoded = mimemail:encode(Email),
-    Relay = kapps_config:get_ne_binary(<<"smtp_client">>, <<"relay">>, <<"localhost">>),
+    Relay = kapps_config:get_string(<<"smtp_client">>, <<"relay">>, "localhost"),
     Username = kapps_config:get_string(<<"smtp_client">>, <<"username">>, <<>>),
     Password = kapps_config:get_string(<<"smtp_client">>, <<"password">>, <<>>),
     Auth = kz_term:to_list(kapps_config:get_ne_binary(<<"smtp_client">>, <<"auth">>, <<"never">>)),
