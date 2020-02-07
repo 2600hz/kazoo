@@ -95,8 +95,18 @@ send_email(Emails0, Subject, RenderedTemplates, Attachments) ->
             maybe_log_smtp(Emails, Subject, RenderedTemplates, 'undefined', kz_term:to_binary(Reason)),
             E;
         {'error', Reason} = E ->
-            maybe_log_smtp(Emails, Subject, RenderedTemplates, 'undefined', kz_term:to_binary(Reason)),
+            maybe_log_smtp(Emails, Subject, RenderedTemplates, 'undefined', send_error_reason(Reason)),
             E
+    end.
+
+-spec send_error_reason(any()) -> kz_term:ne_binary().
+send_error_reason(Reason) ->
+    try kz_term:to_binary(Reason)
+    catch
+        _:_ ->
+            kz_term:to_binary(
+              io_lib:format("~p", [Reason])
+             )
     end.
 
 -spec maybe_log_smtp(email_map(), kz_term:ne_binary(), list(), kz_term:api_binary(), kz_term:api_binary()) -> 'ok'.
@@ -269,20 +279,18 @@ handle_relay_response(To, From, {'ok', Receipt}) ->
 handle_relay_response(_To, _From, {'error', _Type, {_SubType, _FailHost, Message}}) ->
     lager:debug("error relaying message: ~p(~p): ~p", [_Type, _SubType, Message]),
     {'error', Message};
+handle_relay_response(_To, _From, {'exit', {'function_clause', Stacktrace}}) ->
+    kz_log:log_stacktrace(Stacktrace, "failed to send email", []),
+    {'error', kz_term:to_binary(io_lib:format("failed to send email: ~p", [Stacktrace]))};
 handle_relay_response(_To, _From, {'exit', Reason}) ->
-    lager:debug("failed to send email:"),
-    log_email_send_error(Reason),
-    {'error', Reason}.
-
--spec log_email_send_error(any()) -> 'ok'.
-log_email_send_error({'function_clause', Stacktrace}) ->
-    kz_log:log_stacktrace(Stacktrace);
-log_email_send_error(Reason) ->
-    lager:debug("exit relaying message: ~p", [Reason]).
+    lager:debug("failed to send email, exit realying message: ~p", [Reason]),
+    {'error', kz_term:to_binary(io_lib:format("failed to send email, exit realying message: ~p", [Reason]))}.
 
 -spec smtp_options() -> kz_term:proplist().
 smtp_options() ->
-    Relay = kapps_config:get_string(<<"smtp_client">>, <<"relay">>, "localhost"),
+    %% there is a bug in gen_smtp_client which tries convert a string to string character by character
+    %% change this `relay' setting to binary so it would properly convert to string by gen_smtp_client
+    Relay = kapps_config:get_ne_binary(<<"smtp_client">>, <<"relay">>, "localhost"),
     Username = kapps_config:get_string(<<"smtp_client">>, <<"username">>, ""),
     Password = kapps_config:get_string(<<"smtp_client">>, <<"password">>, ""),
     Auth = kapps_config:get_binary(<<"smtp_client">>, <<"auth">>, <<"never">>),
