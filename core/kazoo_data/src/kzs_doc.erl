@@ -161,8 +161,13 @@ del_doc(#{server := {App, Conn}}=Server, DbName, Doc, Options) ->
 -spec del_docs(map(), kz_term:ne_binary(), kz_json:objects() | kz_term:ne_binaries(), kz_term:proplist()) ->
           {'ok', kz_json:objects()} |
           data_error().
-del_docs(#{server := {App, Conn}}=Server, DbName, Docs, Options) ->
-    DelDocs = [prepare_doc_for_del(Server,DbName, D) || D <- Docs],
+del_docs(Server, DbName, Docs, Options) ->
+    do_delete_docs(Server, DbName, prepare_docs_for_deletion(Server, DbName, Docs), Options).
+
+do_delete_docs(_Server, _DbName, [], _Options) ->
+    lager:debug("no docs to delete"),
+    {'ok', []};
+do_delete_docs(#{server := {App, Conn}}, DbName, DelDocs, Options) ->
     {PreparedDocs, Publish} = lists:unzip([prepare_doc_for_save(DbName, D) || D <- DelDocs]),
     try App:del_docs(Conn, DbName, PreparedDocs, Options) of
         {'ok', JObjs}=Ok ->
@@ -173,6 +178,44 @@ del_docs(#{server := {App, Conn}}=Server, DbName, Docs, Options) ->
     catch
         _Ex:Er -> {'error', {_Ex, Er}}
     end.
+
+-spec prepare_docs_for_deletion(map(), kz_term:ne_binary(), [kz_json:object() | kz_term:ne_binary()]) ->
+          kz_json:objects().
+prepare_docs_for_deletion(Server, DbName, Docs) ->
+    {NeedsRev, HasRev} = lists:partition(fun needs_rev/1, Docs),
+
+    NeededRevDocs = [prepare_doc_for_del(Server, DbName, D) || D <- get_revisions(Server, DbName, NeedsRev)],
+    HasRevDeletionDocs = [prepare_doc_for_del(Server, DbName, D) || D <- HasRev],
+
+    HasRevDeletionDocs ++ NeededRevDocs.
+
+get_revisions(Server, DbName, NeedsRev) ->
+    IDs = lists:foldl(fun get_ids/2, [], NeedsRev),
+    case kzs_view:all_docs(Server, DbName, [{'keys', IDs}]) of
+        {'ok', Docs} ->
+            lists:foldl(fun get_revision_from_all_docs_result/2, [], Docs);
+        {'error', 'not_found'} -> [];
+        {'error', _E} ->
+            lager:debug("all_docs error: ~p", [_E]),
+            []
+    end.
+
+get_revision_from_all_docs_result(Result, Acc) ->
+    get_revision_from_all_docs_result(Result, Acc, kz_doc:id(Result)).
+
+get_revision_from_all_docs_result(_Result, Acc, 'undefined') -> Acc;
+get_revision_from_all_docs_result(Result, Acc, DocId) ->
+    Doc = kz_doc:setters([{fun kz_doc:set_id/2, DocId}
+                         ,{fun kz_doc:set_revision/2, kz_json:get_value([<<"value">>, <<"rev">>], Result)}
+                         ]),
+    [Doc | Acc].
+
+get_ids(<<DocID/binary>>, Acc) -> [DocID | Acc];
+get_ids(JObj, Acc) -> [kz_doc:id(JObj) | Acc].
+
+-spec needs_rev(kz_term:ne_binary() | kz_json:object()) -> boolean().
+needs_rev(<<_DocId/binary>>) -> 'true';
+needs_rev(Doc) -> kz_doc:revision(Doc) =:= 'undefined'.
 
 -spec prepare_doc_for_del(map(), kz_term:ne_binary(), kz_json:object() | kz_term:ne_binary()) ->
           kz_json:object().

@@ -41,7 +41,7 @@ acquire_parent_reserved() ->
     Num = ?TEST_RESERVED_NUM,
     To = ?CHILD_ACCOUNT_ID,
     {'ok', PN0} = knm_number:get(Num),
-    {'ok', PN1} = knm_number:move(Num, To, [{auth_by, To}]),
+    {'ok', PN1} = knm_number:move(Num, To, [{'auth_by', To}]),
     {'ok', PN2} = knm_number:move(Num, To),
     [?_assert(not knm_phone_number:is_dirty(PN0))
     ,{"verify test number is assigned to reseller"
@@ -70,7 +70,7 @@ acquire_parent_reserved_failure() ->
     Num = ?TEST_RESERVED_NUM,
     To = ?UNRELATED_ACCOUNT_ID,
     {'ok', PN0} = knm_number:get(Num),
-    {'error', Error1} = knm_number:move(Num, To, [{auth_by, To}]),
+    {'error', Error1} = knm_number:move(Num, To, [{'auth_by', To}]),
     {'ok', PN1} = knm_number:move(Num, To),
     [?_assert(not knm_phone_number:is_dirty(PN0))
     ,{"verify test number is assigned to reseller"
@@ -96,11 +96,11 @@ move_changing_public_fields() ->
     Fields = [{<<"a">>, <<"bla">>}
              ,{Key, 42}
              ],
-    Options = [{public_fields, kz_json:from_list(Fields)}
+    Options = [{'public_fields', kz_json:from_list(Fields)}
                |knm_number_options:default()
               ],
-    {ok, PN0} = knm_number:get(?TEST_AVAILABLE_NUM),
-    {ok, PN} = knm_number:move(?TEST_AVAILABLE_NUM, ?RESELLER_ACCOUNT_ID, Options),
+    {'ok', PN0} = knm_number:get(?TEST_AVAILABLE_NUM),
+    {'ok', PN} = knm_number:move(?TEST_AVAILABLE_NUM, ?RESELLER_ACCOUNT_ID, Options),
     [?_assert(knm_phone_number:is_dirty(PN))
     ,{"verify a public key is set"
      ,?_assertEqual(<<"my string">>, public_value(Key, PN0))
@@ -112,7 +112,7 @@ move_changing_public_fields() ->
      ,?_assertEqual(<<"bla">>, public_value(<<"a">>, PN))
      }
     ,{"verify that that other key is really new"
-     ,?_assertEqual(undefined, public_value(<<"a">>, PN0))
+     ,?_assertEqual('undefined', public_value(<<"a">>, PN0))
      }
     ].
 
@@ -121,13 +121,13 @@ public_value(Key, PN) ->
 
 
 move_available_local() ->
-    {ok, PN0} = knm_number:get(?TEST_AVAILABLE_NUM),
+    {'ok', PN0} = knm_number:get(?TEST_AVAILABLE_NUM),
     [?_assert(not knm_phone_number:is_dirty(PN0))
     ,{"Verify number is available"
      ,?_assertEqual(?NUMBER_STATE_AVAILABLE, knm_phone_number:state(PN0))
      }
     ,{"Verify an available number is unassigned"
-     ,?_assertEqual(undefined, knm_phone_number:assigned_to(PN0))
+     ,?_assertEqual('undefined', knm_phone_number:assigned_to(PN0))
      }
     ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:prev_assigned_to(PN0))
     ,?_assertEqual([], knm_phone_number:reserve_history(PN0))
@@ -148,13 +148,13 @@ move_available_local() ->
         ++ [].
 
 move_available_non_local() ->
-    {ok, PN0} = knm_number:get(?TEST_AVAILABLE_NON_LOCAL_NUM),
+    {'ok', PN0} = knm_number:get(?TEST_AVAILABLE_NON_LOCAL_NUM),
     [?_assert(not knm_phone_number:is_dirty(PN0))
     ,{"Verify number is available"
      ,?_assertEqual(?NUMBER_STATE_AVAILABLE, knm_phone_number:state(PN0))
      }
     ,{"Verify an available number is unassigned"
-     ,?_assertEqual(undefined, knm_phone_number:assigned_to(PN0))
+     ,?_assertEqual('undefined', knm_phone_number:assigned_to(PN0))
      }
     ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:prev_assigned_to(PN0))
     ,?_assertEqual([], knm_phone_number:reserve_history(PN0))
@@ -182,7 +182,7 @@ everyone_is_allowed_to_buy_available(AuthBy, AssignTo) ->
     everyone_is_allowed_to_buy_available(Num, AuthBy, AssignTo, <<"knm_telnyx">>, []).
 
 everyone_is_allowed_to_buy_available(Num, AuthBy, AssignTo, Carrier, Features) ->
-    {ok, PN} = knm_number:move(Num, AssignTo, [{auth_by,AuthBy}]),
+    {'ok', PN} = knm_number:move(Num, AssignTo, [{'auth_by', AuthBy}]),
     [?_assert(knm_phone_number:is_dirty(PN))
     ,?_assertEqual(Num, knm_phone_number:number(PN))
     ,{"Verify number is now in_service" ++ auth_and_assign(AuthBy, AssignTo)

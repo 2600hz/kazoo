@@ -361,10 +361,7 @@ seq_kzoo_41() ->
 
     EmptyAgainResp = summary(API, AccountId),
     lager:info("empty again: ~s", [EmptyAgainResp]),
-    EmptyAgainJObj = kz_json:decode(EmptyAgainResp),
-    lager:info("payload: ~p", [EmptyAgainJObj]),
-    EmptyData = kz_json:get_json_value([<<"data">>, <<"numbers">>], EmptyAgainJObj),
-    lager:info("empty again data: ~p", [EmptyData]),
+    EmptyData = kz_json:get_json_value([<<"data">>, <<"numbers">>], kz_json:decode(EmptyAgainResp)),
     'true' = kz_json:is_empty(EmptyData),
 
     cleanup(API).

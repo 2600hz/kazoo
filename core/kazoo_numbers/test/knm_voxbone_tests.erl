@@ -18,27 +18,24 @@ api_test_() ->
               ,{'carriers', [<<"knm_voxbone">>]}
               ,{'query_id', <<"QID">>}
               ],
-    {setup
+    {'setup'
     ,fun () -> case knm_search:start_link() of
                    {'ok', Pid} -> Pid;
                    {'error', {'already_started', Pid}} -> Pid
                end
      end
     ,fun gen_server:stop/1
-    ,fun (_ReturnOfSetup) ->
-             [find_numbers(Options)
-             ]
-     end
+    ,fun (_ReturnOfSetup) -> [find_numbers(Options)] end
     }.
 
 find_numbers(Options) ->
     Limit = 15,
     Prefix = <<"256">>,
-    Results = knm_search:find([{'quantity',Limit}
-                              ,{'prefix', Prefix}
+    Results = knm_search:find([{'quantity', Limit}
+                              ,{'prefix',   Prefix}
                               ,{'query_id', <<"QID-", Prefix/binary>>}
-                              ,{'country', <<"US">>}
-                               |Options
+                              ,{'country',  <<"US">>}
+                               | Options
                               ]),
     MatchPrefix =
         fun (JObj) ->
