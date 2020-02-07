@@ -713,8 +713,8 @@ handle_info({#'basic.deliver'{}=BD
         end,
     case props:is_true('spawn_handle_event', Params, 'false') of
         'false' ->
-            NewState = handle_event(binary:copy(Payload), {CT, CE}, {BD, Basic}, State),
-            maybe_gc(NewState);
+            Reply = handle_event(binary:copy(Payload), {CT, CE}, {BD, Basic}, State),
+            maybe_gc(Reply);
         'true'  ->
             kz_process:spawn(fun handle_event/4, [Payload, {CT, CE}, {BD, Basic}, State]),
             {'noreply', State}
@@ -1609,12 +1609,12 @@ maybe_configure_auto_ack(Props, 'true') ->
 %% It is possible that apps may load more memory into their state
 %% which would cause gen_listener's state to exceed 10K in the steady
 %% state. We advise app developers to not do this :)
--spec maybe_gc(State) -> {'noreply', State}.
-maybe_gc(State) ->
+-spec maybe_gc(Reply) -> Reply.
+maybe_gc(Reply) ->
     maybe_gc(process_info(self(), ['total_heap_size'])
             ,100 * ?BYTES_K
             ),
-    {'noreply', State}.
+    Reply.
 
 maybe_gc([{'total_heap_size', Words}], MaxBytes) ->
     maybe_gc(kz_term:words_to_bytes(Words), MaxBytes);
