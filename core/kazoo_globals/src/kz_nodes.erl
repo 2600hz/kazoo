@@ -858,7 +858,7 @@ handle_info({'heartbeat', Ref}
             andalso kapi_nodes:publish_advertise(advertise_payload(Node)),
         {'noreply', State#state{heartbeat_ref=Reference, me=Node}}
     catch
-        _:{noproc,_}:_ST ->
+        _:{'noproc',_}:_ST ->
             {'noreply', State#state{heartbeat_ref=Reference}, 'hibernate'};
         'exit' : {'timeout' , _}:_ST when Me =/= 'undefined' ->
             NewMe = Me#kz_node{expires=Heartbeat},
@@ -1092,7 +1092,6 @@ from_json(JObj, State) ->
             ,modules=kz_json:get_json_value(<<"Modules">>, JObj)
             ,roles=kz_json:to_proplist(kz_json:get_json_value(<<"Roles">>, JObj, kz_json:new()))
             }.
-
 
 -spec kapps_from_json(kz_term:api_terms()) -> kz_types:kapps_info().
 kapps_from_json(Whapps) when is_list(Whapps) ->
