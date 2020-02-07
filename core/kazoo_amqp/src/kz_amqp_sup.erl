@@ -36,6 +36,7 @@
 
 -define(CHILDREN, [?WORKER('kz_amqp_connections')
                   ,?SUPER('kz_amqp_connection_sup')
+                  ,?SUPER('kz_amqp_federated_listeners_sup')
                   ,?WORKER('kz_amqp_assignments')
                   ,?WORKER('kz_amqp_bootstrap')
                   ]).
@@ -133,7 +134,6 @@ pool_pid(Pool) ->
         [] -> 'undefined';
         [P | _] -> P
     end.
-
 
 %%==============================================================================
 %% Supervisor callbacks
