@@ -52,13 +52,16 @@ run_seq_modules() ->
 
 -spec run_seq_module(atom() | kz_term:ne_binary()) -> 'no_return'.
 run_seq_module(Module) when is_atom(Module) ->
-    _ = [Module:Function()
-         || Function <- ['seq'],
-            kz_module:is_exported(Module, Function, 0)
-        ],
-    'no_return';
+    run_seq_module(Module, kz_module:is_exported(Module, 'seq', 0));
 run_seq_module(ModuleBin) ->
     run_seq_module(kz_term:to_atom(ModuleBin)).
+
+run_seq_module(_Module, 'false') -> 'no_return';
+run_seq_module(Module, 'true') ->
+    StartTimeMs = kz_time:now_ms(),
+    Module:seq(),
+    ?SUP_LOG_DEBUG("~s:seq() ran in ~pms", [Module, kz_time:elapsed_ms(StartTimeMs)]),
+    'no_return'.
 
 -spec modules() -> [module()].
 modules() ->

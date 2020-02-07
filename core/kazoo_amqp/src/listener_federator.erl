@@ -11,7 +11,7 @@
 
 -behaviour(gen_listener).
 
--export([start_link/3
+-export([start_link/4
         ,stop/1
         ,broker/1
         ]).
@@ -45,9 +45,8 @@
 %% @doc Starts the server.
 %% @end
 %%------------------------------------------------------------------------------
--spec start_link(pid(), kz_term:ne_binary(), kz_term:proplist()) -> kz_types:startlink_ret().
-start_link(Parent, Broker, Params) ->
-    ParentCallId = kz_log:get_callid(),
+-spec start_link(pid(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> kz_types:startlink_ret().
+start_link(Parent, ParentCallId, Broker, Params) ->
     gen_listener:start_link(?SERVER, Params, [Parent, ParentCallId, Broker]).
 
 -spec broker(kz_types:server_ref()) -> kz_term:ne_binary().
@@ -74,6 +73,8 @@ init([Parent, ParentCallId, Broker]=L) ->
 
     CallId = kz_binary:join([ParentCallId, Zone], <<"-">>),
     kz_log:put_callid(CallId),
+
+    gen_listener:the_federator_lives(Parent, {Broker, self()}),
 
     {'ok', #state{parent=Parent
                  ,broker=Broker
