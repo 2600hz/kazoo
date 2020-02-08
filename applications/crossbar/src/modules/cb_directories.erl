@@ -40,7 +40,7 @@
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec init() -> ok.
+-spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.directories">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.directories">>, ?MODULE, 'resource_exists'),
@@ -51,7 +51,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.post.directories">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.patch.directories">>, ?MODULE, 'patch'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.directories">>, ?MODULE, 'delete'),
-    ok.
+    'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc This function determines the verbs that are appropriate for the
@@ -189,7 +189,7 @@ validate_directory(Context, Id, ?HTTP_POST) ->
 validate_directory(Context, Id, ?HTTP_PATCH) ->
     validate_patch(Id, Context);
 validate_directory(Context, Id, ?HTTP_DELETE) ->
-    read(Id, Context).
+    read_directory(Id, Context).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -302,10 +302,16 @@ read(Id, Context) ->
         _Status -> Context1
     end.
 
+-spec read_directory(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
+read_directory(Id, Context) ->
+    crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"directory">>)).
+
 -spec load_directory_users(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_directory_users(Id, Context) ->
     Context1 = crossbar_doc:load_view(?CB_USERS_LIST
-                                     ,[{'startkey', [Id]}]
+                                     ,[{'startkey', [Id]}
+                                      ,{'endkey', [Id, kz_json:new()]}
+                                      ]
                                      ,Context
                                      ,fun normalize_users_results/2
                                      ),
