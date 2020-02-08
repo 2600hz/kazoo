@@ -65,19 +65,34 @@ seq() ->
 
     AccountId = kz_json:get_value([<<"data">>, <<"id">>], kz_json:decode(AccountResp)),
 
-    CreateResp = create(API, AccountId, directories_doc()),
-    lager:info("created directory: ~s", [CreateResp]),
-    Directory = kz_json:get_json_value(<<"data">>, kz_json:decode(CreateResp)),
-    DirectoryId = kz_doc:id(Directory),
+    FirstCreateResp = create(API, AccountId, directories_doc()),
+    lager:info("created first directory: ~s", [FirstCreateResp]),
+    FirstDirectory = kz_json:get_json_value(<<"data">>, kz_json:decode(FirstCreateResp)),
+    FirstDirectoryId = kz_doc:id(FirstDirectory),
 
-    Users = create_users(API, AccountId, DirectoryId),
-    UserIds = [kz_doc:id(User) || User <- Users],
+    FirstUsers = create_users(API, AccountId, FirstDirectoryId),
+    FirstUserIds = [kz_doc:id(User) || User <- FirstUsers],
+
+    SecondCreateResp = create(API, AccountId, directories_doc()),
+    lager:info("created second directory: ~s", [SecondCreateResp]),
+    SecondDirectory = kz_json:get_json_value(<<"data">>, kz_json:decode(SecondCreateResp)),
+    SecondDirectoryId = kz_doc:id(SecondDirectory),
+
+    SecondUsers = create_users(API, AccountId, SecondDirectoryId),
+    SecondUserIds = [kz_doc:id(User) || User <- SecondUsers],
+
+    %% ensure we get the "earlier" directory to test that we don't
+    %% fetch the other directory's users
+    {DirectoryId, UserIds} =
+        case FirstDirectoryId > SecondDirectoryId of
+            'true' -> {SecondDirectoryId, SecondUserIds};
+            'false' -> {FirstDirectoryId, FirstUserIds}
+        end,
 
     FetchResp = fetch(API, AccountId, DirectoryId, [{<<"paginate">>, 'false'}]),
     lager:info("fetched directory: ~s", [FetchResp]),
     FetchedUsers = kzd_directories:users(kz_json:get_json_value(<<"data">>, kz_json:decode(FetchResp))),
-    lager:info("fetched users: ~p", [FetchedUsers]),
-    lager:info("user ids: ~p", [UserIds]),
+    lager:info("fetched users: ~p created users: ~p", [length(FetchedUsers), length(UserIds)]),
 
     'true' = length(UserIds) =:= length(FetchedUsers),
     'true' = lists:all(fun(FetchedUser) ->
