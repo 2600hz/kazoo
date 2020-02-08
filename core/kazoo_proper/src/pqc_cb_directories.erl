@@ -79,27 +79,38 @@ seq() ->
     lager:info("empty summary resp: ~s", [EmptySummaryResp]),
     [] = kz_json:get_list_value(<<"data">>, kz_json:decode(EmptySummaryResp)),
 
-    DirectoryJObj = new_directory(),
-    CreateResp = create(API, AccountId, DirectoryJObj),
-    lager:info("created directorie ~s", [CreateResp]),
-    CreatedDirectorie = kz_json:get_json_value(<<"data">>, kz_json:decode(CreateResp)),
-    DirectoryId = kz_doc:id(CreatedDirectorie),
+    FirstCreateResp = create(API, AccountId, new_directory()),
+    lager:info("created first directory: ~s", [FirstCreateResp]),
+    FirstDirectory = kz_json:get_json_value(<<"data">>, kz_json:decode(FirstCreateResp)),
+    FirstDirectoryId = kz_doc:id(FirstDirectory),
+
+    FirstUsers = create_users(API, AccountId, FirstDirectoryId),
+    FirstUserIds = [kz_doc:id(User) || User <- FirstUsers],
 
     Patch = kz_json:from_list([{<<"custom">>, <<"value">>}]),
-    PatchResp = patch(API, AccountId, DirectoryId, Patch),
+    PatchResp = patch(API, AccountId, FirstDirectoryId, Patch),
     lager:info("patched to ~s", [PatchResp]),
 
-    SummaryResp = summary(API, AccountId),
-    lager:info("summary resp: ~s", [SummaryResp]),
-    [SummaryDirectorie] = kz_json:get_list_value(<<"data">>, kz_json:decode(SummaryResp)),
-    DirectoryId = kz_doc:id(SummaryDirectorie),
+    SecondCreateResp = create(API, AccountId, new_directory()),
+    lager:info("created second directory: ~s", [SecondCreateResp]),
+    SecondDirectory = kz_json:get_json_value(<<"data">>, kz_json:decode(SecondCreateResp)),
+    SecondDirectoryId = kz_doc:id(SecondDirectory),
 
-    Users = create_users(API, AccountId, DirectoryId),
-    UserIds = [kz_doc:id(User) || User <- Users],
+    SecondUsers = create_users(API, AccountId, SecondDirectoryId),
+    SecondUserIds = [kz_doc:id(User) || User <- SecondUsers],
+
+    %% ensure we get the "earlier" directory to test that we don't
+    %% fetch the other directory's users
+    {DirectoryId, UserIds} =
+        case FirstDirectoryId > SecondDirectoryId of
+            'true' -> {SecondDirectoryId, SecondUserIds};
+            'false' -> {FirstDirectoryId, FirstUserIds}
+        end,
 
     FetchResp = fetch(API, AccountId, DirectoryId, [{<<"paginate">>, 'false'}]),
     lager:info("fetched directory: ~s", [FetchResp]),
     FetchedUsers = kzd_directories:users(kz_json:get_json_value(<<"data">>, kz_json:decode(FetchResp))),
+    lager:info("fetched users: ~p created users: ~p", [length(FetchedUsers), length(UserIds)]),
 
     'true' = length(UserIds) =:= length(FetchedUsers),
     'true' = lists:all(fun(FetchedUser) ->
@@ -110,8 +121,11 @@ seq() ->
                       ,FetchedUsers
                       ),
 
-    DeleteResp = delete(API, AccountId, DirectoryId),
-    lager:info("delete resp: ~s", [DeleteResp]),
+    FirstDeleteResp = delete(API, AccountId, FirstDirectoryId),
+    lager:info("first delete resp: ~s", [FirstDeleteResp]),
+
+    SecondDeleteResp = delete(API, AccountId, SecondDirectoryId),
+    lager:info("second delete resp: ~s", [SecondDeleteResp]),
 
     EmptyAgain = summary(API, AccountId),
     lager:info("empty summary resp: ~s", [EmptyAgain]),
