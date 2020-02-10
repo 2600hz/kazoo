@@ -104,7 +104,7 @@
         ]).
 
 -export([federated_event/4
-        ,the_federator_lives/2
+        ,notify_of_federator_listener/2
         ]).
 -export([delayed_cast/3]).
 -export([distribute_event/3]).
@@ -395,8 +395,8 @@ rm_binding(Srv, Binding, Props) ->
 federated_event(Srv, JObj, BasicDeliver, BasicData) ->
     gen_server:cast(Srv, {'federated_event', JObj, BasicDeliver, BasicData}).
 
--spec the_federator_lives(pid(), {kz_term:ne_binary(), pid()}) -> 'ok'.
-the_federator_lives(Srv, {_Broker, _Pid}=Child) ->
+-spec notify_of_federator_listener(pid(), {kz_term:ne_binary(), pid()}) -> 'ok'.
+notify_of_federator_listener(Srv, {_Broker, _Pid}=Child) ->
     gen_server:cast(Srv, {'federator_listener', Child}).
 
 -spec execute(kz_types:server_ref(), module(), atom(), [any()]) -> 'ok'.

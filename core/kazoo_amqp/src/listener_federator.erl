@@ -70,7 +70,7 @@ init([Parent, ParentCallId, Broker]=L) ->
     CallId = kz_binary:join([ParentCallId, Zone], <<"-">>),
     kz_util:put_callid(CallId),
 
-    gen_listener:the_federator_lives(Parent, {Broker, self()}),
+    gen_listener:notify_of_federator_listener(Parent, {Broker, self()}),
 
     {'ok', #state{parent=Parent
                  ,broker=Broker
