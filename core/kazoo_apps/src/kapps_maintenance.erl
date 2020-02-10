@@ -503,24 +503,38 @@ refresh() ->
 -spec refresh(kz_term:ne_binaries(), kz_term:text() | non_neg_integer()) -> 'no_return'.
 refresh(Databases, Pause) ->
     Total = length(Databases),
-    refresh(Databases, kz_term:to_integer(Pause), Total).
+    refresh(Databases, kz_term:to_integer(Pause), Total, []).
 
--spec refresh(kz_term:ne_binaries(), non_neg_integer(), non_neg_integer()) -> 'no_return'.
-refresh([], _, _) -> 'no_return';
-refresh([Database|Databases], Pause, Total) ->
-    io:format("~p (~p/~p) refreshing database '~s'~n"
-             ,[self(), length(Databases) + 1, Total, Database]
-             ),
-    _ = case refresh(Database) of
-            {'error', _Reason} ->
-                io:format("    - refresh failed: ~p~n", [_Reason]);
-            Bol -> Bol
-        end,
-    _ = case Pause < 1 of
-            'false' -> timer:sleep(Pause);
-            'true' -> 'ok'
-        end,
-    refresh(Databases, Pause, Total).
+-spec refresh(kz_term:ne_binaries(), non_neg_integer(), non_neg_integer(), [string()]) -> 'no_return'.
+refresh([], _, _, []) ->
+    'no_return';
+refresh([], _, _, [_H|_T] = Unexpected) ->
+    io:format("WARNING: although the migrate command finished it got the following exceptions~n"),
+    _ = lists:foreach(fun(Message) -> io:format("~s~n", [Message]) end, Unexpected),
+    'no_return';
+refresh([Database|Databases], Pause, Total, Unexpected) ->
+    NewUnexpected =
+        try
+            io:format("~p (~p/~p) refreshing database '~s'~n"
+                     ,[self(), length(Databases) + 1, Total, Database]
+                     ),
+            _ = case refresh(Database) of
+                    {'error', _Reason} ->
+                        io:format("    - refresh failed: ~p~n", [_Reason]);
+                    Bol -> Bol
+                end,
+            _ = case Pause < 1 of
+                    'false' -> timer:sleep(Pause);
+                    'true' -> 'ok'
+                end,
+            Unexpected
+        catch
+            ?STACKTRACE(Error, Reason, StackTrace)
+            [io_lib:format("WARNING: Unable to refresh/migrate db ~s! ~s: {~p, ~p}",
+                           [Database, Error, Reason, StackTrace])
+             | Unexpected]
+            end,
+    refresh(Databases, Pause, Total, NewUnexpected).
 
 -spec get_databases() -> kz_term:ne_binaries().
 get_databases() ->
@@ -570,7 +584,7 @@ remove_deprecated_databases([]) -> 'ok';
 remove_deprecated_databases([Database|Databases]) ->
     _ = case kz_datamgr:db_classification(Database) of
             'deprecated' ->
-                io:format("    archive and remove depreciated database ~s~n", [Database]),
+                io:format("    archive and remove deprecated database ~s~n", [Database]),
                 _ = kz_datamgr:db_archive(Database),
                 maybe_delete_db(Database);
             _Else -> 'ok'
@@ -600,6 +614,14 @@ ensure_aggregates([Account|Accounts], Total) ->
 
 -spec ensure_aggregate(kz_term:ne_binary()) -> 'ok'.
 ensure_aggregate(Account) ->
+    ensure_aggregate(Account
+                    ,kz_datamgr:open_doc(Account, kzs_util:format_account_id(Account))
+                    ).
+
+-spec ensure_aggregate(kz_term:ne_binary(), kz_datamgr:get_results_return()) -> 'ok'.
+ensure_aggregate(Account, {'error', 'not_found'}) ->
+    io:format("skipping account db in bad state '~s'~n", [Account]);
+ensure_aggregate(Account, _) ->
     io:format("ensuring necessary documents from account '~s' are in aggregate dbs~n"
              ,[Account]
              ),
