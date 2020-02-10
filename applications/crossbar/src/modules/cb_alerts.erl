@@ -15,7 +15,7 @@
         ]).
 
 -ifdef(TEST).
--export([check_port_requests/1
+-export([do_check_port_requests/2
         ,maybe_check_financials/1
         ,check_low_balance/1
         ,check_payment_token/1
@@ -224,24 +224,73 @@ set_success_resp_status(Context) ->
 maybe_check_port_requests(Context) ->
     case kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"check_port_requests">>, 'true') of
         'false' -> Context;
-        'true' -> check_port_requests(Context)
+        'true' -> maybe_check_port_requests(Context, cb_context:account_id(Context))
     end.
 
--spec check_port_requests(cb_context:context()) -> cb_context:context().
-check_port_requests(Context) ->
-    case knm_port_request:account_active_ports(cb_context:account_id(Context)) of
-        {'error', _R} ->
-            lager:debug("unable to fetch port requests: ~p", [_R]),
-            Context;
-        {'ok', PortRequests} ->
-            check_port_requests(PortRequests, Context)
+-spec maybe_check_port_requests(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
+maybe_check_port_requests(Context, AccountId) ->
+    MasterId = cb_context:master_account_id(Context),
+    case cb_context:auth_account_id(Context) of
+        MasterId ->
+            %% Authenticated account is master
+            %% show only masqueraded account's port alerts
+            do_check_port_requests(fetch_account_active_ports(AccountId), Context);
+        _ ->
+            IsReseller = kz_services_reseller:is_reseller(AccountId),
+            IsPortAuthority = cb_context:fetch(Context, 'is_port_authority'),
+            maybe_check_port_requests(Context, IsReseller, IsPortAuthority)
     end.
 
--spec check_port_requests(kz_json:objects(), cb_context:context()) ->
-          cb_context:context().
-check_port_requests([], Context) ->
+-spec maybe_check_port_requests(cb_context:context(), boolean(), boolean()) -> cb_context:context().
+maybe_check_port_requests(Context, 'true', 'true') ->
+    %% Authenticated account is reseller AND port authority
+    %% so show only masqueraded account's port alerts
+    %% (because reseller is port authority, this is whose rejected ports or made action required
+    %% comments on the ports, so it shouldn't get alerted for its own doing!)
+    do_check_port_requests(fetch_account_active_ports(cb_context:account_id(Context)), Context);
+maybe_check_port_requests(Context, 'true', 'false') ->
+    %% Authenticated account is reseller lets always show alerts
+    %% from its own account and all sub-accounts (no matter what port app is hidden or not)
+    ResellerId = cb_context:reseller_id(Context),
+    Ports = fetch_account_active_ports(ResellerId)
+        ++ get_active_ports(knm_port_request:descendant_active_ports(ResellerId)),
+    do_check_port_requests(Ports, Context);
+maybe_check_port_requests(Context, 'false', _) ->
+    %% Authenticated account is neither master or reseller
+    %% show alerts if its reseller is not hiding port app
+    AccountId = cb_context:account_id(Context),
+    ResellerId = cb_context:reseller_id(Context),
+    case should_hide_port(ResellerId) of
+        'true' -> Context;
+        'false' -> do_check_port_requests(fetch_account_active_ports(AccountId), Context)
+    end.
+
+-spec should_hide_port(kz_term:api_ne_binary() | {'ok', kz_json:object()} | kz_datamgr:data_error()) -> boolean().
+should_hide_port('undefined') ->
+    'false';
+should_hide_port(<<ResellerId/binary>>) ->
+    should_hide_port(kzd_whitelabel:fetch(ResellerId));
+should_hide_port({'ok', Whitelabel}) ->
+    kzd_whitelabel:hide_port(Whitelabel);
+should_hide_port({'error', _}) ->
+    'false'.
+
+-spec fetch_account_active_ports(kz_term:api_ne_binary()) -> kz_json:objects().
+fetch_account_active_ports('undefined') -> [];
+fetch_account_active_ports(AccountId) ->
+    get_active_ports(knm_port_request:account_active_ports(AccountId))
+        ++ get_active_ports(knm_port_request:account_ports_by_state(AccountId, ?PORT_UNCONFIRMED)).
+
+-spec get_active_ports({'ok', kz_json:objects()} | kz_datamgr:data_error()) -> kz_json:objects().
+get_active_ports({'ok', Active}) ->
+    Active;
+get_active_ports(_) ->
+    [].
+
+-spec do_check_port_requests(kz_json:objects(), cb_context:context()) -> cb_context:context().
+do_check_port_requests([], Context) ->
     Context;
-check_port_requests([PortRequest|PortRequests], Context) ->
+do_check_port_requests([PortRequest|PortRequests], Context) ->
     Routines = [fun maybe_check_port_action_required/2
                ,fun maybe_check_port_suspended/2
                ],
@@ -249,7 +298,7 @@ check_port_requests([PortRequest|PortRequests], Context) ->
                           ,Context
                           ,Routines
                           ),
-    check_port_requests(PortRequests, Context1).
+    do_check_port_requests(PortRequests, Context1).
 
 %%------------------------------------------------------------------------------
 %% @doc

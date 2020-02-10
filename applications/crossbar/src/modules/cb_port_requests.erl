@@ -738,15 +738,21 @@ validate_comments(Context, NewComments, 'false') ->
         [] ->
             add_commentors_info(Context, NewComments);
         [_|_] ->
-            Msg = kz_json:from_list(
-                    [{<<"message">>, <<"you're not allowed to make private comment or set action_required">>}
-                    ,{<<"cause">>, <<"comments">>}
+            Msg = kz_json:from_list_recursive(
+                    [{<<"comments">>
+                     ,[{<<"forbidden">>
+                       ,[{<<"message">>, <<"you're not allowed to make private comment or set action_required">>}
+                        ,{<<"cause">>, <<"comments">>}
+                        ]
+                       }
+                      ]
+                     }
                     ]),
-            cb_context:add_validation_error(<<"comments">>, <<"forbidden">>, Msg, Context)
+            cb_context:add_system_error('forbidden', Msg, Context)
     end;
 validate_comments(Context, NewComments, 'true') ->
-    Filters = [{kzd_comment:superduper_comment_path(), fun kz_term:is_false/1} %% old key
-              ,{kzd_comment:is_private_path(), fun kz_term:is_false/1}
+    Filters = [{kzd_comment:superduper_comment_path(), fun kz_term:is_true/1} %% old key
+              ,{kzd_comment:is_private_path(), fun kz_term:is_true/1}
               ],
     case [Comment
           || Comment <- run_comment_filter(NewComments, Filters),
@@ -757,10 +763,10 @@ validate_comments(Context, NewComments, 'true') ->
             add_commentors_info(Context, NewComments);
         [_|_] ->
             Msg = kz_json:from_list(
-                    [{<<"message">>, <<"setting action_required on public comment is not allowed">>}
+                    [{<<"message">>, <<"setting action_required on private comment is not allowed">>}
                     ,{<<"cause">>, <<"comments">>}
                     ]),
-            cb_context:add_validation_error(<<"comments">>, <<"forbidden">>, Msg, Context)
+            cb_context:add_validation_error(<<"comments">>, <<"rejected">>, Msg, Context)
     end.
 
 -spec add_commentors_info(cb_context:context(), kz_json:objects()) -> cb_context:context().

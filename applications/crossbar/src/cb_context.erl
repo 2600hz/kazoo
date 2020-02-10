@@ -26,6 +26,8 @@
         ,is_superduper_admin/1
         ,is_account_admin/1
 
+        ,master_account_id/1
+
         ,system_error/2
 
          %% Getters / Setters
@@ -227,6 +229,15 @@ account_doc(#cb_context{account_id = AccountId}) ->
 -spec is_authenticated(context()) -> boolean().
 is_authenticated(#cb_context{auth_doc='undefined'}) -> 'false';
 is_authenticated(#cb_context{}) -> 'true'.
+
+-spec master_account_id(context()) -> kz_term:api_ne_binary().
+master_account_id(#cb_context{master_account_id = ?NE_BINARY = MasterId}) ->
+    MasterId;
+master_account_id(_) ->
+    case kapps_util:get_master_account_id() of
+        {'ok', Id} -> Id;
+        {'error', _} -> 'undefined'
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc Returns true if the request contains a system admin module.
