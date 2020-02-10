@@ -620,12 +620,14 @@ ensure_aggregates([Account|Accounts], Total) ->
 -spec ensure_aggregate(kz_term:ne_binary()) -> 'ok'.
 ensure_aggregate(Account) ->
     ensure_aggregate(Account
-                    ,kz_datamgr:open_doc(Account, kzs_util:format_account_id(Account))
+                    ,kz_datamgr:open_doc(kzs_util:format_account_db(Account)
+                                        ,kzs_util:format_account_id(Account)
+                                        )
                     ).
 
 -spec ensure_aggregate(kz_term:ne_binary(), kz_datamgr:get_results_return()) -> 'ok'.
 ensure_aggregate(Account, {'error', 'not_found'}) ->
-    io:format("skipping account db in bad state '~s'~n", [Account]);
+    io:format("necessary documents from account '~s' are missing, skipping migration~n", [Account]);
 ensure_aggregate(Account, _) ->
     io:format("ensuring necessary documents from account '~s' are in aggregate dbs~n"
              ,[Account]
