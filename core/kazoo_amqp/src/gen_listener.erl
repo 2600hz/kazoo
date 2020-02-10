@@ -103,9 +103,10 @@
         ,execute/2
         ]).
 
--export([federated_event/4]).
--export([delayed_cast/3
+-export([federated_event/4
+        ,notify_of_federator_listener/2
         ]).
+-export([delayed_cast/3]).
 -export([distribute_event/3]).
 
 -include("listener_types.hrl").
@@ -120,7 +121,7 @@
 
 -type module_state() :: any().
 
--type federator_listener() :: {kz_term:ne_binary(), pid()}.
+-type federator_listener() :: {kz_term:ne_binary(), {pid(), reference()}}.
 -type federator_listeners() :: [federator_listener()].
 
 -record(state, {queue :: kz_term:api_binary()
@@ -239,6 +240,10 @@ start_link(Name, Module, Params, InitArgs, Options) when is_atom(Module),
 -spec stop(kz_types:server_ref()) -> 'ok'.
 stop(Server) ->
     gen_server:stop(Server).
+
+-spec start_listener(pid(), kz_term:proplist()) -> 'ok'.
+start_listener(Srv, Params) ->
+    gen_server:cast(Srv, {'start_listener', Params}).
 
 -spec queue_name(kz_types:server_ref()) -> kz_term:api_ne_binary().
 queue_name(Srv) -> gen_server:call(Srv, 'queue_name').
@@ -390,6 +395,10 @@ rm_binding(Srv, Binding, Props) ->
 federated_event(Srv, JObj, BasicDeliver, BasicData) ->
     gen_server:cast(Srv, {'federated_event', JObj, BasicDeliver, BasicData}).
 
+-spec notify_of_federator_listener(pid(), {kz_term:ne_binary(), pid()}) -> 'ok'.
+notify_of_federator_listener(Srv, {_Broker, _Pid}=Child) ->
+    gen_server:cast(Srv, {'federator_listener', Child}).
+
 -spec execute(kz_types:server_ref(), module(), atom(), [any()]) -> 'ok'.
 execute(Srv, Module, Function, Args) ->
     gen_server:cast(Srv, {'$execute', Module, Function, Args}).
@@ -534,9 +543,11 @@ handle_cast({'rm_binding', Binding, Props}, State) ->
     {'noreply', handle_rm_binding(Binding, Props, State)};
 handle_cast({'federated_event', JObj, BasicDeliver, BasicData}, #state{params=Params}=State) ->
     case props:is_true('spawn_handle_event', Params, 'false') of
-        'true'  -> kz_util:spawn(fun distribute_event/3, [JObj, {BasicDeliver, BasicData}, State]),
-                   {'noreply', State};
-        'false' -> {'noreply', distribute_event(JObj, {BasicDeliver, BasicData}, State)}
+        'true'  ->
+            kz_util:spawn(fun distribute_event/3, [JObj, {BasicDeliver, BasicData}, State]),
+            {'noreply', State};
+        'false' ->
+            {'noreply', distribute_event(JObj, {BasicDeliver, BasicData}, State)}
     end;
 handle_cast({'$execute', Module, Function, Args}
            ,#state{federators=[]}=State
@@ -558,7 +569,7 @@ handle_cast({'$execute', Module, Function, Args}=Msg
            ) ->
     erlang:apply(Module, Function, Args),
     _ = [?MODULE:cast(Federator, Msg)
-         || {_Broker, Federator} <- Federators
+         || {_Broker, {Federator, _Ref}} <- Federators
         ],
     {'noreply', State};
 handle_cast({'$execute', Function, Args}=Msg
@@ -566,7 +577,7 @@ handle_cast({'$execute', Function, Args}=Msg
            ) ->
     erlang:apply(Function, Args),
     _ = [?MODULE:cast(Federator, Msg)
-         || {_Broker, Federator} <- Federators
+         || {_Broker, {Federator, _Ref}} <- Federators
         ],
     {'noreply', State};
 handle_cast({'$execute', Function}=Msg
@@ -574,7 +585,7 @@ handle_cast({'$execute', Function}=Msg
            ) ->
     Function(),
     _ = [?MODULE:cast(Federator, Msg)
-         || {_Broker, Federator} <- Federators
+         || {_Broker, {Federator, _Ref}} <- Federators
         ],
     {'noreply', State};
 handle_cast({'$client_cast', Message}, State) ->
@@ -600,12 +611,14 @@ handle_cast({'pause_consumers'}, #state{is_consuming='true', consumer_tags=Tags}
     {'noreply', State};
 handle_cast({'resume_consumers'}, #state{queue='undefined'}=State) ->
     {'noreply', State};
-handle_cast({'resume_consumers'}, #state{is_consuming='false'
-                                        ,params=Params
-                                        ,queue=Q
-                                        ,other_queues=OtherQueues
-                                        ,auto_ack=AutoAck
-                                        }=State) ->
+handle_cast({'resume_consumers'}
+           ,#state{is_consuming='false'
+                  ,params=Params
+                  ,queue=Q
+                  ,other_queues=OtherQueues
+                  ,auto_ack=AutoAck
+                  }=State
+           ) ->
     ConsumeOptions = props:get_value('consume_options', Params, []),
     _ = start_consumer(Q, maybe_configure_auto_ack(ConsumeOptions, AutoAck)),
     _ = [start_consumer(Q1, maybe_configure_auto_ack(props:get_value('consume_options', P, []), AutoAck))
@@ -613,24 +626,32 @@ handle_cast({'resume_consumers'}, #state{is_consuming='false'
         ],
     {'noreply', State};
 handle_cast({'federator_is_consuming', Broker, 'true'}, State) ->
-    lager:info("federator for ~p is consuming, waiting on: ~p", [Broker, State#state.waiting_federators]),
-
     Filter = fun(X) ->
                      kz_amqp_connections:broker_available_connections(X) > 0
              end,
 
     Waiting = lists:filter(Filter, State#state.waiting_federators),
 
-    lager:info("available waiting brokers: ~p", [Waiting]),
-
     case lists:subtract(Waiting, [Broker]) of
         [] ->
-            lager:info("all waiting federators are available!"),
+            lager:info("federator for ~s is consuming, all waiting federators are available!", [Broker]),
             handle_module_cast({?MODULE, {'federators_consuming', 'true'}}, State);
-
         Remaining ->
-            lager:info("still waiting for federators: ~p", [Remaining]),
+            lager:info("federator for ~s is consuming, still waiting for federators: ~p", [Broker, Remaining]),
             {'noreply', State#state{waiting_federators = Remaining}}
+    end;
+handle_cast({'federator_listener', {Broker, Pid}}, #state{federators=Fs}=State) ->
+    case lists:keytake(Pid, 2, Fs) of
+        'false' ->
+            Ref = monitor('process', Pid),
+            lager:info("federator ~p(~p) on broker ~s started", [Pid, Ref, Broker]),
+
+            {'noreply', State#state{federators=[{Broker, {Pid, Ref}} | Fs]}};
+        {'value', _FL, _Feds} ->
+            lager:debug("ignoring federator_listener message about ~p; have ~p already"
+                       ,[Pid, _FL]
+                       ),
+            {'noreply', State}
     end;
 handle_cast(Message, State) ->
     handle_module_cast(Message, State).
@@ -678,12 +699,16 @@ handle_info({#'basic.deliver'{}=BD
             }
            ,#state{params=Params, auto_ack=AutoAck}=State
            ) ->
+
     _ = case AutoAck of
             'true' -> (catch kz_amqp_util:basic_ack(BD));
             'false' -> 'ok'
         end,
     case props:is_true('spawn_handle_event', Params, 'false') of
-        'false' -> {'noreply', handle_event(Payload, CT, {BD, Basic}, State)};
+        'false' ->
+            NewState = handle_event(binary:copy(Payload), CT, {BD, Basic}, State),
+            maybe_gc(),
+            {'noreply', NewState};
         'true'  ->
             kz_util:spawn(fun handle_event/4, [Payload, CT, {BD, Basic}, State]),
             {'noreply', State}
@@ -695,7 +720,8 @@ handle_info({#'basic.return'{}=BR
             }
            ,State
            ) ->
-    handle_return(Payload, CT, BR, State);
+    LocalPayload = binary:copy(Payload),
+    handle_return(LocalPayload, CT, BR, State);
 handle_info(#'basic.consume_ok'{consumer_tag=CTag}
            ,#state{queue='undefined'}=State
            ) ->
@@ -737,6 +763,8 @@ handle_info({'kz_amqp_channel', {Client, Ref, 'consumer_tags'}}, #state{consumer
     {'noreply', State};
 handle_info(?CALLBACK_TIMEOUT_MSG, State) ->
     handle_callback_info('timeout', State);
+handle_info({'DOWN', Ref, 'process', Pid, Reason}, State) ->
+    handle_down({Pid, Ref}, Reason, State);
 handle_info(Message, State) ->
     handle_callback_info(Message, State).
 
@@ -811,7 +839,7 @@ terminate(Reason, #state{module=Module
     _ = (catch(lists:foreach(fun kz_amqp_util:basic_cancel/1, Tags))),
     _Terminated = (catch Module:terminate(Reason, ModuleState)),
     _ = (catch kz_amqp_channel:release()),
-    _ = [listener_federator:stop(F) || {_Broker, F} <- Fs],
+    _ = [listener_federator:stop(F) || {_Broker, {F, _Ref}} <- Fs],
     lager:debug("~s terminated cleanly, going down", [Module]).
 
 %%------------------------------------------------------------------------------
@@ -830,6 +858,18 @@ code_change(_OldVersion, State, _Extra) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+handle_down({Pid, Ref}, Reason, #state{federators=Fs}=State) ->
+    case lists:keytake({Pid, Ref}, 2, Fs) of
+        'false' -> handle_callback_info({'DOWN', Ref, 'process', Pid, Reason}, State);
+        {'value', {_Broker, _PidRef}, UpdatedFs} ->
+            lager:warning("federator ~p to ~s down: ~p", [_PidRef, _Broker, Reason]),
+            {'noreply', State#state{federators=UpdatedFs}}
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec handle_callback_info(any(), state()) -> handle_info_return().
 handle_callback_info(Message
                     ,#state{module=Module
@@ -841,6 +881,8 @@ handle_callback_info(Message
     try Module:handle_info(Message, ModuleState) of
         {'noreply', ModuleState1} ->
             {'noreply', State#state{module_state=ModuleState1}};
+        {'noreply', ModuleState1, 'hibernate'} ->
+            {'noreply', State#state{module_state=ModuleState1}, 'hibernate'};
         {'noreply', ModuleState1, Timeout} ->
             Ref = start_timer(Timeout),
             {'noreply', State#state{module_state=ModuleState1
@@ -1147,10 +1189,19 @@ handle_module_call(Request, From, #state{module=Module
     _ = stop_timer(OldRef),
     try Module:handle_call(Request, From, ModuleState) of
         {'reply', Reply, ModuleState1} ->
-            {'reply', Reply
+            {'reply'
+            ,Reply
             ,State#state{module_state=ModuleState1
                         ,module_timeout_ref='undefined'
                         }
+            };
+        {'reply', Reply, ModuleState1, 'hibernate'} ->
+            {'reply'
+            ,Reply
+            ,State#state{module_state=ModuleState1
+                        ,module_timeout_ref='undefined'
+                        }
+            ,'hibernate'
             };
         {'reply', Reply, ModuleState1, Timeout} ->
             {'reply', Reply
@@ -1160,6 +1211,8 @@ handle_module_call(Request, From, #state{module=Module
             };
         {'noreply', ModuleState1} ->
             {'noreply', State#state{module_state=ModuleState1}};
+        {'noreply', ModuleState1, 'hibernate'} ->
+            {'noreply', State#state{module_state=ModuleState1}, 'hibernate'};
         {'noreply', ModuleState1, Timeout} ->
             {'noreply'
             ,State#state{module_state=ModuleState1
@@ -1187,6 +1240,8 @@ handle_module_cast(Msg, #state{module=Module
     try Module:handle_cast(Msg, ModuleState) of
         {'noreply', ModuleState1} ->
             {'noreply', State#state{module_state=ModuleState1}};
+        {'noreply', ModuleState1, 'hibernate'} ->
+            {'noreply', State#state{module_state=ModuleState1}, 'hibernate'};
         {'noreply', ModuleState1, Timeout} ->
             Ref = start_timer(Timeout),
             {'noreply', State#state{module_state=ModuleState1
@@ -1270,39 +1325,44 @@ is_federated_binding(Props) ->
     props:get_value('federate', Props) =:= 'true'.
 
 -spec update_federated_bindings(state()) -> state().
+update_federated_bindings(#state{}=State) ->
+    update_federated_bindings(State, kz_amqp_connections:federated_brokers()).
+
+update_federated_bindings(#state{bindings=[{Binding, _Props}|_]}=State, []) ->
+    lager:debug("no federated brokers to connect to, skipping federating binding '~s'", [Binding]),
+    State;
 update_federated_bindings(#state{bindings=[{Binding, Props}|_]
                                 ,federators=Fs
-                                }=State) ->
-    case kz_amqp_connections:federated_brokers() of
-        [] ->
-            lager:debug("no federated brokers to connect to, skipping federating binding '~s'", [Binding]),
-            State;
-        FederatedBrokers ->
-            NonFederatedProps = props:delete('federate', Props),
-            {_Existing, New} = broker_connections(Fs, FederatedBrokers),
-            'ok' = update_existing_listeners_bindings(Fs, Binding, NonFederatedProps),
-            {'ok', NewListeners} = start_new_listeners(New, Binding, NonFederatedProps, State),
-            State#state{federators=NewListeners ++ Fs, waiting_federators=New ++ State#state.waiting_federators}
-    end.
+                                }=State
+                         ,FederatedBrokers
+                         ) ->
+    NonFederatedProps = props:delete('federate', Props),
+    {_Existing, New} = broker_connections(Fs, FederatedBrokers),
+    'ok' = update_existing_listeners_bindings(Fs, Binding, NonFederatedProps),
+    {'ok', NewListeners} = start_new_listeners(New, Binding, NonFederatedProps, State),
+    State#state{federators=NewListeners ++ Fs
+               ,waiting_federators=New ++ State#state.waiting_federators
+               }.
 
 -spec maybe_remove_federated_binding(binding(), kz_term:proplist(), state()) -> 'ok'.
 maybe_remove_federated_binding(Binding, Props, State) ->
     maybe_remove_federated_binding(is_federated_binding(Props), Binding, Props, State).
 
 -spec maybe_remove_federated_binding(boolean(), binding(), kz_term:proplist(), state()) -> 'ok'.
-maybe_remove_federated_binding('true', Binding, Props, #state{federators=Fs}) when Fs =/= [] ->
+maybe_remove_federated_binding(_Flag, _Binding, _Props, #state{federators=[]}) -> 'ok';
+maybe_remove_federated_binding('true', Binding, Props, #state{federators=Fs}) ->
     NonFederatedProps = props:delete('federate', Props),
     remove_federated_binding(Fs, Binding, NonFederatedProps);
-
-maybe_remove_federated_binding(_Flag, _Binging, _Props, _State) ->
-    'ok'.
+maybe_remove_federated_binding(_Flag, _Binging, _Props, _State) -> 'ok'.
 
 -spec broker_connections(federator_listeners(), kz_term:ne_binaries()) ->
           {kz_term:ne_binaries(), kz_term:ne_binaries()}.
 broker_connections(Listeners, Brokers) ->
     lists:partition(fun(Broker) ->
                             props:get_value(Broker, Listeners) =/= 'undefined'
-                    end, Brokers).
+                    end
+                   ,Brokers
+                   ).
 
 -spec start_new_listeners(kz_term:ne_binaries(), binding_module(), kz_term:proplist(), state()) ->
           {'ok', federator_listeners()}.
@@ -1314,9 +1374,10 @@ start_new_listeners(Brokers, Binding, Props, State) ->
 -spec start_new_listener(kz_term:ne_binary(), binding_module(), kz_term:proplist(), state()) -> federator_listener().
 start_new_listener(Broker, Binding, Props, #state{params=Ps}) ->
     FederateParams = create_federated_params({Binding, Props}, Ps),
-    {'ok', Pid} = listener_federator:start_link(self(), Broker, FederateParams),
-    lager:debug("started federated listener on broker ~s: ~p", [Broker, Pid]),
-    {Broker, Pid}.
+    {'ok', Pid} = kz_amqp_federated_listeners_sup:start_child(self(), Broker, FederateParams),
+    Ref = monitor('process', Pid),
+    lager:debug("started federated listener on broker ~s: ~p(~p)", [Broker, Pid, Ref]),
+    {Broker, {Pid, Ref}}.
 
 -spec remove_federated_binding(federator_listeners(), binding_module(), kz_term:proplist()) -> 'ok'.
 remove_federated_binding(Listeners, Binding, Props) ->
@@ -1333,7 +1394,7 @@ update_existing_listeners_bindings(Listeners, Binding, Props) ->
     'ok'.
 
 -spec update_existing_listener_bindings(federator_listener(), binding_module(), kz_term:proplist()) -> 'ok'.
-update_existing_listener_bindings({_Broker, Pid}, Binding, Props) ->
+update_existing_listener_bindings({_Broker, {Pid, _Ref}}, Binding, Props) ->
     lager:debug("updating listener ~p with ~s", [Pid, Binding]),
     ?MODULE:add_binding(Pid, Binding, Props).
 
@@ -1499,10 +1560,38 @@ maybe_add_broker_connection(Broker, Count) when Count =:= 0 ->
 maybe_add_broker_connection(Broker, _Count) ->
     kz_amqp_channel:requisition(self(), Broker).
 
--spec start_listener(pid(), kz_term:proplist()) -> 'ok'.
-start_listener(Srv, Params) ->
-    gen_server:cast(Srv, {'start_listener', Params}).
-
 maybe_configure_auto_ack(Props, 'false') -> Props;
 maybe_configure_auto_ack(Props, 'true') ->
     [{'no_ack', 'false'} | props:delete('no_ack', Props)].
+
+%% @doc force GC of process if total_heap_size exceeds 10K
+%%
+%% In production, when compacting kz_amqp_workers and other
+%% gen_listener processes, we see a reduction in total_heap_size to
+%% about 4K on most processes.
+%%
+%% Old heap is used for "long-lived" terms. One of the issues was that
+%% when a binary Payload was received from AMQP, we would decode it
+%% directly which causes refc binaries to be put in the gen_listener's
+%% heap, keeping the binary alive. By using binary:copy/1 before
+%% decoding, Payload can be freed sooner. I suspect that Payload
+%% itself is a refc into the larger AMQP binary payload parsed by the
+%% AMQP client library.
+%%
+%% It is possible that apps may load more memory into their state
+%% which would cause gen_listener's state to exceed 10K in the steady
+%% state. We advise app developers to not do this :)
+-spec maybe_gc() -> 'ok'.
+maybe_gc() ->
+    maybe_gc(process_info(self(), ['total_heap_size'])
+            ,100 * ?BYTES_K
+            ).
+
+maybe_gc([{'total_heap_size', Words}], MaxBytes) ->
+    maybe_gc(kz_term:words_to_bytes(Words), MaxBytes);
+maybe_gc(Heap, Max) when Heap > Max ->
+    erlang:garbage_collect(self()),
+    [{'total_heap_size', NewHeapWords}] = process_info(self(), ['total_heap_size']),
+    NewHeap = kz_term:words_to_bytes(NewHeapWords),
+    lager:debug("new heap size ~p (delta ~p)", [NewHeap, Heap-NewHeap]);
+maybe_gc(_Heap, _Max) -> 'ok'.

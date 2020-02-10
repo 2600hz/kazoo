@@ -1056,7 +1056,7 @@ fix_services_tree(AccountId, Tree) ->
     Services = kz_services:fetch(AccountId),
     fix_services_tree(Services, Tree, kz_services:services_jobj(Services)).
 
--spec fix_services_tree(kz_term:ne_binary(), kz_term:ne_binaries(), kzd_services:doc()) -> 'ok'.
+-spec fix_services_tree(kz_services:services(), kz_term:ne_binaries(), kzd_services:doc()) -> 'ok'.
 fix_services_tree(Services, Tree, ServicesJObj) ->
     case kzd_services:tree(ServicesJObj) =:= Tree of
         'true' -> 'ok';
@@ -2188,19 +2188,21 @@ check_release() ->
 
 -spec run_check(fun()) -> 'ok'.
 run_check(CheckFun) ->
+    StartTimeMs = kz_time:now_ms(),
     {Pid, Ref} = kz_util:spawn_monitor(CheckFun, []),
-    wait_for_check(Pid, Ref).
+    wait_for_check(Pid, Ref, StartTimeMs).
 
--spec wait_for_check(pid(), reference()) -> 'ok'.
-wait_for_check(Pid, Ref) ->
+-spec wait_for_check(pid(), reference(), pos_integer()) -> 'ok'.
+wait_for_check(Pid, Ref, StartTimeMs) ->
     receive
-        {'DOWN', Ref, 'process', Pid, 'normal'} -> 'ok';
+        {'DOWN', Ref, 'process', Pid, 'normal'} ->
+            lager:info("check finished in ~pms", [kz_time:elapsed_ms(StartTimeMs)]);
         {'DOWN', Ref, 'process', Pid, Reason} ->
-            lager:error("check in ~p failed to run: ~p", [Pid, Reason]),
+            lager:error("check in ~p failed to run after ~pms: ~p", [Pid, kz_time:elapsed_ms(StartTimeMs), Reason]),
             throw(Reason)
     after 5 * ?MILLISECONDS_IN_MINUTE ->
             lager:error("check in ~p timed out", [Pid]),
-            exit(Pid, 'timeout'),
+            exit(Pid, 'kill'),
             throw('timeout')
     end.
 

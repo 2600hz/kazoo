@@ -947,18 +947,15 @@ handle_fetch_options(Services, ['skip_cache'|Options]) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec commit_updates(kz_term:ne_binary()
-                    ,kz_services_quantities:billables() | kz_services_quantities:billable()
-                    ,kz_services_quantities:billables() | kz_services_quantities:billable()
-                    ) -> services().
+-type billable_updates() :: 'undefined' | kz_services_quantities:billables() | kz_services_quantities:billable().
+
+-spec commit_updates(kz_term:ne_binary(), billable_updates(), billable_updates()) ->
+          services().
 commit_updates(Account, Current, Proposed) ->
     commit_updates(Account, Current, Proposed, kz_json:new()).
 
--spec commit_updates(kz_term:ne_binary()
-                    ,kz_services_quantities:billables() | kz_services_quantities:billable()
-                    ,kz_services_quantities:billables() | kz_services_quantities:billable()
-                    ,kz_json:object()
-                    ) -> services().
+-spec commit_updates(kz_term:ne_binary(), billable_updates(), billable_updates(), kz_json:object()) ->
+          services().
 commit_updates(Account, Current, Proposed, AuditLog) ->
     AccountId = kz_util:format_account_id(Account),
     FetchOptions = [{'updates', AccountId, to_billables(Current), to_billables(Proposed)}
@@ -974,7 +971,7 @@ commit_updates(Account, Current, Proposed, AuditLog) ->
             commit_updates(Services, FetchOptions)
     end.
 
--spec to_billables(kz_services_quantities:billables() | kz_services_quantities:billable()) -> kz_services_quantities:billables().
+-spec to_billables(billable_updates()) -> kz_services_quantities:billables().
 to_billables('undefined') -> [];
 to_billables(Bs) when is_list(Bs) -> Bs;
 to_billables(B) -> [B].
