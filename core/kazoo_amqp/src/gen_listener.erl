@@ -855,7 +855,7 @@ terminate(Reason, #state{module=Module
                         }) ->
     Terminated = (catch Module:terminate(Reason, ModuleState)),
     kz_amqp_assignments:release_consumer(Tags),
-    _ = [listener_federator:stop(F) || {_Broker, {F, _Ref}} <- Fs],
+    _ = [catch listener_federator:stop(F) || {_Broker, {F, _Ref}} <- Fs],
     maybe_log_module_terminate(Module, Reason, Terminated).
 
 -spec maybe_log_module_terminate(module(), any(), any()) -> 'ok'.
@@ -1410,7 +1410,7 @@ start_new_listener(Broker, Binding, Props, #state{params=Ps}) ->
 -spec remove_federated_binding(federator_listeners(), binding_module(), kz_term:proplist()) -> 'ok'.
 remove_federated_binding(Listeners, Binding, Props) ->
     _ = [?MODULE:rm_binding(Pid, Binding, Props)
-         || {_Broker, Pid} <- Listeners
+         || {_Broker, {Pid, _Ref}} <- Listeners
         ],
     'ok'.
 
