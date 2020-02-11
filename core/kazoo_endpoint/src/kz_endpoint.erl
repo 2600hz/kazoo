@@ -210,9 +210,10 @@ maybe_cached_hotdesk_ids(Props, JObj, AccountDb) ->
     case kz_json:get_keys([<<"hotdesk">>, <<"users">>], JObj) of
         [] -> Props;
         OwnerIds ->
-            lists:foldl(fun(Id, P) ->
-                                [{'db', AccountDb, Id}|P]
-                        end, Props, OwnerIds)
+            lists:foldl(fun(Id, P) -> [{'db', AccountDb, Id}|P] end
+                       ,Props
+                       ,OwnerIds
+                       )
     end.
 
 -spec maybe_format_endpoint(kz_json:object(), kz_term:api_object()) -> kz_json:object().
@@ -727,7 +728,7 @@ evaluate_rules_for_creation(Endpoint, Properties, Call) ->
                ).
 
 -type create_ep_acc() :: {kz_json:object(), kz_json:object(), kapps_call:call()} |
-                         {'error', any()}.
+                        {'error', any()}.
 -type ep_routine_v() :: fun((kz_json:object(), kz_json:object(), kapps_call:call()) -> 'ok' | _).
 
 -spec should_create_endpoint_fold(ep_routine_v(), create_ep_acc()) -> create_ep_acc().
@@ -966,7 +967,7 @@ maybe_create_fwd_endpoint(Endpoint, Properties, Call) ->
           {'error', 'call_forward_substitute'}.
 maybe_create_endpoint(Endpoint, Properties, Call) ->
     case is_call_forward_enabled(Endpoint, Properties)
-        andalso kz_json:is_true([<<"call_forward">>, <<"substitute">>], Endpoint)
+        andalso kzd_devices:call_forward_substitute(Endpoint, 'false')
     of
         'true' -> {'error', 'call_forward_substitute'};
         'false' ->
@@ -976,7 +977,7 @@ maybe_create_endpoint(Endpoint, Properties, Call) ->
 
 -spec is_call_forward_enabled(kz_json:object(), kz_json:object()) -> boolean().
 is_call_forward_enabled(Endpoint, Properties) ->
-    CallForwarding = kz_json:get_ne_value(<<"call_forward">>, Endpoint, kz_json:new()),
+    CallForwarding = kzd_devices:call_forward(Endpoint, kz_json:new()),
     Source = kz_json:get_ne_binary_value(<<"source">>, Properties),
     Number = kz_json:get_ne_binary_value(<<"number">>, CallForwarding),
     kz_json:is_true(<<"enabled">>, CallForwarding)
@@ -1022,7 +1023,10 @@ get_endpoint_type(Endpoint, Call) ->
                ],
     Type = lists:foldl(fun(Fun, 'undefined') -> Fun(Endpoint, Call);
                           (_Fun, T) -> T
-                       end, 'undefined', Routines),
+                       end
+                      ,'undefined'
+                      ,Routines
+                      ),
     case convert_endpoint_type(Type) of
         'undefined' -> maybe_guess_endpoint_type(Endpoint);
         Else -> Else
@@ -1132,7 +1136,7 @@ get_clid(Endpoint, Properties, Call, Type) ->
 
 -spec maybe_move_privacy(kz_json:object(), kz_json:object(), kapps_call:call(), clid()) -> clid().
 maybe_move_privacy(Endpoint, _Properties, Call, Clid) ->
-    CallForward = kz_json:get_ne_value(<<"call_forward">>, Endpoint, kz_json:new()),
+    CallForward = kzd_devices:call_forward(Endpoint, kz_json:new()),
     CCVs = kapps_call:custom_channel_vars(Call),
     RetainCID = kz_json:is_true(<<"keep_caller_id">>, CallForward)
         orelse kz_json:is_true(<<"Retain-CID">>, CCVs),
@@ -1226,13 +1230,19 @@ maybe_get_t38(Endpoint, Call) ->
 
 -spec maybe_build_failover(kz_json:object(), kapps_call:call()) -> kz_term:api_object().
 maybe_build_failover(Endpoint, Call) ->
-    CallForward = kz_json:get_value(<<"call_forward">>, Endpoint),
-    Number = kz_json:get_value(<<"number">>, CallForward),
-    case kz_json:is_true(<<"failover">>, CallForward)
+    %% failover is enabled only if "enabled" is false and "failover" is true
+
+    CallForward = kzd_devices:call_forward(Endpoint),
+    Number = kz_json:get_ne_binary_value(<<"number">>, CallForward),
+
+    IsFailover = kz_json:is_true(<<"failover">>, CallForward),
+
+    case IsFailover
         andalso not kz_term:is_empty(Number)
     of
         'false' -> 'undefined';
-        'true' -> create_call_fwd_endpoint(Endpoint, kz_json:new(), Call)
+        'true' ->
+            create_call_fwd_endpoint(Endpoint, kz_json:new(), Call)
     end.
 
 -spec create_push_endpoint(kz_json:object(), kz_json:object(), kapps_call:call()) -> kz_term:api_object().
@@ -1357,9 +1367,10 @@ create_skype_endpoint(Endpoint, Properties, _Call) ->
 -spec create_call_fwd_endpoint(kz_json:object(), kz_json:object(), kapps_call:call()) ->
           kz_json:object().
 create_call_fwd_endpoint(Endpoint, Properties, Call) ->
-    CallForward = kz_json:get_ne_value(<<"call_forward">>, Endpoint, kz_json:new()),
-    ToDID = kz_json:get_value(<<"number">>, CallForward),
+    CallForward = kzd_devices:call_forward(Endpoint, kz_json:new()),
+    ToDID = kz_json:get_ne_binary_value(<<"number">>, CallForward),
     lager:info("call forwarding endpoint to ~s", [ToDID]),
+
     IgnoreEarlyMedia = case kz_json:is_true(<<"require_keypress">>, CallForward)
                            orelse not kz_json:is_true(<<"substitute">>, CallForward)
                        of
@@ -1513,7 +1524,7 @@ maybe_add_push_headers(JObj, _Endpoint, _Type, _Call) -> JObj.
 -spec maybe_add_diversion(kz_json:object(), kz_json:object(), kz_term:api_binary(), kapps_call:call()) -> kz_json:object().
 maybe_add_diversion(JObj, Endpoint, _Inception, Call) ->
     ShouldAddDiversion = kapps_call:authorizing_id(Call) =:= 'undefined'
-        andalso kz_json:is_true([<<"call_forward">>, <<"keep_caller_id">>], Endpoint, 'false')
+        andalso kzd_devices:call_forward_keep_caller_id(Endpoint, 'false')
         andalso kapps_config:get_is_true(?CONFIG_CAT, <<"should_add_diversion_header">>, 'false'),
     case ShouldAddDiversion of
         'true' ->
@@ -1701,7 +1712,12 @@ maybe_set_call_forward({Endpoint, Call, CallFwd, CCVs}) ->
 
 -spec is_failover(kz_json:object()) -> 'true' | 'undefined'.
 is_failover(CallFwd) ->
-    case kz_json:is_true(<<"failover">>, CallFwd) of
+    IsFailover = kz_json:is_true(<<"failover">>, CallFwd),
+    IsCallFwdEnabled = kz_json:is_true(<<"enabled">>, CallFwd),
+
+    case (not IsCallFwdEnabled)
+        andalso IsFailover
+    of
         'true' -> 'true';
         'false' -> 'undefined'
     end.
