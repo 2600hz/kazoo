@@ -839,7 +839,7 @@ terminate(Reason, #state{module=Module
     _ = (catch(lists:foreach(fun kz_amqp_util:basic_cancel/1, Tags))),
     _Terminated = (catch Module:terminate(Reason, ModuleState)),
     _ = (catch kz_amqp_channel:release()),
-    _ = [listener_federator:stop(F) || {_Broker, {F, _Ref}} <- Fs],
+    _ = [catch listener_federator:stop(F) || {_Broker, {F, _Ref}} <- Fs],
     lager:debug("~s terminated cleanly, going down", [Module]).
 
 %%------------------------------------------------------------------------------
@@ -1382,7 +1382,7 @@ start_new_listener(Broker, Binding, Props, #state{params=Ps}) ->
 -spec remove_federated_binding(federator_listeners(), binding_module(), kz_term:proplist()) -> 'ok'.
 remove_federated_binding(Listeners, Binding, Props) ->
     _ = [?MODULE:rm_binding(Pid, Binding, Props)
-         || {_Broker, Pid} <- Listeners
+         || {_Broker, {Pid, _Ref}} <- Listeners
         ],
     'ok'.
 
