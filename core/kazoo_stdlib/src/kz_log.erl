@@ -39,14 +39,14 @@
                     ,'debug'
                     ]).
 -type log_level() :: 'emergency'
-                   | 'alert'
-                   | 'critical'
-                   | 'error'
-                   | 'warning'
-                   | 'notice'
-                   | 'info'
-                   | 'debug'
-                   | kz_term:ne_binary().
+                  | 'alert'
+                  | 'critical'
+                  | 'error'
+                  | 'warning'
+                  | 'notice'
+                  | 'info'
+                  | 'debug'
+                  | kz_term:ne_binary().
 
 -define(LOG(Fmt), begin lager:info(Fmt), io:format(Fmt ++ "~n") end).
 -define(LOG(Fmt, Args), begin lager:info(Fmt, Args), io:format(Fmt ++ "~n", Args) end).
@@ -132,17 +132,7 @@ log_stacktrace(Fmt, Args) ->
 %%------------------------------------------------------------------------------
 -spec log_stacktrace(list(), string(), list()) -> 'ok'.
 log_stacktrace(ST, Fmt, Args) ->
-    ?LOG_ERROR("stacktrace: " ++ Fmt, Args),
-    _ = [log_stacktrace_mfa(M, F, A, Info)
-         || {M, F, A, Info} <- ST
-        ],
-    'ok'.
-
-log_stacktrace_mfa(M, F, Arity, Info) when is_integer(Arity) ->
-    ?LOG_ERROR("st: ~s:~s/~b at (~b)", [M, F, Arity, props:get_value('line', Info, 0)]);
-log_stacktrace_mfa(M, F, Args, Info) ->
-    ?LOG_ERROR("st: ~s:~s at ~p", [M, F, props:get_value('line', Info, 0)]),
-    lists:foreach(fun (Arg) -> ?LOG_ERROR("args: ~p", [Arg]) end, Args).
+    mark_blamer:log_stacktrace(ST, Fmt, Args).
 
 %%------------------------------------------------------------------------------
 %% @doc Given an JSON Object extracts the `Call-ID' into the processes
