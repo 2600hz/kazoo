@@ -96,8 +96,8 @@
 -type sms_routes() :: [sms_route(), ...].
 
 -type std_return() :: {'ok', kz_json:object()} |
-                     {'error', 'invalid_endpoint_id'} |
-                     kz_datamgr:data_error().
+                      {'error', 'invalid_endpoint_id'} |
+                      kz_datamgr:data_error().
 -export_type([std_return/0]).
 
 %%------------------------------------------------------------------------------
@@ -805,7 +805,7 @@ evaluate_rules_for_creation(Endpoint, Properties, Call) ->
                ).
 
 -type create_ep_acc() :: {kz_json:object(), kz_json:object(), kapps_call:call()} |
-                        {'error', any()}.
+                         {'error', any()}.
 -type ep_routine_v() :: fun((kz_json:object(), kz_json:object(), kapps_call:call()) -> 'ok' | _).
 
 -spec should_create_endpoint_fold(ep_routine_v(), create_ep_acc()) -> create_ep_acc().

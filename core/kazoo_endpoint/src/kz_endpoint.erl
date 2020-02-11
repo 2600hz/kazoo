@@ -37,8 +37,8 @@
 -include("kazoo_endpoint.hrl").
 
 -type std_return() :: {'ok', kz_json:object()} |
-                     {'error', 'invalid_endpoint_id'} |
-                     kz_datamgr:data_error().
+                      {'error', 'invalid_endpoint_id'} |
+                      kz_datamgr:data_error().
 -export_type([std_return/0]).
 
 %%------------------------------------------------------------------------------
@@ -86,9 +86,9 @@ flush_local(Db, Id) -> ?MOD:flush_local(Db, Id).
 %% @end
 %%------------------------------------------------------------------------------
 -type build_errors() :: 'db_not_reachable' | 'endpoint_disabled'
-                     | 'endpoint_called_self' | 'endpoint_id_undefined'
-                     | 'invalid_endpoint_id' | 'not_found' | 'owner_called_self'
-                     | 'do_not_disturb' | 'no_resource_type'.
+                      | 'endpoint_called_self' | 'endpoint_id_undefined'
+                      | 'invalid_endpoint_id' | 'not_found' | 'owner_called_self'
+                      | 'do_not_disturb' | 'no_resource_type'.
 
 
 -spec build(kz_term:api_ne_binary() | kz_json:object(), kapps_call:call()) ->
