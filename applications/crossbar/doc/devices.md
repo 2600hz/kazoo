@@ -251,6 +251,10 @@ Key | Description | Type | Default | Required | Support Level
 
 
 
+### Call forwarding
+
+Currently the `call_forward` object allows you to define call forwarding *or* failover but not both. If `call_forward.enabled` is `true` it will take precedence and settings will be used only for call forwarding. If `call_forward.enabled` is `false` *and* `call_forward.failover` is `true`, failover settings will be used.
+
 ## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/devices
