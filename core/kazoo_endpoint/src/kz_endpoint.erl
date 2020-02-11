@@ -728,7 +728,7 @@ evaluate_rules_for_creation(Endpoint, Properties, Call) ->
                ).
 
 -type create_ep_acc() :: {kz_json:object(), kz_json:object(), kapps_call:call()} |
-                        {'error', any()}.
+                         {'error', any()}.
 -type ep_routine_v() :: fun((kz_json:object(), kz_json:object(), kapps_call:call()) -> 'ok' | _).
 
 -spec should_create_endpoint_fold(ep_routine_v(), create_ep_acc()) -> create_ep_acc().
