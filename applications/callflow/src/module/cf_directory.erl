@@ -398,7 +398,7 @@ get_search_fields(_) -> 'last'.
           {'ok', directory_users()} |
           {'error', any()}.
 get_directory_listing(Db, DirId) ->
-    case kz_datamgr:get_results(Db, ?DIR_DOCS_VIEW, [{'key', DirId}, 'include_docs']) of
+    case kz_datamgr:get_results(Db, ?DIR_DOCS_VIEW, [{'startkey', [DirId]}, {'endkey', [DirId, kz_json:new()]}, 'include_docs']) of
         {'ok', []} ->
             lager:info("no users have been assigned to directory ~s", [DirId]),
             %% play no users in this directory
