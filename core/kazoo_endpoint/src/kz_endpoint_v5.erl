@@ -1715,7 +1715,12 @@ maybe_set_call_forward({Endpoint, Call, CallFwd, CCVs}) ->
 
 -spec is_failover(kz_json:object()) -> 'true' | 'undefined'.
 is_failover(CallFwd) ->
-    case kz_json:is_true(<<"failover">>, CallFwd) of
+    IsFailover = kz_json:is_true(<<"failover">>, CallFwd),
+    IsCallFwdEnabled = kz_json:is_true(<<"enabled">>, CallFwd),
+
+    case (not IsCallFwdEnabled)
+        andalso IsFailover
+    of
         'true' -> 'true';
         'false' -> 'undefined'
     end.

@@ -53,7 +53,6 @@ get(EndpointId, _Call) -> ?MOD:get(EndpointId, _Call).
 
 
 -ifdef(TEST).
-
 attributes_keys() -> ?MOD:attributes_keys().
 
 -spec merge_attribute(kz_term:ne_binary(), kz_term:api_object(), kz_term:api_object(), kz_term:api_object()) -> kz_json:object().
@@ -116,7 +115,6 @@ maybe_start_metaflow(Call, Endpoint) -> ?MOD:maybe_start_metaflow(Call, Endpoint
           kz_json:object().
 create_sip_endpoint(Endpoint, Properties, Call) -> ?MOD:create_sip_endpoint(Endpoint, Properties, Call).
 
-
 %%------------------------------------------------------------------------------
 %% @doc Creates the Kazoo API endpoint for a bridge call command when
 %% the device (or owner) has forwarded their phone.  This endpoint
@@ -128,7 +126,6 @@ create_sip_endpoint(Endpoint, Properties, Call) -> ?MOD:create_sip_endpoint(Endp
 -spec create_call_fwd_endpoint(kz_json:object(), kz_json:object(), kapps_call:call()) ->
           kz_json:object().
 create_call_fwd_endpoint(Endpoint, Properties, Call) -> ?MOD:create_call_fwd_endpoint(Endpoint, Properties, Call).
-
 
 -spec encryption_method_map(kz_term:api_object(), kz_term:api_binaries() | kz_json:object()) -> kz_term:api_object().
 encryption_method_map(CCVs, Methods) -> ?MOD:encryption_method_map(CCVs, Methods).
