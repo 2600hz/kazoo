@@ -1,3 +1,8 @@
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2020, 2600Hz
+%%% @doc Handles flushing cached entries based on nodes coming and going
+%%% @end
+%%%-----------------------------------------------------------------------------
 -module(kz_cache_nodes).
 -behaviour(gen_server).
 

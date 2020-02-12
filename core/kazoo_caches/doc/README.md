@@ -85,6 +85,10 @@ AMQP listener for document changes, if configured
 
 Callbacks processor module
 
+### `kz_cache_processes`
+
+If a cache entry is stored with `{'monitor', 'true'}` or `{'monitor', [pid()]}`, `kz_cache_process` will monitor the PID(s) and remove cache entries if the PID(s) die.
+
 ## ETS architecture
 
 ### Main ETS table
