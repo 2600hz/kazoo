@@ -879,11 +879,12 @@ is_valid_json_object_test_() ->
 
 %% delete results
 -define(D1_AFTER_K1, ?JSON_WRAPPER([{<<"d1k2">>, <<"d1v2">>}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}])).
--define(D1_AFTER_K3_V2, ?JSON_WRAPPER([{<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.3">>]}, {<<"d1k1">>, <<"d1v1">>}, {<<"d1k2">>, <<"d1v2">>}])).
+-define(D1_AFTER_K3_V2, ?JSON_WRAPPER([{<<"d1k1">>, <<"d1v1">>}, {<<"d1k2">>, <<"d1v2">>}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.3">>]}])).
+-define(D1_AFTER_K3_V2_PRUNE, ?JSON_WRAPPER([{<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.3">>]}, {<<"d1k1">>, <<"d1v1">>}, {<<"d1k2">>, <<"d1v2">>}])).
 
--define(D6_AFTER_SUB, ?JSON_WRAPPER([{<<"sub_d1">>, ?EMPTY_JSON_OBJECT}
-                                    ,{<<"d2k1">>, 1}
+-define(D6_AFTER_SUB, ?JSON_WRAPPER([{<<"d2k1">>, 1}
                                     ,{<<"d2k2">>, 3.14}
+                                    ,{<<"sub_d1">>, ?EMPTY_JSON_OBJECT}
                                     ]
                                    )).
 -define(D6_AFTER_SUB_PRUNE, ?JSON_WRAPPER([{<<"d2k1">>, 1}
@@ -946,7 +947,7 @@ delete_key_test_() ->
     ,?_assertEqual(?D1_AFTER_K1, kz_json:delete_key([<<"d1k1">>], ?D1))
     ,?_assertEqual(?D1_AFTER_K1, kz_json:delete_key([<<"d1k1">>], ?D1, 'prune'))
     ,?_assertEqual(?D1_AFTER_K3_V2, kz_json:delete_key([<<"d1k3">>, 2], ?D1))
-    ,?_assertEqual(?D1_AFTER_K3_V2, kz_json:delete_key([<<"d1k3">>, 2], ?D1, 'prune'))
+    ,?_assertEqual(?D1_AFTER_K3_V2_PRUNE, kz_json:delete_key([<<"d1k3">>, 2], ?D1, 'prune'))
     ,?_assertEqual(?D6_AFTER_SUB, kz_json:delete_key([<<"sub_d1">>, <<"d1k1">>], ?D6))
     ,?_assertEqual(?D6_AFTER_SUB_PRUNE, kz_json:delete_key([<<"sub_d1">>, <<"d1k1">>], ?D6, 'prune'))
     ,?_assertEqual(?P_ARR, kz_json:delete_key([<<"k1">>, 1], ?D_ARR))
@@ -1291,12 +1292,34 @@ flatten_expand_diff_test_() ->
     X = kz_json:set_value([<<"k10">>, <<"k11">>, <<"k12">>], <<"v10">>, kz_json:new()),
     X2 = kz_json:set_values(Add, X),
 
+    A1 = kz_json:set_value([<<"a">>, <<"b">>]
+                          ,[kz_json:from_list([{<<"c1">>, 1}, {<<"c2">>, 2}])]
+                          ,kz_json:new()),
+    A2 = kz_json:set_value([<<"a">>, <<"b">>]
+                          ,[kz_json:from_list([{<<"c1">>, 1}, {<<"c2">>, 2}, {<<"c3">>, 3}])]
+                          ,kz_json:new()),
+    FLATTEN_LEGACY = kz_json:from_list([{[<<"a">>,<<"b">>],[kz_json:from_list([{<<"c1">>,1},{<<"c2">>,2}])]}]),
+    FLATTEN_DEEP = kz_json:from_list([{[<<"a">>,<<"b">>,1,<<"c1">>],1}
+                                     ,{[<<"a">>,<<"b">>,1,<<"c2">>],2}
+                                     ]),
+
+    DIFF_LEGACY_VALUE = kz_json:from_list([{<<"c1">>,1}, {<<"c2">>,2}, {<<"c3">>,3}]),
+    DIFF_LEGACY = kz_json:set_value([<<"a">>, <<"b">>], [DIFF_LEGACY_VALUE], kz_json:new()),
+    DIFF_DEEP_VALUE = kz_json:from_list([{<<"c3">>, 3}]),
+    DIFF_DEEP = kz_json:set_value([<<"a">>, <<"b">>], [DIFF_DEEP_VALUE], kz_json:new()),
+
     Delta = kz_json:from_list(Add),
     Empty = kz_json:new(),
 
     [?_assertEqual(X2, kz_json:expand(kz_json:flatten(X2)))
     ,?_assertEqual(Delta, kz_json:diff(X2, X))
     ,?_assertEqual(Empty, kz_json:diff(X, X2))
+    ,?_assertEqual(FLATTEN_LEGACY, kz_json:flatten(A1))
+    ,?_assertEqual(FLATTEN_DEEP, kz_json:flatten_deep(A1))
+    ,?_assertEqual(A1, kz_json:expand(kz_json:flatten(A1)))
+    ,?_assertEqual(A1, kz_json:expand_deep(kz_json:flatten_deep(A1)))
+    ,?_assertEqual(DIFF_LEGACY, kz_json:diff(A2, A1))
+    ,?_assertEqual(DIFF_DEEP, kz_json:diff_deep(A2, A1))
     ].
 
 diff_test_() ->

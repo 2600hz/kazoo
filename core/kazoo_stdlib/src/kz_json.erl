@@ -107,6 +107,7 @@
 -export([flatten/1, flatten/2
         ,expand/1
         ,diff/2
+        ,flatten_deep/1, expand_deep/1, diff_deep/2
         ]).
 
 -export([sum/2, sum/3]).
@@ -1176,10 +1177,14 @@ get_values(JObj) ->
 get_values(Key, JObj) ->
     get_values(get_value(Key, JObj, new())).
 
--type set_value_options() :: #{'keep_null' => boolean()}.
+-type set_value_options() :: #{'keep_null' => boolean()
+                              ,'deep' => boolean()
+                              }.
 -spec set_value_options() -> set_value_options().
 set_value_options() ->
-    #{'keep_null' => 'false'}.
+    #{'keep_null' => 'false'
+     ,'deep' => 'false'
+     }.
 
 %% Figure out how to set the current key among a list of objects
 
@@ -1216,9 +1221,9 @@ set_value(Key, Value, JObj) -> set_value1([Key], Value, JObj).
 -spec set_value(get_key(), api_json_term() | 'null', object() | objects(), set_value_options()) -> object() | objects().
 set_value(_Keys, 'undefined', JObj, _Options) -> JObj;
 set_value(Keys, Value, JObj, Options) when is_list(Keys) ->
-    set_value1(Keys, check_value_term(Value), JObj, Options);
+    set_value1(Keys, check_value_term(Value), JObj, maps:merge(set_value_options(), Options));
 set_value(Key, Value, JObj, Options) ->
-    set_value1([Key], check_value_term(Value), JObj, Options).
+    set_value1([Key], check_value_term(Value), JObj, maps:merge(set_value_options(), Options)).
 
 -spec set_value1(keys(), json_term() | 'null', object() | objects()) -> object() | objects().
 set_value1(Keys, Value, JObj) ->
@@ -1258,7 +1263,7 @@ set_value1([Key|T], Value, JObjs, Options) when is_list(JObjs) ->
 
 %% Figure out how to set the current key in an existing object
 set_value1([_|_]=Keys, 'null', JObj, #{'keep_null' := 'false'}) -> delete_key(Keys, JObj);
-set_value1([Key1|T], Value, ?JSON_WRAPPER(Props), Options) ->
+set_value1([Key1|T], Value, ?JSON_WRAPPER(Props), #{'deep' := Deep} = Options) ->
     case lists:keyfind(Key1, 1, Props) of
         {Key1, ?JSON_WRAPPER(_)=V1} ->
             %% Replace or add a property in an object in the object at this key
@@ -1273,6 +1278,12 @@ set_value1([Key1|T], Value, ?JSON_WRAPPER(Props), Options) ->
             %% This is not the final key and the objects property should just be
             %% replaced so continue looping the keys creating the necessary json as we go
             ?JSON_WRAPPER(lists:keyreplace(Key1, 1, Props, {Key1, set_value1(T, Value, new(), Options)}));
+        'false' when Deep
+          andalso is_integer(Key1) ->
+            %% If they is an integer we assume its an array
+            %% we need to put back the Key and initialize the array
+            %% and it will be handled in another clause
+            set_value1([Key1|T], Value, [], Options);
         'false' when T == [] ->
             %% This is the final key and doesn't already exist, just add it to this
             %% objects existing properties
@@ -1391,7 +1402,7 @@ no_prune([], ?JSON_WRAPPER(_)=JObj) -> JObj;
 no_prune([K], ?JSON_WRAPPER(Props)) ->
     case lists:keydelete(K, 1, Props) of
         [] -> new();
-        L -> from_list(L)
+        L -> ?JSON_WRAPPER(L)
     end;
 no_prune([K|T], Array) when is_list(Array), is_integer(K) ->
     {Less, [V|More]} = lists:split(K-1, Array),
@@ -1402,13 +1413,13 @@ no_prune([K|T], Array) when is_list(Array), is_integer(K) ->
             Less ++ 'no_prune'(Keys, Arr) ++ More;
         {_,_,_} -> Less ++ More
     end;
-no_prune([K|T], ?JSON_WRAPPER(_)=JObj) ->
+no_prune([K|T], ?JSON_WRAPPER(Props)=JObj) ->
     case get_value(K, JObj) of
         'undefined' -> JObj;
         ?JSON_WRAPPER(_)=V ->
-            from_list([{K, no_prune(T, V)} | lists:keydelete(K, 1, to_proplist(JObj))]);
+            ?JSON_WRAPPER(lists:keyreplace(K, 1, Props, {K, no_prune(T, V)}));
         V when is_list(V) ->
-            from_list([{K, no_prune(T, V)} | lists:keydelete(K, 1, to_proplist(JObj))]);
+            ?JSON_WRAPPER(lists:keyreplace(K, 1, Props, {K, no_prune(T, V)}));
         _ -> erlang:error('badarg')
     end;
 no_prune(_, []) -> [];
@@ -1536,7 +1547,12 @@ search_replace_format({Old, New, Formatter}, JObj) when is_function(Formatter, 1
 -spec flatten(object() | objects()) -> flat_object() | flat_objects().
 flatten(L) when is_list(L) -> [flatten(JObj) || JObj <- L];
 flatten(?JSON_WRAPPER(L)) when is_list(L) ->
-    ?JSON_WRAPPER(lists:flatten([flatten_key(K,V) || {K,V} <- L])).
+    ?JSON_WRAPPER(lists:flatten([flatten_key(K,V,'legacy') || {K,V} <- L])).
+
+-spec flatten_deep(object() | objects()) -> flat_object() | flat_objects().
+flatten_deep(L) when is_list(L) -> [flatten_deep(JObj) || JObj <- L];
+flatten_deep(?JSON_WRAPPER(L)) when is_list(L) ->
+    ?JSON_WRAPPER(lists:flatten([flatten_key(K,V, 'deep') || {K,V} <- L])).
 
 -spec flatten(object() | objects(), 'binary_join') -> flat_object() | flat_objects().
 flatten(L, 'binary_join') -> keys_to_binary(flatten(L)).
@@ -1549,21 +1565,29 @@ keys_to_binary(?JSON_WRAPPER(L)) when is_list(L) ->
 key_to_binary(K) when is_list(K) -> kz_binary:join(K, <<"_">>);
 key_to_binary(K) -> K.
 
--spec join_keys(keys() | key(), key()) -> keys().
+-spec join_keys(keys() | key(), key() | integer()) -> keys().
 join_keys(K1, K2) when is_list(K1) -> K1 ++ [K2];
 join_keys(K1, K2) -> [K1, K2].
 
--spec flatten_key(key() | keys(), any()) -> flat_proplist().
-flatten_key(K, V = ?EMPTY_JSON_OBJECT) when is_list(K) -> [{K, V}];
-flatten_key(K, V = ?EMPTY_JSON_OBJECT) -> [{[K], V}];
-flatten_key(K, ?JSON_WRAPPER(L)) when is_list(L) ->
-    [flatten_key(join_keys(K, K1), V1) || {K1, V1} <- L];
-flatten_key(K, V) when is_list(K) -> [{K, V}];
-flatten_key(K, V) -> [{[K], V}].
+-type flatten_key_option() :: 'legacy' | 'deep'.
+
+-spec flatten_key(key() | keys(), any(), flatten_key_option()) -> flat_proplist().
+flatten_key(K, V = ?EMPTY_JSON_OBJECT, _Option) when is_list(K) -> [{K, V}];
+flatten_key(K, V = ?EMPTY_JSON_OBJECT, _Option) -> [{[K], V}];
+flatten_key(K, ?JSON_WRAPPER(L), Option) when is_list(L) ->
+    [flatten_key(join_keys(K, K1), V1, Option) || {K1, V1} <- L];
+flatten_key(K, V, 'deep') when is_list(V) ->
+    [flatten_key(join_keys(K, N), lists:nth(N, V), 'deep') || N <- lists:seq(1, length(V))];
+flatten_key(K, V, _Option) when is_list(K) -> [{K, V}];
+flatten_key(K, V, _Option) -> [{[K], V}].
 
 -spec expand(flat_object()) -> object().
 expand(?JSON_WRAPPER(L)) when is_list(L) ->
     lists:foldl(fun({K,V}, JObj) -> set_value(K, V, JObj) end, new(), L).
+
+-spec expand_deep(flat_object()) -> object().
+expand_deep(?JSON_WRAPPER(L)) when is_list(L) ->
+    lists:foldl(fun({K,V}, JObj) -> set_value(K, V, JObj, #{'deep' => 'true'}) end, new(), L).
 
 %% @doc What is in J1 that is not in J2?
 -spec diff(object(), object()) -> object().
@@ -1572,6 +1596,13 @@ diff(J1, J2) ->
     ?JSON_WRAPPER(L2) = flatten(J2),
     UniqueSet1 = sets:subtract(sets:from_list(L1), sets:from_list(L2)),
     expand(from_list(sets:to_list(UniqueSet1))).
+
+-spec diff_deep(object(), object()) -> object().
+diff_deep(J1, J2) ->
+    ?JSON_WRAPPER(L1) = flatten_deep(J1),
+    ?JSON_WRAPPER(L2) = flatten_deep(J2),
+    UniqueSet1 = sets:subtract(sets:from_list(L1), sets:from_list(L2)),
+    expand_deep(from_list(sets:to_list(UniqueSet1))).
 
 -type exec_fun_1() :: fun((object()) -> object()).
 -type exec_fun_2() :: {fun((_, object()) -> object()), _}.
