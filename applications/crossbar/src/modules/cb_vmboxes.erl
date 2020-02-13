@@ -772,7 +772,11 @@ merge_summary_fold(BoxSummary, CountMap) ->
             MsgsArrayCount = kz_json:get_integer_value(?VM_KEY_MESSAGES, BoxSummary, 0),
             New = maps:get(?VM_FOLDER_NEW, BoxCountMap, 0),
             Saved = maps:get(?VM_FOLDER_SAVED, BoxCountMap, 0),
-            kz_json:set_value(?VM_KEY_MESSAGES, MsgsArrayCount + New + Saved, BoxSummary)
+            Summary = [{?VM_KEY_MESSAGES, MsgsArrayCount + New + Saved}
+                      ,{[<<"folders">>, ?VM_FOLDER_NEW], New}
+                      ,{[<<"folders">>, ?VM_FOLDER_SAVED], Saved}
+                      ],
+            kz_json:set_values(Summary, BoxSummary)
     end.
 
 %%------------------------------------------------------------------------------
