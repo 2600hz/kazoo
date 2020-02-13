@@ -231,8 +231,8 @@ message(AccountId, MessageId, BoxId) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec set_folder(Folder, Message, AccountId) -> db_ret() when Folder::vm_folder(),
-                                                             Message::kz_json:object(),
-                                                             AccountId::kz_term:ne_binary().
+                                                              Message::kz_json:object(),
+                                                              AccountId::kz_term:ne_binary().
 set_folder(Folder, Message, AccountId) ->
     MessageId = kzd_box_message:media_id(Message),
     FromFolder = kzd_box_message:folder(Message, ?VM_FOLDER_NEW),
@@ -255,9 +255,9 @@ maybe_set_folder(_FromFolder, ToFolder, MessageId, AccountId, _Msg) ->
 
 %% @equiv change_folder(Folder, Message, AccountId, BoxId, [])
 -spec change_folder(Folder, Message, AccountId, BoxId) -> db_ret() when Folder::vm_folder(),
-                                                                       Message::message(),
-                                                                       AccountId::kz_term:ne_binary(),
-                                                                       BoxId::kz_term:api_binary().
+                                                                        Message::message(),
+                                                                        AccountId::kz_term:ne_binary(),
+                                                                        BoxId::kz_term:api_binary().
 change_folder(Folder, Message, AccountId, BoxId) ->
     change_folder(Folder, Message, AccountId, BoxId, []).
 

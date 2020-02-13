@@ -34,7 +34,7 @@
 -define(MSG_COUNT_PER_BOX_FOLDER, <<"mailbox_messages/count_per_box_folder">>).
 
 -type norm_fun() :: 'undefined' |
-                   fun((kz_json:object()) -> kz_json:object()).
+                    fun((kz_json:object()) -> kz_json:object()).
 
 
 -type per_folder_count() :: #{kz_term:ne_binary() => non_neg_integer()}.
