@@ -241,26 +241,30 @@ maybe_check_port_requests(Context, AccountId) ->
         'true' ->
             %% Authenticated account is master
             %% show only masqueraded account's port alerts
+            lager:debug("auth account is master ~p, showing port alerts for account path", [MasterId]),
             do_check_port_requests(fetch_account_active_ports(AccountId), Context);
         'false' ->
-            IsReseller = kz_services_reseller:is_reseller(AccountId),
+            IsReseller = kz_services_reseller:is_reseller(AuthId),
             IsPortAuthority = cb_context:fetch(Context, 'is_port_authority'),
             maybe_check_port_requests(Context, IsReseller, IsPortAuthority)
     end.
 
 -spec maybe_check_port_requests(cb_context:context(), boolean(), boolean()) -> cb_context:context().
 maybe_check_port_requests(Context, 'true', 'true') ->
-    %% Authenticated account is reseller AND port authority
-    %% so show only masqueraded account's port alerts
-    %% (because reseller is port authority, this is whose rejected ports or made action required
-    %% comments on the ports, so it shouldn't get alerted for its own doing!)
+    %% Authenticated account is both reseller AND port authority
+    %% Show only masqueraded account's port alerts.
+    %% (This is because reseller is port authority who rejects ports and makes action required
+    %% comments on the ports, so it shouldn't get alerted for all its sub-account for its own doing!
+    %% we're just nice to show them the alerts for current account they're masquerading.)
+    lager:debug("auth account is both reseller and port authority, showing account path port alerts"),
     do_check_port_requests(fetch_account_active_ports(cb_context:account_id(Context)), Context);
 maybe_check_port_requests(Context, 'true', 'false') ->
     %% Authenticated account is reseller lets always show alerts
-    %% from its own account and all sub-accounts (no matter what port app is hidden or not)
-    ResellerId = cb_context:reseller_id(Context),
+    %% from its own account and all descendants ports
+    ResellerId = cb_context:auth_account_id(Context),
     Ports = fetch_account_active_ports(ResellerId)
         ++ get_active_ports(knm_port_request:descendant_active_ports(ResellerId)),
+    lager:debug("auth account is reseller, showing the reseller and descendants port alerts"),
     do_check_port_requests(Ports, Context);
 maybe_check_port_requests(Context, 'false', _) ->
     %% Authenticated account is neither master or reseller
@@ -268,7 +272,9 @@ maybe_check_port_requests(Context, 'false', _) ->
     AccountId = cb_context:account_id(Context),
     ResellerId = cb_context:reseller_id(Context),
     case should_hide_port(ResellerId) of
-        'true' -> Context;
+        'true' ->
+            lager:debug("reseller is hiding port app, not showing alerts"),
+            Context;
         'false' -> do_check_port_requests(fetch_account_active_ports(AccountId), Context)
     end.
 
