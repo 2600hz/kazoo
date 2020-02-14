@@ -62,14 +62,14 @@ main(CommandLineArgs, Loops) ->
 
             %% Parse the function args to the correct types
             ParseFunArgs = fun(FunArg) ->
-                                {'ok', Tokens, _} = erl_scan:string(FunArg++"."),
-                                case erl_parse:parse_term(Tokens) of
-                                    {'ok', ParsedArg} -> ParsedArg;
-                                    Failed ->
-                                        stderr("Failed to parse term ~p, error ~p~n", [FunArg, Failed]),
-                                        halt(1)
-                                end
-                            end,
+                                   {'ok', Tokens, _} = erl_scan:string(FunArg++"."),
+                                   case erl_parse:parse_term(Tokens) of
+                                       {'ok', ParsedArg} -> ParsedArg;
+                                       Failed ->
+                                           stderr("Failed to parse term ~p, error ~p~n", [FunArg, Failed]),
+                                           halt(1)
+                                   end
+                           end,
             ParsedArgs = lists:map(ParseFunArgs ,Args),
             Timeout = case props:get_value('timeout', Options) of 0 -> 'infinity'; T -> T * 1000 end,
             IsVerbose
