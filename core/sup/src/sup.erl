@@ -59,12 +59,23 @@ main(CommandLineArgs, Loops) ->
                     'undefined' -> print_invalid_cli_args();
                     F -> list_to_atom(F)
                 end,
-            Arguments = [list_to_binary(Arg) || Arg <- Args],
+
+            %% Parse the function args to the correct types
+            ParseFunArgs = fun(FunArg) ->
+                                {'ok', Tokens, _} = erl_scan:string(FunArg++"."),
+                                case erl_parse:parse_term(Tokens) of
+                                    {'ok', ParsedArg} -> ParsedArg;
+                                    Failed ->
+                                        stderr("Failed to parse term ~p, error ~p~n", [FunArg, Failed]),
+                                        halt(1)
+                                end
+                            end,
+            ParsedArgs = lists:map(ParseFunArgs ,Args),
             Timeout = case props:get_value('timeout', Options) of 0 -> 'infinity'; T -> T * 1000 end,
             IsVerbose
                 andalso stdout("Running ~s:~s(~s)", [Module, Function, string:join(Args, ", ")]),
 
-            case rpc:call(Target, ?MODULE, 'in_kazoo', [SUPName, Module, Function, Arguments], Timeout) of
+            case rpc:call(Target, ?MODULE, 'in_kazoo', [SUPName, Module, Function, ParsedArgs], Timeout) of
                 {'badrpc', {'EXIT',{'undef', _}}} ->
                     print_invalid_cli_args();
                 {'badrpc', {'EXIT', {'timeout_value',[{Module,Function,_,_}|_]}}} ->
