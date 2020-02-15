@@ -211,13 +211,11 @@ handle_inbound(JObj, Srv, Deliver) ->
 -spec maybe_relay_request(kz_json:object()) -> 'ack' | 'nack'.
 maybe_relay_request(JObj) ->
     {Number, Inception} = doodle_util:get_inbound_destination(JObj),
-    IM = kapps_im:from_payload(JObj),
     Map = #{number => Number
            ,inception => Inception
            ,request => JObj
            ,route_id => kz_api_sms:route_id(JObj)
            ,route_type => kz_api_sms:route_type(JObj)
-           ,im => IM
            },
     Routines = [fun lookup_number/1
                ,fun number_has_sms_enabled/1
@@ -354,9 +352,8 @@ reseller_standing_is_acceptable(#{reseller_id := ResellerId} = Map) ->
 reseller_standing_is_acceptable(Map) -> Map.
 
 set_rate(#{account_id := AccountId
-          ,im := IM
           } = Map) ->
-    Rate = kz_services_im:flat_rate(AccountId, kapps_im:type(IM), kapps_im:direction(IM)),
+    Rate = kz_services_im:flat_rate(AccountId, 'sms', 'inbound'),
     Map#{rate => Rate};
 set_rate(Map) -> Map.
 
