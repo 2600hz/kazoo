@@ -70,7 +70,7 @@ main(CommandLineArgs, Loops) ->
                                            halt(1)
                                    end
                            end,
-            ParsedArgs = lists:map(ParseFunArgs ,Args),
+            ParsedArgs = lists:map(ParseFunArgs, Args),
             Timeout = case props:get_value('timeout', Options) of 0 -> 'infinity'; T -> T * 1000 end,
             IsVerbose
                 andalso stdout("Running ~s:~s(~s)", [Module, Function, string:join(Args, ", ")]),
