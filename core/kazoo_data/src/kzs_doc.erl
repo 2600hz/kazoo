@@ -62,11 +62,11 @@ maybe_soft_deleted(Doc, 'true', Options) ->
           {'error', 'not_found'}.
 maybe_type_mismatch(Doc, 'undefined') ->
     {'ok', Doc};
-maybe_type_mismatch(Doc, ReqestedType) ->
+maybe_type_mismatch(Doc, RequestedType) ->
     case kz_doc:type(Doc) of
-        ReqestedType -> {'ok', Doc};
+        RequestedType -> {'ok', Doc};
         DocType ->
-            lager:info("requested doc_type '~s', denying access to doc with type: '~s'", [ReqestedType, DocType]),
+            lager:info("requested doc_type '~s', denying access to doc with type: '~s'", [RequestedType, DocType]),
             {'error', 'not_found'}
     end.
 
