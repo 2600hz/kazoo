@@ -23294,6 +23294,9 @@
                 "Application-Data": {
                     "type": "string"
                 },
+                "Application-Name": {
+                    "type": "string"
+                },
                 "Asserted-Identity-Name": {
                     "type": "string"
                 },
@@ -23382,6 +23385,13 @@
                 },
                 "Endpoint-ID": {
                     "type": "string"
+                },
+                "Endpoints": {
+                    "items": {
+                        "$ref": "#/definitions/kapi.dialplan.bridge_endpoint",
+                        "type": "object"
+                    },
+                    "type": "array"
                 },
                 "Event-Category": {
                     "enum": [
