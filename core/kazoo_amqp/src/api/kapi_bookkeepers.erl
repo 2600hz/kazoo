@@ -14,37 +14,55 @@
 
 -export([api_definitions/0, api_definition/1]).
 
--export([collect_recurring_req/1, collect_recurring_req_v/1
-        ,publish_collect_recurring_req/1, publish_collect_recurring_req/2
+-export([collect_recurring_req/1
+        ,collect_recurring_req_v/1
+        ,publish_collect_recurring_req/1
+        ,publish_collect_recurring_req/2
         ]).
-
--export([collect_recurring_resp/1, collect_recurring_resp_v/1
-        ,publish_collect_recurring_resp/2, publish_collect_recurring_resp/3
+-export([collect_recurring_resp/1
+        ,collect_recurring_resp_v/1
+        ,publish_collect_recurring_resp/2
+        ,publish_collect_recurring_resp/3
         ]).
-
--export([sale_req/1, sale_req_v/1
-        ,publish_sale_req/1, publish_sale_req/2
+-export([sale_req/1
+        ,sale_req_v/1
+        ,publish_sale_req/1
+        ,publish_sale_req/2
         ]).
--export([sale_resp/1, sale_resp_v/1
-        ,publish_sale_resp/2, publish_sale_resp/3
+-export([sale_resp/1
+        ,sale_resp_v/1
+        ,publish_sale_resp/2
+        ,publish_sale_resp/3
         ]).
--export([refund_req/1, refund_req_v/1
-        ,publish_refund_req/1, publish_refund_req/2
+-export([refund_req/1
+        ,refund_req_v/1
+        ,publish_refund_req/1
+        ,publish_refund_req/2
         ]).
--export([refund_resp/1, refund_resp_v/1
-        ,publish_refund_resp/2, publish_refund_resp/3
+-export([refund_resp/1
+        ,refund_resp_v/1
+        ,publish_refund_resp/2
+        ,publish_refund_resp/3
         ]).
--export([update_req/1, update_req_v/1
-        ,publish_update_req/1, publish_update_req/2
+-export([update_req/1
+        ,update_req_v/1
+        ,publish_update_req/1
+        ,publish_update_req/2
         ]).
--export([update_resp/1, update_resp_v/1
-        ,publish_update_resp/2, publish_update_resp/3
+-export([update_resp/1
+        ,update_resp_v/1
+        ,publish_update_resp/2
+        ,publish_update_resp/3
         ]).
--export([standing_req/1, standing_req_v/1
-        ,publish_standing_req/1, publish_standing_req/2
+-export([standing_req/1
+        ,standing_req_v/1
+        ,publish_standing_req/1
+        ,publish_standing_req/2
         ]).
--export([standing_resp/1, standing_resp_v/1
-        ,publish_standing_resp/2, publish_standing_resp/3
+-export([standing_resp/1
+        ,standing_resp_v/1
+        ,publish_standing_resp/2
+        ,publish_standing_resp/3
         ]).
 
 -include_lib("kz_amqp_util.hrl").
@@ -83,8 +101,7 @@ collect_recurring_req_definition() ->
                                                             ,<<"Due-Timestamp">>
                                                             ,<<"Vendor-ID">>
                                                             ]}
-              ,{fun kapi_definition:set_optional_headers/2, [<<"Audit-Log">>
-                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Audit-Log">>]}
               ,{fun kapi_definition:set_values/2, kapi_definition:event_type_headers(?API_CATEGORY, EventName)}
               ,{fun kapi_definition:set_types/2, []}
               ],
@@ -144,12 +161,12 @@ sale_req_definition() ->
               ,{fun kapi_definition:set_publish_fun/2, fun publish_sale_req/1}
               ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"request">>)}
               ,{fun kapi_definition:set_restrict_to/2, 'sale'}
-              ,{fun kapi_definition:set_required_headers/2, [<<"Bookkeeper-Type">>
-                                                            ,<<"Vendor-ID">>
-                                                            ,<<"Account-ID">>
-                                                            ,<<"Transaction-ID">>
-                                                            ,<<"Transaction-DB">>
+              ,{fun kapi_definition:set_required_headers/2, [<<"Account-ID">>
                                                             ,<<"Amount">>
+                                                            ,<<"Bookkeeper-Type">>
+                                                            ,<<"Transaction-DB">>
+                                                            ,<<"Transaction-ID">>
+                                                            ,<<"Vendor-ID">>
                                                             ]}
               ,{fun kapi_definition:set_optional_headers/2, []}
               ,{fun kapi_definition:set_values/2, kapi_definition:event_type_headers(?API_CATEGORY, EventName)}
@@ -173,12 +190,12 @@ sale_resp_definition() ->
               ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"response">>)}
               ,{fun kapi_definition:set_restrict_to/2, 'sale'}
               ,{fun kapi_definition:set_required_headers/2, [<<"Status">>
-                                                            ,<<"Transaction-ID">>
                                                             ,<<"Transaction-DB">>
+                                                            ,<<"Transaction-ID">>
                                                             ]}
-              ,{fun kapi_definition:set_optional_headers/2, [<<"Message">>
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Details">>
+                                                            ,<<"Message">>
                                                             ,<<"Reason">>
-                                                            ,<<"Details">>
                                                             ]}
               ,{fun kapi_definition:set_values/2, kapi_definition:event_type_headers(?API_CATEGORY, EventName)}
               ,{fun kapi_definition:set_types/2, []}
@@ -204,12 +221,12 @@ refund_req_definition() ->
               ,{fun kapi_definition:set_publish_fun/2, fun publish_refund_req/1}
               ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"request">>)}
               ,{fun kapi_definition:set_restrict_to/2, 'refund'}
-              ,{fun kapi_definition:set_required_headers/2, [<<"Bookkeeper-Type">>
-                                                            ,<<"Vendor-ID">>
-                                                            ,<<"Account-ID">>
-                                                            ,<<"Transaction-ID">>
-                                                            ,<<"Transaction-DB">>
+              ,{fun kapi_definition:set_required_headers/2, [<<"Account-ID">>
                                                             ,<<"Amount">>
+                                                            ,<<"Bookkeeper-Type">>
+                                                            ,<<"Transaction-DB">>
+                                                            ,<<"Transaction-ID">>
+                                                            ,<<"Vendor-ID">>
                                                             ]}
               ,{fun kapi_definition:set_optional_headers/2, []}
               ,{fun kapi_definition:set_values/2, kapi_definition:event_type_headers(?API_CATEGORY, EventName)}
@@ -233,12 +250,12 @@ refund_resp_definition() ->
               ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"response">>)}
               ,{fun kapi_definition:set_restrict_to/2, 'refund'}
               ,{fun kapi_definition:set_required_headers/2, [<<"Status">>
-                                                            ,<<"Transaction-ID">>
                                                             ,<<"Transaction-DB">>
+                                                            ,<<"Transaction-ID">>
                                                             ]}
-              ,{fun kapi_definition:set_optional_headers/2, [<<"Message">>
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Details">>
+                                                            ,<<"Message">>
                                                             ,<<"Reason">>
-                                                            ,<<"Details">>
                                                             ]}
               ,{fun kapi_definition:set_values/2, kapi_definition:event_type_headers(?API_CATEGORY, EventName)}
               ,{fun kapi_definition:set_types/2, []}
@@ -270,9 +287,7 @@ update_req_definition() ->
                                                             ,<<"Invoice">>
                                                             ,<<"Vendor-ID">>
                                                             ]}
-              ,{fun kapi_definition:set_optional_headers/2, [<<"Dry-Run">>
-                                                            ,<<"Audit-Log">>
-                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Audit-Log">>, <<"Dry-Run">>]}
               ,{fun kapi_definition:set_values/2, kapi_definition:event_type_headers(?API_CATEGORY, EventName)}
               ,{fun kapi_definition:set_types/2, []}
               ],
@@ -293,11 +308,10 @@ update_resp_definition() ->
               ,{fun kapi_definition:set_publish_fun/2, fun publish_update_resp/2}
               ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"response">>)}
               ,{fun kapi_definition:set_restrict_to/2, 'update'}
-              ,{fun kapi_definition:set_required_headers/2, [<<"Status">>
-                                                            ]}
-              ,{fun kapi_definition:set_optional_headers/2, [<<"Message">>
+              ,{fun kapi_definition:set_required_headers/2, [<<"Status">>]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Details">>
+                                                            ,<<"Message">>
                                                             ,<<"Reason">>
-                                                            ,<<"Details">>
                                                             ]}
               ,{fun kapi_definition:set_values/2, kapi_definition:event_type_headers(?API_CATEGORY, EventName)}
               ,{fun kapi_definition:set_types/2, []}
@@ -326,9 +340,9 @@ standing_req_definition() ->
               ,{fun kapi_definition:set_required_headers/2, [<<"Account-ID">>
                                                             ,<<"Bookkeeper-ID">>
                                                             ,<<"Bookkeeper-Type">>
-                                                            ,<<"Vendor-ID">>
-                                                            ,<<"Items">>
                                                             ,<<"Estimated-Withdrawal">>
+                                                            ,<<"Items">>
+                                                            ,<<"Vendor-ID">>
                                                             ]}
               ,{fun kapi_definition:set_optional_headers/2, []}
               ,{fun kapi_definition:set_values/2, kapi_definition:event_type_headers(?API_CATEGORY, EventName)}
@@ -349,11 +363,10 @@ standing_resp_definition() ->
               ,{fun kapi_definition:set_publish_fun/2, fun publish_standing_resp/2}
               ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"response">>)}
               ,{fun kapi_definition:set_restrict_to/2, 'standing'}
-              ,{fun kapi_definition:set_required_headers/2, [<<"Status">>
-                                                            ]}
-              ,{fun kapi_definition:set_optional_headers/2, [<<"Message">>
+              ,{fun kapi_definition:set_required_headers/2, [<<"Status">>]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Details">>
+                                                            ,<<"Message">>
                                                             ,<<"Reason">>
-                                                            ,<<"Details">>
                                                             ]}
               ,{fun kapi_definition:set_values/2, kapi_definition:event_type_headers(?API_CATEGORY, EventName)}
               ,{fun kapi_definition:set_types/2, []}
@@ -436,7 +449,7 @@ bind_to_q(Q, [RestrictTo|T]) ->
         _Else ->
             bind_to_q(Q, T)
     catch
-        error:undef ->
+        'error':'undef' ->
             bind_to_q(Q, T)
     end;
 bind_to_q(_Q, []) ->
@@ -464,7 +477,7 @@ unbind_q_from(Q, [RestrictTo|T]) ->
             unbind_q_from(Q, T);
         _Else -> unbind_q_from(Q, T)
     catch
-        error:undef ->
+        'error':'undef' ->
             unbind_q_from(Q, T)
     end;
 unbind_q_from(_Q, []) ->
@@ -482,35 +495,6 @@ declare_exchanges() ->
 %%% Helpers
 %%%=============================================================================
 
-%%------------------------------------------------------------------------------
-%% @doc Generic function to build API payload.
-%% @end
-%%------------------------------------------------------------------------------
--spec build_message(kz_term:api_terms(), kapi_definition:api()) -> api_formatter_return().
-build_message(Prop, Definition) when is_list(Prop) ->
-    ReqH = kapi_definition:required_headers(Definition),
-    OptH = kapi_definition:optional_headers(Definition),
-    Validate = kapi_definition:validate_fun(Definition),
-    Binding = kapi_definition:binding(Definition),
-    case Validate(Prop) of
-        'true' -> kz_api:build_message(Prop, ReqH, OptH);
-        'false' -> {'error', "Proplist failed validation for " ++ binary_to_list(Binding)}
-    end;
-build_message(JObj, Definition) ->
-    build_message(kz_json:to_proplist(JObj), Definition).
-
-%%------------------------------------------------------------------------------
-%% @doc Generic function to validate API payload.
-%% @end
-%%------------------------------------------------------------------------------
-validate(Prop, Definition) when is_list(Prop) ->
-    ReqH = kapi_definition:required_headers(Definition),
-    Values = kapi_definition:values(Definition),
-    Types = kapi_definition:types(Definition),
-    kz_api:validate(Prop, ReqH, Values, Types);
-validate(JObj, Definition) ->
-    validate(kz_json:to_proplist(JObj), Definition).
-
 %%%=============================================================================
 %%% Internal Bookkeepers Functions
 %%%=============================================================================
@@ -522,11 +506,11 @@ validate(JObj, Definition) ->
 %%------------------------------------------------------------------------------
 -spec collect_recurring_req(kz_term:api_terms()) -> api_formatter_return().
 collect_recurring_req(Prop) ->
-    build_message(Prop, collect_recurring_req_definition()).
+    kapi_definition:build_message(Prop, collect_recurring_req_definition()).
 
 -spec collect_recurring_req_v(kz_term:api_terms()) -> boolean().
 collect_recurring_req_v(Prop) ->
-    validate(Prop, collect_recurring_req_definition()).
+    kapi_definition:validate(Prop, collect_recurring_req_definition()).
 
 -spec publish_collect_recurring_req(kz_term:api_terms()) -> 'ok'.
 publish_collect_recurring_req(JObj) ->
@@ -535,18 +519,19 @@ publish_collect_recurring_req(JObj) ->
 -spec publish_collect_recurring_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_collect_recurring_req(API, ContentType) ->
     Definition = collect_recurring_req_definition(),
-    Binding = kapi_definition:binding(Definition),
-    Values = kapi_definition:values(Definition),
-    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun collect_recurring_req/1),
-    kz_amqp_util:bookkeepers_publish(Binding, Payload, ContentType).
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:bookkeepers_publish(kapi_definition:binding(Definition), Payload, ContentType).
 
 -spec collect_recurring_resp(kz_term:api_terms()) -> api_formatter_return().
 collect_recurring_resp(Prop) ->
-    build_message(Prop, collect_recurring_resp_definition()).
+    kapi_definition:build_message(Prop, collect_recurring_resp_definition()).
 
 -spec collect_recurring_resp_v(kz_term:api_terms()) -> boolean().
 collect_recurring_resp_v(Prop) ->
-    validate(Prop, collect_recurring_resp_definition()).
+    kapi_definition:validate(Prop, collect_recurring_resp_definition()).
 
 -spec publish_collect_recurring_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_collect_recurring_resp(RespQ, JObj) ->
@@ -554,8 +539,11 @@ publish_collect_recurring_resp(RespQ, JObj) ->
 
 -spec publish_collect_recurring_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_collect_recurring_resp(RespQ, API, ContentType) ->
-    Values = kapi_definition:values(collect_recurring_resp_definition()),
-    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun collect_recurring_resp/1),
+    Definition = collect_recurring_resp_definition(),
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
     kz_amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
@@ -565,11 +553,11 @@ publish_collect_recurring_resp(RespQ, API, ContentType) ->
 %%------------------------------------------------------------------------------
 -spec sale_req(kz_term:api_terms()) -> api_formatter_return().
 sale_req(Prop) ->
-    build_message(Prop, sale_req_definition()).
+    kapi_definition:build_message(Prop, sale_req_definition()).
 
 -spec sale_req_v(kz_term:api_terms()) -> boolean().
 sale_req_v(Prop) ->
-    validate(Prop, sale_req_definition()).
+    kapi_definition:validate(Prop, sale_req_definition()).
 
 -spec publish_sale_req(kz_term:api_terms()) -> 'ok'.
 publish_sale_req(JObj) ->
@@ -578,18 +566,19 @@ publish_sale_req(JObj) ->
 -spec publish_sale_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_sale_req(API, ContentType) ->
     Definition = sale_req_definition(),
-    Binding = kapi_definition:binding(Definition),
-    Values = kapi_definition:values(Definition),
-    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun sale_req/1),
-    kz_amqp_util:bookkeepers_publish(Binding, Payload, ContentType).
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:bookkeepers_publish(kapi_definition:binding(Definition), Payload, ContentType).
 
 -spec sale_resp(kz_term:api_terms()) -> api_formatter_return().
 sale_resp(Prop) ->
-    build_message(Prop, sale_resp_definition()).
+    kapi_definition:build_message(Prop, sale_resp_definition()).
 
 -spec sale_resp_v(kz_term:api_terms()) -> boolean().
 sale_resp_v(Prop) ->
-    validate(Prop, sale_resp_definition()).
+    kapi_definition:validate(Prop, sale_resp_definition()).
 
 -spec publish_sale_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_sale_resp(RespQ, JObj) ->
@@ -597,8 +586,11 @@ publish_sale_resp(RespQ, JObj) ->
 
 -spec publish_sale_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_sale_resp(RespQ, API, ContentType) ->
-    Values = kapi_definition:values(sale_resp_definition()),
-    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun sale_resp/1),
+    Definition = sale_resp_definition(),
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
     kz_amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
@@ -608,11 +600,11 @@ publish_sale_resp(RespQ, API, ContentType) ->
 %%------------------------------------------------------------------------------
 -spec refund_req(kz_term:api_terms()) -> api_formatter_return().
 refund_req(Prop) ->
-    build_message(Prop, refund_req_definition()).
+    kapi_definition:build_message(Prop, refund_req_definition()).
 
 -spec refund_req_v(kz_term:api_terms()) -> boolean().
 refund_req_v(Prop) ->
-    validate(Prop, refund_req_definition()).
+    kapi_definition:validate(Prop, refund_req_definition()).
 
 -spec publish_refund_req(kz_term:api_terms()) -> 'ok'.
 publish_refund_req(JObj) ->
@@ -621,18 +613,19 @@ publish_refund_req(JObj) ->
 -spec publish_refund_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_refund_req(API, ContentType) ->
     Definition = refund_req_definition(),
-    Binding = kapi_definition:binding(Definition),
-    Values = kapi_definition:values(Definition),
-    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun refund_req/1),
-    kz_amqp_util:bookkeepers_publish(Binding, Payload, ContentType).
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:bookkeepers_publish(kapi_definition:binding(Definition), Payload, ContentType).
 
 -spec refund_resp(kz_term:api_terms()) -> api_formatter_return().
 refund_resp(Prop) ->
-    build_message(Prop, refund_resp_definition()).
+    kapi_definition:build_message(Prop, refund_resp_definition()).
 
 -spec refund_resp_v(kz_term:api_terms()) -> boolean().
 refund_resp_v(Prop) ->
-    validate(Prop, refund_resp_definition()).
+    kapi_definition:validate(Prop, refund_resp_definition()).
 
 -spec publish_refund_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_refund_resp(RespQ, JObj) ->
@@ -640,8 +633,11 @@ publish_refund_resp(RespQ, JObj) ->
 
 -spec publish_refund_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_refund_resp(RespQ, API, ContentType) ->
-    Values = kapi_definition:values(refund_resp_definition()),
-    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun refund_resp/1),
+    Definition = refund_resp_definition(),
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
     kz_amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
@@ -651,11 +647,11 @@ publish_refund_resp(RespQ, API, ContentType) ->
 %%------------------------------------------------------------------------------
 -spec update_req(kz_term:api_terms()) -> api_formatter_return().
 update_req(Prop) ->
-    build_message(Prop, update_req_definition()).
+    kapi_definition:build_message(Prop, update_req_definition()).
 
 -spec update_req_v(kz_term:api_terms()) -> boolean().
 update_req_v(Prop) ->
-    validate(Prop, update_req_definition()).
+    kapi_definition:validate(Prop, update_req_definition()).
 
 -spec publish_update_req(kz_term:api_terms()) -> 'ok'.
 publish_update_req(JObj) ->
@@ -664,18 +660,19 @@ publish_update_req(JObj) ->
 -spec publish_update_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_update_req(API, ContentType) ->
     Definition = update_req_definition(),
-    Binding = kapi_definition:binding(Definition),
-    Values = kapi_definition:values(Definition),
-    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun update_req/1),
-    kz_amqp_util:bookkeepers_publish(Binding, Payload, ContentType).
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:bookkeepers_publish(kapi_definition:binding(Definition), Payload, ContentType).
 
 -spec update_resp(kz_term:api_terms()) -> api_formatter_return().
 update_resp(Prop) ->
-    build_message(Prop, update_resp_definition()).
+    kapi_definition:build_message(Prop, update_resp_definition()).
 
 -spec update_resp_v(kz_term:api_terms()) -> boolean().
 update_resp_v(Prop) ->
-    validate(Prop, update_resp_definition()).
+    kapi_definition:validate(Prop, update_resp_definition()).
 
 -spec publish_update_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_update_resp(RespQ, JObj) ->
@@ -683,8 +680,11 @@ publish_update_resp(RespQ, JObj) ->
 
 -spec publish_update_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_update_resp(RespQ, API, ContentType) ->
-    Values = kapi_definition:values(update_resp_definition()),
-    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun update_resp/1),
+    Definition = update_resp_definition(),
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
     kz_amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
@@ -694,11 +694,11 @@ publish_update_resp(RespQ, API, ContentType) ->
 %%------------------------------------------------------------------------------
 -spec standing_req(kz_term:api_terms()) -> api_formatter_return().
 standing_req(Prop) ->
-    build_message(Prop, standing_req_definition()).
+    kapi_definition:build_message(Prop, standing_req_definition()).
 
 -spec standing_req_v(kz_term:api_terms()) -> boolean().
 standing_req_v(Prop) ->
-    validate(Prop, standing_req_definition()).
+    kapi_definition:validate(Prop, standing_req_definition()).
 
 -spec publish_standing_req(kz_term:api_terms()) -> 'ok'.
 publish_standing_req(JObj) ->
@@ -707,18 +707,19 @@ publish_standing_req(JObj) ->
 -spec publish_standing_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_standing_req(API, ContentType) ->
     Definition = standing_req_definition(),
-    Binding = kapi_definition:binding(Definition),
-    Values = kapi_definition:values(Definition),
-    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun standing_req/1),
-    kz_amqp_util:bookkeepers_publish(Binding, Payload, ContentType).
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:bookkeepers_publish(kapi_definition:binding(Definition), Payload, ContentType).
 
 -spec standing_resp(kz_term:api_terms()) -> api_formatter_return().
 standing_resp(Prop) ->
-    build_message(Prop, standing_resp_definition()).
+    kapi_definition:build_message(Prop, standing_resp_definition()).
 
 -spec standing_resp_v(kz_term:api_terms()) -> boolean().
 standing_resp_v(Prop) ->
-    validate(Prop, standing_resp_definition()).
+    kapi_definition:validate(Prop, standing_resp_definition()).
 
 -spec publish_standing_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_standing_resp(RespQ, JObj) ->
@@ -726,6 +727,9 @@ publish_standing_resp(RespQ, JObj) ->
 
 -spec publish_standing_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_standing_resp(RespQ, API, ContentType) ->
-    Values = kapi_definition:values(standing_resp_definition()),
-    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun standing_resp/1),
+    Definition = standing_resp_definition(),
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
     kz_amqp_util:targeted_publish(RespQ, Payload, ContentType).
