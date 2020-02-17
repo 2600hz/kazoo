@@ -652,7 +652,7 @@ amqp_reply(JObj, Result) ->
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     ServerId = kz_api:server_id(JObj),
-    Publisher = fun(P) -> kapi_globals:publish_reply(ServerId, P) end,
+    Publisher = fun(P) -> kapi_globals:publish_reply_msg(ServerId, P) end,
     kz_amqp_worker:cast(Payload, Publisher).
 
 -spec handle_amqp_send(kz_json:object(), kz_term:proplist()) -> 'ok'.

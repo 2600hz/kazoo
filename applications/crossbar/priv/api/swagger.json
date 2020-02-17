@@ -17460,6 +17460,33 @@
             ],
             "type": "object"
         },
+        "kapi.globals.reply": {
+            "description": "AMQP API for globals.reply",
+            "properties": {
+                "Event-Category": {
+                    "enum": [
+                        "globals"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "reply"
+                    ],
+                    "type": "string"
+                },
+                "Name": {
+                    "type": "string"
+                },
+                "Reply": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Reply"
+            ],
+            "type": "object"
+        },
         "kapi.globals.reply_msg": {
             "description": "AMQP API for globals.reply_msg",
             "properties": {

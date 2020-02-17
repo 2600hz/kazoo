@@ -41,7 +41,7 @@ publish_message(ServerId, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, [], fun build/1),
     kz_amqp_util:targeted_publish(ServerId, Payload, ContentType).
 
--spec build(kz_term:api_terms()) -> {'ok', iolist()}.
+-spec build(kz_term:api_terms()) -> kz_api:api_formatter_return().
 build(Prop) when is_list(Prop) ->
     kz_api:build_message(Prop, [], []);
 build(JObj) ->
