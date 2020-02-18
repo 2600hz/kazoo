@@ -206,7 +206,7 @@ is_bound(#bh_context{bindings=Bds}, Binding) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec websocket_pid(context()) -> kz_term:api_binary().
+-spec websocket_pid(context()) -> pid().
 websocket_pid(#bh_context{websocket_pid=SocketPid}) -> SocketPid.
 
 -spec set_websocket_pid(context(), pid()) -> context().

@@ -9,10 +9,12 @@
 %%%-----------------------------------------------------------------------------
 -module(blackhole_maintenance).
 
-
 -export([start_module/1, start_module/2]).
 -export([stop_module/1, stop_module/2]).
--export([running_modules/0]).
+-export([running_modules/0
+        ,active_sessions/0
+        ,active_sessions/1
+        ]).
 
 -include("blackhole.hrl").
 -include_lib("kazoo/include/kz_system_config.hrl").
@@ -95,3 +97,31 @@ print_module_resp(JObj) ->
 -spec print_field_resp({kz_json:key(), kz_json:json_term()}) -> 'ok'.
 print_field_resp({Field, Value}) ->
     io:format("  ~s: ~s~n", [Field, Value]).
+
+-spec active_sessions() -> 'ok'.
+active_sessions() ->
+    Sessions = blackhole_socket_callback:active_sessions(),
+    print_sessions(Sessions).
+
+print_sessions([]) -> io:format("no active sessions~n");
+print_sessions(Sessions) ->
+    io:format("Active websocket connections:~n"),
+    io:format("~22s | ~10s | ~12s~n", [<<"Peer">>, <<"Uptime">>, <<"PID">>]),
+    lists:foreach(fun print_session/1, lists:keysort(1, Sessions)).
+
+-spec active_sessions(kz_term:ne_binary()) -> 'ok'.
+active_sessions(IPAddr) ->
+    Sessions = blackhole_socket_callback:active_sessions(IPAddr),
+    print_sessions(Sessions).
+
+print_session({{_Module, SessionId}
+              ,#{'start_time_s' := StartTimeS
+                ,'socket_pid' := Pid
+                }
+              }
+             ) ->
+    io:format("~22s | ~10s | ~12s~n"
+             ,[SessionId
+              ,kz_time:pretty_print_elapsed_s(kz_time:elapsed_s(StartTimeS))
+              ,kz_term:to_binary(Pid)
+              ]).

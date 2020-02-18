@@ -1,5 +1,5 @@
 {application,kazoo_proper,
- [{applications,[cowboy,cowlib,crypto,eunit,goldrush,
+ [{applications,[cowboy,cowlib,crypto,eunit,goldrush,gun,
                  kazoo,kazoo_amqp,
                  kazoo_csv,kazoo_data,kazoo_documents,
                  kazoo_ledgers,kazoo_modb,

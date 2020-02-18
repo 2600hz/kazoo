@@ -21,6 +21,8 @@
 -export([flush_local/1]).
 -export([filter_local/2, filter_erase_local/2]).
 -export([dump_local/1, dump_local/2]).
+-export([count_local/2, count_local/3, count_local/5]).
+
 -export([wait_for_key_local/2
         ,wait_for_key_local/3
         ,wait_for_stampede_local/2, wait_for_stampede_local/3
@@ -32,7 +34,8 @@
 
 -type store_options() :: [{'origin', origin_tuple() | origin_tuples()} |
                           {'expires', timeout()} |
-                          {'callback', 'undefined' | callback_fun()}
+                          {'callback', 'undefined' | callback_fun()} |
+                          {'monitor', boolean() | [pid()]}
                          ].
 
 -type start_option() :: {'origin_bindings', origin_tuples()} |
@@ -158,6 +161,21 @@ dump_table(Tab, ShowValue) ->
          || CacheObj <- ets:match_object(Tab, #cache_obj{_ = '_'})
         ],
     'ok'.
+
+-spec count_local(atom(), any()) -> non_neg_integer().
+count_local(Srv, KeyMatchHead) ->
+    count_local(Srv, KeyMatchHead, '_').
+
+-spec count_local(atom(), any(), any()) -> non_neg_integer().
+count_local(Srv, KeyMatchHead, ValMatchHead) ->
+    kz_cache_ets:count(Srv, KeyMatchHead, 'undefined', ValMatchHead, 'undefined').
+
+-spec count_local(atom(), any(), any(), any(), any()) -> non_neg_integer().
+count_local(Srv
+           ,KeyMatchHead, KeyMatchCondition
+           ,ValMatchHead, ValMatchCondition
+           ) ->
+    kz_cache_ets:count(Srv, KeyMatchHead, KeyMatchCondition, ValMatchHead, ValMatchCondition).
 
 -spec display_cache_obj(cache_obj(), boolean(), kz_time:gregorian_seconds()) -> 'ok'.
 display_cache_obj(#cache_obj{key=Key

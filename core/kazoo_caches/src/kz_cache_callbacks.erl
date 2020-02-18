@@ -34,7 +34,8 @@ flush_table(_T, 'false') ->
     lager:info("cache ~s is not running", [_T]);
 flush_table(T, 'true') ->
     exec_flush_callbacks(T),
-    ets:delete_all_objects(T).
+    ets:delete_all_objects(T),
+    kz_cache_processes:unmonitor_all(T).
 
 -spec exec_flush_callbacks(atom()) -> 'ok'.
 exec_flush_callbacks(Name) ->
@@ -54,7 +55,10 @@ exec_flush_callbacks(Name) ->
 erased(Name, Key) ->
     exec_erase_callbacks(Name, Key),
     _ = [maybe_remove_object(Table, Key)
-         || Table <- [Name, kz_cache_ets:pointer_tab(Name), kz_cache_ets:monitor_tab(Name)]
+         || Table <- [Name
+                     ,{'pointer', kz_cache_ets:pointer_tab(Name)}
+                     ,{'monitor', kz_cache_ets:monitor_tab(Name)}
+                     ]
         ],
     'ok'.
 
@@ -71,6 +75,7 @@ maybe_log_unlock(_Key, _Type, _Peek) -> 'ok'.
 
 -spec exec_erase_callbacks(atom(), any()) -> 'ok'.
 exec_erase_callbacks(Name, Key) ->
+    kz_cache_processes:unmonitor_key(Name, Key),
     try ets:lookup_element(Name, Key, #cache_obj.callback) of
         Fun when is_function(Fun, 3) ->
             exec_erase_callbacks(Name, Key, Fun),
@@ -114,6 +119,7 @@ exec_timeout_callbacks(Name, MatchSpec) ->
 exec_timeout_callback(Name, {Key, Value, Callback}) when is_function(Callback, 3),
                                                          is_reference(Value) ->
     catch Callback(Key, Value, 'timeout'),
+    kz_cache_processes:unmonitor_key(Name, Key),
     maybe_remove_object(Name, Key),
     'ok'.
 
@@ -138,7 +144,6 @@ expire_objects(Name, AuxNameles) ->
 expire_objects(_Name, _Tables, []) ->
     0;
 expire_objects(Name, Tables, Objects) ->
-
     _ = exec_expired_callbacks(Objects),
     Keys = [K || {_, K, _} <- Objects],
     lager:debug("expiring keys from ~s:", [Name]),
@@ -167,10 +172,13 @@ maybe_remove_objects(Name, Objects) ->
     _ = [maybe_remove_object(Name, Object) || Object <- Objects],
     'ok'.
 
--spec maybe_remove_object(atom(), cache_obj() | any()) -> 'true'.
+-spec maybe_remove_object(atom() | {atom(), atom()}, cache_obj() | any()) -> 'true'.
 maybe_remove_object(Name, #cache_obj{key = Key}) ->
     maybe_remove_object(Name, Key);
-maybe_remove_object(Name, Key) ->
+maybe_remove_object(Name, Key) when is_atom(Name) ->
+    kz_cache_processes:unmonitor_key(Name, Key),
+    ets:delete(Name, Key);
+maybe_remove_object({_Type, Name}, Key) ->
     ets:delete(Name, Key).
 
 -spec stored(atom(), any(), any()) -> 'ok'.

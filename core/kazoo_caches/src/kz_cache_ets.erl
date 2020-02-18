@@ -1,6 +1,6 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2020, 2600Hz
-%%% @doc Simple cache server.
+%%% @doc Simple ETS-backed cache. Handles ETS operations
 %%% @author James Aimonetti
 %%% @author Karl Anderson
 %%% This Source Code Form is subject to the terms of the Mozilla Public
@@ -28,6 +28,8 @@
 
         ,erase/2
         ,flush/1
+
+        ,count/5
 
         ,wait_for_key/3
         ,wait_for_stampede/3
@@ -119,13 +121,47 @@ cache_obj(K, V, Props) ->
               ,expires_s=get_props_expires(Props)
               ,callback=get_props_callback(Props)
               ,origin=get_props_origin(Props)
+              ,monitor_pids=get_monitor_pids(Props)
               }.
+
+-spec get_monitor_pids(kz_cache:store_options()) -> [pid()].
+get_monitor_pids(Props) ->
+    case props:get_value('monitor', Props, 'false') of
+        'false' -> [];
+        'true' -> [self()];
+        Pids when is_list(Pids) ->
+            'true' = lists:all(fun is_pid/1, Pids),
+            Pids
+    end.
+
+-spec count(atom(), any(), any(), any(), any()) -> non_neg_integer().
+count(Srv, KeyMatchHead, KeyMatchCondition, ValMatchHead, ValMatchCondition) ->
+    MS = lists:foldl(fun update_match_spec/2
+                    ,{#cache_obj{_='_'}, [], ['true']}
+                    ,[{#cache_obj.key, KeyMatchHead, KeyMatchCondition}
+                     ,{#cache_obj.value, ValMatchHead, ValMatchCondition}
+                     ]
+                    ),
+    ets:select_count(Srv, [MS]).
+
+update_match_spec({Index, 'undefined', Condition}, {MatchHead, MatchConditions, MatchBody}) ->
+    update_match_spec({Index, '_', Condition}, {MatchHead, MatchConditions, MatchBody});
+update_match_spec({Index, Head, 'undefined'}, {MatchHead, MatchConditions, MatchBody}) ->
+    {setelement(Index, MatchHead, Head)
+    ,MatchConditions
+    ,MatchBody
+    };
+update_match_spec({Index, Head, Condition}, {MatchHead, MatchConditions, MatchBody}) ->
+    {setelement(Index, MatchHead, Head)
+    ,[Condition | MatchConditions]
+    ,MatchBody
+    }.
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec get_props_expires(kz_term:proplist()) -> timeout().
+-spec get_props_expires(kz_cache:store_options()) -> timeout().
 get_props_expires(Props) ->
     case props:get_value('expires', Props) of
         'undefined' -> ?EXPIRES;
@@ -135,14 +171,14 @@ get_props_expires(Props) ->
             Expires
     end.
 
--spec get_props_callback(kz_term:proplist()) -> 'undefined' | callback_fun().
+-spec get_props_callback(kz_cache:store_options()) -> 'undefined' | callback_fun().
 get_props_callback(Props) ->
     case props:get_value('callback', Props) of
         'undefined' -> 'undefined';
         Fun when is_function(Fun, 3) -> Fun
     end.
 
--spec get_props_origin(kz_term:proplist()) -> 'undefined' | origin_tuple() | origin_tuples().
+-spec get_props_origin(kz_cache:store_options()) -> 'undefined' | origin_tuple() | origin_tuples().
 get_props_origin(Props) -> props:get_value('origin', Props).
 
 -spec wait_for_key(kz_types:server_ref(), any(), pos_integer()) ->
@@ -272,6 +308,7 @@ store_cache_obj(#cache_obj{key=Key
                           ,value=Value
                           ,origin=Origins
                           ,expires_s=Expires
+                          ,monitor_pids=Pids
                           }=CacheObj
                ,Name
                ) ->
@@ -279,6 +316,7 @@ store_cache_obj(#cache_obj{key=Key
     'true' = ets:insert(Name, CacheObj#cache_obj{origin='undefined'}),
     kz_cache_listener:add_origin_pointers(Name, CacheObj, Origins),
     kz_cache_callbacks:stored(Name, Key, Value),
+    _ = kz_cache_processes:monitor_processes(Name, Key, Pids),
 
     kz_cache_lru:update_expire_period(Name, Expires),
     'ok'.
