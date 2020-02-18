@@ -87,7 +87,7 @@ max_conn_test() ->
 
     pqc_ws_client:close(WSConn),
 
-    kapps_config:set_default(<<"blackhole">>, <<"max_connections_per_ip">>, PrevMaxConn),
+    _ = kapps_config:set_default(<<"blackhole">>, <<"max_connections_per_ip">>, PrevMaxConn),
 
     cleanup(API),
     lager:info("FINISHED SEQ").

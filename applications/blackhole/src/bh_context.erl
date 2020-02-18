@@ -12,7 +12,7 @@
         ,is_context/1
         ,is_authenticated/1
         ,is_superduper_admin/1
-        ,add_error/2, add_error/3
+        ,add_error/2, add_error/3, errors/1
         ,success/1
         ]).
 
@@ -37,7 +37,31 @@
         ,resp_data/1, resp_status/1
         ]).
 
+-export([match_auth_account_id/1, match_auth_account_id/2
+        ,match_source/1, match_source/2
+
+        ,id_position/0
+        ]).
+
 -include("blackhole.hrl").
+
+-record(bh_context, {auth_token = <<>> :: kz_term:api_binary() | '_'
+                    ,auth_account_id :: kz_term:api_binary() | '_'
+                    ,bindings = [] :: kz_term:ne_binaries() | '_'
+                    ,websocket_session_id :: kz_term:api_binary() | '_'
+                    ,websocket_pid :: kz_term:api_pid() | '_'
+                    ,req_id = kz_binary:rand_hex(16) :: kz_term:ne_binary() | '_'
+                    ,timestamp = kz_time:now_s() :: kz_time:gregorian_seconds() | '_'
+                    ,name :: kz_term:api_binary() | '_'
+                    ,metadata :: any() | '_'
+                    ,destination = kz_util:node_hostname() :: kz_term:ne_binary() | '_'
+                    ,source :: kz_term:api_binary() | '_'
+                    ,errors = [] :: kz_term:ne_binaries() | '_'
+                    ,result = 'ok' :: 'ok' | 'error' | 'shutdown' | '_'
+                    ,listeners = [] :: list() | '_'
+                    ,resp_status = <<"success">> :: kz_term:ne_binary() | '_'
+                    ,resp_data = kz_json:new() :: kz_json:object() | '_'
+                    }).
 
 -type context() :: #bh_context{}.
 -type setter_fun_1() :: fun((context()) -> context()).
@@ -49,7 +73,6 @@
 -type setters() :: [setter_kv()].
 
 -export_type([context/0]).
-
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -318,6 +341,9 @@ add_error(Context, Error) ->
 add_error(#bh_context{errors=Errors}=Context, Result, Error) ->
     Context#bh_context{result=Result, errors=[kz_term:to_binary(Error) | Errors]}.
 
+-spec errors(context()) -> kz_term:ne_binaries().
+errors(#bh_context{errors=Errors}) -> Errors.
+
 -spec add_listeners(context(), list()) -> context().
 add_listeners(#bh_context{listeners=BListeners}=Context, Listeners) ->
     Context#bh_context{listeners = BListeners ++ Listeners}.
@@ -349,3 +375,23 @@ resp_data(#bh_context{resp_data=Data}) ->
 -spec resp_status(context()) -> kz_term:ne_binary().
 resp_status(#bh_context{resp_status=Status}) ->
     Status.
+
+-spec match_auth_account_id(kz_term:ne_binary()) -> context().
+match_auth_account_id(<<AuthAccountId/binary>>) ->
+    match_auth_account_id(AuthAccountId, #bh_context{_='_'}).
+
+-spec match_auth_account_id(kz_term:ne_binary(), context()) -> context().
+match_auth_account_id(<<AuthAccountId/binary>>, #bh_context{}=Context) ->
+    Context#bh_context{auth_account_id=AuthAccountId}.
+
+-spec match_source(kz_term:ne_binary()) -> context().
+match_source(<<Source/binary>>) ->
+    match_source(Source, #bh_context{_='_'}).
+
+-spec match_source(kz_term:ne_binary(), context()) -> context().
+match_source(<<Source/binary>>, #bh_context{}=Context) ->
+    Context#bh_context{source=Source}.
+
+-spec id_position() -> integer().
+id_position() ->
+    #bh_context.websocket_session_id.

@@ -144,13 +144,13 @@ update_match_spec({Index, 'undefined', Condition}, {MatchHead, MatchConditions, 
     update_match_spec({Index, '_', Condition}, {MatchHead, MatchConditions, MatchBody});
 update_match_spec({Index, Head, 'undefined'}, {MatchHead, MatchConditions, MatchBody}) ->
     {setelement(Index, MatchHead, Head)
-     ,MatchConditions
-     ,MatchBody
+    ,MatchConditions
+    ,MatchBody
     };
 update_match_spec({Index, Head, Condition}, {MatchHead, MatchConditions, MatchBody}) ->
     {setelement(Index, MatchHead, Head)
-     ,[Condition | MatchConditions]
-     ,MatchBody
+    ,[Condition | MatchConditions]
+    ,MatchBody
     }.
 
 %%------------------------------------------------------------------------------

@@ -115,28 +115,39 @@ filter_out_failed({'halt', _}) -> 'true';
 filter_out_failed({'false', _}) -> 'false';
 filter_out_failed('false') -> 'false';
 filter_out_failed({'EXIT', _}) -> 'false';
-filter_out_failed(#bh_context{}=Ctx) ->
-    not bh_context:success(Ctx);
-filter_out_failed([#bh_context{}=Ctx]) ->
-    not bh_context:success(Ctx);
-filter_out_failed(Term) -> not kz_term:is_empty(Term).
+filter_out_failed([Result]) ->
+    case bh_context:is_context(Result) of
+        'true' -> not bh_context:success(Result);
+        'false' -> not kz_term:is_empty(Result)
+    end;
+filter_out_failed(Result) ->
+    case bh_context:is_context(Result) of
+        'true' -> not bh_context:success(Result);
+        'false' -> not kz_term:is_empty(Result)
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec filter_out_succeeded({boolean() | 'halt', any()} | boolean() | any()) -> boolean().
+-spec filter_out_succeeded({boolean() | 'halt', any()} | boolean() | bh_context:context() | [bh_context:context()]) ->
+                                  boolean().
 filter_out_succeeded({'true', _}) -> 'false';
 filter_out_succeeded('true') -> 'false';
 filter_out_succeeded({'halt', _}) -> 'true';
 filter_out_succeeded({'false', _}) -> 'true';
 filter_out_succeeded('false') -> 'true';
 filter_out_succeeded({'EXIT', _}) -> 'true';
-filter_out_succeeded(#bh_context{}=Ctx) ->
-    bh_context:success(Ctx);
-filter_out_succeeded([#bh_context{}=Ctx]) ->
-    bh_context:success(Ctx);
-filter_out_succeeded(Term) -> kz_term:is_empty(Term).
+filter_out_succeeded([Result]) ->
+    case bh_context:is_context(Result) of
+        'true' -> bh_context:success(Result);
+        'false' -> kz_term:is_empty(Result)
+    end;
+filter_out_succeeded(Result) ->
+    case bh_context:is_context(Result) of
+        'true' -> bh_context:success(Result);
+        'false' -> kz_term:is_empty(Result)
+    end.
 
 -type bind_result() :: 'ok' |
                        {'error', 'exists'}.

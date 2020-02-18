@@ -12,8 +12,13 @@
         ,add_socket/1
         ,remove_socket/1
         ,update_socket/1
-        ,get_sockets/1
-        ,get_socket/1
+
+        ,get_context_by_session_id/1
+        ,get_contexts/0
+        ,get_contexts_by_auth_account/1
+        ,get_contexts_by_ip/1
+
+        ,session_count_by_ip/1
         ]).
 
 -export([init/1
@@ -27,7 +32,8 @@
 
 -include("blackhole.hrl").
 
--type state() :: ets:tid() | atom().
+%% {Pid, Reference, SessionId}
+-type state() :: [{pid(), reference(), kz_term:ne_binary()}].
 
 -define(SERVER, ?MODULE).
 
@@ -68,7 +74,7 @@ handle_req(ApiJObj, _Props) ->
     'true' = kapi_websockets:get_req_v(ApiJObj),
     kz_util:put_callid(ApiJObj),
 
-    Node = kz_json:get_binary_value(<<"Node">>, ApiJObj),
+    Node = kz_api:node(ApiJObj),
     RespData =
         handle_get_req_data(kz_json:get_value(<<"Account-ID">>, ApiJObj)
                            ,kz_json:get_value(<<"Socket-ID">>, ApiJObj)
@@ -77,9 +83,9 @@ handle_req(ApiJObj, _Props) ->
     case RespData of
         'ok' -> 'ok';
         RespData ->
-            RespQ = kz_json:get_value(<<"Server-ID">>, ApiJObj),
+            RespQ = kz_api:server_id(ApiJObj),
             Resp = [{<<"Data">>, RespData}
-                   ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, ApiJObj)}
+                   ,{<<"Msg-ID">>, kz_api:msg_id(ApiJObj)}
                     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
             lager:debug("sending reply ~p to ~s",[RespData, Node]),
@@ -90,41 +96,91 @@ handle_req(ApiJObj, _Props) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec add_socket(bh_context:context()) -> 'ok'.
+-spec add_socket(bh_context:context()) -> bh_context:context().
 add_socket(Context) ->
-    gen_server:cast(?SERVER, {'add_socket', Context}).
+    'true' = ets:insert(?SERVER, Context),
+    gen_listener:cast(?SERVER, {'monitor', bh_context:websocket_session_id(Context), bh_context:websocket_pid(Context)}),
+    Context.
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec remove_socket(bh_context:context()) -> 'ok'.
+-spec remove_socket(bh_context:context() | kz_term:ne_binary()) -> bh_context:context() | 'true'.
+remove_socket(<<SessionId/binary>>) ->
+    'true' = ets:delete(?SERVER, SessionId);
 remove_socket(Context) ->
-    gen_server:cast(?SERVER, {'remove_socket', Context}).
+    'true' = ets:delete(?SERVER, bh_context:websocket_session_id(Context)),
+    gen_listener:cast(?SERVER, {'demonitor', bh_context:websocket_pid(Context)}),
+    Context.
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec update_socket(bh_context:context()) -> 'ok'.
+-spec update_socket(bh_context:context()) -> bh_context:context().
 update_socket(Context) ->
-    gen_server:cast(?SERVER, {'update_socket', Context}).
+    'true' = ets:insert(?SERVER, Context),
+    Context.
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec get_sockets(kz_term:ne_binary()) -> [bh_context:context(), ...] | {'error', 'not_found'}.
-get_sockets(AccountId) ->
-    gen_server:call(?SERVER, {'get_sockets', AccountId}).
+-spec get_contexts() -> [bh_context:context()].
+get_contexts() ->
+    ets:tab2list(?SERVER).
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec get_socket(kz_term:ne_binary()) -> {'ok', bh_context:context()} | {'error', 'not_found'}.
-get_socket(Id) ->
-    gen_server:call(?SERVER, {'get_socket', Id}).
+-spec get_contexts_by_auth_account(kz_term:ne_binary()) ->
+          [bh_context:context(),...] |
+          {'error', 'not_found'}.
+get_contexts_by_auth_account(<<AccountId/binary>>) ->
+    Pattern = bh_context:match_auth_account_id(AccountId),
+    case ets:match_object(?SERVER, Pattern) of
+        [] -> {'error', 'not_found'};
+        Contexts -> Contexts
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec get_context_by_session_id(kz_term:ne_binary()) ->
+          {'ok', bh_context:context()} |
+          {'error', 'not_found'}.
+get_context_by_session_id(<<SessionId/binary>>) ->
+    case ets:lookup(?SERVER, SessionId) of
+        [Context] -> {'ok', Context};
+        _ -> {'error', 'not_found'}
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec get_contexts_by_ip(kz_term:ne_binary() | inet:ip_addresS()) ->
+          [bh_context:context(),...] |
+          {'error', 'not_found'}.
+get_contexts_by_ip(<<IP/binary>>) ->
+    Pattern = bh_context:match_source(IP),
+    case ets:match_object(?SERVER, Pattern) of
+        [] -> {'error', 'not_found'};
+        Contexts -> Contexts
+    end;
+get_contexts_by_ip(IPAddr) ->
+    get_contexts_by_ip(kz_network_utils:iptuple_to_binary(IPAddr)).
+
+-spec session_count_by_ip(kz_term:ne_binary() | inet:ip_address()) -> non_neg_integer().
+session_count_by_ip(<<IP/binary>>) ->
+    Pattern = [{bh_context:match_source(IP), [], ['true']}],
+    lager:info("ets:select_count(~p, ~p).", [?SERVER, Pattern]),
+    ets:select_count(?SERVER, Pattern);
+session_count_by_ip(IPAddr) ->
+    session_count_by_ip(kz_network_utils:iptuple_to_binary(IPAddr)).
 
 %%%=============================================================================
 %%% gen_listener callbacks
@@ -136,40 +192,23 @@ get_socket(Id) ->
 %%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    process_flag('trap_exit', 'true'),
+    kz_util:put_callid(?MODULE),
     lager:debug("starting new ~s server", [?SERVER]),
-    Tab = ets:new(?SERVER, ['set'
-                           ,'protected'
-                           ,'named_table'
-                           ,{'keypos', #bh_context.websocket_session_id}
-                           ]),
+    _ = ets:new(?SERVER, ['set'
+                         ,'public'
+                         ,'named_table'
+                         ,{'keypos', bh_context:id_position()}
+                         ]),
     _ = blackhole_bindings:bind(<<"blackhole.session.open">>, ?MODULE, 'add_socket'),
     _ = blackhole_bindings:bind(<<"blackhole.session.close">>, ?MODULE, 'remove_socket'),
     _ = blackhole_bindings:bind(<<"blackhole.finish.*">>, ?MODULE, 'update_socket'),
-    {'ok', Tab}.
+    {'ok', []}.
 
 %%------------------------------------------------------------------------------
 %% @doc Handling call messages.
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
-handle_call({'get_sockets', AccountId}, _From, State) ->
-    Pattern = #bh_context{auth_account_id=AccountId, _='_'},
-    Result =
-        case ets:match_object(State, Pattern) of
-            [] -> {'error', 'not_found'};
-            Contexts -> Contexts
-        end,
-    {'reply', Result, State};
-handle_call({'get_socket', Id}, _From, State) ->
-    Pattern = #bh_context{websocket_session_id=Id, _='_'},
-    Result =
-        case ets:match_object(State, Pattern) of
-            [] -> {'error', 'not_found'};
-            [Context] ->
-                {'ok', Context}
-        end,
-    {'reply', Result, State};
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -178,15 +217,11 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
-handle_cast({'add_socket', Context}, State) ->
-    _ = ets:insert(State, Context),
-    {noreply, State};
-handle_cast({'remove_socket', Context}, State) ->
-    _ = ets:delete_object(State, Context),
-    {noreply, State};
-handle_cast({'update_socket', Context}, State) ->
-    _ = ets:insert(State, Context),
-    {noreply, State};
+handle_cast({'monitor', SessionId, Pid}, State) ->
+    Ref = monitor('process', Pid),
+    {'noreply', [{Pid, Ref, SessionId} | State]};
+handle_cast({'demonitor', Pid}, State) ->
+    {'noreply', maybe_update_state(Pid, 1, State)};
 handle_cast(_Msg, State) ->
     {'noreply', State}.
 
@@ -195,8 +230,21 @@ handle_cast(_Msg, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
+handle_info({'DOWN', Ref, 'process', _Pid, _Reason}, State) ->
+    lager:debug("process ~p down: ~p", [_Pid, _Reason]),
+    {'noreply', maybe_update_state(Ref, 2, State)};
 handle_info(_Info, State) ->
+    lager:debug("unhandled msg: ~p", [_Info]),
     {'noreply', State}.
+
+maybe_update_state(Value, Position, State) ->
+    case lists:keytake(Value, Position, State) of
+        'false' -> State;
+        {'value', {_Pid, Ref, SessionId}, NewState} ->
+            _ = remove_socket(SessionId),
+            demonitor(Ref, ['flush']),
+            NewState
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc Allows listener to pass options to handlers.
@@ -242,18 +290,19 @@ handle_get_req_data('undefined', 'undefined', Node) ->
     lager:warning("received undefined blackhole get req ~s", [Node]);
 handle_get_req_data(AccountId, 'undefined', Node) ->
     lager:debug("received blackhole get for account:~s from ~s", [AccountId, Node]),
-    case get_sockets(AccountId) of
+    case get_contexts_by_auth_account(AccountId) of
         {'error', 'not_found'} ->
             lager:debug("no sockets found for ~s", [AccountId]),
             [];
         Contexts ->
             ToDelete = [<<"account_id">>, <<"auth_token">>, <<"req_id">>, <<"auth_account_id">>],
             [kz_json:delete_keys(ToDelete, bh_context:to_json(Context))
-             || Context <- Contexts]
+             || Context <- Contexts
+            ]
     end;
 handle_get_req_data('undefined', SocketId, Node) ->
     lager:debug("received blackhole get for socket:~s from ~s", [SocketId, Node]),
-    case get_socket(SocketId) of
+    case get_context_by_session_id(SocketId) of
         {'error', 'not_found'} ->
             lager:debug("socket ~s not found", [SocketId]);
         {'ok', Context} ->

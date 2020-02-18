@@ -210,7 +210,7 @@ handle_document_change(JObj, Name) ->
         andalso lager:debug("removed ~p keys for ~s/~s/~s", [length(_Keys), Db, Id, Type]).
 
 -spec handle_document_change(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), atom()) ->
-                                    list().
+          list().
 handle_document_change(Db, <<"database">>, _Id, Name) ->
     MatchSpec = match_db_changed(Db),
     lists:foldl(fun(Obj, Removed) ->
