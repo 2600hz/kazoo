@@ -74,9 +74,6 @@
         },
         "To": {
             "type": "string"
-        },
-        "kapi_definitionule": {
-            "type": "string"
         }
     },
     "required": [

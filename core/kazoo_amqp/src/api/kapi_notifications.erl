@@ -21,136 +21,213 @@
         ,account_id/1, account_db/2
         ]).
 
--export([%% Account notifications
-         account_zone_change/1, account_zone_change_v/1
-        ,bill_reminder/1, bill_reminder_v/1
-        ,low_balance/1, low_balance_v/1
-        ,new_account/1, new_account_v/1
-        ,service_added/1, service_added_v/1
-        ,topup/1, topup_v/1
-        ,transaction/1, transaction_v/1
-
-         %% Fax notifications
-        ,fax_inbound/1, fax_inbound_v/1
-        ,fax_inbound_error/1, fax_inbound_error_v/1
-        ,fax_outbound/1, fax_outbound_v/1
-        ,fax_outbound_error/1, fax_outbound_error_v/1
-        ,fax_outbound_smtp_error/1, fax_outbound_smtp_error_v/1
-
-         %% Number and Port notifications
-        ,cnam_request/1, cnam_request_v/1
-        ,port_cancel/1, port_cancel_v/1
-        ,port_comment/1, port_comment_v/1
-        ,port_pending/1, port_pending_v/1
-        ,port_rejected/1, port_rejected_v/1
-        ,port_request/1, port_request_v/1
-        ,port_scheduled/1, port_scheduled_v/1
-        ,port_unconfirmed/1, port_unconfirmed_v/1
-        ,ported/1, ported_v/1
-
-         %% Register notifications
-        ,denied_emergency_bridge/1, denied_emergency_bridge_v/1
-
-         %% SIP notifications
-        ,deregister/1, deregister_v/1
-        ,first_occurrence/1, first_occurrence_v/1
-        ,missed_call/1, missed_call_v/1
-        ,register/1, register_v/1
-
-         %% System notifications
-        ,system_alert/1, system_alert_v/1
-
-         %% User notifications
-        ,customer_update/1, customer_update_v/1
-        ,new_user/1, new_user_v/1
-        ,password_recovery/1, password_recovery_v/1
-
-         %% Voicemail notifications
-        ,voicemail_full/1, voicemail_full_v/1
-        ,voicemail_new/1, voicemail_new_v/1
-        ,voicemail_saved/1, voicemail_saved_v/1
-
-         %% Webhook notifications
-        ,webhook/1, webhook_v/1
-        ,webhook_disabled/1, webhook_disabled_v/1
-
-         %% published on completion of notification
-        ,notify_update/1, notify_update_v/1
-
-         %% Customer defined notification
-        ,cf_notification/1, cf_notification_v/1
-
-         %% skeleton notification
-        ,skel/1, skel_v/1
-
-         %% number_feature_manual_action
-        ,number_feature_manual_action/1, number_feature_manual_action_v/1
+%% Account notifications
+-export([account_zone_change/1
+        ,account_zone_change_v/1
+        ,publish_account_zone_change/1
+        ,publish_account_zone_change/2
         ]).
-
--export([%% Account notifications
-         publish_account_zone_change/1, publish_account_zone_change/2
-        ,publish_bill_reminder/1, publish_bill_reminder/2
-        ,publish_low_balance/1, publish_low_balance/2
-        ,publish_new_account/1, publish_new_account/2
-        ,publish_service_added/1, publish_service_added/2
-        ,publish_topup/1, publish_topup/2
-        ,publish_transaction/1, publish_transaction/2
-
-         %% Fax notifications
-        ,publish_fax_inbound/1, publish_fax_inbound/2
-        ,publish_fax_inbound_error/1, publish_fax_inbound_error/2
-        ,publish_fax_outbound/1, publish_fax_outbound/2
-        ,publish_fax_outbound_error/1, publish_fax_outbound_error/2
-        ,publish_fax_outbound_smtp_error/1, publish_fax_outbound_smtp_error/2
-
-         %% Number and Port notifications
-        ,publish_cnam_request/1, publish_cnam_request/2
-        ,publish_port_cancel/1, publish_port_cancel/2
-        ,publish_port_comment/1, publish_port_comment/2
-        ,publish_port_pending/1, publish_port_pending/2
-        ,publish_port_rejected/1, publish_port_rejected/2
-        ,publish_port_request/1, publish_port_request/2
-        ,publish_port_scheduled/1, publish_port_scheduled/2
-        ,publish_port_unconfirmed/1, publish_port_unconfirmed/2
-        ,publish_ported/1, publish_ported/2
-
-         %% Register notifications
-        ,publish_denied_emergency_bridge/1, publish_denied_emergency_bridge/2
-
-         %% SIP notifications
-        ,publish_deregister/1, publish_deregister/2
-        ,publish_first_occurrence/1, publish_first_occurrence/2
-        ,publish_missed_call/1, publish_missed_call/2
-        ,publish_register/1, publish_register/2
-
-         %% System notifications
-        ,publish_system_alert/1, publish_system_alert/2
-
-         %% User notifications
-        ,publish_customer_update/1, publish_customer_update/2
-        ,publish_new_user/1, publish_new_user/2
-        ,publish_password_recovery/1, publish_password_recovery/2
-
-         %% Voicemail notifications
-        ,publish_voicemail_full/1, publish_voicemail_full/2
-        ,publish_voicemail_new/1, publish_voicemail_new/2
-        ,publish_voicemail_saved/1, publish_voicemail_saved/2
-
-         %% Webhook notifications
-        ,publish_webhook/1, publish_webhook/2
-        ,publish_webhook_disabled/1, publish_webhook_disabled/2
-
-         %% published on completion of notification
-        ,publish_notify_update/2, publish_notify_update/3
-
-         %% Customer defined notification
-        ,publish_cf_notification/1, publish_cf_notification/2
-
-         %% skeleton notification
-        ,publish_skel/1, publish_skel/2
-
-         %% number_feature_manual_action
-        ,publish_number_feature_manual_action/1, publish_number_feature_manual_action/2
+-export([bill_reminder/1
+        ,bill_reminder_v/1
+        ,publish_bill_reminder/1
+        ,publish_bill_reminder/2
+        ]).
+-export([low_balance/1
+        ,low_balance_v/1
+        ,publish_low_balance/1
+        ,publish_low_balance/2
+        ]).
+-export([new_account/1
+        ,new_account_v/1
+        ,publish_new_account/1
+        ,publish_new_account/2
+        ]).
+-export([service_added/1
+        ,service_added_v/1
+        ,publish_service_added/1
+        ,publish_service_added/2
+        ]).
+-export([topup/1
+        ,topup_v/1
+        ,publish_topup/1
+        ,publish_topup/2
+        ]).
+-export([transaction/1
+        ,transaction_v/1
+        ,publish_transaction/1
+        ,publish_transaction/2
+        ]).
+%% Fax notifications
+-export([fax_inbound/1
+        ,fax_inbound_v/1
+        ,publish_fax_inbound/1
+        ,publish_fax_inbound/2
+        ]).
+-export([fax_inbound_error/1
+        ,fax_inbound_error_v/1
+        ,publish_fax_inbound_error/1
+        ,publish_fax_inbound_error/2
+        ]).
+-export([fax_outbound/1
+        ,fax_outbound_v/1
+        ,publish_fax_outbound/1
+        ,publish_fax_outbound/2
+        ]).
+-export([fax_outbound_error/1
+        ,fax_outbound_error_v/1
+        ,publish_fax_outbound_error/1
+        ,publish_fax_outbound_error/2
+        ]).
+-export([fax_outbound_smtp_error/1
+        ,fax_outbound_smtp_error_v/1
+        ,publish_fax_outbound_smtp_error/1
+        ,publish_fax_outbound_smtp_error/2
+        ]).
+%% Number and Port notifications
+-export([cnam_request/1
+        ,cnam_request_v/1
+        ,publish_cnam_request/1
+        ,publish_cnam_request/2
+        ]).
+-export([port_cancel/1
+        ,port_cancel_v/1
+        ,publish_port_cancel/1
+        ,publish_port_cancel/2
+        ]).
+-export([port_comment/1
+        ,port_comment_v/1
+        ,publish_port_comment/1
+        ,publish_port_comment/2
+        ]).
+-export([port_pending/1
+        ,port_pending_v/1
+        ,publish_port_pending/1
+        ,publish_port_pending/2
+        ]).
+-export([port_rejected/1
+        ,port_rejected_v/1
+        ,publish_port_rejected/1
+        ,publish_port_rejected/2
+        ]).
+-export([port_request/1
+        ,port_request_v/1
+        ,publish_port_request/1
+        ,publish_port_request/2
+        ]).
+-export([port_scheduled/1
+        ,port_scheduled_v/1
+        ,publish_port_scheduled/1
+        ,publish_port_scheduled/2
+        ]).
+-export([port_unconfirmed/1
+        ,port_unconfirmed_v/1
+        ,publish_port_unconfirmed/1
+        ,publish_port_unconfirmed/2
+        ]).
+-export([ported/1
+        ,ported_v/1
+        ,publish_ported/1
+        ,publish_ported/2
+        ]).
+%% Register notifications
+-export([denied_emergency_bridge/1
+        ,denied_emergency_bridge_v/1
+        ,publish_denied_emergency_bridge/1
+        ,publish_denied_emergency_bridge/2
+        ]).
+%% SIP notifications
+-export([deregister/1
+        ,deregister_v/1
+        ,publish_deregister/1
+        ,publish_deregister/2
+        ]).
+-export([first_occurrence/1
+        ,first_occurrence_v/1
+        ,publish_first_occurrence/1
+        ,publish_first_occurrence/2
+        ]).
+-export([missed_call/1
+        ,missed_call_v/1
+        ,publish_missed_call/1
+        ,publish_missed_call/2
+        ]).
+-export([register/1
+        ,register_v/1
+        ,publish_register/1
+        ,publish_register/2
+        ]).
+%% System notifications
+-export([system_alert/1
+        ,system_alert_v/1
+        ,publish_system_alert/1
+        ,publish_system_alert/2
+        ]).
+%% User notifications
+-export([customer_update/1
+        ,customer_update_v/1
+        ,publish_customer_update/1
+        ,publish_customer_update/2
+        ]).
+-export([new_user/1
+        ,new_user_v/1
+        ,publish_new_user/1
+        ,publish_new_user/2
+        ]).
+-export([password_recovery/1
+        ,password_recovery_v/1
+        ,publish_password_recovery/1
+        ,publish_password_recovery/2
+        ]).
+%% Voicemail notifications
+-export([voicemail_full/1
+        ,voicemail_full_v/1
+        ,publish_voicemail_full/1
+        ,publish_voicemail_full/2
+        ]).
+-export([voicemail_new/1
+        ,voicemail_new_v/1
+        ,publish_voicemail_new/1
+        ,publish_voicemail_new/2
+        ]).
+-export([voicemail_saved/1
+        ,voicemail_saved_v/1
+        ,publish_voicemail_saved/1
+        ,publish_voicemail_saved/2
+        ]).
+%% Webhook notifications
+-export([webhook/1
+        ,webhook_v/1
+        ,publish_webhook/1
+        ,publish_webhook/2
+        ]).
+-export([webhook_disabled/1
+        ,webhook_disabled_v/1
+        ,publish_webhook_disabled/1
+        ,publish_webhook_disabled/2
+        ]).
+%% published on completion of notification
+-export([notify_update/1
+        ,notify_update_v/1
+        ,publish_notify_update/2
+        ,publish_notify_update/3
+        ]).
+%% Customer defined notification
+-export([cf_notification/1
+        ,cf_notification_v/1
+        ,publish_cf_notification/1
+        ,publish_cf_notification/2
+        ]).
+%% skeleton notification
+-export([skel/1
+        ,skel_v/1
+        ,publish_skel/1
+        ,publish_skel/2
+        ]).
+%% number_feature_manual_action
+-export([number_feature_manual_action/1
+        ,number_feature_manual_action_v/1
+        ,publish_number_feature_manual_action/1
+        ,publish_number_feature_manual_action/2
         ]).
 
 -export_type([doc/0]).
@@ -160,7 +237,6 @@
 -type doc() :: kz_json:object().
 
 -define(DEFAULT_OPTIONAL_HEADERS, [<<"Account-DB">>
-                                  ,<<"Account-ID">>
                                   ,<<"Attachment-URL">>
                                   ,<<"Bcc">>
                                   ,<<"Cc">>
@@ -782,8 +858,8 @@ port_comment_definition() ->
               ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"port_comment">>)}
               ,{fun kapi_definition:set_restrict_to/2, 'port_comment'}
               ,{fun kapi_definition:set_required_headers/2, [<<"Account-ID">>
-                                                            ,<<"Port-Request-ID">>
                                                             ,<<"Comment">>
+                                                            ,<<"Port-Request-ID">>
                                                             ]}
               ,{fun kapi_definition:set_optional_headers/2, ?PORT_OPTIONAL_HEADERS -- [<<"Reason">>]}
               ,{fun kapi_definition:set_values/2, ?NOTIFY_VALUES(EventName)}
@@ -1020,8 +1096,8 @@ deregister_definition() ->
               ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"deregister">>)}
               ,{fun kapi_definition:set_restrict_to/2, 'deregister'}
               ,{fun kapi_definition:set_required_headers/2, [<<"Account-ID">>
-                                                            ,<<"Username">>
                                                             ,<<"Realm">>
+                                                            ,<<"Username">>
                                                             ]}
               ,{fun kapi_definition:set_optional_headers/2, [<<"Account-DB">>
                                                             ,<<"Authorizing-ID">>
@@ -1097,8 +1173,8 @@ missed_call_definition() ->
               ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"missed_call">>)}
               ,{fun kapi_definition:set_restrict_to/2, 'missed_call'}
               ,{fun kapi_definition:set_required_headers/2, [<<"Account-ID">>
-                                                            ,<<"Call-ID">>
                                                             ,<<"Call-Bridged">>
+                                                            ,<<"Call-ID">>
                                                             ,<<"Message-Left">>
                                                             ]}
               ,{fun kapi_definition:set_optional_headers/2, [<<"Caller-ID-Name">>
@@ -1106,10 +1182,10 @@ missed_call_definition() ->
                                                             ,<<"From-Realm">>
                                                             ,<<"From-User">>
                                                             ,<<"Notify">>
+                                                            ,<<"Timestamp">>
                                                             ,<<"To">>
                                                             ,<<"To-Realm">>
                                                             ,<<"To-User">>
-                                                            ,<<"Timestamp">>
                                                                  | ?DEFAULT_OPTIONAL_HEADERS
                                                             ]}
               ,{fun kapi_definition:set_values/2, ?NOTIFY_VALUES(EventName)}
@@ -1137,8 +1213,8 @@ register_definition() ->
               ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"register">>)}
               ,{fun kapi_definition:set_restrict_to/2, 'register'}
               ,{fun kapi_definition:set_required_headers/2, [<<"Account-ID">>
-                                                            ,<<"Username">>
                                                             ,<<"Realm">>
+                                                            ,<<"Username">>
                                                             ]}
               ,{fun kapi_definition:set_optional_headers/2, [<<"Account-DB">>
                                                             ,<<"Authorizing-ID">>
@@ -1152,9 +1228,9 @@ register_definition() ->
                                                             ,<<"Network-IP">>
                                                             ,<<"Network-Port">>
                                                             ,<<"Owner-ID">>
+                                                            ,<<"Suppress-Unregister-Notify">>
                                                             ,<<"To-Host">>
                                                             ,<<"To-User">>
-                                                            ,<<"Suppress-Unregister-Notify">>
                                                             ,<<"User-Agent">>
                                                                  | ?DEFAULT_OPTIONAL_HEADERS
                                                             ]}
@@ -1191,7 +1267,7 @@ system_alert_definition() ->
                                                             ]}
               ,{fun kapi_definition:set_optional_headers/2, [<<"Details">>
                                                             ,<<"Line">>
-                                                            ,<<"kapi_definitionule">>
+                                                            ,<<"Module">>
                                                             ,<<"Node">>
                                                             ,<<"Pid">>
                                                             ,<<"Request-ID">>
@@ -1868,35 +1944,6 @@ headers(Name) ->
             []
     end.
 
-%%------------------------------------------------------------------------------
-%% @doc Generic function to build API payload.
-%% @end
-%%------------------------------------------------------------------------------
--spec build_message(kz_term:api_terms(), kapi_definition:api()) -> api_formatter_return().
-build_message(Prop, Definition) when is_list(Prop) ->
-    ReqH = kapi_definition:required_headers(Definition),
-    OptH = kapi_definition:optional_headers(Definition),
-    Validate = kapi_definition:validate_fun(Definition),
-    Binding = kapi_definition:binding(Definition),
-    case Validate(Prop) of
-        'true' -> kz_api:build_message(Prop, ReqH, OptH);
-        'false' -> {'error', "Proplist failed validation for " ++ binary_to_list(Binding)}
-    end;
-build_message(JObj, Definition) ->
-    build_message(kz_json:to_proplist(JObj), Definition).
-
-%%------------------------------------------------------------------------------
-%% @doc Generic function to validate API payload.
-%% @end
-%%------------------------------------------------------------------------------
-validate(Prop, Definition) when is_list(Prop) ->
-    ReqH = kapi_definition:required_headers(Definition),
-    Values = kapi_definition:values(Definition),
-    Types = kapi_definition:types(Definition),
-    kz_api:validate(Prop, ReqH, Values, Types);
-validate(JObj, Definition) ->
-    validate(kz_json:to_proplist(JObj), Definition).
-
 %%%=============================================================================
 %%% Internal Notifications Functions
 %%%=============================================================================
@@ -1909,11 +1956,11 @@ validate(JObj, Definition) ->
 %%------------------------------------------------------------------------------
 -spec notify_update(kz_term:api_terms()) -> api_formatter_return().
 notify_update(Prop) ->
-    build_message(Prop, notify_update_definition()).
+    kapi_definition:build_message(Prop, notify_update_definition()).
 
 -spec notify_update_v(kz_term:api_terms()) -> boolean().
 notify_update_v(Prop) ->
-    validate(Prop, notify_update_definition()).
+    kapi_definition:validate(Prop, notify_update_definition()).
 
 -spec publish_notify_update(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_notify_update(RespQ, JObj) ->
@@ -1921,8 +1968,11 @@ publish_notify_update(RespQ, JObj) ->
 
 -spec publish_notify_update(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_notify_update(RespQ, API, ContentType) ->
-    Values = kapi_definition:values(notify_update_definition()),
-    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun notify_update/1),
+    Definition = notify_update_definition(),
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
     kz_amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
@@ -1932,11 +1982,11 @@ publish_notify_update(RespQ, API, ContentType) ->
 %%------------------------------------------------------------------------------
 -spec skel(kz_term:api_terms()) -> api_formatter_return().
 skel(Prop) ->
-    build_message(Prop, skel_definition()).
+    kapi_definition:build_message(Prop, skel_definition()).
 
 -spec skel_v(kz_term:api_terms()) -> boolean().
 skel_v(Prop) ->
-    validate(Prop, skel_definition()).
+    kapi_definition:validate(Prop, skel_definition()).
 
 -spec publish_skel(kz_term:api_terms()) -> 'ok'.
 publish_skel(JObj) ->
@@ -1945,10 +1995,11 @@ publish_skel(JObj) ->
 -spec publish_skel(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_skel(API, ContentType) ->
     Definition = skel_definition(),
-    Binding = kapi_definition:binding(Definition),
-    Values = kapi_definition:values(Definition),
-    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun skel/1),
-    kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:notifications_publish(kapi_definition:binding(Definition), Payload, ContentType).
 
 %%%=============================================================================
 %%% Account Notifications Functions
@@ -1960,11 +2011,11 @@ publish_skel(API, ContentType) ->
 %%------------------------------------------------------------------------------
 -spec account_zone_change(kz_term:api_terms()) -> api_formatter_return().
 account_zone_change(Prop) ->
-    build_message(Prop, account_zone_change_definition()).
+    kapi_definition:build_message(Prop, account_zone_change_definition()).
 
 -spec account_zone_change_v(kz_term:api_terms()) -> boolean().
 account_zone_change_v(Prop) ->
-    validate(Prop, account_zone_change_definition()).
+    kapi_definition:validate(Prop, account_zone_change_definition()).
 
 -spec publish_account_zone_change(kz_term:api_terms()) -> 'ok'.
 publish_account_zone_change(JObj) ->
@@ -1973,10 +2024,11 @@ publish_account_zone_change(JObj) ->
 -spec publish_account_zone_change(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_account_zone_change(API, ContentType) ->
     Definition = account_zone_change_definition(),
-    Binding = kapi_definition:binding(Definition),
-    Values = kapi_definition:values(Definition),
-    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun account_zone_change/1),
-    kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:notifications_publish(kapi_definition:binding(Definition), Payload, ContentType).
 
 %%------------------------------------------------------------------------------
 %% @doc Takes proplist, creates JSON string and publish it on AMQP.
@@ -1984,11 +2036,11 @@ publish_account_zone_change(API, ContentType) ->
 %%------------------------------------------------------------------------------
 -spec bill_reminder(kz_term:api_terms()) -> api_formatter_return().
 bill_reminder(Prop) ->
-    build_message(Prop, bill_reminder_definition()).
+    kapi_definition:build_message(Prop, bill_reminder_definition()).
 
 -spec bill_reminder_v(kz_term:api_terms()) -> boolean().
 bill_reminder_v(Prop) ->
-    validate(Prop, bill_reminder_definition()).
+    kapi_definition:validate(Prop, bill_reminder_definition()).
 
 -spec publish_bill_reminder(kz_term:api_terms()) -> 'ok'.
 publish_bill_reminder(JObj) ->
@@ -1997,10 +2049,11 @@ publish_bill_reminder(JObj) ->
 -spec publish_bill_reminder(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_bill_reminder(API, ContentType) ->
     Definition = bill_reminder_definition(),
-    Binding = kapi_definition:binding(Definition),
-    Values = kapi_definition:values(Definition),
-    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun bill_reminder/1),
-    kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:notifications_publish(kapi_definition:binding(Definition), Payload, ContentType).
 
 %%------------------------------------------------------------------------------
 %% @doc Takes proplist, creates JSON string and publish it on AMQP.
@@ -2008,11 +2061,11 @@ publish_bill_reminder(API, ContentType) ->
 %%------------------------------------------------------------------------------
 -spec low_balance(kz_term:api_terms()) -> api_formatter_return().
 low_balance(Prop) ->
-    build_message(Prop, low_balance_definition()).
+    kapi_definition:build_message(Prop, low_balance_definition()).
 
 -spec low_balance_v(kz_term:api_terms()) -> boolean().
 low_balance_v(Prop) ->
-    validate(Prop, low_balance_definition()).
+    kapi_definition:validate(Prop, low_balance_definition()).
 
 -spec publish_low_balance(kz_term:api_terms()) -> 'ok'.
 publish_low_balance(JObj) ->
@@ -2021,10 +2074,11 @@ publish_low_balance(JObj) ->
 -spec publish_low_balance(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_low_balance(API, ContentType) ->
     Definition = low_balance_definition(),
-    Binding = kapi_definition:binding(Definition),
-    Values = kapi_definition:values(Definition),
-    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun low_balance/1),
-    kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:notifications_publish(kapi_definition:binding(Definition), Payload, ContentType).
 
 %%------------------------------------------------------------------------------
 %% @doc Takes proplist, creates JSON string and publish it on AMQP.
@@ -2032,11 +2086,11 @@ publish_low_balance(API, ContentType) ->
 %%------------------------------------------------------------------------------
 -spec new_account(kz_term:api_terms()) -> api_formatter_return().
 new_account(Prop) ->
-    build_message(Prop, new_account_definition()).
+    kapi_definition:build_message(Prop, new_account_definition()).
 
 -spec new_account_v(kz_term:api_terms()) -> boolean().
 new_account_v(Prop) ->
-    validate(Prop, new_account_definition()).
+    kapi_definition:validate(Prop, new_account_definition()).
 
 -spec publish_new_account(kz_term:api_terms()) -> 'ok'.
 publish_new_account(JObj) ->
@@ -2045,10 +2099,11 @@ publish_new_account(JObj) ->
 -spec publish_new_account(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_new_account(API, ContentType) ->
     Definition = new_account_definition(),
-    Binding = kapi_definition:binding(Definition),
-    Values = kapi_definition:values(Definition),
-    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun new_account/1),
-    kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:notifications_publish(kapi_definition:binding(Definition), Payload, ContentType).
 
 %%------------------------------------------------------------------------------
 %% @doc Takes proplist, creates JSON string and publish it on AMQP.
@@ -2056,11 +2111,11 @@ publish_new_account(API, ContentType) ->
 %%------------------------------------------------------------------------------
 -spec service_added(kz_term:api_terms()) -> api_formatter_return().
 service_added(Prop) ->
-    build_message(Prop, service_added_definition()).
+    kapi_definition:build_message(Prop, service_added_definition()).
 
 -spec service_added_v(kz_term:api_terms()) -> boolean().
 service_added_v(Prop) ->
-    validate(Prop, service_added_definition()).
+    kapi_definition:validate(Prop, service_added_definition()).
 
 -spec publish_service_added(kz_term:api_terms()) -> 'ok'.
 publish_service_added(JObj) ->
@@ -2069,10 +2124,11 @@ publish_service_added(JObj) ->
 -spec publish_service_added(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_service_added(API, ContentType) ->
     Definition = service_added_definition(),
-    Binding = kapi_definition:binding(Definition),
-    Values = kapi_definition:values(Definition),
-    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun service_added/1),
-    kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:notifications_publish(kapi_definition:binding(Definition), Payload, ContentType).
 
 %%------------------------------------------------------------------------------
 %% @doc Takes proplist, creates JSON string and publish it on AMQP.
@@ -2080,11 +2136,11 @@ publish_service_added(API, ContentType) ->
 %%------------------------------------------------------------------------------
 -spec topup(kz_term:api_terms()) -> api_formatter_return().
 topup(Prop) ->
-    build_message(Prop, topup_definition()).
+    kapi_definition:build_message(Prop, topup_definition()).
 
 -spec topup_v(kz_term:api_terms()) -> boolean().
 topup_v(Prop) ->
-    validate(Prop, topup_definition()).
+    kapi_definition:validate(Prop, topup_definition()).
 
 -spec publish_topup(kz_term:api_terms()) -> 'ok'.
 publish_topup(JObj) ->
@@ -2093,10 +2149,11 @@ publish_topup(JObj) ->
 -spec publish_topup(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_topup(API, ContentType) ->
     Definition = topup_definition(),
-    Binding = kapi_definition:binding(Definition),
-    Values = kapi_definition:values(Definition),
-    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun topup/1),
-    kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:notifications_publish(kapi_definition:binding(Definition), Payload, ContentType).
 
 %%------------------------------------------------------------------------------
 %% @doc Takes proplist, creates JSON string and publish it on AMQP.
@@ -2104,11 +2161,11 @@ publish_topup(API, ContentType) ->
 %%------------------------------------------------------------------------------
 -spec transaction(kz_term:api_terms()) -> api_formatter_return().
 transaction(Prop) ->
-    build_message(Prop, transaction_definition()).
+    kapi_definition:build_message(Prop, transaction_definition()).
 
 -spec transaction_v(kz_term:api_terms()) -> boolean().
 transaction_v(Prop) ->
-    validate(Prop, transaction_definition()).
+    kapi_definition:validate(Prop, transaction_definition()).
 
 -spec publish_transaction(kz_term:api_terms()) -> 'ok'.
 publish_transaction(JObj) ->
@@ -2117,10 +2174,11 @@ publish_transaction(JObj) ->
 -spec publish_transaction(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_transaction(API, ContentType) ->
     Definition = transaction_definition(),
-    Binding = kapi_definition:binding(Definition),
-    Values = kapi_definition:values(Definition),
-    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun transaction/1),
-    kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:notifications_publish(kapi_definition:binding(Definition), Payload, ContentType).
 
 %%%=============================================================================
 %%% Fax Notifications Functions
@@ -2132,11 +2190,11 @@ publish_transaction(API, ContentType) ->
 %%------------------------------------------------------------------------------
 -spec fax_inbound(kz_term:api_terms()) -> api_formatter_return().
 fax_inbound(Prop) ->
-    build_message(Prop, inbound_fax_definition()).
+    kapi_definition:build_message(Prop, inbound_fax_definition()).
 
 -spec fax_inbound_v(kz_term:api_terms()) -> boolean().
 fax_inbound_v(Prop) ->
-    validate(Prop, inbound_fax_definition()).
+    kapi_definition:validate(Prop, inbound_fax_definition()).
 
 -spec publish_fax_inbound(kz_term:api_terms()) -> 'ok'.
 publish_fax_inbound(JObj) ->
@@ -2145,10 +2203,11 @@ publish_fax_inbound(JObj) ->
 -spec publish_fax_inbound(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_fax_inbound(API, ContentType) ->
     Definition = inbound_fax_definition(),
-    Binding = kapi_definition:binding(Definition),
-    Values = kapi_definition:values(Definition),
-    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun fax_inbound/1),
-    kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:notifications_publish(kapi_definition:binding(Definition), Payload, ContentType).
 
 %%------------------------------------------------------------------------------
 %% @doc Takes proplist, creates JSON string and publish it on AMQP.
@@ -2156,11 +2215,11 @@ publish_fax_inbound(API, ContentType) ->
 %%------------------------------------------------------------------------------
 -spec fax_inbound_error(kz_term:api_terms()) -> api_formatter_return().
 fax_inbound_error(Prop) ->
-    build_message(Prop, inbound_fax_error_definition()).
+    kapi_definition:build_message(Prop, inbound_fax_error_definition()).
 
 -spec fax_inbound_error_v(kz_term:api_terms()) -> boolean().
 fax_inbound_error_v(Prop) ->
-    validate(Prop, inbound_fax_error_definition()).
+    kapi_definition:validate(Prop, inbound_fax_error_definition()).
 
 -spec publish_fax_inbound_error(kz_term:api_terms()) -> 'ok'.
 publish_fax_inbound_error(JObj) ->
@@ -2169,10 +2228,11 @@ publish_fax_inbound_error(JObj) ->
 -spec publish_fax_inbound_error(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_fax_inbound_error(API, ContentType) ->
     Definition = inbound_fax_error_definition(),
-    Binding = kapi_definition:binding(Definition),
-    Values = kapi_definition:values(Definition),
-    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun fax_inbound_error/1),
-    kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:notifications_publish(kapi_definition:binding(Definition), Payload, ContentType).
 
 %%------------------------------------------------------------------------------
 %% @doc Takes proplist, creates JSON string and publish it on AMQP.
@@ -2180,11 +2240,11 @@ publish_fax_inbound_error(API, ContentType) ->
 %%------------------------------------------------------------------------------
 -spec fax_outbound(kz_term:api_terms()) -> api_formatter_return().
 fax_outbound(Prop) ->
-    build_message(Prop, outbound_fax_definition()).
+    kapi_definition:build_message(Prop, outbound_fax_definition()).
 
 -spec fax_outbound_v(kz_term:api_terms()) -> boolean().
 fax_outbound_v(Prop) ->
-    validate(Prop, outbound_fax_definition()).
+    kapi_definition:validate(Prop, outbound_fax_definition()).
 
 -spec publish_fax_outbound(kz_term:api_terms()) -> 'ok'.
 publish_fax_outbound(JObj) ->
@@ -2193,10 +2253,11 @@ publish_fax_outbound(JObj) ->
 -spec publish_fax_outbound(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_fax_outbound(API, ContentType) ->
     Definition = outbound_fax_definition(),
-    Binding = kapi_definition:binding(Definition),
-    Values = kapi_definition:values(Definition),
-    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun fax_outbound/1),
-    kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:notifications_publish(kapi_definition:binding(Definition), Payload, ContentType).
 
 %%------------------------------------------------------------------------------
 %% @doc Takes proplist, creates JSON string and publish it on AMQP.
@@ -2204,11 +2265,11 @@ publish_fax_outbound(API, ContentType) ->
 %%------------------------------------------------------------------------------
 -spec fax_outbound_error(kz_term:api_terms()) -> api_formatter_return().
 fax_outbound_error(Prop) ->
-    build_message(Prop, outbound_fax_error_definition()).
+    kapi_definition:build_message(Prop, outbound_fax_error_definition()).
 
 -spec fax_outbound_error_v(kz_term:api_terms()) -> boolean().
 fax_outbound_error_v(Prop) ->
-    validate(Prop, outbound_fax_error_definition()).
+    kapi_definition:validate(Prop, outbound_fax_error_definition()).
 
 -spec publish_fax_outbound_error(kz_term:api_terms()) -> 'ok'.
 publish_fax_outbound_error(JObj) ->
@@ -2217,10 +2278,11 @@ publish_fax_outbound_error(JObj) ->
 -spec publish_fax_outbound_error(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_fax_outbound_error(API, ContentType) ->
     Definition = outbound_fax_error_definition(),
-    Binding = kapi_definition:binding(Definition),
-    Values = kapi_definition:values(Definition),
-    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun fax_outbound_error/1),
-    kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:notifications_publish(kapi_definition:binding(Definition), Payload, ContentType).
 
 %%------------------------------------------------------------------------------
 %% @doc Takes proplist, creates JSON string and publish it on AMQP.
@@ -2228,11 +2290,11 @@ publish_fax_outbound_error(API, ContentType) ->
 %%------------------------------------------------------------------------------
 -spec fax_outbound_smtp_error(kz_term:api_terms()) -> api_formatter_return().
 fax_outbound_smtp_error(Prop) ->
-    build_message(Prop, outbound_smtp_fax_error_definition()).
+    kapi_definition:build_message(Prop, outbound_smtp_fax_error_definition()).
 
 -spec fax_outbound_smtp_error_v(kz_term:api_terms()) -> boolean().
 fax_outbound_smtp_error_v(Prop) ->
-    validate(Prop, outbound_smtp_fax_error_definition()).
+    kapi_definition:validate(Prop, outbound_smtp_fax_error_definition()).
 
 -spec publish_fax_outbound_smtp_error(kz_term:api_terms()) -> 'ok'.
 publish_fax_outbound_smtp_error(JObj) ->
@@ -2241,10 +2303,11 @@ publish_fax_outbound_smtp_error(JObj) ->
 -spec publish_fax_outbound_smtp_error(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_fax_outbound_smtp_error(API, ContentType) ->
     Definition = outbound_smtp_fax_error_definition(),
-    Binding = kapi_definition:binding(Definition),
-    Values = kapi_definition:values(Definition),
-    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun fax_outbound_smtp_error/1),
-    kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:notifications_publish(kapi_definition:binding(Definition), Payload, ContentType).
 
 %%%=============================================================================
 %%% Number and Port Notifications Functions
@@ -2256,11 +2319,11 @@ publish_fax_outbound_smtp_error(API, ContentType) ->
 %%------------------------------------------------------------------------------
 -spec cnam_request(kz_term:api_terms()) -> api_formatter_return().
 cnam_request(Prop) ->
-    build_message(Prop, cnam_request_definition()).
+    kapi_definition:build_message(Prop, cnam_request_definition()).
 
 -spec cnam_request_v(kz_term:api_terms()) -> boolean().
 cnam_request_v(Prop) ->
-    validate(Prop, cnam_request_definition()).
+    kapi_definition:validate(Prop, cnam_request_definition()).
 
 -spec publish_cnam_request(kz_term:api_terms()) -> 'ok'.
 publish_cnam_request(JObj) ->
@@ -2269,10 +2332,11 @@ publish_cnam_request(JObj) ->
 -spec publish_cnam_request(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_cnam_request(API, ContentType) ->
     Definition = cnam_request_definition(),
-    Binding = kapi_definition:binding(Definition),
-    Values = kapi_definition:values(Definition),
-    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun cnam_request/1),
-    kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:notifications_publish(kapi_definition:binding(Definition), Payload, ContentType).
 
 %%------------------------------------------------------------------------------
 %% @doc Takes proplist, creates JSON string and publish it on AMQP.
@@ -2280,11 +2344,11 @@ publish_cnam_request(API, ContentType) ->
 %%------------------------------------------------------------------------------
 -spec port_cancel(kz_term:api_terms()) -> api_formatter_return().
 port_cancel(Prop) ->
-    build_message(Prop, port_cancel_definition()).
+    kapi_definition:build_message(Prop, port_cancel_definition()).
 
 -spec port_cancel_v(kz_term:api_terms()) -> boolean().
 port_cancel_v(Prop) ->
-    validate(Prop, port_cancel_definition()).
+    kapi_definition:validate(Prop, port_cancel_definition()).
 
 -spec publish_port_cancel(kz_term:api_terms()) -> 'ok'.
 publish_port_cancel(JObj) ->
@@ -2293,10 +2357,11 @@ publish_port_cancel(JObj) ->
 -spec publish_port_cancel(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_port_cancel(API, ContentType) ->
     Definition = port_cancel_definition(),
-    Binding = kapi_definition:binding(Definition),
-    Values = kapi_definition:values(Definition),
-    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun port_cancel/1),
-    kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:notifications_publish(kapi_definition:binding(Definition), Payload, ContentType).
 
 %%------------------------------------------------------------------------------
 %% @doc Takes proplist, creates JSON string and publish it on AMQP.
@@ -2304,11 +2369,11 @@ publish_port_cancel(API, ContentType) ->
 %%------------------------------------------------------------------------------
 -spec port_comment(kz_term:api_terms()) -> api_formatter_return().
 port_comment(Prop) ->
-    build_message(Prop, port_comment_definition()).
+    kapi_definition:build_message(Prop, port_comment_definition()).
 
 -spec port_comment_v(kz_term:api_terms()) -> boolean().
 port_comment_v(Prop) ->
-    validate(Prop, port_comment_definition()).
+    kapi_definition:validate(Prop, port_comment_definition()).
 
 -spec publish_port_comment(kz_term:api_terms()) -> 'ok'.
 publish_port_comment(JObj) ->
@@ -2317,10 +2382,11 @@ publish_port_comment(JObj) ->
 -spec publish_port_comment(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_port_comment(API, ContentType) ->
     Definition = port_comment_definition(),
-    Binding = kapi_definition:binding(Definition),
-    Values = kapi_definition:values(Definition),
-    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun port_comment/1),
-    kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:notifications_publish(kapi_definition:binding(Definition), Payload, ContentType).
 
 %%------------------------------------------------------------------------------
 %% @doc Takes proplist, creates JSON string and publish it on AMQP.
@@ -2328,11 +2394,11 @@ publish_port_comment(API, ContentType) ->
 %%------------------------------------------------------------------------------
 -spec port_pending(kz_term:api_terms()) -> api_formatter_return().
 port_pending(Prop) ->
-    build_message(Prop, port_pending_definition()).
+    kapi_definition:build_message(Prop, port_pending_definition()).
 
 -spec port_pending_v(kz_term:api_terms()) -> boolean().
 port_pending_v(Prop) ->
-    validate(Prop, port_pending_definition()).
+    kapi_definition:validate(Prop, port_pending_definition()).
 
 -spec publish_port_pending(kz_term:api_terms()) -> 'ok'.
 publish_port_pending(JObj) ->
@@ -2341,10 +2407,11 @@ publish_port_pending(JObj) ->
 -spec publish_port_pending(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_port_pending(API, ContentType) ->
     Definition = port_pending_definition(),
-    Binding = kapi_definition:binding(Definition),
-    Values = kapi_definition:values(Definition),
-    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun port_pending/1),
-    kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:notifications_publish(kapi_definition:binding(Definition), Payload, ContentType).
 
 %%------------------------------------------------------------------------------
 %% @doc Takes proplist, creates JSON string and publish it on AMQP.
@@ -2352,11 +2419,11 @@ publish_port_pending(API, ContentType) ->
 %%------------------------------------------------------------------------------
 -spec port_rejected(kz_term:api_terms()) -> api_formatter_return().
 port_rejected(Prop) ->
-    build_message(Prop, port_rejected_definition()).
+    kapi_definition:build_message(Prop, port_rejected_definition()).
 
 -spec port_rejected_v(kz_term:api_terms()) -> boolean().
 port_rejected_v(Prop) ->
-    validate(Prop, port_rejected_definition()).
+    kapi_definition:validate(Prop, port_rejected_definition()).
 
 -spec publish_port_rejected(kz_term:api_terms()) -> 'ok'.
 publish_port_rejected(JObj) ->
@@ -2365,10 +2432,11 @@ publish_port_rejected(JObj) ->
 -spec publish_port_rejected(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_port_rejected(API, ContentType) ->
     Definition = port_rejected_definition(),
-    Binding = kapi_definition:binding(Definition),
-    Values = kapi_definition:values(Definition),
-    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun port_rejected/1),
-    kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:notifications_publish(kapi_definition:binding(Definition), Payload, ContentType).
 
 %%------------------------------------------------------------------------------
 %% @doc Takes proplist, creates JSON string and publish it on AMQP.
@@ -2376,11 +2444,11 @@ publish_port_rejected(API, ContentType) ->
 %%------------------------------------------------------------------------------
 -spec port_request(kz_term:api_terms()) -> api_formatter_return().
 port_request(Prop) ->
-    build_message(Prop, port_request_definition()).
+    kapi_definition:build_message(Prop, port_request_definition()).
 
 -spec port_request_v(kz_term:api_terms()) -> boolean().
 port_request_v(Prop) ->
-    validate(Prop, port_request_definition()).
+    kapi_definition:validate(Prop, port_request_definition()).
 
 -spec publish_port_request(kz_term:api_terms()) -> 'ok'.
 publish_port_request(JObj) ->
@@ -2389,10 +2457,11 @@ publish_port_request(JObj) ->
 -spec publish_port_request(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_port_request(API, ContentType) ->
     Definition = port_request_definition(),
-    Binding = kapi_definition:binding(Definition),
-    Values = kapi_definition:values(Definition),
-    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun port_request/1),
-    kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:notifications_publish(kapi_definition:binding(Definition), Payload, ContentType).
 
 %%------------------------------------------------------------------------------
 %% @doc Takes proplist, creates JSON string and publish it on AMQP.
@@ -2400,11 +2469,11 @@ publish_port_request(API, ContentType) ->
 %%------------------------------------------------------------------------------
 -spec port_scheduled(kz_term:api_terms()) -> api_formatter_return().
 port_scheduled(Prop) ->
-    build_message(Prop, port_scheduled_definition()).
+    kapi_definition:build_message(Prop, port_scheduled_definition()).
 
 -spec port_scheduled_v(kz_term:api_terms()) -> boolean().
 port_scheduled_v(Prop) ->
-    validate(Prop, port_scheduled_definition()).
+    kapi_definition:validate(Prop, port_scheduled_definition()).
 
 -spec publish_port_scheduled(kz_term:api_terms()) -> 'ok'.
 publish_port_scheduled(JObj) ->
@@ -2413,10 +2482,11 @@ publish_port_scheduled(JObj) ->
 -spec publish_port_scheduled(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_port_scheduled(API, ContentType) ->
     Definition = port_scheduled_definition(),
-    Binding = kapi_definition:binding(Definition),
-    Values = kapi_definition:values(Definition),
-    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun port_scheduled/1),
-    kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:notifications_publish(kapi_definition:binding(Definition), Payload, ContentType).
 
 %%------------------------------------------------------------------------------
 %% @doc Takes proplist, creates JSON string and publish it on AMQP.
@@ -2424,11 +2494,11 @@ publish_port_scheduled(API, ContentType) ->
 %%------------------------------------------------------------------------------
 -spec port_unconfirmed(kz_term:api_terms()) -> api_formatter_return().
 port_unconfirmed(Prop) ->
-    build_message(Prop, port_unconfirmed_definition()).
+    kapi_definition:build_message(Prop, port_unconfirmed_definition()).
 
 -spec port_unconfirmed_v(kz_term:api_terms()) -> boolean().
 port_unconfirmed_v(Prop) ->
-    validate(Prop, port_unconfirmed_definition()).
+    kapi_definition:validate(Prop, port_unconfirmed_definition()).
 
 -spec publish_port_unconfirmed(kz_term:api_terms()) -> 'ok'.
 publish_port_unconfirmed(JObj) ->
@@ -2437,10 +2507,11 @@ publish_port_unconfirmed(JObj) ->
 -spec publish_port_unconfirmed(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_port_unconfirmed(API, ContentType) ->
     Definition = port_unconfirmed_definition(),
-    Binding = kapi_definition:binding(Definition),
-    Values = kapi_definition:values(Definition),
-    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun port_unconfirmed/1),
-    kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:notifications_publish(kapi_definition:binding(Definition), Payload, ContentType).
 
 %%------------------------------------------------------------------------------
 %% @doc Takes proplist, creates JSON string and publish it on AMQP.
@@ -2448,11 +2519,11 @@ publish_port_unconfirmed(API, ContentType) ->
 %%------------------------------------------------------------------------------
 -spec ported(kz_term:api_terms()) -> api_formatter_return().
 ported(Prop) ->
-    build_message(Prop, ported_definition()).
+    kapi_definition:build_message(Prop, ported_definition()).
 
 -spec ported_v(kz_term:api_terms()) -> boolean().
 ported_v(Prop) ->
-    validate(Prop, ported_definition()).
+    kapi_definition:validate(Prop, ported_definition()).
 
 -spec publish_ported(kz_term:api_terms()) -> 'ok'.
 publish_ported(JObj) ->
@@ -2461,10 +2532,11 @@ publish_ported(JObj) ->
 -spec publish_ported(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_ported(API, ContentType) ->
     Definition = ported_definition(),
-    Binding = kapi_definition:binding(Definition),
-    Values = kapi_definition:values(Definition),
-    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun ported/1),
-    kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:notifications_publish(kapi_definition:binding(Definition), Payload, ContentType).
 
 %%%=============================================================================
 %%% Register Notifications Functions
@@ -2476,11 +2548,11 @@ publish_ported(API, ContentType) ->
 %%------------------------------------------------------------------------------
 -spec denied_emergency_bridge(kz_term:api_terms()) -> api_formatter_return().
 denied_emergency_bridge(Prop) ->
-    build_message(Prop, denied_emergency_bridge_definition()).
+    kapi_definition:build_message(Prop, denied_emergency_bridge_definition()).
 
 -spec denied_emergency_bridge_v(kz_term:api_terms()) -> boolean().
 denied_emergency_bridge_v(Prop) ->
-    validate(Prop, denied_emergency_bridge_definition()).
+    kapi_definition:validate(Prop, denied_emergency_bridge_definition()).
 
 -spec publish_denied_emergency_bridge(kz_term:api_terms()) -> 'ok'.
 publish_denied_emergency_bridge(JObj) ->
@@ -2489,10 +2561,11 @@ publish_denied_emergency_bridge(JObj) ->
 -spec publish_denied_emergency_bridge(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_denied_emergency_bridge(API, ContentType) ->
     Definition = denied_emergency_bridge_definition(),
-    Binding = kapi_definition:binding(Definition),
-    Values = kapi_definition:values(Definition),
-    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun denied_emergency_bridge/1),
-    kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:notifications_publish(kapi_definition:binding(Definition), Payload, ContentType).
 
 %%%=============================================================================
 %%% Register Notifications Functions
@@ -2504,11 +2577,11 @@ publish_denied_emergency_bridge(API, ContentType) ->
 %%------------------------------------------------------------------------------
 -spec deregister(kz_term:api_terms()) -> api_formatter_return().
 deregister(Prop) ->
-    build_message(Prop, deregister_definition()).
+    kapi_definition:build_message(Prop, deregister_definition()).
 
 -spec deregister_v(kz_term:api_terms()) -> boolean().
 deregister_v(Prop) ->
-    validate(Prop, deregister_definition()).
+    kapi_definition:validate(Prop, deregister_definition()).
 
 -spec publish_deregister(kz_term:api_terms()) -> 'ok'.
 publish_deregister(JObj) ->
@@ -2517,10 +2590,11 @@ publish_deregister(JObj) ->
 -spec publish_deregister(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_deregister(API, ContentType) ->
     Definition = deregister_definition(),
-    Binding = kapi_definition:binding(Definition),
-    Values = kapi_definition:values(Definition),
-    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun deregister/1),
-    kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:notifications_publish(kapi_definition:binding(Definition), Payload, ContentType).
 
 %%------------------------------------------------------------------------------
 %% @doc Takes proplist, creates JSON string and publish it on AMQP.
@@ -2528,11 +2602,11 @@ publish_deregister(API, ContentType) ->
 %%------------------------------------------------------------------------------
 -spec first_occurrence(kz_term:api_terms()) -> api_formatter_return().
 first_occurrence(Prop) ->
-    build_message(Prop, first_occurrence_definition()).
+    kapi_definition:build_message(Prop, first_occurrence_definition()).
 
 -spec first_occurrence_v(kz_term:api_terms()) -> boolean().
 first_occurrence_v(Prop) ->
-    validate(Prop, first_occurrence_definition()).
+    kapi_definition:validate(Prop, first_occurrence_definition()).
 
 -spec publish_first_occurrence(kz_term:api_terms()) -> 'ok'.
 publish_first_occurrence(JObj) ->
@@ -2541,10 +2615,11 @@ publish_first_occurrence(JObj) ->
 -spec publish_first_occurrence(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_first_occurrence(API, ContentType) ->
     Definition = first_occurrence_definition(),
-    Binding = kapi_definition:binding(Definition),
-    Values = kapi_definition:values(Definition),
-    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun first_occurrence/1),
-    kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:notifications_publish(kapi_definition:binding(Definition), Payload, ContentType).
 
 %%------------------------------------------------------------------------------
 %% @doc Takes proplist, creates JSON string and publish it on AMQP.
@@ -2552,11 +2627,11 @@ publish_first_occurrence(API, ContentType) ->
 %%------------------------------------------------------------------------------
 -spec missed_call(kz_term:api_terms()) -> api_formatter_return().
 missed_call(Prop) ->
-    build_message(Prop, missed_call_definition()).
+    kapi_definition:build_message(Prop, missed_call_definition()).
 
 -spec missed_call_v(kz_term:api_terms()) -> boolean().
 missed_call_v(Prop) ->
-    validate(Prop, missed_call_definition()).
+    kapi_definition:validate(Prop, missed_call_definition()).
 
 -spec publish_missed_call(kz_term:api_terms()) -> 'ok'.
 publish_missed_call(JObj) ->
@@ -2565,10 +2640,11 @@ publish_missed_call(JObj) ->
 -spec publish_missed_call(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_missed_call(API, ContentType) ->
     Definition = missed_call_definition(),
-    Binding = kapi_definition:binding(Definition),
-    Values = kapi_definition:values(Definition),
-    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun missed_call/1),
-    kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:notifications_publish(kapi_definition:binding(Definition), Payload, ContentType).
 
 %%------------------------------------------------------------------------------
 %% @doc Takes proplist, creates JSON string and publish it on AMQP.
@@ -2576,11 +2652,11 @@ publish_missed_call(API, ContentType) ->
 %%------------------------------------------------------------------------------
 -spec register(kz_term:api_terms()) -> api_formatter_return().
 register(Prop) ->
-    build_message(Prop, register_definition()).
+    kapi_definition:build_message(Prop, register_definition()).
 
 -spec register_v(kz_term:api_terms()) -> boolean().
 register_v(Prop) ->
-    validate(Prop, register_definition()).
+    kapi_definition:validate(Prop, register_definition()).
 
 -spec publish_register(kz_term:api_terms()) -> 'ok'.
 publish_register(JObj) ->
@@ -2589,10 +2665,11 @@ publish_register(JObj) ->
 -spec publish_register(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_register(API, ContentType) ->
     Definition = register_definition(),
-    Binding = kapi_definition:binding(Definition),
-    Values = kapi_definition:values(Definition),
-    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun register/1),
-    kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:notifications_publish(kapi_definition:binding(Definition), Payload, ContentType).
 
 %%%=============================================================================
 %%% System Notifications Functions
@@ -2604,11 +2681,11 @@ publish_register(API, ContentType) ->
 %%------------------------------------------------------------------------------
 -spec system_alert(kz_term:api_terms()) -> api_formatter_return().
 system_alert(Prop) ->
-    build_message(Prop, system_alert_definition()).
+    kapi_definition:build_message(Prop, system_alert_definition()).
 
 -spec system_alert_v(kz_term:api_terms()) -> boolean().
 system_alert_v(Prop) ->
-    validate(Prop, system_alert_definition()).
+    kapi_definition:validate(Prop, system_alert_definition()).
 
 -spec publish_system_alert(kz_term:api_terms()) -> 'ok'.
 publish_system_alert(JObj) ->
@@ -2617,10 +2694,11 @@ publish_system_alert(JObj) ->
 -spec publish_system_alert(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_system_alert(API, ContentType) ->
     Definition = system_alert_definition(),
-    Binding = kapi_definition:binding(Definition),
-    Values = kapi_definition:values(Definition),
-    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun system_alert/1),
-    kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:notifications_publish(kapi_definition:binding(Definition), Payload, ContentType).
 
 %%%=============================================================================
 %%% User Notifications Functions
@@ -2632,11 +2710,11 @@ publish_system_alert(API, ContentType) ->
 %%------------------------------------------------------------------------------
 -spec customer_update(kz_term:api_terms()) -> api_formatter_return().
 customer_update(Prop) ->
-    build_message(Prop, customer_update_definition()).
+    kapi_definition:build_message(Prop, customer_update_definition()).
 
 -spec customer_update_v(kz_term:api_terms()) -> boolean().
 customer_update_v(Prop) ->
-    validate(Prop, customer_update_definition()).
+    kapi_definition:validate(Prop, customer_update_definition()).
 
 -spec publish_customer_update(kz_term:api_terms()) -> 'ok'.
 publish_customer_update(JObj) ->
@@ -2645,10 +2723,11 @@ publish_customer_update(JObj) ->
 -spec publish_customer_update(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_customer_update(API, ContentType) ->
     Definition = customer_update_definition(),
-    Binding = kapi_definition:binding(Definition),
-    Values = kapi_definition:values(Definition),
-    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun customer_update/1),
-    kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:notifications_publish(kapi_definition:binding(Definition), Payload, ContentType).
 
 %%------------------------------------------------------------------------------
 %% @doc Takes proplist, creates JSON string and publish it on AMQP.
@@ -2656,11 +2735,11 @@ publish_customer_update(API, ContentType) ->
 %%------------------------------------------------------------------------------
 -spec new_user(kz_term:api_terms()) -> api_formatter_return().
 new_user(Prop) ->
-    build_message(Prop, new_user_definition()).
+    kapi_definition:build_message(Prop, new_user_definition()).
 
 -spec new_user_v(kz_term:api_terms()) -> boolean().
 new_user_v(Prop) ->
-    validate(Prop, new_user_definition()).
+    kapi_definition:validate(Prop, new_user_definition()).
 
 -spec publish_new_user(kz_term:api_terms()) -> 'ok'.
 publish_new_user(JObj) ->
@@ -2669,10 +2748,11 @@ publish_new_user(JObj) ->
 -spec publish_new_user(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_new_user(API, ContentType) ->
     Definition = new_user_definition(),
-    Binding = kapi_definition:binding(Definition),
-    Values = kapi_definition:values(Definition),
-    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun new_user/1),
-    kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:notifications_publish(kapi_definition:binding(Definition), Payload, ContentType).
 
 %%------------------------------------------------------------------------------
 %% @doc Takes proplist, creates JSON string and publish it on AMQP.
@@ -2680,11 +2760,11 @@ publish_new_user(API, ContentType) ->
 %%------------------------------------------------------------------------------
 -spec password_recovery(kz_term:api_terms()) -> api_formatter_return().
 password_recovery(Prop) ->
-    build_message(Prop, password_recovery_definition()).
+    kapi_definition:build_message(Prop, password_recovery_definition()).
 
 -spec password_recovery_v(kz_term:api_terms()) -> boolean().
 password_recovery_v(Prop) ->
-    validate(Prop, password_recovery_definition()).
+    kapi_definition:validate(Prop, password_recovery_definition()).
 
 -spec publish_password_recovery(kz_term:api_terms()) -> 'ok'.
 publish_password_recovery(JObj) ->
@@ -2693,10 +2773,11 @@ publish_password_recovery(JObj) ->
 -spec publish_password_recovery(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_password_recovery(API, ContentType) ->
     Definition = password_recovery_definition(),
-    Binding = kapi_definition:binding(Definition),
-    Values = kapi_definition:values(Definition),
-    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun password_recovery/1),
-    kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:notifications_publish(kapi_definition:binding(Definition), Payload, ContentType).
 
 %%%=============================================================================
 %%% Voicemail Notifications Functions
@@ -2708,11 +2789,11 @@ publish_password_recovery(API, ContentType) ->
 %%------------------------------------------------------------------------------
 -spec voicemail_full(kz_term:api_terms()) -> api_formatter_return().
 voicemail_full(Prop) ->
-    build_message(Prop, voicemail_full_definition()).
+    kapi_definition:build_message(Prop, voicemail_full_definition()).
 
 -spec voicemail_full_v(kz_term:api_terms()) -> boolean().
 voicemail_full_v(Prop) ->
-    validate(Prop, voicemail_full_definition()).
+    kapi_definition:validate(Prop, voicemail_full_definition()).
 
 -spec publish_voicemail_full(kz_term:api_terms()) -> 'ok'.
 publish_voicemail_full(JObj) ->
@@ -2721,10 +2802,11 @@ publish_voicemail_full(JObj) ->
 -spec publish_voicemail_full(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_voicemail_full(API, ContentType) ->
     Definition = voicemail_full_definition(),
-    Binding = kapi_definition:binding(Definition),
-    Values = kapi_definition:values(Definition),
-    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun voicemail_full/1),
-    kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:notifications_publish(kapi_definition:binding(Definition), Payload, ContentType).
 
 %%------------------------------------------------------------------------------
 %% @doc Takes proplist, creates JSON string and publish it on AMQP.
@@ -2732,11 +2814,11 @@ publish_voicemail_full(API, ContentType) ->
 %%------------------------------------------------------------------------------
 -spec voicemail_new(kz_term:api_terms()) -> api_formatter_return().
 voicemail_new(Prop) ->
-    build_message(Prop, voicemail_new_definition()).
+    kapi_definition:build_message(Prop, voicemail_new_definition()).
 
 -spec voicemail_new_v(kz_term:api_terms()) -> boolean().
 voicemail_new_v(Prop) ->
-    validate(Prop, voicemail_new_definition()).
+    kapi_definition:validate(Prop, voicemail_new_definition()).
 
 -spec publish_voicemail_new(kz_term:api_terms()) -> 'ok'.
 publish_voicemail_new(JObj) ->
@@ -2745,10 +2827,11 @@ publish_voicemail_new(JObj) ->
 -spec publish_voicemail_new(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_voicemail_new(API, ContentType) ->
     Definition = voicemail_new_definition(),
-    Binding = kapi_definition:binding(Definition),
-    Values = kapi_definition:values(Definition),
-    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun voicemail_new/1),
-    kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:notifications_publish(kapi_definition:binding(Definition), Payload, ContentType).
 
 %%------------------------------------------------------------------------------
 %% @doc Takes proplist, creates JSON string and publish it on AMQP.
@@ -2756,11 +2839,11 @@ publish_voicemail_new(API, ContentType) ->
 %%------------------------------------------------------------------------------
 -spec voicemail_saved(kz_term:api_terms()) -> api_formatter_return().
 voicemail_saved(Prop) ->
-    build_message(Prop, voicemail_saved_definition()).
+    kapi_definition:build_message(Prop, voicemail_saved_definition()).
 
 -spec voicemail_saved_v(kz_term:api_terms()) -> boolean().
 voicemail_saved_v(Prop) ->
-    validate(Prop, voicemail_saved_definition()).
+    kapi_definition:validate(Prop, voicemail_saved_definition()).
 
 -spec publish_voicemail_saved(kz_term:api_terms()) -> 'ok'.
 publish_voicemail_saved(JObj) ->
@@ -2769,10 +2852,11 @@ publish_voicemail_saved(JObj) ->
 -spec publish_voicemail_saved(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_voicemail_saved(API, ContentType) ->
     Definition = voicemail_saved_definition(),
-    Binding = kapi_definition:binding(Definition),
-    Values = kapi_definition:values(Definition),
-    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun voicemail_saved/1),
-    kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:notifications_publish(kapi_definition:binding(Definition), Payload, ContentType).
 
 %%%=============================================================================
 %%% Webhook Notifications Functions
@@ -2784,11 +2868,11 @@ publish_voicemail_saved(API, ContentType) ->
 %%------------------------------------------------------------------------------
 -spec webhook(kz_term:api_terms()) -> api_formatter_return().
 webhook(Prop) ->
-    build_message(Prop, webhook_definition()).
+    kapi_definition:build_message(Prop, webhook_definition()).
 
 -spec webhook_v(kz_term:api_terms()) -> boolean().
 webhook_v(Prop) ->
-    validate(Prop, webhook_definition()).
+    kapi_definition:validate(Prop, webhook_definition()).
 
 -spec publish_webhook(kz_term:api_terms()) -> 'ok'.
 publish_webhook(JObj) ->
@@ -2797,10 +2881,11 @@ publish_webhook(JObj) ->
 -spec publish_webhook(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_webhook(API, ContentType) ->
     Definition = webhook_definition(),
-    Binding = kapi_definition:binding(Definition),
-    Values = kapi_definition:values(Definition),
-    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun webhook/1),
-    kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:notifications_publish(kapi_definition:binding(Definition), Payload, ContentType).
 
 %%------------------------------------------------------------------------------
 %% @doc Takes proplist, creates JSON string and publish it on AMQP.
@@ -2808,11 +2893,11 @@ publish_webhook(API, ContentType) ->
 %%------------------------------------------------------------------------------
 -spec webhook_disabled(kz_term:api_terms()) -> api_formatter_return().
 webhook_disabled(Prop) ->
-    build_message(Prop, webhook_disabled_definition()).
+    kapi_definition:build_message(Prop, webhook_disabled_definition()).
 
 -spec webhook_disabled_v(kz_term:api_terms()) -> boolean().
 webhook_disabled_v(Prop) ->
-    validate(Prop, webhook_disabled_definition()).
+    kapi_definition:validate(Prop, webhook_disabled_definition()).
 
 -spec publish_webhook_disabled(kz_term:api_terms()) -> 'ok'.
 publish_webhook_disabled(JObj) ->
@@ -2821,10 +2906,11 @@ publish_webhook_disabled(JObj) ->
 -spec publish_webhook_disabled(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_webhook_disabled(API, ContentType) ->
     Definition = webhook_disabled_definition(),
-    Binding = kapi_definition:binding(Definition),
-    Values = kapi_definition:values(Definition),
-    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun webhook_disabled/1),
-    kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:notifications_publish(kapi_definition:binding(Definition), Payload, ContentType).
 
 %%%=============================================================================
 %%% Customer Defined Notifications Definitions
@@ -2836,11 +2922,11 @@ publish_webhook_disabled(API, ContentType) ->
 %%------------------------------------------------------------------------------
 -spec cf_notification(kz_term:api_terms()) -> api_formatter_return().
 cf_notification(Prop) ->
-    build_message(Prop, cf_notification_definition()).
+    kapi_definition:build_message(Prop, cf_notification_definition()).
 
 -spec cf_notification_v(kz_term:api_terms()) -> boolean().
 cf_notification_v(Prop) ->
-    validate(Prop, cf_notification_definition()).
+    kapi_definition:validate(Prop, cf_notification_definition()).
 
 -spec publish_cf_notification(kz_term:api_terms()) -> 'ok'.
 publish_cf_notification(JObj) ->
@@ -2849,10 +2935,11 @@ publish_cf_notification(JObj) ->
 -spec publish_cf_notification(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_cf_notification(API, ContentType) ->
     Definition = cf_notification_definition(),
-    Binding = kapi_definition:binding(Definition),
-    Values = kapi_definition:values(Definition),
-    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun cf_notification/1),
-    kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:notifications_publish(kapi_definition:binding(Definition), Payload, ContentType).
 
 %%%=============================================================================
 %%% Phone Service Action Required Functions
@@ -2864,11 +2951,11 @@ publish_cf_notification(API, ContentType) ->
 %%------------------------------------------------------------------------------
 -spec number_feature_manual_action(kz_term:api_terms()) -> api_formatter_return().
 number_feature_manual_action(Prop) ->
-    build_message(Prop, number_feature_manual_action_definition()).
+    kapi_definition:build_message(Prop, number_feature_manual_action_definition()).
 
 -spec number_feature_manual_action_v(kz_term:api_terms()) -> boolean().
 number_feature_manual_action_v(Prop) ->
-    validate(Prop, number_feature_manual_action_definition()).
+    kapi_definition:validate(Prop, number_feature_manual_action_definition()).
 
 -spec publish_number_feature_manual_action(kz_term:api_terms()) -> 'ok'.
 publish_number_feature_manual_action(JObj) ->
@@ -2877,7 +2964,8 @@ publish_number_feature_manual_action(JObj) ->
 -spec publish_number_feature_manual_action(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_number_feature_manual_action(API, ContentType) ->
     Definition = number_feature_manual_action_definition(),
-    Binding = kapi_definition:binding(Definition),
-    Values = kapi_definition:values(Definition),
-    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun number_feature_manual_action/1),
-    kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:notifications_publish(kapi_definition:binding(Definition), Payload, ContentType).
