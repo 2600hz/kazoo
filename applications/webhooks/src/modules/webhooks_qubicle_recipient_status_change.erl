@@ -35,9 +35,9 @@ bindings_and_responders() ->
      ]
     ,[{{?MODULE, 'handle'}
       ,[{<<"qubicle-recipient">>, <<"create">>}
-      ,{<<"qubicle-recipient">>, <<"delete">>}
-      ,{<<"qubicle-recipient">>, <<"ready">>}
-      ,{<<"qubicle-recipient">>, <<"away">>}
+       ,{<<"qubicle-recipient">>, <<"delete">>}
+       ,{<<"qubicle-recipient">>, <<"ready">>}
+       ,{<<"qubicle-recipient">>, <<"away">>}
        ]
       }
      ]
