@@ -9,7 +9,7 @@
 %%%-----------------------------------------------------------------------------
 -module(pqc_blackhole).
 
--export([seq/0
+-export([seq/0, api_test/0
         ,cleanup/0
         ]).
 
@@ -23,6 +23,7 @@
 seq() ->
     _ = [ping_test()
         ,max_conn_test()
+        ,api_test()
         ],
     'ok'.
 
@@ -58,7 +59,7 @@ ping_test() ->
     pqc_ws_client:close(WSConn),
 
     cleanup(API),
-    lager:info("FINISHED SEQ").
+    lager:info("FINISHED PING SEQ").
 
 max_conn_test() ->
     Model = initial_state(),
@@ -94,7 +95,102 @@ max_conn_test() ->
     _ = kapps_config:set_default(<<"blackhole">>, <<"max_connections_per_ip">>, PrevMaxConn),
 
     cleanup(API),
-    lager:info("FINISHED SEQ").
+    lager:info("FINISHED MAX_CONN SEQ").
+
+-spec api_test() -> 'ok'.
+api_test() ->
+    Model = initial_state(),
+    #{'auth_token' := AuthToken} = API = pqc_kazoo_model:api(Model),
+
+    AccountResp = pqc_cb_accounts:create_account(API, hd(?ACCOUNT_NAMES)),
+    lager:info("created account: ~s", [AccountResp]),
+
+    AccountId = kz_json:get_value([<<"data">>, <<"id">>], kz_json:decode(AccountResp)),
+
+    AvailableBindings = pqc_cb_websockets:available(API),
+    lager:info("available: ~s", [AvailableBindings]),
+    'true' = ([] =/= kz_json:is_json_object([<<"data">>, <<"call">>], kz_json:decode(AvailableBindings))),
+
+    EmptySockets = pqc_cb_websockets:summary(API, AccountId),
+    lager:info("empty: ~s", [EmptySockets]),
+    [] = kz_json:get_list_value(<<"data">>, kz_json:decode(EmptySockets)),
+
+    WSConn = pqc_ws_client:connect("localhost", ?PORT),
+    lager:info("connected to websocket: ~p", [WSConn]),
+
+    PingReqId = kz_binary:rand_hex(4),
+    Ping = kz_json:from_list([{<<"request_id">>, PingReqId}
+                             ,{<<"action">>, <<"ping">>}
+                             ,{<<"auth_token">>, AuthToken}
+                             ]),
+    _Send = pqc_ws_client:send(WSConn, kz_json:encode(Ping)),
+    {'json', ReplyJObj} = pqc_ws_client:recv(WSConn, 1000),
+    lager:info("pong: ~p", [ReplyJObj]),
+    PingReqId = kz_json:get_ne_binary_value(<<"request_id">>, ReplyJObj),
+    <<"success">> = kz_json:get_ne_binary_value(<<"status">>, ReplyJObj),
+
+    WithSocket = pqc_cb_websockets:summary(API, AccountId),
+    lager:info("with socket: ~s", [WithSocket]),
+    [SocketDetails] = kz_json:get_list_value(<<"data">>, kz_json:decode(WithSocket)),
+    SocketId = kz_json:get_ne_binary_value(<<"websocket_session_id">>, SocketDetails),
+    [] = kz_json:get_list_value(<<"bindings">>, SocketDetails),
+
+    Binding = <<"object.doc_created.user">>,
+    BindReqId = kz_binary:rand_hex(4),
+    BindReq = kz_json:from_list([{<<"action">>, <<"subscribe">>}
+                                ,{<<"auth_token">>, AuthToken}
+                                ,{<<"request_id">>, BindReqId}
+                                ,{<<"data">>
+                                 ,kz_json:from_list([{<<"account_id">>, AccountId}
+                                                    ,{<<"binding">>, Binding}
+                                                    ])
+                                 }
+                                ]),
+    _Send = pqc_ws_client:send(WSConn, kz_json:encode(BindReq)),
+    {'json', BindReplyJObj} = pqc_ws_client:recv(WSConn, 1000),
+    lager:info("bind reply: ~p", [BindReplyJObj]),
+    <<"reply">> = kz_json:get_ne_binary_value(<<"action">>, BindReplyJObj),
+    BindReqId = kz_json:get_ne_binary_value(<<"request_id">>, BindReplyJObj),
+    <<"success">> = kz_json:get_ne_binary_value(<<"status">>, BindReplyJObj),
+    [Binding] = kz_json:get_list_value([<<"data">>, <<"subscribed">>], BindReplyJObj),
+
+    DetailsResp = pqc_cb_websockets:details(API, AccountId, SocketId),
+    lager:info("details: ~s", [DetailsResp]),
+    DetailsJObj = kz_json:decode(DetailsResp),
+    [Binding] = kz_json:get_list_value([<<"data">>, <<"bindings">>], DetailsJObj),
+    <<"127.0.0.1">> = kz_json:get_ne_binary_value([<<"data">>, <<"source">>], DetailsJObj),
+    SocketId = kz_json:get_ne_binary_value([<<"data">>, <<"websocket_session_id">>], DetailsJObj),
+
+    UnbindReqId = kz_binary:rand_hex(4),
+    UnbindReq = kz_json:set_values([{<<"action">>, <<"unsubscribe">>}
+                                   ,{<<"request_id">>, UnbindReqId}
+                                   ]
+                                  ,BindReq
+                                  ),
+    _Send = pqc_ws_client:send(WSConn, kz_json:encode(UnbindReq)),
+    {'json', UnbindReplyJObj} = pqc_ws_client:recv(WSConn, 1000),
+    lager:info("unbind reply: ~p", [UnbindReplyJObj]),
+    <<"reply">> = kz_json:get_ne_binary_value(<<"action">>, UnbindReplyJObj),
+    UnbindReqId = kz_json:get_ne_binary_value(<<"request_id">>, UnbindReplyJObj),
+    <<"success">> = kz_json:get_ne_binary_value(<<"status">>, UnbindReplyJObj),
+    [Binding] = kz_json:get_list_value([<<"data">>, <<"unsubscribed">>], UnbindReplyJObj),
+    [] = kz_json:get_list_value([<<"data">>, <<"subscribed">>], UnbindReplyJObj),
+
+    NoDetailsResp = pqc_cb_websockets:details(API, AccountId, SocketId),
+    lager:info("no details: ~s", [NoDetailsResp]),
+    NoDetailsJObj = kz_json:decode(NoDetailsResp),
+    [] = kz_json:get_list_value([<<"data">>, <<"bindings">>], NoDetailsJObj),
+    <<"127.0.0.1">> = kz_json:get_ne_binary_value([<<"data">>, <<"source">>], NoDetailsJObj),
+    SocketId = kz_json:get_ne_binary_value([<<"data">>, <<"websocket_session_id">>], NoDetailsJObj),
+
+    pqc_ws_client:close(WSConn),
+
+    EmptyAgain = pqc_cb_websockets:summary(API, AccountId),
+    lager:info("empty again: ~s", [EmptyAgain]),
+    [] = kz_json:get_list_value(<<"data">>, kz_json:decode(EmptyAgain)),
+
+    cleanup(API),
+    lager:info("FINISHED API SEQ").
 
 -spec initial_state() -> pqc_kazoo_model:model().
 initial_state() ->

@@ -28,8 +28,8 @@
 -module(blackhole_bindings).
 
 %% API
--export([bind/3,bind/4
-        ,unbind/3,unbind/4
+-export([bind/3, bind/4
+        ,unbind/3, unbind/4
         ,map/2, map/3
         ,pmap/2, pmap/3
         ,fold/2
@@ -76,6 +76,7 @@
 -type fold_results() :: payload().
 -spec fold(kz_term:ne_binary(), payload()) -> fold_results().
 fold(Routing, Payload) ->
+    lager:debug("fold: ~s", [Routing]),
     kazoo_bindings:fold(Routing, Payload).
 
 %%------------------------------------------------------------------------------
@@ -120,28 +121,39 @@ filter_out_failed({'halt', _}) -> 'true';
 filter_out_failed({'false', _}) -> 'false';
 filter_out_failed('false') -> 'false';
 filter_out_failed({'EXIT', _}) -> 'false';
-filter_out_failed(#bh_context{}=Ctx) ->
-    not bh_context:success(Ctx);
-filter_out_failed([#bh_context{}=Ctx]) ->
-    not bh_context:success(Ctx);
-filter_out_failed(Term) -> not kz_term:is_empty(Term).
+filter_out_failed([Result]) ->
+    case bh_context:is_context(Result) of
+        'true' -> not bh_context:success(Result);
+        'false' -> not kz_term:is_empty(Result)
+    end;
+filter_out_failed(Result) ->
+    case bh_context:is_context(Result) of
+        'true' -> not bh_context:success(Result);
+        'false' -> not kz_term:is_empty(Result)
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec filter_out_succeeded({boolean() | 'halt', any()} | boolean() | any()) -> boolean().
+-spec filter_out_succeeded({boolean() | 'halt', any()} | boolean() | bh_context:context() | [bh_context:context()]) ->
+          boolean().
 filter_out_succeeded({'true', _}) -> 'false';
 filter_out_succeeded('true') -> 'false';
 filter_out_succeeded({'halt', _}) -> 'true';
 filter_out_succeeded({'false', _}) -> 'true';
 filter_out_succeeded('false') -> 'true';
 filter_out_succeeded({'EXIT', _}) -> 'true';
-filter_out_succeeded(#bh_context{}=Ctx) ->
-    bh_context:success(Ctx);
-filter_out_succeeded([#bh_context{}=Ctx]) ->
-    bh_context:success(Ctx);
-filter_out_succeeded(Term) -> kz_term:is_empty(Term).
+filter_out_succeeded([Result]) ->
+    case bh_context:is_context(Result) of
+        'true' -> bh_context:success(Result);
+        'false' -> kz_term:is_empty(Result)
+    end;
+filter_out_succeeded(Result) ->
+    case bh_context:is_context(Result) of
+        'true' -> bh_context:success(Result);
+        'false' -> kz_term:is_empty(Result)
+    end.
 
 -type bind_result() :: 'ok' |
                        {'error', 'exists'}.
@@ -304,11 +316,13 @@ bh_matches(_, _) -> 'false'.
 
 -spec map(kz_term:ne_binary(), payload()) -> map_results().
 map(Routing, Payload) ->
+    lager:debug("map: ~s", [Routing]),
     RTOptions = [{'matches', fun bh_match/2}],
     kazoo_bindings:map(Routing, Payload, RTOptions).
 
 -spec map(kz_term:ne_binary(), payload(), kz_bindings()) -> map_results().
 map(Routing, Payload, Bindings) ->
+    lager:debug("map: ~s", [Routing]),
     RTOptions = [{'matches', fun bh_match/2}
                 ,{'candidates', fun(_) -> Bindings end}
                 ],
@@ -316,11 +330,13 @@ map(Routing, Payload, Bindings) ->
 
 -spec pmap(kz_term:ne_binary(), payload()) -> map_results().
 pmap(Routing, Payload) ->
+    lager:debug("pmap: ~s", [Routing]),
     RTOptions = [{'matches', fun bh_match/2}],
     kazoo_bindings:pmap(Routing, Payload, RTOptions).
 
 -spec pmap(kz_term:ne_binary(), payload(), kz_bindings()) -> map_results().
 pmap(Routing, Payload, Bindings) ->
+    lager:debug("pmap: ~s", [Routing]),
     RTOptions = [{'matches', fun bh_match/2}
                 ,{'candidates', fun(_) -> Bindings end}
                 ],
