@@ -28,7 +28,7 @@ init() ->
 -spec bindings_and_responders() -> {gen_listener:bindings(), gen_listener:responders()}.
 bindings_and_responders() ->
     {[{'qubicle', [
-               ]
+                  ]
       }
      ]
     ,[{{'webhooks_channel_util', 'handle_event'}
