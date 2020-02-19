@@ -14,6 +14,9 @@
 
 -include_lib("webhooks/src/webhooks.hrl").
 
+-define(QUBICLE_EVENT_EXCHANGE, <<"qubicle-event">>).
+-define(QUBICLE_EVENT_EXCHANGE_TYPE, <<"topic">>).
+
 -define(ID, kz_term:to_binary(?MODULE)).
 -define(HOOK_NAME, <<"qubicle_recipient_rejected">>).
 -define(NAME, <<"Qubicle Recipient Rejected">>).
@@ -27,11 +30,12 @@
 
 -spec init() -> 'ok'.
 init() ->
+    kapi_amqp_util:new_exchange(?QUBICLE_EVENT_EXCHANGE, ?QUBICLE_EVENT_EXCHANGE_TYPE),
     webhooks_util:init_metadata(?ID, ?METADATA).
 
 -spec bindings_and_responders() -> {gen_listener:bindings(), gen_listener:responders()}.
 bindings_and_responders() ->
-    {[{'qubicle_recipient', ['federate', 'event_only']}
+    {[{'qubicle_recipient', ['event_only']}
      ]
     ,[{{?MODULE, 'handle'}
       ,[{<<"qubicle-recipient">>, <<"reject">>}
