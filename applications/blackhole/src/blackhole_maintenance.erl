@@ -107,7 +107,7 @@ active_sessions_by_ip(<<IPAddr/binary>>) ->
 
 -spec active_sessions_by_account(kz_term:ne_binary()) -> 'ok'.
 active_sessions_by_account(<<AccountId/binary>>) ->
-    Sessions = blackhole_tracking:get_contexts_by_auth_account(AccountId),
+    Sessions = blackhole_tracking:get_contexts_by_account_id(AccountId),
     print_sessions(Sessions).
 
 -spec print_sessions([bh_context:context()]) -> 'ok'.

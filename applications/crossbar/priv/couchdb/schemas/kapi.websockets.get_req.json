@@ -6,6 +6,9 @@
         "Account-ID": {
             "type": "string"
         },
+        "Auth-Account-ID": {
+            "type": "string"
+        },
         "Event-Category": {
             "enum": [
                 "websockets"
@@ -22,5 +25,8 @@
             "type": "string"
         }
     },
+    "required": [
+        "Account-ID"
+    ],
     "type": "object"
 }

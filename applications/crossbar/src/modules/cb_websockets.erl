@@ -20,10 +20,11 @@
 
 -define(CB_LIST, <<"websockets/crossbar_listing">>).
 
--define(TO_JSON(Binding, Event),
-        kz_json:from_list([{<<"binding">>, Binding}
+-define(TO_JSON(Binding, Event)
+       ,kz_json:from_list([{<<"binding">>, Binding}
                           ,{<<"event">>, Event}
-                          ])).
+                          ])
+       ).
 
 -define(AVAILABLE
        ,kapps_config:get_json(<<"blackhole">>, <<"bindings">>)
@@ -174,7 +175,7 @@ summary_available(Context) ->
 %%------------------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    websockets_req(Context, [{<<"Account-ID">>, cb_context:account_id(Context)}]).
+    websockets_req(Context, [{<<"Auth-Account-ID">>, cb_context:auth_account_id(Context)}]).
 
 %%------------------------------------------------------------------------------
 %% @doc Load an instance from the database
@@ -182,7 +183,16 @@ summary(Context) ->
 %%------------------------------------------------------------------------------
 -spec read(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
-    websockets_req(Context, [{<<"Socket-ID">>, Id}]).
+    ReadContext = websockets_req(Context, [{<<"Socket-ID">>, Id}]),
+    read_resp(ReadContext, cb_context:resp_status(ReadContext)).
+
+read_resp(Context, 'success') ->
+    read_success_resp(Context, cb_context:resp_data(Context));
+read_resp(Context, _Error) -> Context.
+
+read_success_resp(Context, RespData) when is_list(RespData) ->
+    cb_context:set_resp_data(Context, kz_json:merge(RespData));
+read_success_resp(Context, _RespData) -> Context.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -191,9 +201,10 @@ read(Id, Context) ->
 -spec websockets_req(cb_context:context(), kz_term:proplist()) -> cb_context:context().
 websockets_req(Context, Props) ->
     Req = [{<<"Msg-ID">>, cb_context:req_id(Context)}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ,{<<"Account-ID">>, cb_context:account_id(Context)}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION) ++ Props
           ],
-    case kz_amqp_worker:call_collect(Req ++ Props
+    case kz_amqp_worker:call_collect(Req
                                     ,fun kapi_websockets:publish_get_req/1
                                     ,{'blackhole', 'true'}
                                     )
@@ -203,7 +214,6 @@ websockets_req(Context, Props) ->
             crossbar_util:response('error', <<"could not reach websockets tracking">>, Context);
         {_OK, JObjs} ->
             websockets_resp(Context, JObjs)
-
     end.
 
 %%------------------------------------------------------------------------------

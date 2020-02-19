@@ -47,7 +47,7 @@ auth_token(Context, Token) ->
     lager:debug("trying to authenticate with token: ~s", [Token]),
     case kz_auth:validate_token(Token) of
         {'ok', JObj} ->
-            lager:debug("token auth is valid, authenticating : ~p", [JObj]),
+            lager:info("token auth is valid, authenticating : ~p", [JObj]),
             AccountId = kz_json:get_ne_value(<<"account_id">>, JObj),
             bh_context:set_auth_account_id(Context, AccountId);
         {'error', R} ->

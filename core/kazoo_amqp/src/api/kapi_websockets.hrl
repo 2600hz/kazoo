@@ -25,14 +25,13 @@
 
 -define(WEBSOCKETS_VALUES, [{?KEY_EVENT_CATEGORY, <<"websockets">>}]).
 
-
 %% websockets whapp routing keys for responses to clients
 -define(KEY_WEBSOCKETS_GET_REQ, <<"websockets.get">>).
 
 %% Configuration Document Update
 %% request to read
--define(WEBSOCKETS_GET_REQ_HEADERS, []).
--define(OPTIONAL_WEBSOCKETS_GET_REQ_HEADERS, [?KEY_API_ACCOUNT_ID, <<"Socket-ID">>]).
+-define(WEBSOCKETS_GET_REQ_HEADERS, [?KEY_API_ACCOUNT_ID]).
+-define(OPTIONAL_WEBSOCKETS_GET_REQ_HEADERS, [<<"Auth-Account-ID">>, <<"Socket-ID">>]).
 -define(WEBSOCKETS_GET_REQ_VALUES, [{?KEY_EVENT_NAME, <<"get_req">>}
                                     | ?WEBSOCKETS_VALUES
                                    ]).
@@ -45,7 +44,6 @@
                                     ]).
 
 -define(WEBSOCKETS_TYPES, []).
-
 
 -define(KAPI_WEBSOCKETS_HRL, 'true').
 -endif.

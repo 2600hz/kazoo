@@ -50,8 +50,7 @@ maybe_allow_connection(Req, RemoteIP, 'undefined', _ActiveConns) ->
     lager:debug("no max connection limit (~p has ~p currently)", [RemoteIP, _ActiveConns]),
     allow_connection(Req, RemoteIP);
 maybe_allow_connection(Req, RemoteIP, MaxConns, ActiveConns) when ActiveConns < MaxConns ->
-    lager:info("allowing connection from ~p (~p of ~p up)", [RemoteIP, ActiveConns, MaxConns]),
-    lager:info("~p~n", [ets:tab2list(blackhole_tracking)]),
+    lager:debug("allowing connection from ~p (~p of ~p up)", [RemoteIP, ActiveConns, MaxConns]),
     allow_connection(Req, RemoteIP);
 maybe_allow_connection(Req, RemoteIP, _MaxConns, ActiveConns) ->
     lager:warning("connection from ~p denied: max limit ~p reached", [RemoteIP, ActiveConns]),

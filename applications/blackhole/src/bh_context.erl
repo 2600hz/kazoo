@@ -20,6 +20,7 @@
         ,auth_token/1, set_auth_token/2
         ,auth_account_id/1, set_auth_account_id/2
         ,bindings/1, set_bindings/2
+        ,client_bindings/1
         ,bindings_from_json/1
         ,add_binding/2, add_bindings/2
         ,remove_binding/2, remove_bindings/2
@@ -45,9 +46,14 @@
 
 -include("blackhole.hrl").
 
+%% {ClientBinding, AMQPBinding}
+%% {<<"object.doc_created.user">>, <<"doc_created.{ACCOUNT_DB}.user.*">>}
+-type binding() :: {kz_term:ne_binary(), kz_term:ne_binary()}.
+-type bindings() :: [binding()].
+
 -record(bh_context, {auth_token = <<>> :: kz_term:api_binary() | '_'
                     ,auth_account_id :: kz_term:api_binary() | '_'
-                    ,bindings = [] :: kz_term:ne_binaries() | '_'
+                    ,bindings = [] :: bindings() | '_'
                     ,websocket_session_id :: kz_term:api_binary() | '_'
                     ,websocket_pid :: kz_term:api_pid() | '_'
                     ,req_id = kz_binary:rand_hex(16) :: kz_term:ne_binary() | '_'
@@ -118,7 +124,7 @@ to_json(Context) ->
     kz_json:from_list(
       [{<<"auth_token">>, auth_token(Context)}
       ,{<<"auth_account_id">>, auth_account_id(Context)}
-      ,{<<"bindings">>, bindings(Context)}
+      ,{<<"bindings">>, [ClientBinding || {ClientBinding, _} <- bindings(Context)]}
       ,{<<"websocket_session_id">>, websocket_session_id(Context)}
       ,{<<"timestamp">>, timestamp(Context)}
       ,{<<"name">>, name(Context)}
@@ -176,9 +182,8 @@ is_superduper_admin(#bh_context{auth_account_id=AccountId}) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec bindings(context()) -> kz_term:ne_binaries().
-bindings(#bh_context{bindings=Bds}) ->
-    Bds.
+-spec bindings(context()) -> bindings().
+bindings(#bh_context{bindings=Bds}) -> Bds.
 
 -spec bindings_from_json(kz_json:object()) -> kz_term:ne_binaries().
 bindings_from_json(JObj) ->
@@ -188,27 +193,31 @@ bindings_from_json(JObj) ->
         Binding -> [Binding]
     end.
 
+-spec client_bindings(context()) -> kz_term:ne_binaries().
+client_bindings(#bh_context{bindings=Bs}) ->
+    [ClientBinding || {ClientBinding, _AMQPBinding} <- Bs].
+
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec set_bindings(context(), kz_term:ne_binaries()) -> context().
+-spec set_bindings(context(), bindings()) -> context().
 set_bindings(Context, Bindings) ->
     Context#bh_context{bindings=Bindings}.
 
--spec add_binding(context(), kz_term:ne_binary()) -> context().
-add_binding(#bh_context{bindings=Bds}=Context, Binding) ->
+-spec add_binding(context(), binding()) -> context().
+add_binding(#bh_context{bindings=Bds}=Context, {_, _}=Binding) ->
     Context#bh_context{bindings=[Binding|Bds]}.
 
--spec add_bindings(context(), kz_term:ne_binaries()) -> context().
+-spec add_bindings(context(), bindings()) -> context().
 add_bindings(#bh_context{bindings=Bds}=Context, Bindings) ->
-    Context#bh_context{bindings= Bds ++ Bindings}.
+    Context#bh_context{bindings=Bds ++ Bindings}.
 
--spec remove_binding(context(), kz_term:ne_binary()) -> context().
-remove_binding(#bh_context{bindings=Bds}=Context, Binding) ->
+-spec remove_binding(context(), binding()) -> context().
+remove_binding(#bh_context{bindings=Bds}=Context, {_,_}=Binding) ->
     Context#bh_context{bindings=lists:delete(Binding, Bds)}.
 
--spec remove_bindings(context(), kz_term:ne_binaries()) -> context().
+-spec remove_bindings(context(), bindings()) -> context().
 remove_bindings(#bh_context{bindings=Bds}=Context, Bindings) ->
     Context#bh_context{bindings= Bds -- Bindings}.
 
@@ -216,8 +225,8 @@ remove_bindings(#bh_context{bindings=Bds}=Context, Bindings) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec is_bound(context(), kz_term:ne_binary()) -> boolean().
-is_bound(#bh_context{bindings=Bds}, Binding) ->
+-spec is_bound(context(), binding()) -> boolean().
+is_bound(#bh_context{bindings=Bds}, {_,_}=Binding) ->
     lists:member(Binding, Bds).
 
 %%------------------------------------------------------------------------------

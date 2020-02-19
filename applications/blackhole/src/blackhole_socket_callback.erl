@@ -112,7 +112,6 @@ authorize(Context, Action, Payload) ->
     Routing = <<"blackhole.authorize.", Action/binary>>,
     handle_result(Context, blackhole_bindings:map(Routing, [Context, Payload])).
 
-
 limits(Context, Action, Payload) ->
     Routing = <<"blackhole.limits.", Action/binary>>,
     handle_result(Context, blackhole_bindings:map(Routing, [Context, Payload])).
