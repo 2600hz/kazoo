@@ -20,6 +20,15 @@ The old `save/2` took an updater function and tried to save the result. Because 
 
 4. New parameters were added to the account, user and device documents to set the asserted identity.  These parameters are currently free-form but will be strictly verified by default in the future!
 
+5. The default prompt for the voicemail configuration menu has changed.
+
+Two new **en-US** prompts have been added to handle this feature and should be imported in conjunction with the upgrade of KAZOO.
+
+* vm-settings\_menu\_announcement_on
+* vm-settings\_menu\_announcement_off
+
+For instructions on how to import prompts please consult the [Kazoo Core Media](https://github.com/2600hz/kazoo-sounds/tree/master/kazoo-core#importing-prompts-for-a-language) documentation.
+
 ### 4.2
 
 1.  Erlang Version Support
