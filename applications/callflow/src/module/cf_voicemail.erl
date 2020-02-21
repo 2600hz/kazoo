@@ -143,6 +143,7 @@
               ,set_pin = <<"3">> :: kz_term:ne_binary()
               ,rec_temporary_unavailable = <<"4">> :: kz_term:ne_binary()
               ,del_temporary_unavailable = <<"5">> :: kz_term:ne_binary()
+              ,toggle_announcement_mode = <<"6">> :: kz_term:ne_binary()
               ,return_main = <<"0">> :: kz_term:ne_binary()
 
                                         %% Post playback
@@ -169,6 +170,7 @@
                  ,skip_instructions = 'false' :: boolean()
                  ,skip_greeting = 'false' :: boolean()
                  ,skip_envelope = 'false' :: boolean()
+                 ,announcement_only = 'false' :: boolean()
                  ,unavailable_media_id :: kz_term:api_ne_binary()
                  ,temporary_unavailable_media_id :: kz_term:api_ne_binary()
                  ,name_media_id :: kz_term:api_ne_binary()
@@ -273,12 +275,15 @@ check_mailbox(#mailbox{is_setup='false'}=Box, 'true', Call, _) ->
     %% If this is the owner of the mailbox calling in and it is not setup then jump
     %% right to the setup wizard
     lager:info("caller is the owner of this mailbox, and it has not been setup yet"),
-    main_menu(Box, Call);
+    check_mailbox_menu(Box, Call);
+check_mailbox(#mailbox{announcement_only='true', require_pin='false'}=Box, 'true', Call, _) ->
+    lager:info("caller is owner of announcement only mailbox, and requires no pin"),
+    check_mailbox_menu(Box, Call);
 check_mailbox(#mailbox{require_pin='false'}=Box, 'true', Call, _) ->
     %% If this is the owner of the mailbox calling in and it doesn't require a pin then jump
     %% right to the main menu
     lager:info("caller is the owner of this mailbox, and requires no pin"),
-    main_menu(Box, Call);
+    check_mailbox_menu(Box, Call);
 check_mailbox(#mailbox{pin = <<>>}, _, Call, _) ->
     %% If the caller is not the owner or the owner with require pin set but the voicemail box
     %% has no pin set then terminate this call.
@@ -301,7 +306,7 @@ check_mailbox(#mailbox{pin=Pin
     of
         {'ok', Pin} ->
             lager:info("caller entered a valid pin"),
-            main_menu(Box, Call);
+            check_mailbox_menu(Box, Call);
         {'ok', _} ->
             lager:info("invalid mailbox login"),
             _ = kapps_call_command:b_prompt(<<"vm-fail_auth">>, Call),
@@ -309,6 +314,10 @@ check_mailbox(#mailbox{pin=Pin
         _ ->
             'ok'
     end.
+
+-spec check_mailbox_menu(mailbox(), kapps_call:call()) -> 'ok' | {'error', 'channel_hungup'}.
+check_mailbox_menu(#mailbox{announcement_only='true'}=Box, Call) -> config_menu(Box, Call);
+check_mailbox_menu(Box, Call) -> main_menu(Box, Call).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -417,6 +426,13 @@ compose_voicemail(#mailbox{check_if_owner='true'}=Box, 'true', Call) ->
     lager:info("caller is the owner of this mailbox"),
     lager:info("overriding action as check (instead of compose)"),
     check_mailbox(Box, Call);
+compose_voicemail(#mailbox{announcement_only='true'}=Box, 'true', Call) ->
+    lager:info("caller is the owner of this mailbox"),
+    lager:info("overriding action as check (instead of compose)"),
+    check_mailbox(Box, Call);
+compose_voicemail(#mailbox{announcement_only='true'}=Box, _IsOwner, Call) ->
+    lager:notice("mailbox is configured for announcement only"),
+    play_announcement(Box, Call);
 compose_voicemail(#mailbox{exists='false'}, _IsOwner, Call) ->
     lager:info("attempted to compose voicemail for missing mailbox"),
     _ = kapps_call_command:b_prompt(<<"vm-not_available_no_voicemail">>, Call),
@@ -433,6 +449,22 @@ compose_voicemail(#mailbox{max_message_count=MaxCount
 compose_voicemail(Box, _IsOwner, Call) ->
     start_composing_voicemail(Box, Call).
 
+-spec play_announcement(mailbox(), kapps_call:call()) -> compose_return().
+play_announcement(Box, Call) ->
+    _ = play_greeting(Box, Call),
+    _NoopId = kapps_call_command:noop(Call),
+    %% timeout after 5 min for safety, so this process cant hang around forever
+    case kapps_call_command:wait_for_application_or_dtmf(<<"noop">>, 5 * ?MILLISECONDS_IN_MINUTE) of
+        {'ok', _} ->
+            lager:notice("playing mailbox announcement"),
+            'ok';
+        {'dtmf', Digit} ->
+            _ = kapps_call_command:b_flush(Call),
+            handle_announce_dtmf(Box, Call, Digit);
+        {'error', R} ->
+            lager:info("error while playing announcement: ~p", [R])
+    end.
+
 -spec start_composing_voicemail(mailbox(), kapps_call:call()) -> compose_return().
 start_composing_voicemail(#mailbox{media_extension=Ext}=Box, Call) ->
     lager:debug("playing mailbox greeting to caller"),
@@ -441,7 +473,7 @@ start_composing_voicemail(#mailbox{media_extension=Ext}=Box, Call) ->
     _ = play_instructions(Box, Call),
     _NoopId = kapps_call_command:noop(Call),
     %% timeout after 5 min for safety, so this process cant hang around forever
-    case kapps_call_command:wait_for_application_or_dtmf(<<"noop">>, 300000) of
+    case kapps_call_command:wait_for_application_or_dtmf(<<"noop">>, 5 * ?MILLISECONDS_IN_MINUTE) of
         {'ok', _} ->
             lager:info("played greeting and instructions to caller, recording new message"),
             record_voicemail(tmp_file(Ext), Box, Call);
@@ -451,6 +483,13 @@ start_composing_voicemail(#mailbox{media_extension=Ext}=Box, Call) ->
         {'error', R} ->
             lager:info("error while playing voicemail greeting: ~p", [R])
     end.
+
+-spec handle_announce_dtmf(mailbox(), kapps_call:call(), kz_term:ne_binary()) -> compose_return().
+handle_announce_dtmf(#mailbox{keys=#keys{login=Login}}=Box, Call, Login) ->
+    lager:info("caller pressed '~s', redirecting to check voicemail", [Login]),
+    check_mailbox(Box, Call);
+handle_announce_dtmf(#mailbox{keys=#keys{continue=Continue}}=_Box, _Call, Continue) ->
+    lager:info("caller chose to continue to the next element in the callflow").
 
 -spec handle_compose_dtmf(mailbox(), kapps_call:call(), kz_term:ne_binary()) -> compose_return().
 handle_compose_dtmf(#mailbox{keys=#keys{login=Login}}=Box, Call, Login) ->
@@ -1079,7 +1118,7 @@ compose_forward_message(Message, SrcBoxId, #mailbox{media_extension=Ext}=DestBox
     _ = play_instructions(DestBox, Call),
     _NoopId = kapps_call_command:noop(Call),
     %% timeout after 5 min for safety, so this process cant hang around forever
-    case kapps_call_command:wait_for_application_or_dtmf(<<"noop">>, 300000) of
+    case kapps_call_command:wait_for_application_or_dtmf(<<"noop">>, 5 * ?MILLISECONDS_IN_MINUTE) of
         {'ok', _} ->
             lager:info("played forwarding instructions to caller, recording new message"),
             record_forward(tmp_file(Ext), Message, SrcBoxId, DestBox, Call);
@@ -1218,6 +1257,11 @@ message_menu(Prompt, #mailbox{keys=#keys{replay=Replay
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+-spec config_prompt(mailbox()) -> kz_term:ne_binary().
+config_prompt(#mailbox{announcement_only='true'}) ->
+    <<"vm-settings_menu_announcement_on">>;
+config_prompt(_) ->
+    <<"vm-settings_menu">>.
 
 -spec config_menu(mailbox(), kapps_call:call()) ->
           'ok' | mailbox() |
@@ -1234,15 +1278,15 @@ config_menu(#mailbox{interdigit_timeout=Interdigit}=Box
            ) when Loop < 4 ->
     lager:info("playing mailbox configuration menu"),
     {'ok', _} = kapps_call_command:b_flush(Call),
+    Prompt = config_prompt(Box),
+    NoopId = kapps_call_command:prompt(Prompt, Call),
 
-    NoopId = kapps_call_command:prompt(<<"vm-settings_menu">>, Call),
-
-    case kapps_call_command:collect_digits(?KEY_LENGTH
-                                          ,kapps_call_command:default_collect_timeout()
-                                          ,Interdigit
-                                          ,NoopId
-                                          ,Call
-                                          )
+    case kapps_call_command :collect_digits(?KEY_LENGTH
+                                           ,kapps_call_command:default_collect_timeout()
+                                           ,Interdigit
+                                           ,NoopId
+                                           ,Call
+                                           )
     of
         {'ok', Selection} ->
             handle_config_selection(Box, Call, Loop, Selection);
@@ -1313,12 +1357,28 @@ handle_config_selection(#mailbox{keys=#keys{del_temporary_unavailable=Selection}
     lager:info("caller chose to delete their temporary unavailable greeting"),
     delete_temporary_unavailable_greeting(Box, Call);
 handle_config_selection(#mailbox{keys=#keys{return_main=Selection}}=Box
-                       ,_Call
+                       ,Call
                        ,_Loop
                        ,Selection
                        ) ->
     lager:info("caller chose to return to the main menu"),
-    Box;
+                                                % Box;
+    main_menu(Box, Call);
+%% toggle mailbox announcement only state
+handle_config_selection(#mailbox{keys=#keys{toggle_announcement_mode=Selection}}=Box
+                       ,Call
+                       ,_Loop
+                       ,Selection
+                       ) ->
+    lager:info("caller chose to toggle mailbox announcement mode"),
+    case toggle_announcement_mode(Box, Call) of
+        {'error', _E} ->
+            lager:debug("toggling announcement_only failed: ~p", [_E]),
+            config_menu(Box, Call);
+        #mailbox{}=Box1 ->
+            _ = kapps_call_command:b_prompt(<<"vm-saved">>, Call),
+            config_menu(Box1, Call)
+    end;
 %% Bulk delete -> delete all voicemails
 %% Reset -> delete all voicemails, greetings, name, and reset pin
 handle_config_selection(#mailbox{}=Box
@@ -1328,6 +1388,34 @@ handle_config_selection(#mailbox{}=Box
                        ) ->
     lager:info("undefined config menu option '~s'", [_Selection]),
     config_menu(Box, Call, Loop + 1).
+
+-spec toggle_announcement_mode(mailbox(), kapps_call:call()) ->
+          mailbox() | jesse_error:error().
+toggle_announcement_mode(#mailbox{announcement_only='true'}=Box, Call) ->
+    toggle_announcement_mode(Box, Call, 'false');
+toggle_announcement_mode(Box, Call) ->
+    toggle_announcement_mode(Box, Call, 'true').
+
+-spec toggle_announcement_mode(mailbox(), kapps_call:call(), boolean()) ->
+          mailbox() | jesse_error:error().
+toggle_announcement_mode(#mailbox{mailbox_id=Id}=Box, Call, Value) ->
+    AccountDb = kapps_call:account_db(Call),
+
+    {'ok', JObj} = kz_datamgr:open_cache_doc(AccountDb, Id),
+    JObj0 = kz_json:set_value(<<"announcement_only">>, Value, JObj),
+    case kz_json_schema:validate(<<"vmboxes">>, kz_doc:public_fields(JObj0)) of
+        {'ok', PublicJObj} ->
+            PrivJObj = kz_doc:private_fields(JObj),
+
+            JObj1 = kz_json:merge_jobjs(PrivJObj, PublicJObj),
+
+            {'ok', _} = kz_datamgr:save_doc(AccountDb, JObj1),
+            lager:info("updated announcement only to ~p", [Value]),
+            Box#mailbox{announcement_only=Value};
+        {'error', _Reason}=E ->
+            lager:debug("failed toggling announcement only mode: ~p", [_Reason]),
+            E
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc Recording the temporary greeting to override the common greeting
@@ -1716,6 +1804,8 @@ get_mailbox_profile(Data, Call) ->
             #mailbox{mailbox_id = MailboxId
                     ,exists = 'true'
                     ,keys = populate_keys(Call)
+                    ,announcement_only =
+                         kzd_voicemail_box:announcement_only(MailboxJObj, Default#mailbox.announcement_only)
                     ,skip_instructions =
                          kzd_voicemail_box:skip_instructions(MailboxJObj, Default#mailbox.skip_instructions)
                     ,skip_greeting =

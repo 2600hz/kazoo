@@ -48,6 +48,15 @@ The old `save/2` took an updater function and tried to save the result. Because 
 
 5. Crossbar API version 1 has been deprecated. This is the last major version of Kazoo with support of `v1`. Please consider migrating your customize Crossbar modules from version 1 to version 2. Also upgrade your applications, UI or scripts to use version 2. This is the last version of Kazoo which is deprecated Kazoo-UI works with.
 
+6. The default prompt for the voicemail configuration menu has changed.
+
+Two new **en-US** prompts have been added to handle this feature and should be imported in conjunction with the upgrade of KAZOO.
+
+* vm-settings\_menu\_announcement_on
+* vm-settings\_menu\_announcement_off
+
+For instructions on how to import prompts please consult the [Kazoo Core Media](https://github.com/2600hz/kazoo-sounds/tree/master/kazoo-core#importing-prompts-for-a-language) documentation.
+
 ### 4.2
 
 1.  Erlang Version Support

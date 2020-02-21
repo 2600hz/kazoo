@@ -11,6 +11,7 @@
 -module(kzd_voicemail_box).
 
 -export([new/0
+        ,announcement_only/1, announcement_only/2, set_announcement_only/2
         ,type/0
         ,notification_emails/1, notification_emails/2
         ,owner_id/1, owner_id/2
@@ -65,6 +66,18 @@ new() ->
 
 -spec type() -> kz_term:ne_binary().
 type() -> ?PVT_TYPE.
+
+-spec announcement_only(doc()) -> boolean().
+announcement_only(Doc) ->
+    announcement_only(Doc, 'false').
+
+-spec announcement_only(doc(), boolean()) -> boolean().
+announcement_only(Doc, Default) ->
+    kz_json:get_boolean_value(<<"announcement_only">>, Doc, Default).
+
+-spec set_announcement_only(doc(), boolean()) -> doc().
+set_announcement_only(Doc, AnnoucementOnly) ->
+    kz_json:set_value(<<"announcement_only">>, AnnoucementOnly, Doc).
 
 -spec notification_emails(doc()) -> kz_term:ne_binaries().
 notification_emails(Box) ->

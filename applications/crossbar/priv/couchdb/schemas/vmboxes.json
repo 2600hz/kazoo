@@ -3,6 +3,12 @@
     "_id": "vmboxes",
     "description": "Schema for a voicemail box",
     "properties": {
+        "announcement_only": {
+            "default": false,
+            "description": "Determine if the mailbox should only play announcements",
+            "support_level": "unsupported",
+            "type": "boolean"
+        },
         "check_if_owner": {
             "default": true,
             "description": "Determines if when the user calls their own voicemail they should be prompted to sign in",

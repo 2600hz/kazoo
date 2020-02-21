@@ -14636,6 +14636,11 @@
 'vmboxes':
   'description': Schema for a voicemail box
   'properties':
+    'announcement_only':
+      'default': false
+      'description': Determine if the mailbox should only play announcements
+      'type': boolean
+      'x-support_level': unsupported
     'check_if_owner':
       'default': true
       'description': |-
