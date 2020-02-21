@@ -23,6 +23,7 @@
 
 -spec init() -> 'ok'.
 init() ->
+    lager:info("MARKDEBUG CHANNEL_CREATE INIT"),
     webhooks_util:init_metadata(?ID, ?METADATA).
 
 -spec bindings_and_responders() -> {gen_listener:bindings(), gen_listener:responders()}.
