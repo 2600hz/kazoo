@@ -11250,6 +11250,34 @@
             ],
             "type": "object"
         },
+        "kapi.camping.request": {
+            "description": "AMQP API for camping.request",
+            "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Camping-Request": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "camping"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "request"
+                    ],
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Account-ID",
+                "Camping-Request"
+            ],
+            "type": "object"
+        },
         "kapi.conf.doc_type_update": {
             "description": "AMQP API for conf.doc_type_update",
             "properties": {

@@ -124,10 +124,10 @@ set_publish_fun(API, PublishFun) -> API#kapi_definition{publish_fun = PublishFun
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec binding(api()) -> kz_term:api_ne_binary().
+-spec binding(api()) -> binding().
 binding(#kapi_definition{binding = Binding}) -> Binding.
 
--spec set_binding(api(), kz_term:api_ne_binary()) -> api().
+-spec set_binding(api(), binding()) -> api().
 set_binding(API, Binding) -> API#kapi_definition{binding = Binding}.
 
 %%------------------------------------------------------------------------------
