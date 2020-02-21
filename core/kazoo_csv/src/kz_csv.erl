@@ -48,7 +48,7 @@
 
 -ifdef(TEST).
 -export([take_line/1]).
--export([split_row/1]).
+-export([parse_row/1]).
 -endif.
 
 %%%=============================================================================
@@ -115,9 +115,9 @@ take_row(CSV)
     case take_line(CSV) of
         'eof' -> 'eof';
         [Line] ->
-            {split_row(Line), <<>>};
+            {parse_row(Line), <<>>};
         [Line, CSVRest] ->
-            {split_row(Line), CSVRest}
+            {parse_row(Line), CSVRest}
     end.
 
 %%------------------------------------------------------------------------------
@@ -349,65 +349,73 @@ take_line(CSV) ->
         Split -> Split
     end.
 
--define(ASCII_SINGLE_QUOTE, 39).
--define(ASCII_DOUBLE_QUOTE, 34).
--define(ASCII_COMMA, 44).
-
--spec split_row(kz_term:ne_binary()) -> row().
-split_row(Line) ->
-    case lists:foldl(fun consume_char/2
-                    ,{[], ?ASCII_COMMA, []}
-                    ,binary_to_list(Line)
-                    )
-    of
-        {Acc, ?ASCII_COMMA, []} -> lists:reverse([?ZILCH | Acc]);
-        {Acc, ?ASCII_COMMA, CellAcc} -> lists:reverse([from_cell_acc(CellAcc) | Acc]);
-
-        {Acc, ?ASCII_DOUBLE_QUOTE, [?ASCII_DOUBLE_QUOTE]} ->
-            lists:reverse([<<>> | Acc]);
-        {Acc, ?ASCII_SINGLE_QUOTE, [?ASCII_SINGLE_QUOTE]} ->
-            lists:reverse([<<>> | Acc]);
-        {Acc, ?ASCII_DOUBLE_QUOTE, [?ASCII_DOUBLE_QUOTE | CellAcc]} ->
-            lists:reverse([from_cell_acc(CellAcc) | Acc]);
-        {Acc, ?ASCII_SINGLE_QUOTE, [?ASCII_SINGLE_QUOTE | CellAcc]} ->
-            lists:reverse([from_cell_acc(CellAcc) | Acc]);
-        {Acc, ?ASCII_DOUBLE_QUOTE, CellAcc} ->
-            lists:reverse([from_cell_acc(CellAcc) | Acc]);
-        {Acc, ?ASCII_SINGLE_QUOTE, CellAcc} ->
-            lists:reverse([from_cell_acc(CellAcc) | Acc])
+%%------------------------------------------------------------------------------
+%% @doc Parse a CSV line into a row (list of cells).
+%% Standard CSV syntax should be followed per line.
+%% If a value contains a comma, a newline character or a double quote, then the
+%% value must be enclosed in double quotes.
+%% A double quote in a value must be escaped with another double quote.
+%% @end
+%%------------------------------------------------------------------------------
+-spec parse_row(kz_term:ne_binary()) -> row().
+parse_row(Line) ->
+    case binary:match(Line, <<$">>) of
+        'nomatch' ->
+            %% Simple line, no escaped characters, Just split on `,`
+            binary:split(Line, <<$,>>, [global]);
+        _Match ->
+            %% Complex line with escaped characters
+            parse_complex_row(Line)
     end.
 
-from_cell_acc(CellAcc) ->
-    iolist_to_binary(lists:reverse(CellAcc)).
+%%------------------------------------------------------------------------------
+%% @doc Parse a CSV line character by character, keeping track of state and escaped
+%% characters
+%% @end
+%%------------------------------------------------------------------------------
+-spec parse_complex_row(kz_term:ne_binary()) -> row().
+parse_complex_row(Line) ->
+    parse_complex_row(kz_term:to_list(Line), [], [], 'false').
 
-consume_char(?ASCII_DOUBLE_QUOTE, {Acc, ?ASCII_COMMA, []}) ->
-    %% Cell is starting with a quote
-    {Acc, ?ASCII_DOUBLE_QUOTE, []};
-consume_char(?ASCII_COMMA, {Acc, ?ASCII_DOUBLE_QUOTE, [?ASCII_DOUBLE_QUOTE | CellAcc]}) ->
-    %% double-quoted cell is finished
-    {[from_cell_acc(CellAcc) | Acc], ?ASCII_COMMA, []};
+-spec parse_complex_row(list(), list(), list(), boolean()) -> row().
+%% The end of the Line
+%% Add the last CellAcc to RowAcc and return the reverse
+parse_complex_row([], CellAcc, RowAcc, _) ->
+    Cell = kz_term:to_binary(lists:reverse(CellAcc)),
+    lists:reverse([Cell|RowAcc]);
 
-consume_char(?ASCII_SINGLE_QUOTE, {Acc, ?ASCII_COMMA, []}) ->
-    %% Cell is starting with a quote
-    {Acc, ?ASCII_SINGLE_QUOTE, []};
-consume_char(?ASCII_COMMA, {Acc, ?ASCII_SINGLE_QUOTE, [?ASCII_SINGLE_QUOTE | CellAcc]}) ->
-    %% single-quoted cell is finished
-    {[from_cell_acc(CellAcc) | Acc], ?ASCII_COMMA, []};
+%% 1 double quote when not in escaped state,
+%% Enter double quote escaped state and drop the double quote
+parse_complex_row([$"|T], CellAcc, RowAcc, 'false') ->
+    parse_complex_row(T, CellAcc, RowAcc, 'true');
 
-consume_char(?ASCII_COMMA, {Acc, ?ASCII_COMMA, []}) ->
-    %% empty cell collected
-    {[?ZILCH | Acc], ?ASCII_COMMA, []};
-consume_char(?ASCII_COMMA, {Acc, ?ASCII_COMMA, CellAcc}) ->
-    %% new cell starting
-    {[from_cell_acc(CellAcc) | Acc], ?ASCII_COMMA, []};
-consume_char(Char, {Acc, ?ASCII_COMMA, CellAcc}) ->
-    {Acc, ?ASCII_COMMA, [Char | CellAcc]};
+%% 2 double quotes when in escaped state,
+%% Drop the escaping leading double quote
+parse_complex_row([$",$"=H|T], CellAcc, RowAcc, 'true') ->
+    parse_complex_row(T, [H|CellAcc], RowAcc, 'true');
 
-consume_char(Quoted, {Acc, Quoted, [Quoted | _]=CellAcc}) ->
-    %% If we see ''foo'' - normalize to 'foo'
-    {Acc, Quoted, CellAcc};
-consume_char(Char, {Acc, Quoted, CellAcc}) ->
-    {Acc, Quoted, [Char | CellAcc]}.
+%% 1 double quote when in escaped state,
+%% Exit double quote escaped state and drop the double quote
+parse_complex_row([$"|T], CellAcc, RowAcc, 'true') ->
+    parse_complex_row(T, CellAcc, RowAcc, 'false');
+
+%% Comma when in escaped state,
+%% Do not split, Its escaped!, Add it to the cell
+parse_complex_row([$,=H|T], CellAcc, RowAcc, 'true') ->
+    parse_complex_row(T, [H|CellAcc], RowAcc, 'true');
+
+%% Comma when not in escaped state,
+%% Split the line here and drop the comma
+%% Add the binary reverse for the CellAcc to the RowAcc
+parse_complex_row([$,|T], CellAcc, RowAcc, 'false') ->
+    Cell = kz_term:to_binary(lists:reverse(CellAcc)),
+    parse_complex_row(T, [], [Cell|RowAcc], 'false');
+
+%% All other characters in both escaped and not escaped state,
+%% Add them to the CellAcc list
+parse_complex_row([H|T], CellAcc, RowAcc, EscapedState) ->
+    parse_complex_row(T, [H|CellAcc], RowAcc, EscapedState).
+
 
 -spec find_position(kz_term:ne_binary(), kz_term:ne_binaries()) -> pos_integer().
 find_position(Item, Items) ->
@@ -429,13 +437,24 @@ map_io_indices(Header, CSVHeader) ->
     IndexToCSVHeader = lists:zip(lists:seq(1, length(CSVHeader)), CSVHeader),
     lists:foldl(MapF, #{}, IndexToCSVHeader).
 
+%%------------------------------------------------------------------------------
+%% @doc Convert cell data to binary representation of a cell, escaping double
+%% quotation marks and commas
+%% @end
+%%------------------------------------------------------------------------------
 -spec cell_to_binary(cell()) -> binary().
+cell_to_binary('undefined') -> <<>>;
 cell_to_binary(?ZILCH) -> <<>>;
-cell_to_binary(<<>>) -> <<>>;
 cell_to_binary(Cell=?NE_BINARY) ->
-    binary:replace(Cell, <<$,>>, <<$;>>, ['global']);
+    EscapedCell = binary:replace(Cell, <<"\"">>, <<"\"\"">>, ['global']),
+    case Cell =/= EscapedCell
+        orelse binary:match(Cell, <<$,>>) =/= 'nomatch'
+    of
+        'true' -> <<"\"", EscapedCell/binary, "\"">>;
+        'false' -> Cell
+    end;
 cell_to_binary(Cell) ->
-    kz_term:to_binary(Cell).
+    cell_to_binary(kz_term:to_binary(Cell)).
 
 -spec maybe_transform(kz_json:objects(), kz_term:proplist()) -> kz_json:objects().
 maybe_transform(JObjs, Options) ->

@@ -50,7 +50,7 @@ associator_verify_test() ->
     FAssoc = kz_csv:associator(CSVHeader, ?FIELDS, fun verify_all_1bin/2),
     ?assertEqual({error,<<"B">>}, FAssoc(CSVRow)).
 
-verify_FIELDS_only(_, undefined) -> true;
+verify_FIELDS_only(_, ?ZILCH) -> true;
 verify_FIELDS_only(Field, Value) ->
     case lists:member(Field, ?FIELDS) of
         false -> true;
@@ -131,21 +131,21 @@ take_row_test_() ->
     ,?_assertEqual({[<<"a">>, ?ZILCH], <<>>}, kz_csv:take_row(<<"a,\n">>))
     ,?_assertEqual({[?ZILCH, <<"a">>], <<>>}, kz_csv:take_row(<<",a\n">>))
     ,?_assertEqual({[<<"a">>, ?ZILCH], <<"\n">>}, kz_csv:take_row(<<"a,\n\n">>))
-    ,?_assertEqual({[?ZILCH, <<>>], <<>>}, kz_csv:take_row(<<",\"\"\n">>))
+    ,?_assertEqual({[?ZILCH, ?ZILCH], <<>>}, kz_csv:take_row(<<",\"\"\n">>))
     ,?_assertEqual({[?ZILCH, <<"bla">>], <<>>}, kz_csv:take_row(<<",\"bla\"\n">>))
     ,?_assertEqual({[?ZILCH,?ZILCH,?ZILCH,?ZILCH], <<>>}, kz_csv:take_row(<<",,,">>))
-    ,?_assertEqual({[<<"a">>,?ZILCH], <<>>}, kz_csv:take_row(<<"'a',">>))
-    ,?_assertEqual({[?ZILCH,<<"A">>,?ZILCH,<<"B">>,<<"1, 3">>,?ZILCH,<<>>,?ZILCH], <<>>}
-                  ,kz_csv:take_row(<<",A,,B,'1, 3',,'',\n">>)
+    ,?_assertEqual({[<<"'a'">>,?ZILCH], <<>>}, kz_csv:take_row(<<"'a',">>))
+    ,?_assertEqual({[?ZILCH,<<"A">>,?ZILCH,<<"B">>,<<"1, 3">>,?ZILCH,<<"''">>,?ZILCH], <<>>}
+                  ,kz_csv:take_row(<<",A,,B,\"1, 3\",,'',\n">>)
                   )
     ,?_assertEqual({[<<"1">>, <<"{\"type\": \"Point\", \"coordinates\": [102.0, 0.5]}">>], <<>>}
-                  ,kz_csv:take_row(<<"1,'{\"type\": \"Point\", \"coordinates\": [102.0, 0.5]}'\n">>)
+                  ,kz_csv:take_row(<<"1,\"{\"\"type\"\": \"\"Point\"\", \"\"coordinates\"\": [102.0, 0.5]}\"\n">>)
                   )
     ,?_assertEqual({[<<"1">>, <<"ha \"ha\" ha">>], <<>>}
-                  ,kz_csv:take_row(<<"1,'ha \"ha\" ha'\n">>)
+                  ,kz_csv:take_row(<<"1,\"ha \"\"ha\"\" ha\"\n">>)
                   )
     ,?_assertEqual({[<<"1">>, <<"ha 'ha' ha">>], <<>>}
-                  ,kz_csv:take_row(<<"1,'ha ''ha'' ha'\n">>)
+                  ,kz_csv:take_row(<<"1,\"ha 'ha' ha\"\n">>)
                   )
     ].
 
@@ -253,22 +253,22 @@ json_to_iolist_test_() ->
     ,?_assertEqual(<<"account_id,e164,cnam.outbound\n\"account0000000000000000000000002\",\"+14157215234\",\"me\"\n,\"+14157215235\",\n">>, kz_csv:json_to_iolist(Records3))
     ].
 
-split_test_() ->
+parse_test_() ->
     [?_assertEqual([<<"0.1651">>, <<"ZAMBIA, MOBILE">>, <<"ZAMBIA, MOBILE-26094">>, <<"ZAMBIA, MOBILE">>, <<"26094">>, <<"0">>]
-                  ,kz_csv:split_row(<<"\"0.1651\",\"ZAMBIA, MOBILE\",\"ZAMBIA, MOBILE-26094\",\"ZAMBIA, MOBILE\",\"26094\",\"0\"">>)
+                  ,kz_csv:parse_row(<<"\"0.1651\",\"ZAMBIA, MOBILE\",\"ZAMBIA, MOBILE-26094\",\"ZAMBIA, MOBILE\",\"26094\",\"0\"">>)
                   )
     ,?_assertEqual([<<"0.1651">>, <<"ZAMBIA, MOBILE">>, <<"ZAMBIA, MOBILE-26094">>, <<"ZAMBIA, MOBILE">>, <<"26094">>, <<"0">>]
-                  ,kz_csv:split_row(<<"\"0.1651\",\"ZAMBIA, MOBILE\",\"ZAMBIA, MOBILE-26094\",\"ZAMBIA, MOBILE\",\"26094\",0">>)
+                  ,kz_csv:parse_row(<<"\"0.1651\",\"ZAMBIA, MOBILE\",\"ZAMBIA, MOBILE-26094\",\"ZAMBIA, MOBILE\",\"26094\",0">>)
                   )
     ,?_assertEqual([<<"0.1651">>, <<"ZAMBIA, MOBILE">>, <<"ZAMBIA, MOBILE-26094">>, <<"ZAMBIA, MOBILE">>, <<"26094">>, <<"0">>]
-                  ,kz_csv:split_row(<<"0.1651,\"ZAMBIA, MOBILE\",\"ZAMBIA, MOBILE-26094\",\"ZAMBIA, MOBILE\",\"26094\",\"0\"">>)
+                  ,kz_csv:parse_row(<<"0.1651,\"ZAMBIA, MOBILE\",\"ZAMBIA, MOBILE-26094\",\"ZAMBIA, MOBILE\",\"26094\",\"0\"">>)
                   )
-    ,?_assertEqual([?ZILCH, ?ZILCH], kz_csv:split_row(<<",">>))
-    ,?_assertEqual([<<"test">>,?ZILCH], kz_csv:split_row(<<"test,">>))
-    ,?_assertEqual([<<"test">>,?ZILCH,?ZILCH], kz_csv:split_row(<<"test,,">>))
-    ,?_assertEqual([<<"test">>,?ZILCH,<<"foo bar">>], kz_csv:split_row(<<"test,,foo bar">>))
-    ,?_assertEqual([?ZILCH,<<"test">>,<<>>,<<"foo bar">>], kz_csv:split_row(<<",test,'',foo bar">>))
-    ,?_assertEqual([?ZILCH,<<"test">>,<<>>,<<"foo bar">>], kz_csv:split_row(<<",test,\"\",foo bar">>))
+    ,?_assertEqual([?ZILCH, ?ZILCH], kz_csv:parse_row(<<",">>))
+    ,?_assertEqual([<<"test">>,?ZILCH], kz_csv:parse_row(<<"test,">>))
+    ,?_assertEqual([<<"test">>,?ZILCH,?ZILCH], kz_csv:parse_row(<<"test,,">>))
+    ,?_assertEqual([<<"test">>,?ZILCH,<<"foo bar">>], kz_csv:parse_row(<<"test,,foo bar">>))
+    ,?_assertEqual([?ZILCH,<<"test">>,<<"''">>,<<"foo bar">>], kz_csv:parse_row(<<",test,'',foo bar">>))
+    ,?_assertEqual([?ZILCH,<<"test">>,?ZILCH,<<"foo bar">>], kz_csv:parse_row(<<",test,\"\",foo bar">>))
     ].
 
 files_test_() ->
