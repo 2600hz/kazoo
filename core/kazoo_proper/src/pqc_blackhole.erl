@@ -5,7 +5,7 @@
 %%%-----------------------------------------------------------------------------
 -module(pqc_blackhole).
 
--export([seq/0, api_test/0
+-export([seq/0, seq_api/0
         ,cleanup/0
         ]).
 
@@ -17,13 +17,13 @@
 
 -spec seq() -> 'ok'.
 seq() ->
-    _ = [ping_test()
-        ,max_conn_test()
-        ,api_test()
+    _ = [seq_ping()
+        ,seq_max_conn()
+        ,seq_api()
         ],
     'ok'.
 
-ping_test() ->
+seq_ping() ->
     Model = initial_state(),
     #{'auth_token' := AuthToken} = API = pqc_kazoo_model:api(Model),
 
@@ -57,7 +57,7 @@ ping_test() ->
     cleanup(API),
     lager:info("FINISHED PING SEQ").
 
-max_conn_test() ->
+seq_max_conn() ->
     Model = initial_state(),
     #{'auth_token' := AuthToken} = API = pqc_kazoo_model:api(Model),
 
@@ -93,8 +93,8 @@ max_conn_test() ->
     cleanup(API),
     lager:info("FINISHED MAX_CONN SEQ").
 
--spec api_test() -> 'ok'.
-api_test() ->
+-spec seq_api() -> 'ok'.
+seq_api() ->
     Model = initial_state(),
     #{'auth_token' := AuthToken} = API = pqc_kazoo_model:api(Model),
 
