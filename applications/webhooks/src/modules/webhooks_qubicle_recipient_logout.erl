@@ -30,7 +30,7 @@
 
 -spec init() -> 'ok'.
 init() ->
-    kapi_amqp_util:new_exchange(?QUBICLE_EVENT_EXCHANGE, ?QUBICLE_EVENT_EXCHANGE_TYPE),
+    kz_amqp_util:new_exchange(?QUBICLE_EVENT_EXCHANGE, ?QUBICLE_EVENT_EXCHANGE_TYPE),
     webhooks_util:init_metadata(?ID, ?METADATA).
 
 -spec bindings_and_responders() -> {gen_listener:bindings(), gen_listener:responders()}.
