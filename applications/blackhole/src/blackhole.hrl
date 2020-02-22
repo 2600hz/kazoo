@@ -21,6 +21,7 @@
                          ]).
 
 -define(COMMAND_MODULES, ['bh_events'
+                         ,'bh_limits'
                          ,'bh_authz_subscribe'
                          ]).
 
