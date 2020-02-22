@@ -77,8 +77,9 @@ send_error(Context) ->
 %%------------------------------------------------------------------------------
 -spec close(bh_context:context()) -> bh_context:context().
 close(HandlerOpts) when is_list(HandlerOpts) ->
-    lager:info("closing conn: handler opts: ~p", [HandlerOpts]);
+    lager:info("closing connection early");
 close(Context) ->
+    lager:info("closing session ~s", [bh_context:websocket_session_id(Context)]),
     Routing = <<"blackhole.session.close">>,
     blackhole_bindings:fold(Routing, Context).
 
