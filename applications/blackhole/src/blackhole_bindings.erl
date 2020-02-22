@@ -71,7 +71,6 @@
 -type fold_results() :: payload().
 -spec fold(kz_term:ne_binary(), payload()) -> fold_results().
 fold(Routing, Payload) ->
-    lager:debug("fold: ~s", [Routing]),
     kazoo_bindings:fold(Routing, Payload).
 
 %%------------------------------------------------------------------------------
@@ -314,13 +313,11 @@ bh_matches(_, _) -> 'false'.
 
 -spec map(kz_term:ne_binary(), payload()) -> map_results().
 map(Routing, Payload) ->
-    lager:debug("map: ~s", [Routing]),
     RTOptions = [{'matches', fun bh_match/2}],
     kazoo_bindings:map(Routing, Payload, RTOptions).
 
 -spec map(kz_term:ne_binary(), payload(), kz_bindings()) -> map_results().
 map(Routing, Payload, Bindings) ->
-    lager:debug("map: ~s", [Routing]),
     RTOptions = [{'matches', fun bh_match/2}
                 ,{'candidates', fun(_) -> Bindings end}
                 ],
@@ -328,13 +325,11 @@ map(Routing, Payload, Bindings) ->
 
 -spec pmap(kz_term:ne_binary(), payload()) -> map_results().
 pmap(Routing, Payload) ->
-    lager:debug("pmap: ~s", [Routing]),
     RTOptions = [{'matches', fun bh_match/2}],
     kazoo_bindings:pmap(Routing, Payload, RTOptions).
 
 -spec pmap(kz_term:ne_binary(), payload(), kz_bindings()) -> map_results().
 pmap(Routing, Payload, Bindings) ->
-    lager:debug("pmap: ~s", [Routing]),
     RTOptions = [{'matches', fun bh_match/2}
                 ,{'candidates', fun(_) -> Bindings end}
                 ],

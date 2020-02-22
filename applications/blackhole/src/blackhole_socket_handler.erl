@@ -47,7 +47,7 @@ maybe_allow_connection(Req, HandlerOpts) ->
     end.
 
 maybe_allow_connection(Req, RemoteIP, 'undefined', _ActiveConns) ->
-    lager:debug("no max connection limit (~p has ~p currently)", [RemoteIP, _ActiveConns]),
+    %% no max connection limit set
     allow_connection(Req, RemoteIP);
 maybe_allow_connection(Req, RemoteIP, MaxConns, ActiveConns) when ActiveConns < MaxConns ->
     lager:debug("allowing connection from ~p (~p of ~p up)", [RemoteIP, ActiveConns, MaxConns]),
@@ -110,6 +110,4 @@ session_id(Req) ->
 
     BinIP   = kz_network_utils:iptuple_to_binary(IP),
     BinPort = kz_term:to_binary(Port),
-    SessionId = <<BinIP/binary, ":", BinPort/binary>>,
-    lager:debug("session starting for ~s", [SessionId]),
-    SessionId.
+    <<BinIP/binary, ":", BinPort/binary>>.
