@@ -230,15 +230,18 @@ init_mod(ModuleName) ->
           'ok' |
           {'error', 'undefined' | 'unknown'}.
 maybe_init_mod(ModuleName) ->
-    lager:debug("trying to init module: ~p", [ModuleName]),
-    try (kz_term:to_atom(ModuleName, 'true')):init() of
-        _ -> 'ok'
+    Module = kz_term:to_atom(ModuleName, 'true'),
+    maybe_init_mod(Module, kz_module:is_exported(Module, 'init', 0)).
+
+maybe_init_mod(Module, 'false') ->
+    lager:warning("failed to initalize module ~s", [Module]),
+    {'error', 'undefined'};
+maybe_init_mod(Module, 'true') ->
+    try Module:init() of
+        _ -> lager:debug("initialized ~s", [Module])
     catch
-        'error':'undef' ->
-            lager:warning("failed to find module ~s", [ModuleName]),
-            {'error', 'undefined'};
         _E:_R ->
-            lager:warning("failed to initialize ~s: ~p, ~p.", [ModuleName, _E, _R]),
+            lager:warning("failed to initialize ~s: ~p, ~p.", [Module, _E, _R]),
             {'error', 'unknown'}
     end.
 
