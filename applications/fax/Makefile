@@ -3,7 +3,7 @@ PROJECT = fax
 
 PDF = test/pdf.pdf
 
-all: compile
+all: compile assets
 
 comile-test: assets
 
