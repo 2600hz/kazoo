@@ -1,3 +1,4 @@
 .deps.mk
 *.beam
 *.app
+/test/pdf.pdf

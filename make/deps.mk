@@ -81,9 +81,9 @@ dep_erlcloud = git https://github.com/2600hz/erlang-erlcloud 3.2.7
 # dep_fs_event = git https://github.com/jamhed/fs_event 783400da08c2b55c295dbec81df0d926960c0346
 # dep_fs_sync = git https://github.com/jamhed/fs_sync 2cf85cf5861221128f020c453604d509fd37cd53
 
-dep_gen_smtp = git https://github.com/2600hz/erlang-gen_smtp 3d294c57153787027bea4011eeba268fee5d7165
+dep_gen_smtp = git https://github.com/2600hz/erlang-gen_smtp 01e004f4e6ef97802dbf0456385e81737dda706e
 # used by teletype, notify, and fax
-# SHA fixes spec for gen_smto_client:send/3
+# SHA fixes mimemail to no-op matching encodings
 
 dep_getopt = git https://github.com/2600hz/erlang-getopt v1.0.1
 # used in some scripts/ and sup

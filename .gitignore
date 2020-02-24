@@ -94,3 +94,6 @@ core/kazoo_proper/priv/mp3.mp3
 /todo.org
 *.tar
 /make/pest-*
+# asdf-vm "local" versions handler
+.tool-versions
+/applications/fax/test/pdf.pdf
