@@ -4,9 +4,13 @@ PROJECT = fax
 
 PDF = test/pdf.pdf
 
-all: compile
+COMPILE_MOAR = assets
+
+all: compile assets
 
 comile-test: assets
+
+comile-test-direct: assets
 
 assets: $(PDF)
 
