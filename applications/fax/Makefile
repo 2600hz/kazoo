@@ -3,6 +3,8 @@ PROJECT = fax
 
 PDF = test/pdf.pdf
 
+COMPILE_MOAR = assets
+
 all: compile assets
 
 comile-test: assets
