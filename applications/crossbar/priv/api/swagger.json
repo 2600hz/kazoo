@@ -16718,6 +16718,107 @@
             ],
             "type": "object"
         },
+        "kapi.fax.account": {
+            "description": "AMQP API for fax.account",
+            "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "start"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "account"
+                    ],
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Account-ID"
+            ],
+            "type": "object"
+        },
+        "kapi.fax.fax_req": {
+            "description": "AMQP API for fax.fax_req",
+            "properties": {
+                "Action": {
+                    "enum": [
+                        "receive",
+                        "transmit"
+                    ],
+                    "type": "string"
+                },
+                "Call": {
+                    "type": "object"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "dialplan"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "fax_req"
+                    ],
+                    "type": "string"
+                },
+                "Fax-T38-Option": {
+                    "type": "string"
+                },
+                "FaxBox-ID": {
+                    "type": "string"
+                },
+                "Owner-ID": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Action",
+                "Call"
+            ],
+            "type": "object"
+        },
+        "kapi.fax.job": {
+            "description": "AMQP API for fax.job",
+            "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Control-Queue": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "start"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "job"
+                    ],
+                    "type": "string"
+                },
+                "Job-ID": {
+                    "type": "string"
+                },
+                "To-Number": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Account-ID",
+                "Control-Queue",
+                "Job-ID",
+                "To-Number"
+            ],
+            "type": "object"
+        },
         "kapi.fax.query_status": {
             "description": "AMQP API for fax.query_status",
             "properties": {

@@ -1,0 +1,38 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.fax.job",
+    "description": "AMQP API for fax.job",
+    "properties": {
+        "Account-ID": {
+            "type": "string"
+        },
+        "Control-Queue": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "start"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "job"
+            ],
+            "type": "string"
+        },
+        "Job-ID": {
+            "type": "string"
+        },
+        "To-Number": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Account-ID",
+        "Control-Queue",
+        "Job-ID",
+        "To-Number"
+    ],
+    "type": "object"
+}

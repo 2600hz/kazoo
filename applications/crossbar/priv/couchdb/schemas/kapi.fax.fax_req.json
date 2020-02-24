@@ -1,0 +1,43 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.fax.fax_req",
+    "description": "AMQP API for fax.fax_req",
+    "properties": {
+        "Action": {
+            "enum": [
+                "receive",
+                "transmit"
+            ],
+            "type": "string"
+        },
+        "Call": {
+            "type": "object"
+        },
+        "Event-Category": {
+            "enum": [
+                "dialplan"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "fax_req"
+            ],
+            "type": "string"
+        },
+        "Fax-T38-Option": {
+            "type": "string"
+        },
+        "FaxBox-ID": {
+            "type": "string"
+        },
+        "Owner-ID": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Action",
+        "Call"
+    ],
+    "type": "object"
+}
