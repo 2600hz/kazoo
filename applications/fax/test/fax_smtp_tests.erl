@@ -19,8 +19,6 @@ decode_email_test() ->
 
     {T, S, Hs, Ps, Body} = fax_smtp:decode_data(Email),
 
-    ?debugFmt("~p/~p:~nhs: ~p~nps: ~p~nbd: ~p~n", [T, S, Hs, Ps, Body]),
-
     ?assertEqual(<<"multipart">>, T),
     ?assertEqual(<<"mixed">>, S),
 
