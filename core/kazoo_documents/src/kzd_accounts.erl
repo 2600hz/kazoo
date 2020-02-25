@@ -1733,6 +1733,7 @@ create_tree_from_master() ->
         {'ok', MasterAccountId} ->
             lager:info("using master account ~s as tree", [MasterAccountId]),
             [MasterAccountId];
+        {'error', 'no_accounts'} -> [];
         {'error', _} ->
             case kapps_util:get_all_accounts() of
                 [] -> [];
