@@ -1,0 +1,17 @@
+ebin/gen_extractor.beam: src/gen_extractor.erl
+ebin/gen_reducer.beam: src/gen_reducer.erl
+ebin/kazoo_telemetry_app.beam: src/kazoo_telemetry_app.erl
+ebin/kazoo_telemetry_leader.beam: src/kazoo_telemetry_leader.erl
+ebin/kazoo_telemetry_sup.beam: src/kazoo_telemetry_sup.erl \
+  /opt/kazoo-waveguide/core/kazoo_stdlib/include/kz_types.hrl \
+  /Users/jwhite/.erlangs/R21.3/lib/xmerl-1.3.19/include/xmerl.hrl \
+  /opt/kazoo-waveguide/core/kazoo_stdlib/include/kz_records.hrl
+ebin/wg_httpc.beam: src/wg_httpc.erl
+ebin/wg_util.beam: src/wg_util.erl
+ebin/kztm_database_extractor.beam: \
+  src/extractors/kztm_database_extractor.erl
+ebin/kztm_nodes_extractor.beam: src/extractors/kztm_nodes_extractor.erl
+ebin/kztm_services_extractor.beam: \
+  src/extractors/kztm_services_extractor.erl
+ebin/waveguide_reducer.beam: src/reducers/waveguide_reducer.erl
+ebin/waveguide_responder.beam: src/responders/waveguide_responder.erl

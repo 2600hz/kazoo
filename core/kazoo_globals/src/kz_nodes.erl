@@ -36,6 +36,8 @@
 
 -export([with_role/1, with_role/2]).
 -export([print_role/1]).
+-export([nodes/0]).
+
 -export([init/1
         ,handle_call/3
         ,handle_cast/2
@@ -745,6 +747,9 @@ handle_call({'print_status', Nodes}, _From, State) ->
     {'reply', 'ok', State};
 handle_call('zone', _From, #state{zone=Zone}=State) ->
     {'reply', Zone, State};
+handle_call('nodes', _From, State) ->
+    Nodes = lists:sort(fun compare_nodes/2, ets:tab2list(?MODULE)),
+    {'reply', Nodes, State};
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -1388,3 +1393,7 @@ with_role_filter(Role, MatchSpec) ->
                ,[]
                ,ets:select(?MODULE, MatchSpec)
                ).
+
+-spec nodes() -> kz_types:kz_nodes().
+nodes() ->
+    gen_listener:call(?MODULE, 'nodes').
