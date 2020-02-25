@@ -16,22 +16,28 @@
         ,close/1
         ]).
 
--type cb_return() :: {'ok', bh_context:context()}.
+-define(SESSION_KEY(SessionId), {'session', ?MODULE, SessionId}).
 
--spec open(pid(), binary(), inet:ip_address()) -> cb_return().
-open(Pid, Id, Ipaddr) ->
-    IPBin = kz_term:to_binary(inet_parse:ntoa(Ipaddr)),
-    lager:debug("opening socket (~p) ~p, peer: ~p", [Pid, Id, IPBin]),
+-type bh_return() :: {'ok', bh_context:context()}.
 
-    Context = bh_context:set_source(bh_context:new(Pid, Id), IPBin),
+-spec open(pid(), binary(), inet:ip_address()) -> bh_return().
+open(Pid, SessionId, IPAddr) ->
+    IPBin = kz_network_utils:iptuple_to_binary(IPAddr),
+    lager:debug("opening socket (~p) ~p, peer: ~p", [Pid, SessionId, IPBin]),
+
+    Context = bh_context:set_source(bh_context:new(Pid, SessionId), IPBin),
 
     Routing = <<"blackhole.session.open">>,
     Ctx = blackhole_bindings:fold(Routing, Context),
     {'ok', Ctx}.
 
--spec recv({binary(), kz_json:object()}, bh_context:context()) -> cb_return() | 'error'.
+-spec recv({binary(), kz_json:object()}, bh_context:context()) -> bh_return() | 'error'.
 recv({Action, Payload}, Context) ->
-    lager:debug("received ~s with payload ~s",[Action, kz_json:encode(kz_json:delete_key(<<"auth_token">>, Payload))]),
+    lager:debug("received action ~s with payload ~s"
+               ,[Action
+                ,kz_json:encode(kz_json:delete_key(<<"auth_token">>, Payload))
+                ]
+               ),
     Routines = [fun rate/3
                ,fun authenticate/3
                ,fun validate/3
@@ -46,17 +52,21 @@ recv({Action, Payload}, Context) ->
 exec(Context, _Action, _Payload, []) ->
     {'ok', Context};
 exec(Context, Action, Payload, [Fun | Funs]) ->
-    lager:debug("executing ~p for ~s with payload ~s",[Fun, Action, kz_json:encode(kz_json:delete_key(<<"auth_token">>, Payload))]),
+    lager:debug("executing ~p for ~s with payload ~s"
+               ,[Fun, Action, kz_json:encode(kz_json:delete_key(<<"auth_token">>, Payload))]
+               ),
     Ctx = Fun(Context, Action, Payload),
     case bh_context:success(Ctx) of
         'true' -> exec(Ctx, Action, Payload, Funs);
         'false' -> send_error(Ctx)
     end.
 
-send_error(#bh_context{websocket_pid=SessionPid
-                      ,req_id=RequestId
-                      ,errors=Errors
-                      }) ->
+-spec send_error(bh_context:context()) -> 'error'.
+send_error(Context) ->
+    SessionPid = bh_context:websocket_pid(Context),
+    RequestId = bh_context:req_id(Context),
+    Errors = bh_context:errors(Context),
+
     Data = kz_json:from_list([{<<"errors">>, Errors}]),
     blackhole_data_emitter:reply(SessionPid, RequestId, <<"error">>, Data),
     'error'.
@@ -66,7 +76,10 @@ send_error(#bh_context{websocket_pid=SessionPid
 %% @end
 %%------------------------------------------------------------------------------
 -spec close(bh_context:context()) -> bh_context:context().
+close(HandlerOpts) when is_list(HandlerOpts) ->
+    lager:info("closing connection early");
 close(Context) ->
+    lager:info("closing session ~s", [bh_context:websocket_session_id(Context)]),
     Routing = <<"blackhole.session.close">>,
     blackhole_bindings:fold(Routing, Context).
 
@@ -103,7 +116,6 @@ validate(Context, Action, Payload) ->
 authorize(Context, Action, Payload) ->
     Routing = <<"blackhole.authorize.", Action/binary>>,
     handle_result(Context, blackhole_bindings:map(Routing, [Context, Payload])).
-
 
 limits(Context, Action, Payload) ->
     Routing = <<"blackhole.limits.", Action/binary>>,

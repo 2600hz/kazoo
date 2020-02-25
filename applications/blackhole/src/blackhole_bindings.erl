@@ -28,8 +28,8 @@
 -module(blackhole_bindings).
 
 %% API
--export([bind/3,bind/4
-        ,unbind/3,unbind/4
+-export([bind/3, bind/4
+        ,unbind/3, unbind/4
         ,map/2, map/3
         ,pmap/2, pmap/3
         ,fold/2
@@ -120,28 +120,39 @@ filter_out_failed({'halt', _}) -> 'true';
 filter_out_failed({'false', _}) -> 'false';
 filter_out_failed('false') -> 'false';
 filter_out_failed({'EXIT', _}) -> 'false';
-filter_out_failed(#bh_context{}=Ctx) ->
-    not bh_context:success(Ctx);
-filter_out_failed([#bh_context{}=Ctx]) ->
-    not bh_context:success(Ctx);
-filter_out_failed(Term) -> not kz_term:is_empty(Term).
+filter_out_failed([Result]) ->
+    case bh_context:is_context(Result) of
+        'true' -> not bh_context:success(Result);
+        'false' -> not kz_term:is_empty(Result)
+    end;
+filter_out_failed(Result) ->
+    case bh_context:is_context(Result) of
+        'true' -> not bh_context:success(Result);
+        'false' -> not kz_term:is_empty(Result)
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec filter_out_succeeded({boolean() | 'halt', any()} | boolean() | any()) -> boolean().
+-spec filter_out_succeeded({boolean() | 'halt', any()} | boolean() | bh_context:context() | [bh_context:context()]) ->
+          boolean().
 filter_out_succeeded({'true', _}) -> 'false';
 filter_out_succeeded('true') -> 'false';
 filter_out_succeeded({'halt', _}) -> 'true';
 filter_out_succeeded({'false', _}) -> 'true';
 filter_out_succeeded('false') -> 'true';
 filter_out_succeeded({'EXIT', _}) -> 'true';
-filter_out_succeeded(#bh_context{}=Ctx) ->
-    bh_context:success(Ctx);
-filter_out_succeeded([#bh_context{}=Ctx]) ->
-    bh_context:success(Ctx);
-filter_out_succeeded(Term) -> kz_term:is_empty(Term).
+filter_out_succeeded([Result]) ->
+    case bh_context:is_context(Result) of
+        'true' -> bh_context:success(Result);
+        'false' -> kz_term:is_empty(Result)
+    end;
+filter_out_succeeded(Result) ->
+    case bh_context:is_context(Result) of
+        'true' -> bh_context:success(Result);
+        'false' -> kz_term:is_empty(Result)
+    end.
 
 -type bind_result() :: 'ok' |
                        {'error', 'exists'}.
@@ -218,15 +229,18 @@ init_mod(ModuleName) ->
           'ok' |
           {'error', 'undefined' | 'unknown'}.
 maybe_init_mod(ModuleName) ->
-    lager:debug("trying to init module: ~p", [ModuleName]),
-    try (kz_term:to_atom(ModuleName, 'true')):init() of
-        _ -> 'ok'
+    Module = kz_term:to_atom(ModuleName, 'true'),
+    maybe_init_mod(Module, kz_module:is_exported(Module, 'init', 0)).
+
+maybe_init_mod(Module, 'false') ->
+    lager:warning("failed to initalize module ~s", [Module]),
+    {'error', 'undefined'};
+maybe_init_mod(Module, 'true') ->
+    try Module:init() of
+        _ -> lager:debug("initialized ~s", [Module])
     catch
-        'error':'undef' ->
-            lager:warning("failed to find module ~s", [ModuleName]),
-            {'error', 'undefined'};
         _E:_R ->
-            lager:warning("failed to initialize ~s: ~p, ~p.", [ModuleName, _E, _R]),
+            lager:warning("failed to initialize ~s: ~p, ~p.", [Module, _E, _R]),
             {'error', 'unknown'}
     end.
 

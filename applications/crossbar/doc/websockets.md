@@ -93,9 +93,12 @@ curl -v -X GET \
 ```json
 {
     "data": [
-        "{SOCKET_ID1}",
-        "{SOCKET_ID2}",
-        "{SOCKET_ID3}"
+      {"bindings":["object.doc_created.user"]
+       ,"websocket_session_id":"{SOCKET_ID}"
+       ,"timestamp":{CONNECTION_TIMESTAMP}
+       ,"destination":"{WS_SERVER}"
+       ,"source":"{CLIENT_IP}"
+      }
     ],
     "status": "success"
 }
@@ -113,19 +116,13 @@ curl -v -X GET \
 ```
 
 ```json
-{
-    "data": [
-        {
-            "account_id": "{ACCOUNT_ID}",
-            "auth_token": "{AUTH_TOKEN}",
-            "bindings": [
-                "call.CHANNEL_DESTROY.*",
-                "call.CHANNEL_ANSWER.*",
-                "call.CHANNEL_CREATE.*"
-            ],
-            "websocket_session_id": "{SOCKET_ID}"
-        }
-    ],
-    "status": "success"
+{"data":{
+   "bindings": ["{CLIENT_BINDING}"],
+   "timestamp":{CONNECTION_TIMESTAMP},
+   "destination":"{BLACKHOLE_SERVER}",
+   "source":"{CLIENT_IP}",
+   "websocket_session_id": "{SOCKET_ID}"
+ },
+ "status": "success"
 }
 ```

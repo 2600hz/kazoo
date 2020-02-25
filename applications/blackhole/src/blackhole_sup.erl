@@ -23,7 +23,8 @@
 
 -define(SERVER, ?MODULE).
 
--define(CHILDREN, [?WORKER('blackhole_listener')
+-define(CHILDREN, [?CACHE(?CACHE_NAME)
+                  ,?WORKER('blackhole_listener')
                   ,?WORKER('blackhole_tracking')
                   ,?WORKER('blackhole_bindings')
                   ,?WORKER('blackhole_init')
@@ -54,7 +55,7 @@ start_link() ->
 %%------------------------------------------------------------------------------
 -spec init(any()) -> kz_types:sup_init_ret().
 init([]) ->
-    kz_util:set_startup(),
+    _ = kz_util:set_startup(),
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,

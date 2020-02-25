@@ -26424,6 +26424,9 @@
                 "Account-ID": {
                     "type": "string"
                 },
+                "Auth-Account-ID": {
+                    "type": "string"
+                },
                 "Event-Category": {
                     "enum": [
                         "websockets"
@@ -26440,6 +26443,9 @@
                     "type": "string"
                 }
             },
+            "required": [
+                "Account-ID"
+            ],
             "type": "object"
         },
         "kapi.websockets.get_resp": {
@@ -30699,6 +30705,10 @@
                 "ip": {
                     "description": "blackhole ip",
                     "type": "string"
+                },
+                "max_connections_per_ip": {
+                    "description": "blackhole max_connections_per_ip",
+                    "type": "integer"
                 },
                 "port": {
                     "default": 5555,

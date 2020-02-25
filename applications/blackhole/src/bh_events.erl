@@ -120,85 +120,94 @@ unsubscribe(Context, Payload) ->
 -spec event(map(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 event(Binding, RK, EventJObj) ->
     kz_log:put_callid(EventJObj),
-    Name = event_name(EventJObj),
+    Name = kz_api:event_name(EventJObj),
     NormJObj = kz_json:normalize_jobj(
                  kz_api:public_fields(EventJObj)
                 ),
     blackhole_data_emitter:event(Binding, RK, Name, NormJObj).
 
--spec event_name(kz_json:object()) -> kz_term:ne_binary().
-event_name(JObj) ->
-    kz_json:get_value(<<"Event-Name">>, JObj).
-
 add_event_bindings(Context, BindingResults) ->
     case lists:foldl(fun add_event_bindings_fold/2, {Context, []}, BindingResults) of
         {Ctx, []} -> Ctx;
-        {Ctx, Subscribed} ->
-            Data = kz_json:from_list([{<<"subscribed">>, Subscribed}]),
+        {Ctx, _Subscribed} ->
+            Data = kz_json:from_list([{<<"subscribed">>, bh_context:client_bindings(Ctx)}]),
             bh_context:set_resp_data(Ctx, Data)
     end.
 
-add_event_bindings_fold(#{requested := Requested
-                         ,subscribed := Subscribed
+add_event_bindings_fold(#{requested := ClientBinding
+                         ,subscribed := AMQPBindings
                          ,listeners := Listeners
-                         }, {Context, Subs}) ->
+                         }
+                       ,{Context, Subs}
+                       ) ->
     SessionBindings = bh_context:bindings(Context),
-    Subscribe = [{Requested, Sub} || Sub <- Subscribed] -- SessionBindings,
-    lists:foreach(fun(B) -> bind(Context, B) end, Subscribe),
-    blackhole_listener:add_bindings(Listeners),
-    Ctx = bh_context:add_listeners(Context, Listeners),
-    {bh_context:set_bindings(Ctx, SessionBindings ++ Subscribe), Subs ++ Subscribed}.
 
-bind(Context, {ReqKey, Key}) ->
+    Subscribe = [{ClientBinding, AMQPBinding} || AMQPBinding <- AMQPBindings] -- SessionBindings,
+
+    lists:foreach(fun(B) -> bh_binding(Context, B) end, Subscribe),
+    blackhole_listener:add_bindings(Listeners),
+
+    Ctx = bh_context:add_listeners(Context, Listeners),
+
+    {bh_context:set_bindings(Ctx, SessionBindings ++ Subscribe), Subs ++ AMQPBindings}.
+
+bh_binding(Context, {ClientBinding, AMQPBinding}) ->
     SessionPid = bh_context:websocket_pid(Context),
     SessionId = bh_context:websocket_session_id(Context),
-    Binding =  #{subscribed_key => ReqKey
-                ,subscription_key => Key
+    Binding =  #{subscribed_key => ClientBinding
+                ,subscription_key => AMQPBinding
                 ,session_pid => SessionPid
                 ,session_id => SessionId
                 },
-    BHKey = <<"blackhole.event.", Key/binary>>,
-    blackhole_bindings:bind(BHKey, ?MODULE, 'event', Binding).
+    BHBinding = <<"blackhole.event.", AMQPBinding/binary>>,
+    blackhole_bindings:bind(BHBinding, ?MODULE, 'event', Binding).
 
--spec remove_event_bindings(bh_context:context(), [map()]) -> bh_context:context().
+-spec remove_event_bindings(bh_context:context(), [map(),...]) -> bh_context:context().
 remove_event_bindings(Context, BindingResults) ->
-    case lists:foldl(fun remove_event_bindings_fold/2, {Context, []}, BindingResults) of
-        {Ctx, []} -> Ctx;
-        {Ctx, Subscribed} ->
-            Data = kz_json:from_list([{<<"unsubscribed">>, Subscribed}]),
-            bh_context:set_resp_data(Ctx, Data)
-    end.
+    {Ctx, UnSubscribed} = lists:foldl(fun remove_event_bindings_fold/2
+                                     ,{Context, []}
+                                     ,BindingResults
+                                     ),
 
--spec remove_event_bindings_fold(map(), {bh_context:context(), list()}) ->
-          {bh_context:context(), list()}.
-remove_event_bindings_fold(#{requested := Requested
-                            ,subscribed := Subscribed
+    Data = kz_json:from_list([{<<"unsubscribed">>, UnSubscribed}
+                             ,{<<"subscribed">>, bh_context:client_bindings(Ctx)}
+                             ]),
+    bh_context:set_resp_data(Ctx, Data).
+
+-spec remove_event_bindings_fold(map(), {bh_context:context(), kz_term:ne_binaries()}) ->
+          {bh_context:context(), kz_term:ne_binaries()}.
+remove_event_bindings_fold(#{requested := ClientBinding
+                            ,subscribed := AMQPBindings
                             ,listeners := Listeners
-                            }, {Context, Subs}) ->
+                            }
+                          ,{Context, Subs}
+                          ) ->
     SessionBindings = bh_context:bindings(Context),
-    Removed = [{Requested, Sub} || Sub <- Subscribed] -- SessionBindings,
-    lists:foreach(fun(B) -> unbind(Context, B) end, Removed),
+    Removed = [{ClientBinding, AMQPBinding} || AMQPBinding <- AMQPBindings],
+
+    lists:foreach(fun(B) -> bh_unbind(Context, B) end, Removed),
     blackhole_listener:remove_bindings(Listeners),
     Ctx = bh_context:remove_listeners(Context, Listeners),
-    {bh_context:set_bindings(Ctx, SessionBindings -- Removed), Subs ++ Subscribed}.
 
-unbind(Context, {ReqKey, Key}) ->
-    BHKey = <<"blackhole.event.", Key/binary>>,
+    {bh_context:set_bindings(Ctx, SessionBindings -- Removed), [ClientBinding | Subs]}.
+
+bh_unbind(Context, {ClientBinding, AMQPBinding}) ->
+    BHBinding = <<"blackhole.event.", AMQPBinding/binary>>,
     SessionPid = bh_context:websocket_pid(Context),
     SessionId = bh_context:websocket_session_id(Context),
-    Binding =  #{subscribed_key => ReqKey
-                ,subscription_key => Key
+    Binding =  #{subscribed_key => ClientBinding
+                ,subscription_key => AMQPBinding
                 ,session_pid => SessionPid
                 ,session_id => SessionId
                 },
-    blackhole_bindings:unbind(BHKey, ?MODULE, 'event', Binding).
+    blackhole_bindings:unbind(BHBinding, ?MODULE, 'event', Binding).
 
 -spec close(bh_context:context()) -> bh_context:context().
 close(Context) ->
     Listeners = bh_context:listeners(Context),
     blackhole_listener:remove_bindings(Listeners),
     Bindings = bh_context:bindings(Context),
-    lists:foreach(fun(B) -> unbind(Context, B) end, Bindings),
+    lists:foreach(fun(B) -> bh_unbind(Context, B) end, Bindings),
     Routines = [{fun bh_context:remove_listeners/2, Listeners}
                ,{fun bh_context:remove_bindings/2, Bindings}
                ],

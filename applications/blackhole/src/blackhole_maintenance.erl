@@ -9,10 +9,13 @@
 %%%-----------------------------------------------------------------------------
 -module(blackhole_maintenance).
 
-
 -export([start_module/1, start_module/2]).
 -export([stop_module/1, stop_module/2]).
--export([running_modules/0]).
+-export([running_modules/0
+        ,active_sessions/0
+        ,active_sessions_by_ip/1
+        ,active_sessions_by_account/1
+        ]).
 
 -include("blackhole.hrl").
 -include_lib("kazoo/include/kz_system_config.hrl").
@@ -95,3 +98,33 @@ print_module_resp(JObj) ->
 -spec print_field_resp({kz_json:key(), kz_json:json_term()}) -> 'ok'.
 print_field_resp({Field, Value}) ->
     io:format("  ~s: ~s~n", [Field, Value]).
+
+-spec active_sessions() -> 'ok'.
+active_sessions() ->
+    Contexts = blackhole_tracking:get_contexts(),
+    print_sessions(Contexts).
+
+-spec active_sessions_by_ip(kz_term:ne_binary()) -> 'ok'.
+active_sessions_by_ip(<<IPAddr/binary>>) ->
+    Sessions = blackhole_tracking:get_contexts_by_ip(IPAddr),
+    print_sessions(Sessions).
+
+-spec active_sessions_by_account(kz_term:ne_binary()) -> 'ok'.
+active_sessions_by_account(<<AccountId/binary>>) ->
+    Sessions = blackhole_tracking:get_contexts_by_account_id(AccountId),
+    print_sessions(Sessions).
+
+-spec print_sessions([bh_context:context()]) -> 'ok'.
+print_sessions([]) -> io:format("no active sessions~n");
+print_sessions(Sessions) ->
+    io:format("Active websocket connections:~n"),
+    io:format("~22s | ~10s | ~12s | ~32s~n", [<<"Peer">>, <<"Uptime">>, <<"PID">>, <<"Account-ID">>]),
+    lists:foreach(fun print_session/1, Sessions).
+
+print_session(Context) ->
+    io:format("~22s | ~10s | ~12s | ~32s~n"
+             ,[bh_context:websocket_session_id(Context)
+              ,kz_time:pretty_print_elapsed_s(kz_time:elapsed_s(bh_context:timestamp(Context)))
+              ,kz_term:to_binary(bh_context:websocket_pid(Context))
+              ,bh_context:auth_account_id(Context)
+              ]).

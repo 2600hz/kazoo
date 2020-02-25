@@ -72,12 +72,12 @@ init([Name, ExpirePeriod, Props]) ->
     Children = lists:foldl(fun(Child, Acc) -> maybe_add_child_spec(Child, Name, Props, Acc) end
                           ,[?WORKER_ARGS('kz_cache_lru', [Name, ExpirePeriod])
                            ,?WORKER_ARGS('kz_cache_ets', [Name])
+                           ,?WORKER_ARGS('kz_cache_processes', [Name])
                            ]
                           ,['kz_cache_conf_change', 'kz_cache_nodes']
                           ),
 
     {'ok', {SupFlags, lists:reverse(Children)}}.
-
 
 -spec maybe_add_child_spec(atom(), atom(), kz_cache:start_options(), kz_types:sup_child_specs()) ->
           kz_types:sup_child_specs().

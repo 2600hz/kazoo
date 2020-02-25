@@ -90,8 +90,8 @@ get_req_definition() ->
               ,{fun kapi_definition:set_validate_fun/2, fun get_req_v/1}
               ,{fun kapi_definition:set_publish_fun/2, fun publish_get_req/1}
               ,{fun kapi_definition:set_binding/2, ?KEY_WEBSOCKETS_GET_REQ}
-              ,{fun kapi_definition:set_required_headers/2, []}
-              ,{fun kapi_definition:set_optional_headers/2, [?KEY_API_ACCOUNT_ID
+              ,{fun kapi_definition:set_required_headers/2, [?KEY_API_ACCOUNT_ID]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Auth-Account-ID">>
                                                             ,<<"Socket-ID">>
                                                             ]}
               ,{fun kapi_definition:set_values/2
@@ -113,8 +113,7 @@ get_resp_definition() ->
               ,{fun kapi_definition:set_validate_fun/2, fun get_resp_v/1}
               ,{fun kapi_definition:set_publish_fun/2, fun publish_get_resp/2}
               ,{fun kapi_definition:set_required_headers/2, []}
-              ,{fun kapi_definition:set_optional_headers/2, [<<"Data">>
-                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Data">>]}
               ,{fun kapi_definition:set_values/2
                ,kapi_definition:event_type_headers(Category, EventName)
                }
@@ -137,8 +136,7 @@ module_req_definition() ->
               ,{fun kapi_definition:set_required_headers/2, [<<"Module">>
                                                             ,<<"Action">>
                                                             ]}
-              ,{fun kapi_definition:set_optional_headers/2, [<<"Persist">>
-                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Persist">>]}
               ,{fun kapi_definition:set_values/2
                ,[{<<"Event-Category">>, Category}
                 ,{<<"Event-Name">>, EventName}
@@ -167,8 +165,7 @@ module_resp_definition() ->
               ,{fun kapi_definition:set_required_headers/2, [<<"Persisted">>
                                                             ,<<"Started">>
                                                             ]}
-              ,{fun kapi_definition:set_optional_headers/2, [<<"Error">>
-                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Error">>]}
               ,{fun kapi_definition:set_values/2
                ,kapi_definition:event_type_headers(Category, EventName)
                }

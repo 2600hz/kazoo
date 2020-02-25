@@ -47,6 +47,10 @@
             "description": "blackhole ip",
             "type": "string"
         },
+        "max_connections_per_ip": {
+            "description": "blackhole max_connections_per_ip",
+            "type": "integer"
+        },
         "port": {
             "default": 5555,
             "description": "blackhole port",
