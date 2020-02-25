@@ -11,14 +11,26 @@
 %%%-----------------------------------------------------------------------------
 -module(kapi_route).
 
--export([req/1, req_v/1
-        ,resp/1, resp_v/1
-        ,win/1, win_v/1
-        ,bind_q/2, unbind_q/2
+-export([api_definitions/0, api_definition/1]).
+
+-export([req/1
+        ,req_v/1
+        ,publish_req/1
+        ,publish_req/2
+        ]).
+-export([resp/1
+        ,resp_v/1
+        ,publish_resp/2
+        ,publish_resp/3
+        ]).
+-export([win/1
+        ,win_v/1
+        ,publish_win/2
+        ,publish_win/3
+        ]).
+
+-export([bind_q/2, unbind_q/2
         ,declare_exchanges/0
-        ,publish_req/1, publish_req/2
-        ,publish_resp/2, publish_resp/3
-        ,publish_win/2, publish_win/3
         ,get_auth_realm/1
         ,get_auth_user/1
         ,req_event_type/0
@@ -39,38 +51,240 @@
 
 -export_type([req/0, resp/0]).
 
+-ifdef(TEST).
+-export([get_route_req_account_routing/2
+        ,get_route_req_realm_routing/3
+        ]).
+-endif.
+
+%%------------------------------------------------------------------------------
+%% @doc Get all API definitions of this module.
+%% @end
+%%------------------------------------------------------------------------------
+-spec api_definitions() -> kapi_definition:apis().
+api_definitions() ->
+    [req_definition()
+    ,resp_definition()
+    ,win_definition()
+    ].
+
+%%------------------------------------------------------------------------------
+%% @doc Get API definition of the given `Name'.
+%% @see api_definitions/0
+%% @end
+%%------------------------------------------------------------------------------
+-spec api_definition(kz_term:text()) -> kapi_definition:api().
+api_definition(Name) when not is_binary(Name) ->
+    api_definition(kz_term:to_binary(Name));
+api_definition(<<"req">>) ->
+    req_definition();
+api_definition(<<"resp">>) ->
+    resp_definition();
+api_definition(<<"win">>) ->
+    win_definition().
+
+-spec req_definition() -> kapi_definition:api().
+req_definition() ->
+    EventName = <<"route_req">>,
+    Category = ?EVENT_CATEGORY,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Dialplan Route Request">>}
+              ,{fun kapi_definition:set_description/2, <<"Dialplan Route Request">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun req/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun req_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_req/1}
+              ,{fun kapi_definition:set_binding/2, fun get_route_req_routing/1}
+              ,{fun kapi_definition:set_required_headers/2, [<<"From">>
+                                                            ,<<"Request">>
+                                                            ,<<"To">>
+                                                            ,?KEY_CALL_ID
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Body">>
+                                                            ,<<"Call-Direction">>
+                                                            ,<<"Caller-ID-Name">>
+                                                            ,<<"Caller-ID-Number">>
+                                                            ,<<"Codecs">>
+                                                            ,<<"Cost-Parameters">>
+                                                            ,<<"Custom-Application-Vars">>
+                                                            ,<<"Custom-Channel-Vars">>
+                                                            ,<<"Custom-Routing-Headers">>
+                                                            ,<<"Custom-SIP-Headers">>
+                                                            ,<<"Context">>
+                                                            ,<<"From-Network-Addr">>
+                                                            ,<<"From-Network-Port">>
+                                                            ,<<"From-Tag">>
+                                                            ,<<"Geo-Location">>
+                                                            ,<<"Max-Call-Length">>
+                                                            ,<<"Media">>
+                                                            ,<<"Message-ID">>
+                                                            ,<<"Orig-IP">>
+                                                            ,<<"Orig-Port">>
+                                                            ,<<"Origination-Call-ID">>
+                                                            ,<<"Prepend-CID-Name">>
+                                                            ,<<"Resource-Type">>
+                                                            ,<<"Ringback-Media">>
+                                                            ,<<"SIP-Request-Host">>
+                                                            ,<<"Switch-Hostname">>
+                                                            ,<<"Switch-Nodename">>
+                                                            ,<<"Switch-URI">>
+                                                            ,<<"Switch-URL">>
+                                                            ,<<"To-Tag">>
+                                                            ,<<"Transcode">>
+                                                            ,<<"Transfer-Media">>
+                                                            ,<<"User-Agent">>
+                                                            ,<<"Destination-Number">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Resource-Type">>, [<<"mms">>
+                                       ,<<"sms">>
+                                       ,<<"audio">>
+                                       ,<<"video">>
+                                       ,<<"chat">>
+                                       ,<<"metaflow">>
+                                       ]}
+                ,{<<"Media">>, [<<"process">>, <<"proxy">>, <<"bypass">>]}
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2
+               ,[{<<"Caller-ID-Name">>, fun erlang:is_binary/1}
+                ,{<<"Caller-ID-Number">>, fun erlang:is_binary/1}
+                ,{<<"Cost-Parameters">>, fun has_cost_parameters/1}
+                ,{<<"Custom-Application-Vars">>, fun kz_json:is_json_object/1}
+                ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
+                ,{<<"Custom-SIP-Headers">>, fun kz_json:is_json_object/1}
+                ,{<<"Event-Queue">>, fun erlang:is_binary/1}
+                ,{<<"From">>, fun erlang:is_binary/1}
+                ,{<<"Request">>, fun erlang:is_binary/1}
+                ,{<<"To">>, fun erlang:is_binary/1}
+                ,{?KEY_CALL_ID, fun erlang:is_binary/1}
+                ]
+               }
+              ],
+    kapi_definition:setters(Setters).
+
+-spec resp_definition() -> kapi_definition:api().
+resp_definition() ->
+    EventName = <<"route_resp">>,
+    Category = ?EVENT_CATEGORY,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Dialplan Route Response">>}
+              ,{fun kapi_definition:set_description/2, <<"Dialplan Route Response">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun resp/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun resp_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_resp/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Method">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Application-Data">>
+                                                            ,<<"Custom-Application-Vars">>
+                                                            ,<<"Custom-Channel-Vars">>
+                                                            ,<<"From-Realm">>
+                                                            ,<<"From-URI">>
+                                                            ,<<"From-User">>
+                                                            ,<<"Plan-Data">>
+                                                            ,<<"Pre-Park">>
+                                                            ,<<"Ringback-Media">>
+                                                            ,<<"Route-Error-Code">>
+                                                            ,<<"Route-Error-Message">>
+                                                            ,<<"Routes">>
+                                                            ,<<"Transfer-Media">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Method">>, [<<"bridge">>
+                                ,<<"park">>
+                                ,<<"error">>
+                                ,<<"sms">>
+                                ,<<"plan">>
+                                ,<<"application">>
+                                ]
+                 }
+                ,{<<"Pre-Park">>, [<<"none">>, <<"ring_ready">>, <<"answer">>]}
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2
+               ,[{<<"Route-Error-Code">>, fun erlang:is_binary/1}
+                ,{<<"Route-Error-Message">>, fun erlang:is_binary/1}
+                ,{<<"Routes">>, fun erlang:is_list/1}
+                ,{<<"Custom-Application-Vars">>, fun kz_json:is_json_object/1}
+                ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
+                ]
+               }
+              ],
+    kapi_definition:setters(Setters).
+
+-spec win_definition() -> kapi_definition:api().
+win_definition() ->
+    EventName = <<"route_win">>,
+    Category = ?EVENT_CATEGORY,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Dialplan Route Winner">>}
+              ,{fun kapi_definition:set_description/2, <<"Dialplan Route Winner">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun win/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun win_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_win/2}
+              ,{fun kapi_definition:set_binding/2, 'undefined'}
+              ,{fun kapi_definition:set_required_headers/2, [?KEY_CALL_ID
+                                                            ,?KEY_CONTROL_QUEUE
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Custom-Channel-Vars">>
+                                                            ,<<"Switch-Hostname">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,kapi_definition:event_type_headers(Category, EventName)
+               }
+              ,{fun kapi_definition:set_types/2
+               ,[{?KEY_CALL_ID, fun erlang:is_binary/1}
+                ,{?KEY_CONTROL_QUEUE, fun erlang:is_binary/1}
+                ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
+                ]
+               }
+              ],
+    kapi_definition:setters(Setters).
+
 %%------------------------------------------------------------------------------
 %% @doc Dialplan Route Request.
 %% Takes proplist, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec req(kz_term:api_terms()) ->
-          {'ok', iolist()} |
-          {'error', string()}.
-req(Prop) when is_list(Prop) ->
-    case req_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?ROUTE_REQ_HEADERS, ?OPTIONAL_ROUTE_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for route_req"}
-    end;
-req(JObj) -> req(kz_json:to_proplist(JObj)).
+-spec req(kz_term:api_terms()) -> kz_api:api_formatter_return().
+req(Req) ->
+    kapi_definition:build_message(Req, req_definition()).
 
 -spec req_v(kz_term:api_terms()) -> boolean().
-req_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?ROUTE_REQ_HEADERS, ?ROUTE_REQ_VALUES, ?ROUTE_REQ_TYPES);
-req_v(JObj) -> req_v(kz_json:to_proplist(JObj)).
+req_v(Req) ->
+    kapi_definition:validate(Req, req_definition()).
 
 -spec req_event_type() -> {kz_term:ne_binary(), kz_term:ne_binary()}.
-req_event_type() -> {?EVENT_CATEGORY, ?ROUTE_REQ_EVENT_NAME}.
+req_event_type() ->
+    Definition = req_definition(),
+    {kapi_definition:category(Definition), kapi_definition:name(Definition)}.
+
+-spec publish_req(kz_term:api_terms()) -> 'ok'.
+publish_req(JObj) ->
+    publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_req(kz_term:api_terms(), binary()) -> 'ok'.
+publish_req(Req, ContentType) ->
+    Definition = req_definition(),
+    {'ok', Payload} = kz_api:prepare_api_payload(Req
+                                                ,kapi_definition:values(Definition)
+                                                ,[{'formatter', kapi_definition:build_fun(Definition)}
+                                                 ,{'remove_recursive', 'false'}
+                                                 ]
+                                                ),
+    kz_amqp_util:callmgr_publish(Payload, ContentType, (kapi_definition:binding(Definition))(Req)).
 
 %%------------------------------------------------------------------------------
 %% @doc Dialplan Route Response.
 %% Takes proplist, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec resp(kz_term:api_terms()) ->
-          {'ok', iolist()} |
-          {'error', string()}.
-resp(Prop) when is_list(Prop) ->
+-spec resp(kz_term:api_terms()) -> kz_api:api_formatter_return().
+resp(Prop) ->
     Prop1 = case props:get_value(<<"Method">>, Prop) of
                 <<"bridge">> ->
                     Routes = [begin
@@ -81,15 +295,11 @@ resp(Prop) when is_list(Prop) ->
                 _ ->
                     Prop
             end,
-    case resp_v(Prop1) of
-        'true' -> kz_api:build_message(Prop1, ?ROUTE_RESP_HEADERS, ?OPTIONAL_ROUTE_RESP_HEADERS);
-        'false' -> {'error', "Proplist failed validation for route_resp"}
-    end;
-resp(JObj) -> resp(kz_json:to_proplist(JObj)).
+    kapi_definition:build_message(Prop1, resp_definition()).
 
 -spec resp_v(kz_term:api_terms()) -> boolean().
-resp_v(Prop) when is_list(Prop) ->
-    Valid = kz_api:validate(Prop, ?ROUTE_RESP_HEADERS, ?ROUTE_RESP_VALUES, ?ROUTE_RESP_TYPES),
+resp_v(Prop) ->
+    Valid = kapi_definition:validate(Prop, resp_definition()),
     case props:get_value(<<"Method">>, Prop) of
         <<"bridge">> when Valid->
             lists:all(fun(Route) -> resp_route_v(Route) end
@@ -97,8 +307,20 @@ resp_v(Prop) when is_list(Prop) ->
                      );
         _ ->
             Valid
-    end;
-resp_v(JObj) -> resp_v(kz_json:to_proplist(JObj)).
+    end.
+
+-spec publish_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
+publish_resp(RespQ, JObj) ->
+    publish_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
+publish_resp(RespQ, Resp, ContentType) ->
+    Definition = resp_definition(),
+    {'ok', Payload} = kz_api:prepare_api_payload(Resp
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
 -spec is_actionable_resp(kz_term:api_terms()) -> boolean().
 is_actionable_resp(Prop) when is_list(Prop) ->
@@ -119,9 +341,7 @@ is_actionable_resp(JObj) ->
 %% Takes proplist, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec resp_route(kz_term:api_terms()) ->
-          {'ok', iolist()} |
-          {'error', string()}.
+-spec resp_route(kz_term:api_terms()) -> kz_api:api_formatter_return().
 resp_route(Prop) when is_list(Prop) ->
     case resp_route_v(Prop) of
         'true' -> kz_api:build_message_specific_headers(Prop, ?ROUTE_RESP_ROUTE_HEADERS, ?OPTIONAL_ROUTE_RESP_ROUTE_HEADERS);
@@ -139,20 +359,26 @@ resp_route_v(JObj) -> resp_route_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec win(kz_term:api_terms()) ->
-          {'ok', iolist()} |
-          {'error', string()}.
-win(Prop) when is_list(Prop) ->
-    case win_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?ROUTE_WIN_HEADERS, ?OPTIONAL_ROUTE_WIN_HEADERS);
-        'false' -> {'error', "Proplist failed validation for route_win"}
-    end;
-win(JObj) -> win(kz_json:to_proplist(JObj)).
+-spec win(kz_term:api_terms()) -> kz_api:api_formatter_return().
+win(Req) ->
+    kapi_definition:build_message(Req, win_definition()).
 
 -spec win_v(kz_term:api_terms()) -> boolean().
-win_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?ROUTE_WIN_HEADERS, ?ROUTE_WIN_VALUES, ?ROUTE_WIN_TYPES);
-win_v(JObj) -> win_v(kz_json:to_proplist(JObj)).
+win_v(Req) ->
+    kapi_definition:validate(Req, win_definition()).
+
+-spec publish_win(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
+publish_win(RespQ, JObj) ->
+    publish_win(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_win(kz_term:ne_binary(), kz_term:api_terms(), binary()) -> 'ok'.
+publish_win(RespQ, Win, ContentType) ->
+    Definition = win_definition(),
+    {'ok', Payload} = kz_api:prepare_api_payload(Win
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
 %% @doc Bind AMQP Queue for routing requests.
@@ -229,45 +455,13 @@ get_route_req_realm_routing(Type, Realm, User) ->
     list_to_binary([?KEY_ROUTE_REQ, ".", kz_amqp_util:encode(Type), ".", kz_amqp_util:encode(Realm), ".", kz_amqp_util:encode(User)]).
 
 -spec get_route_req_routing(kz_term:api_terms()) -> kz_term:ne_binary().
-get_route_req_routing(Api) ->
-    {User, Realm} = get_auth_user_realm(Api),
-    Type = resource_type(Api),
-    case account_id(Api) of
+get_route_req_routing(API) ->
+    {User, Realm} = get_auth_user_realm(API),
+    Type = resource_type(API),
+    case account_id(API) of
         'undefined' -> get_route_req_realm_routing(Type, Realm, User);
         AccountId -> get_route_req_account_routing(Type, AccountId)
     end.
-
--spec publish_req(kz_term:api_terms()) -> 'ok'.
-publish_req(JObj) ->
-    publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
-
--spec publish_req(kz_term:api_terms(), binary()) -> 'ok'.
-publish_req(Req, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Req
-                                                ,?ROUTE_REQ_VALUES
-                                                ,[{'formatter', fun req/1}
-                                                 ,{'remove_recursive', 'false'}
-                                                 ]
-                                                ),
-    kz_amqp_util:callmgr_publish(Payload, ContentType, get_route_req_routing(Req)).
-
--spec publish_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
-publish_resp(RespQ, JObj) ->
-    publish_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
-
--spec publish_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
-publish_resp(RespQ, Resp, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?ROUTE_RESP_VALUES, fun resp/1),
-    kz_amqp_util:targeted_publish(RespQ, Payload, ContentType).
-
--spec publish_win(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
-publish_win(RespQ, JObj) ->
-    publish_win(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
-
--spec publish_win(kz_term:ne_binary(), kz_term:api_terms(), binary()) -> 'ok'.
-publish_win(RespQ, Win, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Win, ?ROUTE_WIN_VALUES, fun win/1),
-    kz_amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
 %% @doc Extract the auth realm from the API request, using the requests to domain
