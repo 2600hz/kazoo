@@ -44,6 +44,10 @@
             "description": "The indicated number of the caller",
             "type": "string"
         },
+        "channel_created_time": {
+            "description": "Unix timestamp in microseconds of channel create",
+            "type": "integer"
+        },
         "custom_application_vars": {
             "description": "Any custom-set values",
             "type": "object"

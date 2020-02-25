@@ -19,6 +19,7 @@
 -export([callee_id_number/1, callee_id_number/2, set_callee_id_number/2]).
 -export([caller_id_name/1, caller_id_name/2, set_caller_id_name/2]).
 -export([caller_id_number/1, caller_id_number/2, set_caller_id_number/2]).
+-export([channel_created_time/1, channel_created_time/2, set_channel_created_time/2]).
 -export([custom_application_vars/1, custom_application_vars/2, set_custom_application_vars/2]).
 -export([custom_channel_vars/1, custom_channel_vars/2, set_custom_channel_vars/2]).
 -export([custom_sip_headers/1, custom_sip_headers/2, set_custom_sip_headers/2]).
@@ -183,6 +184,18 @@ caller_id_number(Doc, Default) ->
 -spec set_caller_id_number(doc(), binary()) -> doc().
 set_caller_id_number(Doc, CallerIdNumber) ->
     kz_json:set_value([<<"caller_id_number">>], CallerIdNumber, Doc).
+
+-spec channel_created_time(doc()) -> kz_term:api_integer().
+channel_created_time(Doc) ->
+    channel_created_time(Doc, 'undefined').
+
+-spec channel_created_time(doc(), Default) -> integer() | Default.
+channel_created_time(Doc, Default) ->
+    kz_json:get_integer_value([<<"channel_created_time">>], Doc, Default).
+
+-spec set_channel_created_time(doc(), integer()) -> doc().
+set_channel_created_time(Doc, ChannelCreatedTime) ->
+    kz_json:set_value([<<"channel_created_time">>], ChannelCreatedTime, Doc).
 
 -spec custom_application_vars(doc()) -> kz_term:api_object().
 custom_application_vars(Doc) ->
@@ -738,6 +751,17 @@ col_unix_timestamp(_JObj, Timestamp, Timezone) -> kz_term:to_binary(
                                                       kz_time:adjust_utc_timestamp(Timestamp, Timezone)
                                                      )
                                                    ).
+col_unix_timestamp_micro(JObj, Timestamp, Timezone) ->
+    MicroTime = case ?MODULE:channel_created_time(JObj) of
+                    'undefined' -> kz_time:gregorian_seconds_to_unix_seconds(Timestamp) * ?MICROSECONDS_IN_SECOND;
+                    ChannelCreatedTime -> ChannelCreatedTime
+                end,
+    MicroSecondsRem = MicroTime rem ?MICROSECONDS_IN_SECOND,
+    GregorianTs = kz_time:unix_seconds_to_gregorian_seconds(MicroTime div ?MICROSECONDS_IN_SECOND),
+    LocalUnixTs = kz_time:gregorian_seconds_to_unix_seconds(
+                    kz_time:adjust_utc_timestamp(GregorianTs, Timezone)
+                   ),
+    kz_term:to_binary(LocalUnixTs + MicroSecondsRem / ?MICROSECONDS_IN_SECOND).
 col_rfc1036(_JObj, Timestamp, Timezone) -> kz_time:rfc1036(kz_time:adjust_utc_timestamp(Timestamp, Timezone)
                                                           ,Timezone
                                                           ).
