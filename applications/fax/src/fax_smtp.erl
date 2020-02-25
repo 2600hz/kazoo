@@ -105,7 +105,7 @@ handle_EHLO(Hostname, Extensions, #state{options=Options, proxy = Proxy}=State) 
                            %% auth is enabled, so advertise it
                            [{"AUTH", "PLAIN LOGIN CRAM-MD5"}
                            ,{"STARTTLS", 'true'}
-                           | Extensions
+                            | Extensions
                            ]
                    end,
     {'ok', filter_extensions(MyExtensions, Options), State}.
@@ -352,7 +352,7 @@ system_report(#state{errors=[Error | _]}=State) ->
                ,{<<"Message">>, Error}
                ,{<<"Details">>, kz_json:from_list(Props)}
                ,{<<"Account-ID">>, props:get_value(<<"Account-ID">>, Props)}
-               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                ]),
     kz_amqp_worker:cast(Notify, fun kapi_notifications:publish_system_alert/1).
 
@@ -366,7 +366,7 @@ faxbox_log(#state{account_id=AccountId}=State) ->
               ,{<<"pvt_type">>, <<"fax_smtp_log">>}
               ,{<<"pvt_created">>, kz_time:now_s()}
               ,{<<"_id">>, error_doc()}
-              | to_proplist(State)
+               | to_proplist(State)
               ]
              )
            ),
@@ -396,7 +396,7 @@ to_proplist(#state{}=State) ->
       ,{<<"Filename">>, State#state.filename}
       ,{<<"Errors">>, lists:reverse(State#state.errors)}
       ,{<<"Account-ID">>, State#state.account_id}
-      | faxbox_to_proplist(State#state.faxbox)
+       | faxbox_to_proplist(State#state.faxbox)
        ++ faxdoc_to_proplist(State#state.doc)
       ]).
 
@@ -778,7 +778,7 @@ process_parts([], #state{filename='undefined'
 process_parts([], State) ->
     {'ok', State};
 process_parts([{Type, SubType, _Headers, Parameters, BodyPart}
-              |Parts
+               |Parts
               ], State) ->
     {_ , NewState}
         = maybe_process_part(kz_mime:normalize_content_type(<<Type/binary, "/", SubType/binary>>)
@@ -979,7 +979,7 @@ send_outbound_smtp_fax_error(#state{account_id=AccountId
                 ,{<<"Owner-ID">>, OwnerId}
                 ,{<<"Number">>, Number}
                 ,{<<"Timestamp">>, kz_time:now_s()}
-                | maybe_add_faxbox_info(State) ++ kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                 | maybe_add_faxbox_info(State) ++ kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                 ]),
     %% Do not crash if fields were undefined
     kapps_notify_publisher:cast(Message, fun kapi_notifications:publish_fax_outbound_smtp_error/1).
