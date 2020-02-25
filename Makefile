@@ -399,5 +399,6 @@ validate-schemas:
 include make/splchk.mk
 include make/ci.mk
 include make/fmt.mk
+include make/pest.mk
 
 circle: ci
