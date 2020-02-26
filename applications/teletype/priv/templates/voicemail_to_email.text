@@ -5,7 +5,9 @@ Hi{% if user.first_name %} {{user.first_name}}{% endif %},
 
 You have a new voicemail from {{caller_id.name_number}} for
 your voicemail box at {{voicemail.vmbox_name}} (number: {{voicemail.vmbox_number}}).
+{% if voicemail.file_name %}
 Please find the message audio file in the attachment.
+{% endif %}
 {% if voicemail.transcription %}
 
 === Transcription ===
