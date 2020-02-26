@@ -2,19 +2,10 @@ CWD = $(shell pwd -P)
 ROOT = $(realpath $(CWD)/../..)
 PROJECT = fax
 
-PDF = test/pdf.pdf
+all: compile
 
-COMPILE_MOAR = assets
+comile-test:
 
-all: compile assets
-
-comile-test: assets
-
-comile-test-direct: assets
-
-assets: $(PDF)
-
-$(PDF):
-	wget -qO $@ https://raw.githubusercontent.com/mathiasbynens/small/master/pdf.pdf
+comile-test-direct:
 
 include $(ROOT)/make/kz.mk
