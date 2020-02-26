@@ -2912,11 +2912,11 @@ publish_voicemail_saved(API, ContentType) ->
 %%------------------------------------------------------------------------------
 -spec voicemail_deleted(kz_term:api_terms()) -> api_formatter_return().
 voicemail_deleted(Prop) ->
-    build_message(Prop, voicemail_deleted_definition()).
+    kapi_definition:build_message(Prop, voicemail_deleted_definition()).
 
 -spec voicemail_deleted_v(kz_term:api_terms()) -> boolean().
 voicemail_deleted_v(Prop) ->
-    validate(Prop, voicemail_deleted_definition()).
+    kapi_definition:validate(Prop, voicemail_deleted_definition()).
 
 -spec publish_voicemail_deleted(kz_term:api_terms()) -> 'ok'.
 publish_voicemail_deleted(JObj) ->
@@ -2925,10 +2925,11 @@ publish_voicemail_deleted(JObj) ->
 -spec publish_voicemail_deleted(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_voicemail_deleted(API, ContentType) ->
     Definition = voicemail_deleted_definition(),
-    Binding = kapi_definition:binding(Definition),
-    Values = kapi_definition:values(Definition),
-    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun voicemail_deleted/1),
-    kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                 ,kapi_definition:values(Definition)
+                                                 ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:notifications_publish(kapi_definition:binding(Definition), Payload, ContentType).
 
 %%%=============================================================================
 %%% Webhook Notifications Functions
