@@ -11194,6 +11194,97 @@
             ],
             "type": "object"
         },
+        "kapi.callflow.action.accepted": {
+            "description": "AMQP API for callflow.action.accepted",
+            "properties": {
+                "Call-ID": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "callflow"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "action.accepted"
+                    ],
+                    "type": "string"
+                },
+                "Msg-ID": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Call-ID",
+                "Msg-ID"
+            ],
+            "type": "object"
+        },
+        "kapi.callflow.action.execute": {
+            "description": "AMQP API for callflow.action.execute",
+            "properties": {
+                "Call": {
+                    "type": "object"
+                },
+                "Call-ID": {
+                    "type": "string"
+                },
+                "Data": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "callflow"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "action.execute"
+                    ],
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Call",
+                "Call-ID"
+            ],
+            "type": "object"
+        },
+        "kapi.callflow.action.result": {
+            "description": "AMQP API for callflow.action.result",
+            "properties": {
+                "Call-ID": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "callflow"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "action.result"
+                    ],
+                    "type": "string"
+                },
+                "Msg-ID": {
+                    "type": "string"
+                },
+                "Result": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Call-ID",
+                "Msg-ID",
+                "Result"
+            ],
+            "type": "object"
+        },
         "kapi.callflow.resume": {
             "description": "AMQP API for callflow.resume",
             "properties": {

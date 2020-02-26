@@ -9,17 +9,26 @@
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kapi_callflow).
+
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 -include("kz_api_literals.hrl").
+
 -export([api_definitions/0, api_definition/1]).
 
--export([resume/1, resume_v/1]).
--export([action_execute/1, action_execute_v/1
-        ,action_accepted/1, action_accepted_v/1
-        ,action_result/1, action_result_v/1
+-export([resume/1
+        ,resume_v/1
+        ,publish_resume/1
         ]).
--export([publish_action_execute/2
+-export([action_execute/1
+        ,action_execute_v/1
+        ,publish_action_execute/2
+        ]).
+-export([action_accepted/1
+        ,action_accepted_v/1
         ,publish_action_accepted/2
+        ]).
+-export([action_result/1
+        ,action_result_v/1
         ,publish_action_result/2
         ]).
 
@@ -27,14 +36,15 @@
         ,unbind_q/2
         ]).
 -export([declare_exchanges/0]).
--export([publish_resume/1]).
-
--define(RESUME_ROUTING_KEY, <<"callflow.resume">>).
--define(ACTION_ROUTING_KEY(A), <<"callflow.action.", A/binary>>).
 
 -type resume() :: kz_json:object().
 
 -export_type([resume/0]).
+
+-ifdef(TEST).
+-export([action_routing_key/1
+        ]).
+-endif.
 
 %%------------------------------------------------------------------------------
 %% @doc Get all API definitions of this module.
@@ -42,7 +52,11 @@
 %%------------------------------------------------------------------------------
 -spec api_definitions() -> kapi_definition:apis().
 api_definitions() ->
-    [resume_definition()].
+    [resume_definition()
+    ,action_execute_definition()
+    ,action_accepted_definition()
+    ,action_result_definition()
+    ].
 
 %%------------------------------------------------------------------------------
 %% @doc Get API definition of the given `Name'.
@@ -53,7 +67,13 @@ api_definitions() ->
 api_definition(Name) when not is_binary(Name) ->
     api_definition(kz_term:to_binary(Name));
 api_definition(<<"resume">>) ->
-    resume_definition().
+    resume_definition();
+api_definition(<<"action_execute">>) ->
+    action_execute_definition();
+api_definition(<<"action_accepted">>) ->
+    action_accepted_definition();
+api_definition(<<"action_result">>) ->
+    action_result_definition().
 
 -spec resume_definition() -> kapi_definition:api().
 resume_definition() ->
@@ -66,7 +86,7 @@ resume_definition() ->
               ,{fun kapi_definition:set_build_fun/2, fun resume/1}
               ,{fun kapi_definition:set_validate_fun/2, fun resume_v/1}
               ,{fun kapi_definition:set_publish_fun/2, fun publish_resume/1}
-              ,{fun kapi_definition:set_binding/2, ?RESUME_ROUTING_KEY}
+              ,{fun kapi_definition:set_binding/2, <<"callflow.resume">>}
               ,{fun kapi_definition:set_required_headers/2, [<<"Call">>
                                                             ,<<"Flow">>
                                                             ]}
@@ -89,6 +109,7 @@ action_execute_definition() ->
               ,{fun kapi_definition:set_build_fun/2, fun action_execute/1}
               ,{fun kapi_definition:set_validate_fun/2, fun action_execute_v/1}
               ,{fun kapi_definition:set_publish_fun/2, fun publish_action_execute/2}
+              ,{fun kapi_definition:set_binding/2, fun action_routing_key/1}
               ,{fun kapi_definition:set_required_headers/2, [<<"Call-ID">>
                                                             ,<<"Call">>
                                                             ]}
@@ -158,6 +179,17 @@ resume(Req) ->
 resume_v(Req) ->
     kapi_definition:validate(Req, resume_definition()).
 
+-spec publish_resume(kz_term:api_terms()) -> 'ok'.
+publish_resume(JObj) ->
+    Definition = resume_definition(),
+    {'ok', Payload} = kz_api:prepare_api_payload(JObj
+                                                ,kapi_definition:values(Definition)
+                                                ,[{'formatter', kapi_definition:build_fun(Definition)}
+                                                 ,{'remove_recursive', 'false'}
+                                                 ]
+                                                ),
+    kz_amqp_util:kapps_publish(kapi_definition:binding(Definition), Payload).
+
 %%------------------------------------------------------------------------------
 %% @doc Remote execution of a Callflow's action.
 %% Takes {@link kz_term:proplist()}, creates JSON string or error.
@@ -171,6 +203,22 @@ action_execute(Req) ->
 action_execute_v(Req) ->
     kapi_definition:validate(Req, action_execute_definition()).
 
+-spec publish_action_execute(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
+publish_action_execute(Action, API) ->
+    Definition = action_execute_definition(),
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,[{'formatter', kapi_definition:build_fun(Definition)}
+                                                 ,{'remove_recursive', 'false'}
+                                                 ]
+                                                ),
+    Options = [{mandatory, true}],
+    kz_amqp_util:kapps_publish((kapi_definition:binding(action_execute_definition()))(Action)
+                              ,Payload
+                              ,?DEFAULT_CONTENT_TYPE
+                              ,Options
+                              ).
+
 -spec action_accepted(kz_term:api_terms()) -> kz_api:api_formatter_return().
 action_accepted(Req) ->
     kapi_definition:build_message(Req, action_accepted_definition()).
@@ -179,6 +227,17 @@ action_accepted(Req) ->
 action_accepted_v(Req) ->
     kapi_definition:validate(Req, action_accepted_definition()).
 
+-spec publish_action_accepted(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
+publish_action_accepted(ServerId, JObj) ->
+    Definition = action_accepted_definition(),
+    {'ok', Payload} = kz_api:prepare_api_payload(JObj
+                                                ,kapi_definition:values(Definition)
+                                                ,[{'formatter', kapi_definition:build_fun(Definition)}
+                                                 ,{'remove_recursive', 'false'}
+                                                 ]
+                                                ),
+    kz_amqp_util:targeted_publish(ServerId, Payload).
+
 -spec action_result(kz_term:api_terms()) -> kz_api:api_formatter_return().
 action_result(Req) ->
     kapi_definition:build_message(Req, action_result_definition()).
@@ -186,6 +245,17 @@ action_result(Req) ->
 -spec action_result_v(kz_term:api_terms()) -> boolean().
 action_result_v(Req) ->
     kapi_definition:validate(Req, action_result_definition()).
+
+-spec publish_action_result(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
+publish_action_result(ServerId, JObj) ->
+    Definition = action_result_definition(),
+    {'ok', Payload} = kz_api:prepare_api_payload(JObj
+                                                ,kapi_definition:values(Definition)
+                                                ,[{'formatter', kapi_definition:build_fun(Definition)}
+                                                 ,{'remove_recursive', 'false'}
+                                                 ]
+                                                ),
+    kz_amqp_util:targeted_publish(ServerId, Payload).
 
 %%------------------------------------------------------------------------------
 %% @doc Binds used by this API.
@@ -198,13 +268,17 @@ bind_q(Q, Props) ->
 
 -spec bind_q(kz_term:ne_binary(), kz_term:api_atoms(), kz_term:proplist()) -> 'ok'.
 bind_q(Q, 'undefined', _) ->
-    kz_amqp_util:bind_q_to_kapps(Q, ?RESUME_ROUTING_KEY);
+    kz_amqp_util:bind_q_to_kapps(Q, kapi_definition:binding(resume_definition()));
 bind_q(Q, ['resume'|Restrict], Props) ->
-    kz_amqp_util:bind_q_to_kapps(Q, ?RESUME_ROUTING_KEY),
+    kz_amqp_util:bind_q_to_kapps(Q, kapi_definition:binding(resume_definition())),
     bind_q(Q, Restrict, Props);
 bind_q(Q, ['actions'|Restrict], Props) ->
     Actions = props:get_value('actions', Props, []),
-    _ = [kz_amqp_util:bind_q_to_kapps(Q, ?ACTION_ROUTING_KEY((kz_term:to_binary(Action)))) || Action <- Actions],
+    _ = [kz_amqp_util:bind_q_to_kapps(Q
+                                     ,(kapi_definition:binding(action_execute_definition()))(kz_term:to_binary(Action))
+                                     )
+         || Action <- Actions
+        ],
     bind_q(Q, Restrict, Props);
 bind_q(Q, [_|Restrict], Props) ->
     bind_q(Q, Restrict, Props);
@@ -217,13 +291,17 @@ unbind_q(Q, Props) ->
 
 -spec unbind_q(kz_term:ne_binary(), kz_term:api_atoms(), kz_term:proplist()) -> 'ok'.
 unbind_q(Q, 'undefined', _) ->
-    kz_amqp_util:unbind_q_from_kapps(Q, ?RESUME_ROUTING_KEY);
+    kz_amqp_util:unbind_q_from_kapps(Q, kapi_definition:binding(resume_definition()));
 unbind_q(Q, ['resume'|Restrict], Props) ->
-    _ = kz_amqp_util:unbind_q_from_kapps(Q, ?RESUME_ROUTING_KEY),
+    _ = kz_amqp_util:unbind_q_from_kapps(Q, kapi_definition:binding(resume_definition())),
     unbind_q(Q, Restrict, Props);
 unbind_q(Q, ['actions'|Restrict], Props) ->
     Actions = props:get_value('actions', Props, []),
-    _ = [kz_amqp_util:unbind_q_from_kapps(Q, ?ACTION_ROUTING_KEY((kz_term:to_binary(Action)))) || Action <- Actions],
+    _ = [kz_amqp_util:unbind_q_from_kapps(Q
+                                         ,(kapi_definition:binding(action_execute_definition()))(kz_term:to_binary(Action))
+                                         )
+         || Action <- Actions
+        ],
     unbind_q(Q, Restrict, Props);
 unbind_q(Q, [_|Restrict], Props) ->
     unbind_q(Q, Restrict, Props);
@@ -238,67 +316,6 @@ declare_exchanges() ->
     kz_amqp_util:kapps_exchange(),
     kz_amqp_util:targeted_exchange().
 
-%%------------------------------------------------------------------------------
-%% @doc Publish the JSON string to the proper Exchange.
-%% @end
-%%------------------------------------------------------------------------------
--spec publish_resume(kz_term:api_terms()) -> 'ok'.
-publish_resume(JObj) ->
-    Definition = resume_definition(),
-    BuildFun = kapi_definition:build_fun(Definition),
-    {'ok', Payload} = kz_api:prepare_api_payload(JObj
-                                                ,kapi_definition:values(Definition)
-                                                ,[{'formatter', BuildFun}
-                                                 ,{'remove_recursive', 'false'}
-                                                 ]
-                                                ),
-    kz_amqp_util:kapps_publish(kapi_definition:binding(Definition), Payload).
-
-%%------------------------------------------------------------------------------
-%% @doc Publish the JSON string to the proper Exchange.
-%% @end
-%%------------------------------------------------------------------------------
--spec publish_action_execute(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
-publish_action_execute(Action, API) ->
-    Definition = action_execute_definition(),
-    BuildFun = kapi_definition:build_fun(Definition),
-    {'ok', Payload} = kz_api:prepare_api_payload(API
-                                                ,kapi_definition:values(Definition)
-                                                ,[{'formatter', BuildFun}
-                                                 ,{'remove_recursive', 'false'}
-                                                 ]
-                                                ),
-    Options = [{mandatory, true}],
-    kz_amqp_util:kapps_publish(?ACTION_ROUTING_KEY(Action), Payload, ?DEFAULT_CONTENT_TYPE, Options).
-
-%%------------------------------------------------------------------------------
-%% @doc Publish the JSON string to the proper Exchange.
-%% @end
-%%------------------------------------------------------------------------------
--spec publish_action_accepted(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
-publish_action_accepted(ServerId, JObj) ->
-    Definition = action_accepted_definition(),
-    BuildFun = kapi_definition:build_fun(Definition),
-    {'ok', Payload} = kz_api:prepare_api_payload(JObj
-                                                ,kapi_definition:values(Definition)
-                                                ,[{'formatter', BuildFun}
-                                                 ,{'remove_recursive', 'false'}
-                                                 ]
-                                                ),
-    kz_amqp_util:targeted_publish(ServerId, Payload).
-
-%%------------------------------------------------------------------------------
-%% @doc Publish the JSON string to the proper Exchange.
-%% @end
-%%------------------------------------------------------------------------------
--spec publish_action_result(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
-publish_action_result(ServerId, JObj) ->
-    Definition = action_result_definition(),
-    BuildFun = kapi_definition:build_fun(Definition),
-    {'ok', Payload} = kz_api:prepare_api_payload(JObj
-                                                ,kapi_definition:values(Definition)
-                                                ,[{'formatter', BuildFun}
-                                                 ,{'remove_recursive', 'false'}
-                                                 ]
-                                                ),
-    kz_amqp_util:targeted_publish(ServerId, Payload).
+-spec action_routing_key(kz_term:ne_binary()) -> kz_term:ne_binary().
+action_routing_key(Action) ->
+    <<"callflow.action.", Action/binary>>.

@@ -1,0 +1,33 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.callflow.action.execute",
+    "description": "AMQP API for callflow.action.execute",
+    "properties": {
+        "Call": {
+            "type": "object"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Data": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "callflow"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "action.execute"
+            ],
+            "type": "string"
+        }
+    },
+    "required": [
+        "Call",
+        "Call-ID"
+    ],
+    "type": "object"
+}
