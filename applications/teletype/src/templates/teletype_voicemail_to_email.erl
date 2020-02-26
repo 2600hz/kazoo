@@ -175,12 +175,7 @@ do_process_req(DataJObj) ->
 -spec macros(kz_json:object()) -> kz_term:proplist().
 macros(DataJObj) ->
     TemplateData = template_data(DataJObj),
-    IncludeAttachment = kz_json:get_boolean_value([<<"vmbox_doc">>
-                                                  ,<<"should_include_attachment">>
-                                                  ]
-                                                 ,DataJObj
-                                                 ,'true'
-                                                 ),
+    IncludeAttachment = kz_json:is_true([<<"vmbox_doc">>, <<"should_include_attachment">>], DataJObj, 'true'),
     EmailAttachments = maybe_email_attachments(DataJObj, TemplateData, IncludeAttachment),
     Macros = maybe_add_file_data(TemplateData, EmailAttachments),
     props:set_value(<<"attachments">>, EmailAttachments, Macros).
