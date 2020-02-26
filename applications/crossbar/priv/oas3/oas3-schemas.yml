@@ -9124,6 +9124,10 @@
       'default': ''
       'description': callflow singular call hook url
       'type': string
+    'vm_delete_amqp':
+      'default': false
+      'description': callflow vm_delete_amqp
+      'type': boolean
     'voicemail':
       'properties':
         'delete_after_notify':
@@ -9193,6 +9197,10 @@
           'description': callflow fastforward and rewind seek duration
           'minimum': 0
           'type': integer
+        'vm_delete_amqp':
+          'default': false
+          'description': send ampq message to notify about voicemail deletion
+          'type': boolean
         'vm_message_forward_type':
           'default': only_forward
           'description': |-
@@ -11850,6 +11858,7 @@
         - teletype_transaction
         - teletype_voicemail_full
         - teletype_voicemail_to_email
+        - teletype_voicemail_deleted
         - teletype_webhook_disabled
       'description': teletype modules to start when teletype is started
       'items':
@@ -12162,6 +12171,18 @@
     'text_content_transfer_encoding':
       'default': 7BIT
       'description': notify.transaction text content transfer encoding
+      'type': string
+  'type': object
+'system_config.notify.voicemail_deleted':
+  'description': Schema for notify.voicemail_deleted system_config
+  'properties':
+    'html_content_transfer_encoding':
+      'default': 7BIT
+      'description': notify.voicemail_deleted html content transfer encoding
+      'type': string
+    'text_content_transfer_encoding':
+      'default': 7BIT
+      'description': notify.voicemail_deleted text content transfer encoding
       'type': string
   'type': object
 'system_config.notify.voicemail_full':
