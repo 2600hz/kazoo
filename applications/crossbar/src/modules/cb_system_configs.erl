@@ -288,17 +288,15 @@ read_for_delete(Id, Context) ->
 %%------------------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    View = <<"system_configs/crossbar_listing">>,
-    crossbar_doc:load_view(View, [], Context, fun normalize_view_results/2).
+    Options = [{'databases', [?KZ_CONFIG_DB]}
+              ,{'mapper', crossbar_view:get_key_fun()}
+              ],
+    crossbar_view:load(Context, <<"system_configs/crossbar_listing">>, Options).
 
 %%------------------------------------------------------------------------------
-%% @doc Normalizes the results of a view.
+%% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec normalize_view_results(kz_json:object(), kz_term:ne_binaries()) -> kz_term:ne_binaries().
-normalize_view_results(JObj, Acc) ->
-    [kz_json:get_value(<<"key">>, JObj) | Acc].
-
 -spec set_db_to_system(cb_context:context()) -> cb_context:context().
 set_db_to_system(Context) ->
     cb_context:setters(Context

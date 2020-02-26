@@ -547,10 +547,11 @@ load_queue_agents(Id, Context) ->
     end.
 
 load_agent_roster(Id, Context) ->
-    crossbar_doc:load_view(?CB_AGENTS_LIST, [{'key', Id}, {'reduce', 'false'}]
-                          ,Context
-                          ,fun normalize_agents_results/2
-                          ).
+    Options = [{'key', Id}
+              ,{'mapper', crossbar_view:get_id_fun()}
+              ,{'reduce', 'false'}
+              ],
+    crossbar_view:load(Context, ?CB_AGENTS_LIST, Options).
 
 add_queue_to_agents(Id, Context) ->
     add_queue_to_agents(Id, Context, cb_context:req_data(Context)).
@@ -740,22 +741,7 @@ fetch_from_amqp(Context, Req) ->
 %%------------------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    crossbar_doc:load_view(?CB_LIST
-                          ,[]
-                          ,Context
-                          ,fun normalize_view_results/2
-                          ).
-
-%%------------------------------------------------------------------------------
-%% @doc Normalizes the results of a view
-%% @end
-%%------------------------------------------------------------------------------
--spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
-normalize_view_results(JObj, Acc) ->
-    [kz_json:get_value(<<"value">>, JObj)|Acc].
-
-normalize_agents_results(JObj, Acc) ->
-    [kz_doc:id(JObj) | Acc].
+    crossbar_view:load(Context, ?CB_LIST, [{'mapper', crossbar_view:get_value_fun()}]).
 
 %%------------------------------------------------------------------------------
 %% @doc Creates an entry in the acdc db of the account's participation in acdc

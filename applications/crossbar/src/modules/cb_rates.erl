@@ -290,29 +290,17 @@ ensure_routes_set(Rate, _Routes) ->
 %%------------------------------------------------------------------------------
 -spec summary(cb_context:context(), kz_term:api_binary()) -> cb_context:context().
 summary(Context, 'undefined') ->
-    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2);
+    Options = [{'databases', [cb_context:db_name(Context)]}
+              ,{'mapper', crossbar_view:get_value_fun()}
+              ],
+    crossbar_view:load(Context, ?CB_LIST, Options);
 summary(Context, Prefix) ->
-    crossbar_doc:load_view(<<"rates/lookup">>
-                          ,[{'keys', kzdb_ratedeck:prefix_keys(Prefix)},'include_docs']
-                          ,Context
-                          ,fun normalize_rate_lookup/2
-                          ).
-
-%%------------------------------------------------------------------------------
-%% @doc Normalizes the results of a view.
-%% @end
-%%------------------------------------------------------------------------------
--spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
-normalize_view_results(JObj, Acc) ->
-    [kz_json:get_value(<<"value">>, JObj)|Acc].
-
-%%------------------------------------------------------------------------------
-%% @doc Normalizes the results of a view.
-%% @end
-%%------------------------------------------------------------------------------
--spec normalize_rate_lookup(kz_json:object(), kz_json:objects()) -> kz_json:objects().
-normalize_rate_lookup(JObj, Acc) ->
-    [kz_json:get_value(<<"doc">>, JObj)|Acc].
+    Options = [{'databases', [cb_context:db_name(Context)]}
+              ,{'keys', kzdb_ratedeck:prefix_keys(Prefix)}
+              ,{'mapper', crossbar_view:get_doc_fun()}
+              ,'include_docs'
+              ],
+    crossbar_view:load(Context, <<"rates/lookup">>, Options).
 
 -spec rate_for_number(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 rate_for_number(Phonenumber, Context) ->

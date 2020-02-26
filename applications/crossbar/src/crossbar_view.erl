@@ -13,12 +13,12 @@
 -module(crossbar_view).
 
 -export([load/2, load/3
-        ,load_range/2, load_range/3
+        ,load_time_range/2, load_time_range/3
         ,load_modb/2, load_modb/3
         ,next_chunk/1
 
         ,build_load_params/3
-        ,build_load_range_params/3
+        ,build_load_time_range_params/3
         ,build_load_modb_params/3
 
         ,direction/1, direction/2
@@ -32,8 +32,12 @@
 
         ,suffix_key_fun/1
 
-        ,map_doc_fun/0
-        ,map_value_fun/0
+        ,get_doc_fun/0
+        ,get_value_fun/0
+        ,get_key_fun/0
+        ,get_id_fun/0
+
+        ,high_value_key/0
         ]).
 
 -include("crossbar.hrl").
@@ -166,19 +170,19 @@ load(Context, View) ->
 load(Context, View, Options) ->
     load_view(build_load_params(Context, View, Options), Context).
 
-%% @equiv load_range(Context, View, [])
--spec load_range(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
-load_range(Context, View) ->
-    load_range(Context, View, []).
+%% @equiv load_time_range(Context, View, [])
+-spec load_time_range(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
+load_time_range(Context, View) ->
+    load_time_range(Context, View, []).
 
 %%------------------------------------------------------------------------------
-%% @doc This function attempts to load the context with the timestamped
+%% @doc This function attempts to load the context with the timestampe
 %% results of a view run against the database.
 %% @end
 %%------------------------------------------------------------------------------
--spec load_range(cb_context:context(), kz_term:ne_binary(), options()) -> cb_context:context().
-load_range(Context, View, Options) ->
-    load_view(build_load_range_params(Context, View, Options), Context).
+-spec load_time_range(cb_context:context(), kz_term:ne_binary(), options()) -> cb_context:context().
+load_time_range(Context, View, Options) ->
+    load_view(build_load_time_range_params(Context, View, Options), Context).
 
 %% @equiv load_modb(Context, View, [])
 -spec load_modb(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
@@ -236,9 +240,9 @@ build_load_params(Context, View, Options) ->
 %% of a view over a specified range of time.
 %% @end
 %%------------------------------------------------------------------------------
--spec build_load_range_params(cb_context:context(), kz_term:ne_binary(), options()) ->
+-spec build_load_time_range_params(cb_context:context(), kz_term:ne_binary(), options()) ->
           load_params() | cb_context:context().
-build_load_range_params(Context, View, Options) ->
+build_load_time_range_params(Context, View, Options) ->
     try build_general_load_params(Context, View, Options) of
         #{direction := Direction}=LoadMap ->
             TimeFilterKey = props:get_ne_binary_value('range_key_name', Options, <<"created">>),
@@ -282,7 +286,7 @@ build_load_range_params(Context, View, Options) ->
 -spec build_load_modb_params(cb_context:context(), kz_term:ne_binary(), options()) ->
           load_params() | cb_context:context().
 build_load_modb_params(Context, View, Options) ->
-    case build_load_range_params(Context, View, Options) of
+    case build_load_time_range_params(Context, View, Options) of
         #{direction := Direction
          ,start_time := StartTime
          ,end_time := EndTime
@@ -472,7 +476,7 @@ expand_min_max_key('min_max', 'ascending') ->
     'false';
 expand_min_max_key('min_max', 'descending') ->
     lager:debug("padding descending composite key"),
-    <<16#fff0/utf8>>;
+    high_value_key();
 expand_min_max_key(RangeKey, _) -> RangeKey.
 
 -spec maybe_min_max_pad(kz_term:api_non_neg_integer(), api_range_key()) -> api_range_key() | ['min_max'].
@@ -483,6 +487,9 @@ maybe_min_max_pad(KeyMinLength, RangeKey) ->
 -spec min_max_pad(non_neg_integer(), api_range_key()) -> api_range_key() | ['min_max'].
 min_max_pad(0, RangeKey) -> RangeKey;
 min_max_pad(N, RangeKey) -> min_max_pad(N-1, ['min_max' | RangeKey]).
+
+-spec high_value_key() -> kz_term:ne_binary().
+high_value_key() -> <<16#fff0/utf8>>.
 
 %% @equiv direction(Context, [])
 -spec direction(cb_context:context()) -> direction().
@@ -569,15 +576,29 @@ time_range(Context, MaxRange, Key, RangeFrom, RangeTo) ->
 %% @doc Returns a function to get `doc' object from each view result.
 %% @end
 %%------------------------------------------------------------------------------
--spec map_doc_fun() -> mapper_fun().
-map_doc_fun() -> fun(JObj, Acc) -> [kz_json:get_json_value(<<"doc">>, JObj)|Acc] end.
+-spec get_doc_fun() -> mapper_fun().
+get_doc_fun() -> fun(JObj, Acc) -> [kz_json:get_json_value(<<"doc">>, JObj)|Acc] end.
 
 %%------------------------------------------------------------------------------
 %% @doc Returns a function to get `value' object from each view result.
 %% @end
 %%------------------------------------------------------------------------------
--spec map_value_fun() -> mapper_fun().
-map_value_fun() -> fun(JObj, Acc) -> [kz_json:get_value(<<"value">>, JObj)|Acc] end.
+-spec get_value_fun() -> mapper_fun().
+get_value_fun() -> fun(JObj, Acc) -> [kz_json:get_value(<<"value">>, JObj)|Acc] end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec get_key_fun() -> mapper_fun().
+get_key_fun() -> fun(JObj, Acc) -> [kz_json:get_value(<<"key">>, JObj)|Acc] end.
+
+%%------------------------------------------------------------------------------
+%% @doc Returns a function to get `value' object from each view result.
+%% @end
+%%------------------------------------------------------------------------------
+-spec get_id_fun() -> mapper_fun().
+get_id_fun() -> fun(JObj, Acc) -> [kz_doc:id(JObj)|Acc] end.
 
 %%------------------------------------------------------------------------------
 %% @doc If pagination available, returns page size.
@@ -1253,8 +1274,8 @@ map_keymap(_, _, ApiRangeKey) -> ApiRangeKey.
 get_range_key_maps(Options) ->
     case props:get_value('range_keymap', Options) of
         'undefined' ->
-            {map_range_keymap(props:get_value('range_start_keymap', Options))
-            ,map_range_keymap(props:get_value('range_end_keymap', Options))
+            {map_range_keymap(props:get_first_defined(['startkey', 'range_start_keymap'], Options))
+            ,map_range_keymap(props:get_first_defined(['endkey', 'range_end_keymap'], Options))
             };
         KeyMap -> {map_range_keymap(KeyMap), map_range_keymap(KeyMap)}
     end.

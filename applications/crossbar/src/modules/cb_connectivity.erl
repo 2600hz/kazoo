@@ -267,16 +267,7 @@ on_successful_validation(Id, Context) ->
 %%------------------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    crossbar_doc:load_view(?CB_LIST
-                          ,[{'reduce', 'false'}]
-                          ,Context
-                          ,fun normalize_view_results/2
-                          ).
-
-%%------------------------------------------------------------------------------
-%% @doc Normalizes the results of a view.
-%% @end
-%%------------------------------------------------------------------------------
--spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
-normalize_view_results(JObj, Acc) ->
-    [kz_doc:id(JObj) | Acc].
+    Options = [{'mapper', crossbar_view:get_id_fun()}
+              ,{'reduce', 'false'}
+              ],
+    crossbar_view:load(Context, ?CB_LIST, Options).

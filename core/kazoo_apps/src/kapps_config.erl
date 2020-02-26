@@ -584,29 +584,26 @@ get_all_default_kvs(JObj) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+-type set_return() :: {'ok', kz_json:object()} |
+                      kz_datamgr:data_error().
 
--spec set_string(config_category(), config_key(), kz_term:text()) ->
-          {'ok', kz_json:object()}.
+-spec set_string(config_category(), config_key(), kz_term:text()) -> set_return().
 set_string(Category, Key, Value) ->
     set(Category, Key, kz_term:to_binary(Value)).
 
--spec set_integer(config_category(), config_key(), kz_term:text() | integer()) ->
-          {'ok', kz_json:object()}.
+-spec set_integer(config_category(), config_key(), kz_term:text() | integer()) -> set_return().
 set_integer(Category, Key, Value) ->
     set(Category, Key, kz_term:to_integer(Value)).
 
--spec set_float(config_category(), config_key(), kz_term:text() | float()) ->
-          {'ok', kz_json:object()}.
+-spec set_float(config_category(), config_key(), kz_term:text() | float()) -> set_return().
 set_float(Category, Key, Value) ->
     set(Category, Key, kz_term:to_float(Value)).
 
--spec set_boolean(config_category(), config_key(), kz_term:text() | boolean()) ->
-          {'ok', kz_json:object()}.
+-spec set_boolean(config_category(), config_key(), kz_term:text() | boolean()) -> set_return().
 set_boolean(Category, Key, Value) ->
     set(Category, Key, kz_term:to_boolean(Value)).
 
--spec set_json(config_category(), config_key(), kz_term:text() | kz_json:object()) ->
-          {'ok', kz_json:object()}.
+-spec set_json(config_category(), config_key(), kz_term:text() | kz_json:object()) -> set_return().
 set_json(Category, Key, Value) ->
     set(Category, Key, kz_json:decode(Value)).
 
@@ -614,45 +611,42 @@ set_json(Category, Key, Value) ->
 %% @doc Set the key to the value in the given category but specific to this node.
 %% @end
 %%------------------------------------------------------------------------------
--spec set(config_category(), config_key(), kz_json:json_term()) ->
-          {'ok', kz_json:object()}.
+-spec set(config_category(), config_key(), kz_json:json_term()) -> set_return().
 set(Category, Key, Value) ->
     set(Category, Key, Value, node()).
 
 -spec set(config_category(), config_key(), kz_json:json_term(), kz_term:ne_binary() | atom()) ->
-          {'ok', kz_json:object()} |
-          {'error', kz_datamgr:data_error()}.
+          set_return().
 set(Category, Key, Value, Node) ->
     update_category(Category, Key, Value, Node, []).
 
 -spec set_default(config_category(), config_key(), kz_json:json_term()) ->
-          {'ok', kz_json:object()} |
-          {'error', kz_datamgr:data_error()}.
+          set_return().
 set_default(Category, Key, Value) ->
     update_category(Category, Key, Value, ?KEY_DEFAULT, []).
 
 -spec update_default(config_category(), config_key(), kz_json:json_term()) ->
           {'ok', kz_json:object()} |
-          {'error', kz_datamgr:data_error()}.
+          kz_datamgr:data_error().
 update_default(Category, Key, Value) ->
     update_default(Category, Key, Value, []).
 
 -spec update_default(config_category(), config_key(), kz_json:json_term(), update_options()) ->
           {'ok', kz_json:object()} |
-          {'error', kz_datamgr:data_error()}.
+          kz_datamgr:data_error().
 update_default(Category, Key, Value, Options) ->
     update_category(Category, Key, Value, ?KEY_DEFAULT, Options).
 
 -spec set_node(config_category(), config_key(), kz_json:json_term(), kz_term:ne_binary() | atom()) ->
           {'ok', kz_json:object()} |
-          {'error', kz_datamgr:data_error()}.
+          kz_datamgr:data_error().
 set_node(Category, _, _, 'undefined') -> get_category(Category);
 set_node(Category, Key, Value, Node) ->
     update_category(Category, Key, Value, Node, [{'node_specific', 'true'}]).
 
 -spec update_category(config_category(), config_key(), kz_json:json_term(), kz_term:ne_binary() | atom(), update_options()) ->
           {'ok', kz_json:object()} |
-          {'error', kz_datamgr:data_error()}.
+          kz_datamgr:data_error().
 -ifdef(TEST).
 update_category(Category, _, _, _, _) -> {'ok', Category}.
 -else.

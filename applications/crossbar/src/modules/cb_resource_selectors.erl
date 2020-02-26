@@ -241,58 +241,22 @@ delete(Context, _UUID) ->
 load_rules(Context) ->
     crossbar_doc:load(?RULES_PVT_TYPE, Context, ?TYPE_CHECK_OPTION(?RULES_PVT_TYPE)).
 
--spec summary(cb_context:context(), kz_term:api_binaries(), kz_term:api_binary(), boolean()) -> cb_context:context().
+-spec summary(cb_context:context(), kz_term:binaries(), kz_term:api_binary(), boolean()) -> cb_context:context().
 summary(Context, Prefix, ViewName, Reduce) ->
-    case kz_term:is_true(Reduce) of
-        'true' ->
-            Options = [{'startkey', build_start_key(Context, Prefix)}
-                      ,{'endkey', build_end_key(Context, Prefix)}
-                      ,'group'
-                      ],
-            Fun = fun normalize_view_results/2;
-        'false' ->
-            Options = [{'startkey', build_start_key(Context, Prefix)}
-                      ,{'endkey', build_end_key(Context, Prefix)}
-                      ],
-            Fun = fun normalize_resource_selector_result/2
-    end,
-    Context1 = crossbar_doc:load_view(ViewName, Options, Context, Fun),
-    RespEnvelope = fix_envelope_start_keys(cb_context:resp_envelope(Context1), Prefix),
-    cb_context:set_resp_envelope(Context1, RespEnvelope).
+    crossbar_view:load(Context, ViewName, view_options(Prefix, Reduce)).
 
--spec build_start_key(cb_context:context(), kz_term:api_binaries()) -> kz_term:api_binaries().
-build_start_key(Context, PrefixKeys) ->
-    case cb_context:req_value(Context, <<"start_key">>) of
-        'undefined' -> PrefixKeys;
-        StartKey -> build_key(PrefixKeys, StartKey)
-    end.
-
--spec build_end_key(cb_context:context(), kz_term:api_binaries()) -> kz_term:api_binaries().
-build_end_key(Context, PrefixKeys) ->
-    case cb_context:req_value(Context, <<"end_key">>) of
-        'undefined' -> build_key(PrefixKeys, <<16#fff0/utf8>>);
-        EndKey -> build_key(PrefixKeys, EndKey)
-    end.
-
--spec build_key(kz_term:api_binaries(), kz_term:api_binary()) -> kz_term:api_binaries().
-build_key(PrefixKeys, Suffix) ->
-    lists:reverse([Suffix | lists:reverse(PrefixKeys)]).
-
--spec fix_envelope_start_keys(kz_json:object(), kz_term:api_binaries()) -> kz_json:object().
-fix_envelope_start_keys(JObj, Prefix) ->
-    lists:foldl(fun(K,J) ->
-                        case {kz_json:get_value(K, J), Prefix} of
-                            {'undefined', _} -> J;
-                            {[], _} -> kz_json:delete_key(K, J);
-                            {_, []} -> J;
-                            {P, P} -> kz_json:delete_key(K, J);
-                            {[P, Value], [P]} -> kz_json:set_value(K, Value, J);
-                            {[P1, P2, Value], [P1, P2]} -> kz_json:set_value(K, Value, J)
-                        end
-                end
-               ,JObj
-               ,[<<"start_key">>, <<"next_start_key">>]
-               ).
+-spec view_options(kz_term:ne_binaries(), boolean()) -> crossbar_view:options().
+view_options(Prefix, 'true') ->
+    [{'startkey', Prefix}
+    ,{'endkey', Prefix ++ [crossbar_view:high_value_key()]}
+    ,{'mapper', fun normalize_view_results/2}
+    ,'group'
+    ];
+view_options(Prefix, 'false') ->
+    [{'startkey', Prefix}
+    ,{'endkey', Prefix ++ [crossbar_view:high_value_key()]}
+    ,{'mapper', fun normalize_resource_selector_result/2}
+    ].
 
 %%------------------------------------------------------------------------------
 %% @doc Normalizes the results of a view.

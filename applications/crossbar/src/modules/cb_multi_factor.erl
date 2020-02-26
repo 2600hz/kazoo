@@ -133,7 +133,7 @@ validate(Context) ->
 
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, ?ATTEMPTS) ->
-    Options = [{'mapper', crossbar_view:map_value_fun()}
+    Options = [{'mapper', crossbar_view:get_value_fun()}
               ,{'range_keymap', <<"multi_factor">>}
               ],
     crossbar_view:load_modb(Context, ?CB_LIST_ATTEMPT_LOG, Options);
@@ -267,7 +267,7 @@ summary(Context) ->
     Options = [{'startkey', [<<"multi_factor">>]}
               ,{'endkey', [<<"multi_factor">>, kz_json:new()]}
               ,{'unchunkable', 'true'}
-              ,{'mapper', crossbar_view:map_value_fun()}
+              ,{'mapper', crossbar_view:get_value_fun()}
               ],
     C1 = crossbar_view:load(Context, <<"auth/providers_by_type">>, Options),
     C2 = system_summary(Context),
@@ -276,7 +276,7 @@ summary(Context) ->
 system_summary(Context) ->
     Options = [{'startkey', [<<"multi_factor">>]}
               ,{'endkey', [<<"multi_factor">>, kz_json:new()]}
-              ,{'mapper', crossbar_view:map_value_fun()}
+              ,{'mapper', crossbar_view:get_value_fun()}
               ,{'databases', [?KZ_AUTH_DB]}
               ,{'unchunkable', 'true'}
               ],

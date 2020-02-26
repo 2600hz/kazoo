@@ -279,7 +279,7 @@ search(Context, Type, Query, Val, Opts) ->
     Options =
         [{'startkey', get_start_key(Context, Type, Value)}
         ,{'endkey', get_end_key(Context, Type, Value)}
-        ,{'mapper', crossbar_view:map_value_fun()}
+        ,{'mapper', crossbar_view:get_value_fun()}
          | Opts
         ],
     crossbar_view:load(Context, ViewName, Options).

@@ -40,7 +40,6 @@
 -define(PROVIDERS_VIEW, <<"providers/list_by_type">>).
 -define(PROVIDERS_APP_VIEW, <<"apps/list_by_provider">>).
 -define(APPS_VIEW, <<"apps/list_by_account">>).
--define(KEYS_VIEW, <<"auth/list_keys">>).
 
 -define(PUBLIC_KEY_MIME, [{<<"application">>, <<"x-pem-file">>}]).
 
@@ -282,22 +281,29 @@ validate_path(Context, ?TOKENINFO_PATH, ?HTTP_POST) ->
 %% validating /auth/links
 validate_path(Context, ?LINKS_PATH, ?HTTP_GET) ->
     Options = [{'key', [cb_context:auth_account_id(Context), cb_context:auth_user_id(Context)]}
+              ,{'databases', [?KZ_AUTH_DB]}
+              ,{'mapper', crossbar_view:get_value_fun()}
               ,'include_docs'
               ],
-    crossbar_doc:load_view(?LINKS_VIEW, Options, Context, fun normalize_view/2);
+    crossbar_view:load(Context, ?LINKS_VIEW, Options);
 
 %% validating /auth/providers
 validate_path(Context, ?PROVIDERS_PATH, ?HTTP_GET) ->
-    crossbar_doc:load_view(?PROVIDERS_VIEW, [], Context, fun normalize_view/2);
+    Options = [{'databases', [?KZ_AUTH_DB]}
+              ,{'mapper', crossbar_view:get_value_fun()}
+              ],
+    crossbar_view:load(Context, ?PROVIDERS_VIEW, Options);
 validate_path(Context, ?PROVIDERS_PATH, ?HTTP_PUT) ->
     cb_context:validate_request_data(<<"auth.provider">>, Context, fun add_provider/1);
 
 %% validating /auth/apps
 validate_path(Context, ?APPS_PATH, ?HTTP_GET) ->
     Options = [{'key', account_id(Context)}
+              ,{'databases', [?KZ_AUTH_DB]}
+              ,{'mapper', crossbar_view:get_value_fun()}
               ,'include_docs'
               ],
-    crossbar_doc:load_view(?APPS_VIEW, Options, Context, fun normalize_view/2);
+    crossbar_view:load(Context, ?APPS_VIEW, Options);
 validate_path(Context, ?APPS_PATH, ?HTTP_PUT) ->
     cb_context:validate_request_data(<<"auth.app">>, Context, fun add_app/1);
 
@@ -460,10 +466,6 @@ maybe_authorize(Context) ->
             lager:debug("error authenticating user : ~p",[_R]),
             cb_context:add_system_error('invalid_credentials', Context)
     end.
-
--spec normalize_view(kz_json:object(), kz_json:objects()) -> kz_json:objects().
-normalize_view(JObj, Acc) ->
-    [kz_json:get_value(<<"value">>, JObj)|Acc].
 
 -spec account_id(cb_context:context()) -> kz_term:ne_binary().
 account_id(Context) ->

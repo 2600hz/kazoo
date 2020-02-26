@@ -28,7 +28,6 @@
 
 -define(ACCT_MD5_LIST, <<"users/creds_by_md5">>).
 -define(ACCT_SHA1_LIST, <<"users/creds_by_sha">>).
--define(USERNAME_LIST, <<"users/list_by_username">>).
 
 %%%=============================================================================
 %%% API

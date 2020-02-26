@@ -358,7 +358,6 @@ load_attachment(UserId, AttachmentId, Context) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
-
 -spec maybe_update_devices_presence(cb_context:context()) -> 'ok'.
 maybe_update_devices_presence(Context) ->
     DbDoc = cb_context:fetch(Context, 'db_doc'),
@@ -417,7 +416,6 @@ update_device_presence(Context, DeviceDoc) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
-
 -spec maybe_send_email(cb_context:context()) -> 'ok'.
 maybe_send_email(Context) ->
     case kz_term:is_true(cb_context:req_value(Context, <<"send_email_on_creation">>, 'true')) of
@@ -429,7 +427,6 @@ maybe_send_email(Context) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
-
 -spec send_email(cb_context:context()) -> 'ok'.
 send_email(Context) ->
     lager:debug("trying to publish new user notification"),
@@ -447,26 +444,14 @@ send_email(Context) ->
 %% account summary.
 %% @end
 %%------------------------------------------------------------------------------
-
 -spec load_users_summary(cb_context:context()) -> cb_context:context().
 load_users_summary(Context) ->
-    fix_envelope(
-      crossbar_doc:load_view(?CB_LIST
-                            ,[]
-                            ,Context
-                            ,fun normalize_view_results/2
-                            )).
-
--spec fix_envelope(cb_context:context()) -> cb_context:context().
-fix_envelope(Context) ->
-    RespData = cb_context:resp_data(Context),
-    cb_context:set_resp_data(Context, lists:reverse(RespData)).
+    crossbar_view:load(Context, ?CB_LIST, [{'mapper', crossbar_view:get_value_fun()}]).
 
 %%------------------------------------------------------------------------------
 %% @doc Load a user document from the database
 %% @end
 %%------------------------------------------------------------------------------
-
 -spec load_user(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 load_user(UserId, Context) -> crossbar_doc:load(UserId, Context, ?TYPE_CHECK_OPTION(kzd_users:type())).
 
@@ -474,7 +459,6 @@ load_user(UserId, Context) -> crossbar_doc:load(UserId, Context, ?TYPE_CHECK_OPT
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
-
 -spec validate_patch(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 validate_patch(UserId, Context) ->
     crossbar_doc:patch_and_validate(UserId, Context, fun validate_request/2).
@@ -823,18 +807,9 @@ rehash_creds(Username, Password, Context) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc Normalizes the results of a view.
-%% @end
-%%------------------------------------------------------------------------------
-
--spec(normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects()).
-normalize_view_results(JObj, Acc) -> [kz_json:get_value(<<"value">>, JObj)|Acc].
-
-%%------------------------------------------------------------------------------
 %% @doc Converts context to vcard
 %% @end
 %%------------------------------------------------------------------------------
-
 -spec convert_to_vcard(cb_context:context()) -> cb_context:context().
 convert_to_vcard(Context) ->
     JObj = cb_context:doc(Context),

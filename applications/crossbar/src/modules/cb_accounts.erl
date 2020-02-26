@@ -39,7 +39,6 @@
 
 -define(ACCOUNTS_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".accounts">>).
 
--define(AGG_VIEW_FILE, <<"views/accounts.json">>).
 -define(AGG_VIEW_SUMMARY, <<"accounts/listing_by_id">>).
 -define(AGG_VIEW_PARENT, <<"accounts/listing_by_parent">>).
 -define(AGG_VIEW_CHILDREN, <<"accounts/listing_by_children">>).
@@ -833,15 +832,12 @@ leak_trial_time_left(Context, JObj, _Expiration) ->
 %%------------------------------------------------------------------------------
 -spec load_children(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_children(AccountId, Context) ->
-    StartKey = start_key(Context),
-    fix_envelope(
-      crossbar_doc:load_view(?AGG_VIEW_CHILDREN
-                            ,[{'startkey', [AccountId, StartKey]}
-                             ,{'endkey', [AccountId, kz_json:new()]}
-                             ]
-                            ,Context
-                            ,fun normalize_view_results/2
-                            )).
+    Options = [{'databases', [?KZ_ACCOUNTS_DB]}
+              ,{'startkey', [AccountId]}
+              ,{'endkey', [AccountId, crossbar_view:high_value_key()]}
+              ,{'mapper', crossbar_view:get_value_fun()}
+              ],
+    crossbar_view:load(Context, ?AGG_VIEW_CHILDREN, Options).
 
 %%------------------------------------------------------------------------------
 %% @doc Load a summary of the descendants of this account
@@ -849,17 +845,12 @@ load_children(AccountId, Context) ->
 %%------------------------------------------------------------------------------
 -spec load_descendants(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_descendants(AccountId, Context) ->
-    StartKey = start_key(Context),
-    lager:debug("account ~s startkey ~s", [AccountId, StartKey]),
-    fix_envelope(
-      crossbar_doc:load_view(?AGG_VIEW_DESCENDANTS
-                            ,[{'startkey', [AccountId, StartKey]}
-                             ,{'endkey',  [AccountId, kz_json:new()]}
-                             ]
-                            ,Context
-                            ,fun normalize_view_results/2
-                            )
-     ).
+    Options = [{'databases', [?KZ_ACCOUNTS_DB]}
+              ,{'startkey', [AccountId]}
+              ,{'endkey', [AccountId, crossbar_view:high_value_key()]}
+              ,{'mapper', crossbar_view:get_value_fun()}
+              ],
+    crossbar_view:load(Context, ?AGG_VIEW_DESCENDANTS, Options).
 
 %%------------------------------------------------------------------------------
 %% @doc Load a summary of the siblings of this account
@@ -879,14 +870,12 @@ load_siblings(AccountId, Context) ->
 
 -spec load_paginated_siblings(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_paginated_siblings(AccountId, Context) ->
-    Context1 =
-        fix_envelope(
-          crossbar_doc:load_view(?AGG_VIEW_PARENT
-                                ,[{'startkey', AccountId}
-                                 ,{'endkey', AccountId}
-                                 ]
-                                ,Context
-                                )),
+    Options = [{'databases', [?KZ_ACCOUNTS_DB]}
+              ,{'startkey', AccountId}
+              ,{'endkey', AccountId}
+              ,{'mapper', crossbar_view:get_value_fun()}
+              ],
+    Context1 = crossbar_view:load(Context, ?AGG_VIEW_PARENT, Options),
     case cb_context:resp_status(Context1) of
         'success' ->
             load_siblings_results(AccountId, Context1, cb_context:doc(Context1));
@@ -896,41 +885,10 @@ load_paginated_siblings(AccountId, Context) ->
 
 -spec load_siblings_results(kz_term:ne_binary(), cb_context:context(), kz_json:objects()) -> cb_context:context().
 load_siblings_results(_AccountId, Context, [JObj|_]) ->
-    Parent = kz_json:get_value([<<"value">>, <<"id">>], JObj),
+    Parent = kz_doc:id(JObj),
     load_children(Parent, Context);
 load_siblings_results(AccountId, Context, _) ->
     cb_context:add_system_error('bad_identifier', kz_json:from_list([{<<"cause">>, AccountId}]),  Context).
-
--spec start_key(cb_context:context()) -> binary().
-start_key(Context) ->
-    case crossbar_doc:start_key(Context) of
-        'undefined' -> <<>>;
-        Key -> Key
-    end.
-
--spec fix_envelope(cb_context:context()) -> cb_context:context().
-fix_envelope(Context) ->
-    RespData = lists:reverse(cb_context:resp_data(Context)),
-    RespEnv = lists:foldl(fun fix_envelope_fold/2
-                         ,cb_context:resp_envelope(Context)
-                         ,[<<"start_key">>, <<"next_start_key">>]
-                         ),
-    cb_context:set_resp_envelope(cb_context:set_resp_data(Context, RespData), RespEnv).
-
--spec fix_envelope_fold(binary(), kz_json:object()) -> kz_json:object().
-fix_envelope_fold(Key, JObj) ->
-    case fix_start_key(kz_json:get_value(Key, JObj)) of
-        'undefined' -> kz_json:delete_key(Key, JObj);
-        V -> kz_json:set_value(Key, V, JObj)
-    end.
-
--spec fix_start_key(kz_term:api_binary() | list()) -> kz_term:api_binary().
-fix_start_key('undefined') -> 'undefined';
-fix_start_key(<<_/binary>> = StartKey) -> StartKey;
-fix_start_key([StartKey]) -> StartKey;
-fix_start_key([_AccountId, [_|_]=Keys]) -> lists:last(Keys);
-fix_start_key([_AccountId, StartKey]) -> StartKey;
-fix_start_key([StartKey|_T]) -> StartKey.
 
 -spec load_account_tree(cb_context:context()) -> cb_context:context().
 load_account_tree(Context) ->
@@ -964,10 +922,7 @@ format_account_tree_results(Context, JObjs) ->
 %%------------------------------------------------------------------------------
 -spec load_parents(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_parents(AccountId, Context) ->
-    Context1 = crossbar_doc:load_view(?AGG_VIEW_SUMMARY
-                                     ,[]
-                                     ,cb_context:set_db_name(Context, ?KZ_ACCOUNTS_DB)
-                                     ),
+    Context1 = crossbar_view:load(Context, ?AGG_VIEW_SUMMARY, [{'databases', [?KZ_ACCOUNTS_DB]}]),
     case cb_context:resp_status(Context1) of
         'success' -> load_parent_tree(AccountId, Context1);
         _Status -> Context1
@@ -1026,14 +981,6 @@ account_from_tree(JObj) ->
     kz_json:from_list([{<<"id">>, kz_doc:id(JObj)}
                       ,{<<"name">>, kzd_accounts:name(JObj)}
                       ]).
-
-%%------------------------------------------------------------------------------
-%% @doc Normalizes the results of a view.
-%% @end
-%%------------------------------------------------------------------------------
--spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
-normalize_view_results(JObj, Acc) ->
-    [kz_json:get_value(<<"value">>, JObj)|Acc].
 
 %%------------------------------------------------------------------------------
 %% @doc This function will attempt to load the context with the db name of

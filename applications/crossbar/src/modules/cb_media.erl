@@ -554,48 +554,14 @@ load_media_summary(Context) ->
 -spec load_media_summary(cb_context:context(), kz_term:api_binary()) -> cb_context:context().
 load_media_summary(Context, 'undefined') ->
     lager:debug("loading system_config media"),
-    fix_start_keys(
-      crossbar_doc:load_view(?CB_LIST
-                            ,[{'startkey_fun', fun start_key/1}]
-                            ,cb_context:set_db_name(Context, ?KZ_MEDIA_DB)
-                            ,fun normalize_view_results/2
-                            )
-     );
+    Options = [{'databases', [?KZ_MEDIA_DB]}
+              ,{'mapper', crossbar_view:get_value_fun()}
+              ],
+    crossbar_view:load(Context, ?CB_LIST, Options);
 load_media_summary(Context, _AccountId) ->
-    fix_start_keys(
-      crossbar_doc:load_view(?CB_LIST
-                            ,[{'startkey_fun', fun start_key/1}]
-                            ,Context
-                            ,fun normalize_view_results/2
-                            )
-     ).
-
--spec start_key(cb_context:context()) -> crossbar_doc:startkey().
-start_key(Context) ->
-    case crossbar_doc:start_key(Context) of
-        'undefined' -> 'undefined';
-        StartKey -> StartKey
-    end.
-
--spec fix_start_keys(cb_context:context()) -> cb_context:context().
-fix_start_keys(Context) ->
-    cb_context:set_resp_envelope(Context
-                                ,lists:foldl(fun fix_start_keys_fold/2
-                                            ,cb_context:resp_envelope(Context)
-                                            ,[<<"start_key">>, <<"next_start_key">>]
-                                            )
-                                ).
-
--spec fix_start_keys_fold(kz_json:path(), kz_json:object()) -> kz_json:object().
-fix_start_keys_fold(Key, JObj) ->
-    lager:debug("fix ~s: ~p", [Key, kz_json:get_value(Key, JObj)]),
-    case kz_json:get_value(Key, JObj) of
-        'undefined' -> JObj;
-        <<_/binary>> -> JObj;
-        [_Value] -> kz_json:delete_key(Key, JObj);
-        ['null', Id] -> kz_json:set_value(Key, Id, JObj);
-        [Lang, Id] -> kz_json:set_value(Key, kz_media_util:prompt_id(Id, Lang), JObj)
-    end.
+    Options = [{'mapper', crossbar_view:get_value_fun()}
+              ],
+    crossbar_view:load(Context, ?CB_LIST, Options).
 
 -spec load_available_languages(cb_context:context()) -> cb_context:context().
 load_available_languages(Context) ->
@@ -603,21 +569,16 @@ load_available_languages(Context) ->
 
 -spec load_available_languages(cb_context:context(), kz_term:api_binary()) -> cb_context:context().
 load_available_languages(Context, 'undefined') ->
-    fix_start_keys(
-      crossbar_doc:load_view(?CB_LIST_BY_LANG
-                            ,[{'group_level', 1}]
-                            ,cb_context:set_db_name(Context, ?KZ_MEDIA_DB)
-                            ,fun normalize_count_results/2
-                            )
-     );
+    Options = [{'group_level', 1}
+              ,{'databases', ?KZ_MEDIA_DB}
+              ,{'mapper', fun normalize_count_results/2}
+              ],
+    crossbar_view:load(Context, ?CB_LIST_BY_LANG, Options);
 load_available_languages(Context, _AccountId) ->
-    fix_start_keys(
-      crossbar_doc:load_view(?CB_LIST_BY_LANG
-                            ,[{'group_level', 1}]
-                            ,Context
-                            ,fun normalize_count_results/2
-                            )
-     ).
+    Options = [{'group_level', 1}
+              ,{'mapper', fun normalize_count_results/2}
+              ],
+    crossbar_view:load(Context, ?CB_LIST_BY_LANG, Options).
 
 -spec normalize_count_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_count_results(JObj, []) ->
@@ -642,46 +603,20 @@ load_media_docs_by_language(Context, Language) ->
 -spec load_media_docs_by_language(cb_context:context(), kz_term:ne_binary() | 'null', kz_term:api_binary()) ->
           cb_context:context().
 load_media_docs_by_language(Context, Language, 'undefined') ->
-    fix_start_keys(
-      crossbar_doc:load_view(?CB_LIST_BY_LANG
-                            ,[{'startkey_fun', fun(Ctx) -> language_start_key(Ctx, Language) end}
-                             ,{'endkey', [Language, kz_json:new()]}
-                             ,{'reduce', 'false'}
-                             ,{'include_docs', 'false'}
-                             ]
-                            ,cb_context:set_db_name(Context, ?KZ_MEDIA_DB)
-                            ,fun normalize_language_results/2
-                            )
-     );
+    Options = [{'startkey', [Language]}
+              ,{'endkey', [Language, crossbar_view:high_value_key()]}
+              ,{'reduce', 'false'}
+              ,{'mapper', crossbar_view:get_id_fun()}
+              ,{'databases', [?KZ_MEDIA_DB]}
+              ],
+    crossbar_view:load(Context, ?CB_LIST_BY_LANG, Options);
 load_media_docs_by_language(Context, Language, _AccountId) ->
-    fix_start_keys(
-      crossbar_doc:load_view(?CB_LIST_BY_LANG
-                            ,[{'startkey_fun', fun(Ctx) -> language_start_key(Ctx, Language) end}
-                             ,{'endkey', [Language, kz_json:new()]}
-                             ,{'reduce', 'false'}
-                             ,{'include_docs', 'false'}
-                             ]
-                            ,Context
-                            ,fun normalize_language_results/2
-                            )
-     ).
-
--spec language_start_key(cb_context:context(), kz_term:ne_binary()) -> kz_term:ne_binaries().
-language_start_key(Context, Language) ->
-    case crossbar_doc:start_key(Context) of
-        'undefined' -> [Language];
-        Key -> language_start_key(Context, Language, binary:split(Key, <<"/">>))
-    end.
-
--spec language_start_key(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binaries()) -> kz_term:ne_binaries().
-language_start_key(_Context, Language, [Language, Id]) ->
-    [Language, Id];
-language_start_key(_Context, Language, _Key) ->
-    [Language].
-
--spec normalize_language_results(kz_json:object(), kz_term:ne_binaries()) -> kz_term:ne_binaries().
-normalize_language_results(JObj, Acc) ->
-    [kz_doc:id(JObj) | Acc].
+    Options = [{'startkey', [Language]}
+              ,{'endkey', [Language, crossbar_view:high_value_key()]}
+              ,{'reduce', 'false'}
+              ,{'mapper', crossbar_view:get_id_fun()}
+              ],
+    crossbar_view:load(Context, ?CB_LIST_BY_LANG, Options).
 
 %%------------------------------------------------------------------------------
 %% @doc Load prompt listing
@@ -695,25 +630,16 @@ load_available_prompts(Context) ->
 -spec load_available_prompts(cb_context:context(), kz_term:api_binary()) ->
           cb_context:context().
 load_available_prompts(Context, 'undefined') ->
-    fix_prompt_start_keys(
-      crossbar_doc:load_view(?CB_LIST_BY_PROMPT
-                            ,[{'group_level', 1}
-                             ,{'startkey_fun', fun prompt_start_key/1}
-                             ]
-                            ,cb_context:set_db_name(Context, ?KZ_MEDIA_DB)
-                            ,fun normalize_count_results/2
-                            )
-     );
+    Options = [{'group_level', 1}
+              ,{'mapper', fun normalize_count_results/2}
+              ,{'databases', [?KZ_MEDIA_DB]}
+              ],
+    crossbar_view:load(Context, ?CB_LIST_BY_PROMPT, Options);
 load_available_prompts(Context, _AccountId) ->
-    fix_prompt_start_keys(
-      crossbar_doc:load_view(?CB_LIST_BY_PROMPT
-                            ,[{'group_level', 1}
-                             ,{'startkey_fun', fun prompt_start_key/1}
-                             ]
-                            ,Context
-                            ,fun normalize_count_results/2
-                            )
-     ).
+    Options = [{'group_level', 1}
+              ,{'mapper', fun normalize_count_results/2}
+              ],
+    crossbar_view:load(Context, ?CB_LIST_BY_PROMPT, Options).
 
 -spec load_media_docs_by_prompt(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 load_media_docs_by_prompt(Context, PromptId) ->
@@ -722,44 +648,22 @@ load_media_docs_by_prompt(Context, PromptId) ->
 
 -spec load_media_docs_by_prompt(cb_context:context(), kz_term:ne_binary(), kz_term:api_binary()) -> cb_context:context().
 load_media_docs_by_prompt(Context, PromptId, 'undefined') ->
-    fix_prompt_start_keys(
-      crossbar_doc:load_view(?CB_LIST_BY_PROMPT
-                            ,[{'startkey_fun', fun(Ctx) -> prompt_start_key(Ctx, PromptId) end}
-                             ,{'endkey', [PromptId, kz_json:new()]}
-                             ,{'reduce', 'false'}
-                             ,'include_docs'
-                             ]
-                            ,cb_context:set_db_name(Context, ?KZ_MEDIA_DB)
-                            ,fun normalize_prompt_results/2
-                            )
-     );
+    Options = [{'startkey', [PromptId]}
+              ,{'endkey', [PromptId, crossbar_view:high_value_key()]}
+              ,{'reduce', 'false'}
+              ,{'mapper', fun normalize_prompt_results/2}
+              ,{'databases', [?KZ_MEDIA_DB]}
+              ,'include_docs'
+              ],
+    crossbar_view:load(Context, ?CB_LIST_BY_PROMPT, Options);
 load_media_docs_by_prompt(Context, PromptId, _AccountId) ->
-    fix_prompt_start_keys(
-      crossbar_doc:load_view(?CB_LIST_BY_PROMPT
-                            ,[{'startkey_fun', fun(Ctx) -> prompt_start_key(Ctx, PromptId) end}
-                             ,{'endkey', [PromptId, kz_json:new()]}
-                             ,{'reduce', 'false'}
-                             ,'include_docs'
-                             ]
-                            ,Context
-                            ,fun normalize_prompt_results/2
-                            )
-     ).
-
-
--spec prompt_start_key(cb_context:context()) ->
-          kz_term:ne_binaries().
-prompt_start_key(Context) ->
-    prompt_start_key(Context, 'undefined').
-
--spec prompt_start_key(cb_context:context(), kz_term:api_binary()) ->
-          kz_term:ne_binaries().
-prompt_start_key(Context, PromptId) ->
-    case crossbar_doc:start_key(Context) of
-        PromptId -> PromptId;
-        'undefined' -> [PromptId];
-        Key -> [Key]
-    end.
+    Options = [{'startkey', [PromptId]}
+              ,{'endkey', [PromptId, crossbar_view:high_value_key()]}
+              ,{'reduce', 'false'}
+              ,{'mapper', fun normalize_prompt_results/2}
+              ,'include_docs'
+              ],
+    crossbar_view:load(Context, ?CB_LIST_BY_PROMPT, Options).
 
 -spec normalize_prompt_results(kz_json:object(), kz_term:ne_binaries()) -> kz_term:ne_binaries().
 normalize_prompt_results(JObj, Acc) ->
@@ -774,28 +678,6 @@ normalize_prompt_results(JObj, Acc) ->
        ])
      | Acc
     ].
-
--spec fix_prompt_start_keys(cb_context:context()) -> cb_context:context().
-fix_prompt_start_keys(Context) ->
-    cb_context:set_resp_envelope(Context
-                                ,lists:foldl(fun fix_prompt_start_keys_fold/2
-                                            ,cb_context:resp_envelope(Context)
-                                            ,[<<"start_key">>, <<"next_start_key">>]
-                                            )
-                                ).
-
--spec fix_prompt_start_keys_fold(kz_json:path(), kz_json:object()) -> kz_json:object().
-fix_prompt_start_keys_fold(Key, JObj) ->
-    lager:debug("fix ~s: ~p", [Key, kz_json:get_value(Key, JObj)]),
-    case kz_json:get_value(Key, JObj) of
-        'undefined' -> JObj;
-        <<_/binary>> -> JObj;
-        [PromptId] -> kz_json:set_value(Key, PromptId, JObj);
-        [PromptId, _Lang] ->
-            lager:debug("removing ~s from start key ~s", [_Lang, PromptId]),
-            kz_json:set_value(Key, PromptId, JObj)
-    end.
-
 
 %%------------------------------------------------------------------------------
 %% @doc Load a media document from the database
@@ -880,15 +762,6 @@ maybe_add_prompt_fields(Context) ->
             ,{<<"name">>, kz_json:get_value(<<"name">>, JObj, ID)}
             ]
     end.
-
-%%------------------------------------------------------------------------------
-%% @doc Normalizes the results of a view.
-%% @end
-%%------------------------------------------------------------------------------
--spec normalize_view_results(kz_json:object(), kz_json:objects()) ->
-          kz_json:objects().
-normalize_view_results(JObj, Acc) ->
-    [kz_json:get_value(<<"value">>, JObj)|Acc].
 
 %%------------------------------------------------------------------------------
 %% @doc Load the binary attachment of a media doc

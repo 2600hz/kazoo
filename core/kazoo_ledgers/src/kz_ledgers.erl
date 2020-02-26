@@ -426,7 +426,7 @@ rollover(MODB, Year, Month, Total) ->
                         ).
 
 -type save_result() :: {'ok', kz_json:object()} |
-                       {'error', kz_datamgr:data_error()}.
+                       kz_datamgr:data_error().
 
 -spec handle_rollover_save(kz_term:ne_binary(), kz_time:year(), kz_time:month(), save_result()) ->
           kz_currency:available_units_return().

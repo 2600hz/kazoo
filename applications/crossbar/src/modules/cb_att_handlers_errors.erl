@@ -115,7 +115,7 @@ read(<<Year:4/binary, Month:2/binary, _/binary>> = Id, Context) ->
 
 -spec read(kz_term:ne_binary(), kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 read(<<"handler">>, HandlerId, Context) ->
-    Options = [{'mapper', crossbar_view:map_value_fun()}
+    Options = [{'mapper', crossbar_view:get_value_fun()}
               ,{'range_keymap', [HandlerId]}
               ],
     crossbar_view:load_modb(Context, ?CB_LIST_BY_HANDLER, Options).
@@ -126,5 +126,5 @@ read(<<"handler">>, HandlerId, Context) ->
 %%------------------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    Options = [{'mapper', crossbar_view:map_value_fun()}],
+    Options = [{'mapper', crossbar_view:get_value_fun()}],
     crossbar_view:load_modb(Context, ?CB_LIST_ALL, Options).

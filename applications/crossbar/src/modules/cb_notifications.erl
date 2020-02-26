@@ -240,7 +240,7 @@ validate(Context) ->
 
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, ?SMTP_LOG) ->
-    crossbar_view:load_modb(Context, ?CB_LIST_SMTP_LOG, [{mapper, crossbar_view:map_value_fun()}]);
+    crossbar_view:load_modb(Context, ?CB_LIST_SMTP_LOG, [{mapper, crossbar_view:get_value_fun()}]);
 validate(Context, Id) ->
     ReqVerb = cb_context:req_verb(Context),
     DbId = kz_notification:db_id(Id),
@@ -1261,27 +1261,20 @@ fetch_available() ->
 
 -spec summary_account(cb_context:context()) -> cb_context:context().
 summary_account(Context) ->
-    Context1 =
-        crossbar_doc:load_view(?CB_LIST
-                              ,[]
-                              ,Context
-                              ,select_normalize_fun(Context)
-                              ),
-    lager:debug("loaded account's summary"),
-    summary_account(Context1, cb_context:doc(Context1)).
+    Options = [{'mapper', select_normalize_fun(Context)}],
+    Context1 = crossbar_view:load(Context, ?CB_LIST, Options),
+    summary_account(Context1, cb_context:resp_status(Context1)).
 
--spec summary_account(cb_context:context(), kz_json:objects()) -> cb_context:context().
-summary_account(Context, AccountAvailable) ->
+-spec summary_account(cb_context:context(), crossbar_status()) -> cb_context:context().
+summary_account(Context, 'success') ->
+    lager:debug("loaded account's summary"),
     Context1 = summary_available(Context),
-    case cb_context:resp_status(Context1) of
-        'success' ->
-            Available = filter_available(Context1),
-            lager:debug("loaded system available"),
-            JObj = merge_available(AccountAvailable, Available),
-            crossbar_doc:handle_json_success(JObj, Context);
-        _ ->
-            Context1
-    end.
+    Available = filter_available(Context1),
+    lager:debug("loaded system available"),
+    JObj = merge_available(cb_context:doc(Context), Available),
+    crossbar_doc:handle_json_success(JObj, Context);
+summary_account(Context, _) ->
+    Context.
 
 -spec filter_available(cb_context:context()) -> kz_json:objects().
 filter_available(Context) ->
@@ -1318,7 +1311,7 @@ merge_fold(Overridden, Acc) ->
 select_normalize_fun(Context) ->
     case cb_context:is_superduper_admin(Context) of
         'true' -> fun normalize_available_admin/2;
-        'false' -> fun(JObj, Acc) -> normalize_available_non_admin(JObj, Acc, Context) end
+        'false' -> fun normalize_available_non_admin/3
     end.
 
 -spec normalize_available_admin(kz_json:object(), kz_json:objects()) -> kz_json:objects().
@@ -1329,9 +1322,9 @@ normalize_available_admin(JObj, Acc) ->
         _Category -> [Value | Acc]
     end.
 
--spec normalize_available_non_admin(kz_json:object(), kz_json:objects(), cb_context:context()) ->
+-spec normalize_available_non_admin(cb_context:context(), kz_json:object(), kz_json:objects()) ->
           kz_json:objects().
-normalize_available_non_admin(JObj, Acc, Context) ->
+normalize_available_non_admin(Context, JObj, Acc) ->
     Value = kz_json:get_value(<<"value">>, JObj),
     case kz_notification:category(Value) of
         <<"system">> -> Acc;

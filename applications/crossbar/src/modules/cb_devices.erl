@@ -255,19 +255,13 @@ load_device_summary(Context) ->
 
 -spec load_device_summary(cb_context:context(), req_nouns()) ->
           cb_context:context().
-load_device_summary(Context, [{<<"devices">>, []}
-                             ,{<<"users">>, [UserId]}
-                              |_]
-                   ) ->
-    load_users_device_summary(Context, UserId);
+load_device_summary(Context, [{<<"devices">>, []}, {<<"users">>, [UserId]} | _]) ->
+    ViewOptions = [{'key', UserId}
+                  ,{'mapper', crossbar_view:get_value_fun()}
+                  ],
+    crossbar_view:load(Context, ?OWNER_LIST, ViewOptions);
 load_device_summary(Context, _ReqNouns) ->
-    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
-
--spec load_users_device_summary(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
-load_users_device_summary(Context, UserId) ->
-    View = ?OWNER_LIST,
-    ViewOptions = [{'key', UserId}],
-    crossbar_doc:load_view(View, ViewOptions, Context, fun normalize_view_results/2).
+    crossbar_view:load(Context, ?CB_LIST, [{'mapper', crossbar_view:get_value_fun()}]).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -327,14 +321,6 @@ load_device_status(Context) ->
     RegStatuses = lookup_regs(AccountRealm),
     lager:debug("reg statuses: ~p", [RegStatuses]),
     crossbar_util:response(RegStatuses, Context).
-
-%%------------------------------------------------------------------------------
-%% @doc Normalizes the results of a view.
-%% @end
-%%------------------------------------------------------------------------------
--spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
-normalize_view_results(JObj, Acc) ->
-    [kz_json:get_value(<<"value">>, JObj) | Acc].
 
 %%------------------------------------------------------------------------------
 %% @doc Returns the complete list of registrations in a the first registrar

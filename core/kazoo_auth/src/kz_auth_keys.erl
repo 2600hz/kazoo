@@ -381,7 +381,7 @@ gen_private_key(Size) ->
     {'ok', Key}.
 
 %% @equiv reset_private_key(kz_auth_apps:get_auth_app(<<"kazoo">>))
--spec reset_kazoo_private_key() -> {'ok', kz_term:ne_binary()} | {'error', any()}.
+-spec reset_kazoo_private_key() -> {'ok', kz_term:ne_binary()} | kz_datamgr:data_error().
 reset_kazoo_private_key() ->
     lager:warning("trying to reset kazoo private key"),
     reset_private_key(kz_auth_apps:get_auth_app(<<"kazoo">>)).
@@ -392,12 +392,12 @@ reset_kazoo_private_key() ->
 %% and put it in cache.
 %% @end
 %%------------------------------------------------------------------------------
--spec reset_private_key(map() | kz_term:ne_binary()) -> {'ok', kz_term:ne_binary()} | {'error', any()}.
+-spec reset_private_key(map() | kz_term:ne_binary()) -> {'ok', kz_json:object()} | kz_datamgr:data_error().
 reset_private_key(#{pvt_server_key := KeyId}) ->
     reset_private_key(KeyId);
 reset_private_key(#{}) ->
     {'error', 'invalid_identity_provider'};
-reset_private_key(?NE_BINARY=KeyId) ->
+reset_private_key(<<KeyId/binary>>) ->
     lager:warning("deleting private key ~s", [KeyId]),
     case kz_datamgr:del_doc(?KZ_AUTH_DB, KeyId) of
         {'ok', _}=OK -> OK;

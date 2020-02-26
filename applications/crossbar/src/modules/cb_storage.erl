@@ -304,14 +304,20 @@ summary(Context) ->
 
 -spec summary(cb_context:context(), scope()) -> cb_context:context().
 summary(Context, 'system_plans') ->
-    crossbar_doc:load_view(?CB_SYSTEM_LIST, ['include_docs'], Context, fun normalize_view_results/2);
+    Options = [{'databases', [?KZ_DATA_DB]}
+              ,{'mapper', crossbar_view:get_doc_fun()}
+              ,'include_docs'
+              ],
+    crossbar_view:load(Context, ?CB_SYSTEM_LIST, Options);
 
 summary(Context, {'reseller_plans', AccountId}) ->
-    Options = ['include_docs'
+    Options = [{'databases', [?KZ_DATA_DB]}
+              ,{'mapper', crossbar_view:get_doc_fun()}
               ,{'startkey', [AccountId]}
-              ,{'endkey', [AccountId, kz_json:new()]}
+              ,{'endkey', [AccountId, crossbar_view:high_value_key()]}
+              ,'include_docs'
               ],
-    crossbar_doc:load_view(?CB_ACCOUNT_LIST, Options, Context, fun normalize_view_results/2).
+    crossbar_view:load(Context, ?CB_ACCOUNT_LIST, Options).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -341,13 +347,9 @@ on_successful_validation(Id, ?HTTP_PATCH, Context) ->
     crossbar_doc:load_merge(Id, Context, ?STORAGE_CHECK_OPTIONS).
 
 %%------------------------------------------------------------------------------
-%% @doc Normalizes the results of a view.
+%% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
-normalize_view_results(JObj, Acc) ->
-    [kz_json:get_value(<<"doc">>, JObj)|Acc].
-
 -spec scope(cb_context:context()) -> scope() | 'undefined'.
 scope(Context) ->
     cb_context:fetch(Context, 'scope').

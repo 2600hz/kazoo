@@ -968,7 +968,7 @@ load_summary_by_type(Context, Type) ->
                | by_types_view_options(Context, Type, IsRanged, AuthorityType)
               ],
     case IsRanged of
-        'true' -> crossbar_view:load_range(Context, View, Options);
+        'true' -> crossbar_view:load_time_range(Context, View, Options);
         'false' -> crossbar_view:load(Context, View, Options)
     end.
 

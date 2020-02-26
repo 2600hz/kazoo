@@ -144,7 +144,7 @@ resource_exists(_, _) -> 'false'.
 %%------------------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
-    validate_functions(cb_context:set_db_name(Context, ?KZ_FUNCTIONS_DB), cb_context:req_verb(Context)).
+    validate_functions(Context, cb_context:req_verb(Context)).
 
 -spec validate_functions(cb_context:context(), http_method()) -> cb_context:context().
 validate_functions(Context, ?HTTP_GET) ->
@@ -153,7 +153,7 @@ validate_functions(Context, ?HTTP_GET) ->
         _Nouns -> summary(Context)
     end;
 validate_functions(Context, ?HTTP_PUT) ->
-    create(Context).
+    create(cb_context:set_db_name(Context, ?KZ_FUNCTIONS_DB)).
 
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, ?PATH_TOKEN_SAMPLES) ->
@@ -262,6 +262,7 @@ summary(Context) ->
                       ,[{'start_keymap',  [AccountId]}
                        ,{'end_keymap', [AccountId, kz_json:new()]}
                        ,{'mapper', fun normalize_view_results/2}
+                       ,{'databases', [?KZ_FUNCTIONS_DB]}
                        ]
                       ).
 
@@ -285,13 +286,15 @@ delete_account(Account) ->
 -spec summary_available(cb_context:context()) ->
           cb_context:context().
 summary_available(Context) ->
-    {'ok', MasterAccountDb} = kapps_util:get_master_account_db(),
-    IsSuperAdmin = cb_context:is_superduper_admin(Context),
-    C1 = cb_context:store(Context, 'is_superduper_admin', IsSuperAdmin),
     Options = [{'mapper', fun normalize_available/3}
+              ,{'databases', [kzs_util:format_account_id(
+                                cb_context:master_account_id(Context)
+                               )
+                             ]
+               }
               ,'include_docs'
               ],
-    crossbar_view:load(cb_context:set_db_name(C1, MasterAccountDb), ?AVAILABLE_FUNCTIONS, Options).
+    crossbar_view:load(Context, ?AVAILABLE_FUNCTIONS, Options).
 
 -spec normalize_available(cb_context:context(), kz_json:object(), kz_json:objects()) ->
           kz_json:objects().

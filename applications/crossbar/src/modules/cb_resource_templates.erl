@@ -88,7 +88,11 @@ validate(Context) ->
 
 -spec validate_resource_templates(http_method(), cb_context:context()) -> cb_context:context().
 validate_resource_templates(?HTTP_GET, Context) ->
-    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2);
+    %% setting db here to make note that the db could be different account id
+    Options = [{'databases', [cb_context:db_name(Context)]}
+              ,{'mapper', crossbar_view:get_value_fun()}
+              ],
+    crossbar_view:load(Context, ?CB_LIST, Options);
 validate_resource_templates(?HTTP_PUT, Context) ->
     case is_allowed_to_update(Context) of
         'true' -> validate_request('undefined', Context);
@@ -232,11 +236,3 @@ merge(Context) ->
     ReqData = kz_doc:public_fields(cb_context:req_data(Context)),
     Doc = kz_doc:private_fields(cb_context:doc(Context)),
     cb_context:set_doc(Context, kz_json:merge_jobjs(Doc, ReqData)).
-
-%%------------------------------------------------------------------------------
-%% @doc Normalizes the results of a view.
-%% @end
-%%------------------------------------------------------------------------------
--spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
-normalize_view_results(JObj, Acc) ->
-    [kz_json:get_value(<<"value">>, JObj)|Acc].

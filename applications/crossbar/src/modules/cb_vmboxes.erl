@@ -774,14 +774,16 @@ validate_patch(Context, BoxId)->
 %%------------------------------------------------------------------------------
 -spec load_vmbox_summary(cb_context:context()) -> cb_context:context().
 load_vmbox_summary(Context) ->
-    Context1 = crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2),
-    CountMap = kvm_messages:count(cb_context:account_id(Context)),
-    RspData = add_counts_to_summary_results(cb_context:doc(Context1), CountMap),
-    cb_context:set_resp_data(cb_context:set_doc(Context1, RspData), RspData).
+    Context1 = crossbar_view:load(Context, ?CB_LIST, [{'mapper', crossbar_view:get_value_fun()}]),
+    load_vmbox_summary(Context, cb_context:resp_status(Context1)).
 
--spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
-normalize_view_results(JObj, Acc) ->
-    [kz_json:get_json_value(<<"value">>, JObj)|Acc].
+-spec load_vmbox_summary(cb_context:cb_context(), crossbar_status()) -> cb_context:context().
+load_vmbox_summary(Context, 'success') ->
+    CountMap = kvm_messages:count(cb_context:account_id(Context)),
+    RspData = add_counts_to_summary_results(cb_context:doc(Context), CountMap),
+    cb_context:set_resp_data(cb_context:set_doc(Context, RspData), RspData);
+load_vmbox_summary(Context, _) ->
+    Context.
 
 -spec add_counts_to_summary_results(kz_json:objects(), map()) -> kz_json:objects().
 add_counts_to_summary_results(BoxSummaries, CountMap) ->

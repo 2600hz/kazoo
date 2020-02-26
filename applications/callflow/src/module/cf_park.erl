@@ -146,7 +146,7 @@ retrieve(SlotNumber, Call) ->
     SlotReturn = get_slot(SlotNumber, kapps_call:account_db(Call)),
     retrieve(SlotNumber, SlotReturn, 1, Call).
 
--spec retrieve(kz_term:ne_binary(), {'ok', kz_json:object()} | {'error', kz_datamgr:data_error()}, 1..3, kapps_call:call()) ->
+-spec retrieve(kz_term:ne_binary(), {'ok', kz_json:object()} | kz_datamgr:data_error(), 1..3, kapps_call:call()) ->
           {'ok', 'retrieved'} |
           {'error', 'slot_empty' | 'timeout' | 'failed'}.
 retrieve(SlotNumber, {'error', 'not_found'}, _Try, _Call) ->

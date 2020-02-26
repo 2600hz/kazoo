@@ -298,7 +298,7 @@ user_endpoints(Context, UserId) ->
     Options = [{'key', [UserId, <<"device">>]}
               ,'include_docs'
               ],
-    Context1 = crossbar_doc:load_view(<<"attributes/owned">>, Options, Context),
+    Context1 = crossbar_view:load(Context, <<"attributes/owned">>, Options),
     {cb_context:doc(Context1), Context1}.
 
 -spec group_summary(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().

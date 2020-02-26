@@ -326,7 +326,7 @@ summary(Context) ->
 -spec summary(cb_context:context(), kz_term:proplist()) -> cb_context:context().
 summary(Context, Options) ->
     ViewOptions = [{'group_level', 0}
-                  ,{'mapper', crossbar_view:map_value_fun()}
+                  ,{'mapper', crossbar_view:get_value_fun()}
                    | Options
                   ],
 

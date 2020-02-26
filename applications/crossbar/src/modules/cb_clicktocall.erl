@@ -221,24 +221,12 @@ delete(Context, _) ->
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @doc Normalizes the results of a view.
+%% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
-normalize_view_results(JObj, Acc) ->
-    [kz_json:get_value(<<"value">>, JObj)|Acc].
-
--spec normalize_history_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
-normalize_history_results(JObj, Acc) ->
-    [kz_json:get_json_value(<<"doc">>, JObj)|Acc].
-
 -spec load_c2c_summary(cb_context:context()) -> cb_context:context().
 load_c2c_summary(Context) ->
-    crossbar_doc:load_view(?CB_LIST
-                          ,[]
-                          ,Context
-                          ,fun normalize_view_results/2
-                          ).
+    crossbar_view:load(Context, ?CB_LIST, [{'mapper', crossbar_view:get_value_fun()}]).
 
 -spec load_c2c(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_c2c(C2CId, Context) ->
@@ -246,15 +234,11 @@ load_c2c(C2CId, Context) ->
 
 -spec load_c2c_history(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_c2c_history(C2CId, Context) ->
-    Options = ['include_docs'
-              ,{'startkey', [C2CId]}
-              ,{'endkey', [C2CId, kz_json:new()]}
+    Options = [{'mapper', crossbar_view:get_doc_fun()}
+              ,{'range_keymap', [C2CId]}
+              ,'include_docs'
               ],
-    crossbar_doc:load_view(?HISTORY_LIST
-                          ,Options
-                          ,cb_context:set_db_name(Context, cb_context:account_modb(Context))
-                          ,fun normalize_history_results/2
-                          ).
+    crossbar_view:load_modb(Context, ?HISTORY_LIST, Options).
 
 -spec create_c2c(cb_context:context()) -> cb_context:context().
 create_c2c(Context) ->

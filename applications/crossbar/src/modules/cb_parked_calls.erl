@@ -39,21 +39,21 @@ resource_exists() -> 'true'.
 
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
-    Options = ['include_docs'
+    Options = [{'mapper', fun normalize_view_results/2}
               ,{'doc_type', ?PARKED_CALL_DOC_TYPE}
+              ,'include_docs'
               ],
-    Ctx = crossbar_doc:load_view(?PARKED_CALLS_VIEW
-                                ,Options
-                                ,Context
-                                ,fun normalize_view_results/2
-                                ),
-    case cb_context:resp_status(Ctx) =:= 'success'
-        andalso cb_context:doc(Ctx)
-    of
-        'false' -> Ctx;
-        [] -> cb_context:set_resp_data(Ctx, kz_json:from_list([{<<"slots">> , kz_json:new()}]));
-        Slots -> cb_context:set_resp_data(Ctx, kz_json:from_list([{<<"slots">>, kz_json:merge(Slots)}]))
+    Context1 = crossbar_view:load(Context, ?PARKED_CALLS_VIEW, Options),
+    case cb_context:resp_status(Context) of
+        'success' -> cb_context:set_resp_data(Context1, build_slots(cb_context:doc(Context1)));
+        _ -> Context1
     end.
+
+-spec build_slots(kz_json:objects()) -> kz_json:object().
+build_slots([]) ->
+    kz_json:from_list([{<<"slots">> , kz_json:new()}]);
+build_slots(Slots) ->
+    kz_json:from_list([{<<"slots">>, kz_json:merge(Slots)}]).
 
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_view_results(JObj, Acc) ->

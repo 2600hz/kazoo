@@ -611,7 +611,7 @@ maybe_user_filter_doc(Context) ->
 
 -spec load_smtp_log(cb_context:context()) -> cb_context:context().
 load_smtp_log(Context) ->
-    Options = [{'mapper', crossbar_view:map_value_fun()}
+    Options = [{'mapper', crossbar_view:get_value_fun()}
               ,'include_docs'
               ],
     crossbar_view:load_modb(Context, ?CB_LIST_SMTP_LOG, Options).
@@ -709,7 +709,7 @@ get_timezone(Context) ->
 outgoing_summary(Context) ->
     JObj = cb_context:fetch(Context, <<"faxbox">>, kz_json:new()),
     {ViewName, Opts} = get_view_and_filter(Context, {kz_doc:id(JObj), kz_doc:type(JObj)}, 'undefined'),
-    Options = [{'mapper', crossbar_view:map_value_fun()}
+    Options = [{'mapper', crossbar_view:get_value_fun()}
               ,{'databases', [?KZ_FAXES_DB]}
               ,'include_docs'
                | Opts

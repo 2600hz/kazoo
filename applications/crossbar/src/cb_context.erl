@@ -237,7 +237,7 @@ is_authenticated(#cb_context{auth_doc='undefined'}) -> 'false';
 is_authenticated(#cb_context{}) -> 'true'.
 
 -spec master_account_id(context()) -> kz_term:api_ne_binary().
-master_account_id(#cb_context{master_account_id = ?NE_BINARY = MasterId}) ->
+master_account_id(#cb_context{master_account_id = <<MasterId/binary>>}) ->
     MasterId;
 master_account_id(_) ->
     case kapps_util:get_master_account_id() of

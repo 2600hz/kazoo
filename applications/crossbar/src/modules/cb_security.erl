@@ -140,7 +140,7 @@ validate(Context) ->
 
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, ?ATTEMPTS) ->
-    crossbar_view:load_modb(Context, ?CB_LIST_ATTEMPT_LOG, [{mapper, crossbar_view:map_value_fun()}]).
+    crossbar_view:load_modb(Context, ?CB_LIST_ATTEMPT_LOG, [{mapper, crossbar_view:get_value_fun()}]).
 
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context, ?ATTEMPTS, AttemptId) ->

@@ -23,7 +23,6 @@
 
 -include("crossbar.hrl").
 
--define(AGG_VIEW_FILE, <<"views/accounts.json">>).
 -define(AGG_VIEW_IP, <<"accounts/listing_by_ip">>).
 
 %%%=============================================================================
@@ -68,8 +67,7 @@ resource_exists() -> 'true'.
 %% @end
 %%------------------------------------------------------------------------------
 -spec authenticate(cb_context:context()) ->
-          'false' |
-          {'true', cb_context:context()}.
+          'false' | 'true' | {'true', cb_context:context()}.
 authenticate(Context) ->
     authenticate_nouns(Context, cb_context:req_nouns(Context)).
 
@@ -79,38 +77,17 @@ authenticate_nouns(_Context, [{<<"ip_auth">>, _}]) ->
     lager:debug("request is for the ip_auth module", []),
     'true';
 authenticate_nouns(Context, _Nouns) ->
-    authenticate_ip(Context, cb_context:client_ip(Context)).
-
--spec authenticate_ip(cb_context:context(), kz_term:ne_binary()) ->
-          'false' |
-          {'true', cb_context:context()}.
-authenticate_ip(Context, IpKey) ->
-    ViewOptions = [{'key', IpKey}],
-    lager:debug("attempting to authenticate ip ~s", [IpKey]),
-    case kz_json:is_empty(IpKey)
-        orelse crossbar_doc:load_view(?AGG_VIEW_IP
-                                     ,ViewOptions
-                                     ,cb_context:set_db_name(Context, ?KZ_ACCOUNTS_DB)
-                                     )
-    of
-        'true' ->
-            lager:debug("client ip address is empty"),
-            'false';
-        Context1 ->
-            authenticate_view(Context1, cb_context:resp_status(Context1))
+    ClientIP = cb_context:client_ip(Context),
+    lager:debug("attempting to authenticate ip ~s", [ClientIP]),
+    case authenticate_ip(Context, ClientIP, kz_term:is_empty(ClientIP)) of
+        {'ok', Context1} ->
+            lager:debug("client ip address is allowed without an auth-token: ~s"
+                       ,[kz_json:encode(cb_context:doc(Context1))]
+                       ),
+            {'true', create_fake_token(Context1)};
+        {'error', 'invalid_credentials'} ->
+            'false'
     end.
-
--spec authenticate_view(cb_context:context(), atom()) ->
-          'false' |
-          {'true', cb_context:context()}.
-authenticate_view(Context, 'success') ->
-    case cb_context:doc(Context) of
-        [] -> 'false';
-        [JObj] ->
-            lager:debug("client ip address is allowed without an auth-token: ~p", [JObj]),
-            {'true', create_fake_token(cb_context:set_doc(Context, JObj))}
-    end;
-authenticate_view(_Context, _Status) -> 'false'.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -133,16 +110,14 @@ authorize_nouns(_Nouns) ->
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
     IpKey = cb_context:client_ip(Context),
-    case kz_json:is_empty(IpKey)
-        orelse crossbar_doc:load_view(?AGG_VIEW_IP
-                                     ,[{'key', IpKey}]
-                                     ,cb_context:set_db_name(Context, ?KZ_ACCOUNTS_DB)
-                                     )
-    of
-        'true' ->
+    case authenticate_ip(Context, IpKey, kz_term:is_empty(IpKey)) of
+        {'error', 'invalid_credentials'} ->
             cb_context:add_system_error('invalid_credentials', Context);
-        Context1 ->
-            on_successful_load(Context1, cb_context:resp_status(Context1), cb_context:doc(Context1))
+        {'ok', Context1} ->
+            lager:debug("found IP key ~s belongs to account ~s"
+                       ,[IpKey, cb_context:account_id(Context1)]
+                       ),
+            cb_context:store(Context1, 'auth_type', <<"ip_auth">>)
     end.
 
 %%------------------------------------------------------------------------------
@@ -161,20 +136,29 @@ put(Context) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec on_successful_load(cb_context:context(), crossbar_status(), kz_json:objects()) -> cb_context:context().
-on_successful_load(Context, 'success', [Doc]) ->
-    _AccountId = kz_json:get_value(<<"value">>, Doc),
-    _IpKey = cb_context:client_ip(Context),
-    lager:debug("found IP key ~s belongs to account ~p", [_IpKey, _AccountId]),
-    cb_context:set_doc(cb_context:store(Context, 'auth_type', <<"ip_auth">>), Doc);
-on_successful_load(Context, _Status, _Doc) ->
-    Context.
+-spec authenticate_ip(cb_context:context(), binary(), boolean()) ->
+          kz_either:either('invalid_credentials', cb_context:context()).
+authenticate_ip(_, _, 'true') ->
+    lager:debug("client ip address is empty"),
+    {'error', 'invalid_credentials'};
+authenticate_ip(Context, IpKey, 'false') ->
+    ViewOptions = [{'key', IpKey}
+                  ,[{'databases', [?KZ_ACCOUNTS_DB]}]
+                  ],
+    Context1 = crossbar_view:load(Context, ?AGG_VIEW_IP, ViewOptions),
+    authenticate_view(Context1, cb_context:resp_status(Context1), cb_context:doc(Context1)).
+
+-spec authenticate_view(cb_context:context(), crossbar_status(), kz_json:objects()) ->
+          kz_either:either('invalid_credentials', cb_context:context()).
+authenticate_view(Context, 'success', [JObj]) ->
+    {'ok', cb_context:set_doc(Context, JObj)};
+authenticate_view(_Context, _, _) ->
+    {'error', 'invalid_credentials'}.
 
 %%------------------------------------------------------------------------------
 %% @doc Attempt to create a token
 %% @end
 %%------------------------------------------------------------------------------
-
 -spec create_fake_token(cb_context:context()) -> cb_context:context().
 create_fake_token(Context) ->
     JObj = cb_context:doc(Context),

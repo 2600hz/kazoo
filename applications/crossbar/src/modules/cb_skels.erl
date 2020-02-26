@@ -309,7 +309,7 @@ validate_patch(Id, Context) ->
 %%------------------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
+    crossbar_view:load(Context, ?CB_LIST, [{'mapper', fun normalize_view_results/2}]).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -323,6 +323,13 @@ on_successful_validation(Id, Context) ->
 
 %%------------------------------------------------------------------------------
 %% @doc Normalizes the results of a view.
+%%
+%% This is a simple normalizer function, for which you can just use this as
+%% mapper option:
+%%
+%% ```
+%%     {'mapper', crossbar_view:get_id_fun()}
+%% '''
 %% @end
 %%------------------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().

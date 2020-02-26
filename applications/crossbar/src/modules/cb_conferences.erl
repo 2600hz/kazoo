@@ -132,7 +132,7 @@ validate(Context, ConferenceId, ?PARTICIPANTS, ParticipantId) ->
 %%------------------------------------------------------------------------------
 -spec validate_conferences(http_method(), cb_context:context()) -> cb_context:context().
 validate_conferences(?HTTP_GET, Context) ->
-    LoadedContext = crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2),
+    LoadedContext = crossbar_view:load(Context, ?CB_LIST, [{'mapper', crossbar_view:get_value_fun()}]),
     case cb_context:resp_status(LoadedContext) of
         'success' ->
             Context1 = search_conferences(LoadedContext),
@@ -267,10 +267,6 @@ on_successful_validation('undefined', Context) ->
     cb_context:update_doc(Context, {fun kz_doc:set_type/2, <<"conference">>});
 on_successful_validation(ConferenceId, Context) ->
     crossbar_doc:load_merge(ConferenceId, Context, ?TYPE_CHECK_OPTION(<<"conference">>)).
-
--spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
-normalize_view_results(ViewResult, Acc) ->
-    [kz_json:get_json_value(<<"value">>, ViewResult) | Acc].
 
 empty_realtime_data() ->
     kz_json:from_list_recursive(

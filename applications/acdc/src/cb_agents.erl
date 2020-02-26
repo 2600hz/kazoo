@@ -540,7 +540,7 @@ add_miss(Miss, Acc, QueueId) ->
 %%------------------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
+    crossbar_view:load(Context, ?CB_LIST, [{'mapper', fun normalize_view_results/2}]).
 
 %%------------------------------------------------------------------------------
 %% @doc Normalizes the results of a view

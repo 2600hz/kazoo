@@ -502,13 +502,11 @@ read_doc_or_attachment(TaskId, Context, AccountId, []) ->
 -spec read_doc(kz_term:ne_binary(), cb_context:context(), kz_term:ne_binary()) ->
           cb_context:context().
 read_doc(TaskId, Context, AccountId) ->
-    Ctx = crossbar_doc:load_view(?KZ_TASKS_BY_ACCOUNT
-                                ,[{'key', [AccountId, TaskId]}]
-                                ,Context
-                                ,fun normalize_view_results/2
-                                ),
-
-    handle_read_result(TaskId, Context, Ctx).
+    Options = [{'key', [AccountId, TaskId]}
+              ,{'databases', [?KZ_TASKS_DB]}
+              ,{'mapper', crossbar_view:get_value_fun()}
+              ],
+    handle_read_result(TaskId, Context, crossbar_view:load(Context, ?KZ_TASKS_BY_ACCOUNT, Options)).
 
 handle_read_result(TaskId, OrigContext, ReadContext) ->
     case cb_context:resp_data(ReadContext) of
@@ -562,17 +560,11 @@ summary(Context) ->
     AccountId = cb_context:account_id(Context),
     ViewOptions = [{'startkey', [AccountId, kz_time:now_s(), kz_json:new()]}
                   ,{'endkey', [AccountId]}
+                  ,{'databases', [?KZ_TASKS_DB]}
+                  ,{'mapper', crossbar_view:get_value_fun()}
                   ,'descending'
                   ],
-    crossbar_doc:load_view(?KZ_TASKS_BY_CREATED
-                          ,ViewOptions
-                          ,set_db(Context)
-                          ,fun normalize_view_results/2
-                          ).
-
--spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
-normalize_view_results(JObj, Acc) ->
-    [kz_json:get_value(<<"value">>, JObj) | Acc].
+    crossbar_view:load(Context, ?KZ_TASKS_BY_CREATED, ViewOptions).
 
 -spec req_content_type(cb_context:context()) -> kz_term:ne_binary().
 req_content_type(Context) ->

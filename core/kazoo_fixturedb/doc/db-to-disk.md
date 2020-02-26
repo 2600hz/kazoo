@@ -6,7 +6,7 @@ This guide will show the steps to take an existing database and populate the Fix
 
 ## Database to disk
 
-Let's say you need account db `9c2e035c8559b175e58146f6a31a3e67` to persist to FixtureDB. `kz_fixturedb_util:db_to_disk(<<"9c2e035c8559b175e58146f6a31a3e67">>).` will write all the JSON objects in the database to disk. If you want to be selective on which documents to persist, `kz_fixturedb_util:db_to_disk(<<"account%2F9c%2F2e%2F035c8559b175e58146f6a31a3e67">>, FilterFun).` will do the job. `FilterFun` is a function of arity-1 that takes the document as an argument and returns a `boolean()` for whether to persist the document.
+Let's say you need account db `9c2e035c8559b175e58146f6a31a3e67` to persist to FixtureDB. `kz_fixturedb_maintenance:db_to_disk(<<"9c2e035c8559b175e58146f6a31a3e67">>).` will write all the JSON objects in the database to disk. If you want to be selective on which documents to persist, `kz_fixturedb_maintenance:db_to_disk(<<"account%2F9c%2F2e%2F035c8559b175e58146f6a31a3e67">>, FilterFun).` will do the job. `FilterFun` is a function of arity-1 that takes the document as an argument and returns a `boolean()` for whether to persist the document.
 
 ## View index to disk
 

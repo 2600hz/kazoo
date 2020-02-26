@@ -414,7 +414,7 @@ leak_job_fields(Context) ->
 %%------------------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
+    crossbar_view:load(Context, ?CB_LIST, [{'mapper', crossbar_view:get_value_fun()}]).
 
 %%------------------------------------------------------------------------------
 %% @doc Attempt to load a summarized listing of all instances of this
@@ -423,15 +423,7 @@ summary(Context) ->
 %%------------------------------------------------------------------------------
 -spec jobs_summary(cb_context:context()) -> cb_context:context().
 jobs_summary(Context) ->
-    crossbar_view:load_modb(Context, ?JOBS_LIST, [{'mapper', crossbar_view:map_doc_fun()}]).
-
-%%------------------------------------------------------------------------------
-%% @doc Normalizes the results of a view.
-%% @end
-%%------------------------------------------------------------------------------
--spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
-normalize_view_results(JObj, Acc) ->
-    [kz_json:get_value(<<"value">>, JObj)|Acc].
+    crossbar_view:load_modb(Context, ?JOBS_LIST, [{'mapper', crossbar_view:get_doc_fun()}]).
 
 %%------------------------------------------------------------------------------
 %% @doc Create a new instance with the data provided, if it is valid

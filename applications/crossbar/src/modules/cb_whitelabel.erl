@@ -587,28 +587,28 @@ delete(Context) ->
 -spec find_whitelabel(cb_context:context(), kz_term:ne_binary()) ->
           cb_context:context().
 find_whitelabel(Context, Domain) ->
-    ViewOptions = [{'key', kz_term:to_lower_binary(Domain)}],
-    Context1 = crossbar_doc:load_view(?AGG_VIEW_WHITELABEL_DOMAIN
-                                     ,ViewOptions
-                                     ,cb_context:set_db_name(Context, ?KZ_ACCOUNTS_DB)
-                                     ),
-    case cb_context:resp_status(Context1) of
-        'success' ->
-            case cb_context:doc(Context1) of
-                [JObj] ->
-                    Db = kz_json:get_ne_value([<<"value">>, <<"account_db">>], JObj),
-                    Id = kz_json:get_ne_value([<<"value">>, <<"account_id">>], JObj),
-                    cb_context:setters(Context1
-                                      ,[{fun cb_context:set_db_name/2, Db}
-                                       ,{fun cb_context:set_account_id/2, Id}
-                                       ]);
-                _Doc ->
-                    cb_context:add_system_error('bad_identifier'
-                                               ,kz_json:from_list([{<<"cause">>, Domain}])
-                                               ,Context1
-                                               )
-            end;
-        _Status -> Context1
+    ViewOptions = [{'databases', [?KZ_ACCOUNTS_DB]}
+                  ,{'key', kz_term:to_lower_binary(Domain)}
+                  ],
+    Context1 = crossbar_view:load(Context, ?AGG_VIEW_WHITELABEL_DOMAIN, ViewOptions),
+    case {cb_context:resp_status(Context1)
+         ,cb_context:doc(Context1)
+         }
+    of
+        {'success', [JObj]} ->
+            Db = kz_json:get_ne_value([<<"value">>, <<"account_db">>], JObj),
+            Id = kz_json:get_ne_value([<<"value">>, <<"account_id">>], JObj),
+            cb_context:setters(Context1
+                              ,[{fun cb_context:set_db_name/2, Db}
+                               ,{fun cb_context:set_account_id/2, Id}
+                               ]
+                              );
+        {'success', _} ->
+            cb_context:add_system_error('bad_identifier'
+                                       ,kz_json:from_list([{<<"cause">>, Domain}])
+                                       ,Context1
+                                       );
+        _ -> Context1
     end.
 
 %%------------------------------------------------------------------------------

@@ -312,11 +312,10 @@ maybe_authenticate_user(Context) ->
 -spec maybe_authenticate_user(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
           cb_context:context().
 maybe_authenticate_user(Context, Credentials, <<"md5">>, ?NE_BINARY=Account) ->
-    AccountDb = kzs_util:format_account_db(Account),
-    Context1 = crossbar_doc:load_view(?ACCT_MD5_LIST
-                                     ,[{'key', Credentials}]
-                                     ,cb_context:set_db_name(Context, AccountDb)
-                                     ),
+    Options = [{'key', Credentials}
+              ,{'databases', [kzs_util:format_account_db(Account)]}
+              ],
+    Context1 = crossbar_view:load(Context, ?ACCT_MD5_LIST, Options),
     case cb_context:resp_status(Context1) of
         'success' -> load_md5_results(Context1, cb_context:doc(Context1), Account);
         _Status ->
@@ -327,11 +326,10 @@ maybe_authenticate_user(Context, Credentials, <<"md5">>, ?NE_BINARY=Account) ->
             cb_context:add_system_error('invalid_credentials', Context1)
     end;
 maybe_authenticate_user(Context, Credentials, <<"sha">>, ?NE_BINARY=Account) ->
-    AccountDb = kzs_util:format_account_db(Account),
-    Context1 = crossbar_doc:load_view(?ACCT_SHA1_LIST
-                                     ,[{'key', Credentials}]
-                                     ,cb_context:set_db_name(Context, AccountDb)
-                                     ),
+    Options = [{'key', Credentials}
+              ,{'databases', [kzs_util:format_account_db(Account)]}
+              ],
+    Context1 = crossbar_view:load(Context, ?ACCT_SHA1_LIST, Options),
     case cb_context:resp_status(Context1) of
         'success' -> load_sha1_results(Context1, cb_context:doc(Context1), Account);
         _Status ->

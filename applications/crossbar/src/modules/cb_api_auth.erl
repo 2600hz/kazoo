@@ -30,7 +30,6 @@
 
 -include("crossbar.hrl").
 
--define(AGG_VIEW_FILE, <<"views/accounts.json">>).
 -define(AGG_VIEW_API, <<"accounts/listing_by_api">>).
 -define(API_AUTH_TOKENS, kapps_config:get_integer(?CONFIG_CAT, <<"api_auth_tokens">>, 35)).
 
@@ -137,10 +136,10 @@ on_successful_validation(Context) ->
 
 -spec validate_by_api_key(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 validate_by_api_key(Context, ApiKey) ->
-    Context1 = crossbar_doc:load_view(?AGG_VIEW_API
-                                     ,[{'key', ApiKey}]
-                                     ,cb_context:set_db_name(Context, ?KZ_ACCOUNTS_DB)
-                                     ),
+    Options = [{'databases', [?KZ_ACCOUNTS_DB]}
+              ,{'key', ApiKey}
+              ],
+    Context1 = crossbar_view:load(Context, ?AGG_VIEW_API, Options),
     case cb_context:resp_status(Context1) of
         'success' ->
             validate_by_api_key(Context1, ApiKey, cb_context:doc(Context1));

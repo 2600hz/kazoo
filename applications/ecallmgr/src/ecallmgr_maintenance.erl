@@ -108,11 +108,11 @@
 
 -type config_fun() :: fun((kapps_config:config_category(), kapps_config:config_key(), any()) ->
                                  {'ok', kz_json:object()} |
-                                 {'error', kz_datamgr:data_error()}
+                                 kz_datamgr:data_error()
                                      ) |
                       fun((kapps_config:config_category(), kapps_config:config_key(), any(), node()) ->
                                  {'ok', kz_json:object()} |
-                                 {'error', kz_datamgr:data_error()}
+                                 kz_datamgr:data_error()
                                      ).
 
 -type acl_fun() :: fun((kz_term:ne_binary()) -> kz_json:object()).
@@ -592,7 +592,7 @@ modify_acls(Name, IP0, ACLS, ACLFun, ConfigFun) ->
 
 -spec run_config_fun(config_fun(), kz_json:key(), kz_json:json_term()) ->
           {'ok', kz_json:object()} |
-          {'error', kz_datamgr:data_error()}.
+          kz_datamgr:data_error().
 run_config_fun(ConfigFun, Key, Value) when is_function(ConfigFun, 3) ->
     ConfigFun(?APP_NAME, Key, Value);
 run_config_fun(ConfigFun, Key, Value) when is_function(ConfigFun, 4) ->

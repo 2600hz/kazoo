@@ -416,7 +416,7 @@ update(Id, Context) ->
 summary(Context) ->
     Options = [{'startkey', [cb_context:account_id(Context)]}
               ,{'endkey', [cb_context:account_id(Context), kz_json:new()]}
-              ,{'mapper', crossbar_view:map_value_fun()}
+              ,{'mapper', crossbar_view:get_value_fun()}
               ],
     crossbar_view:load(Context, ?CB_LIST, Options).
 

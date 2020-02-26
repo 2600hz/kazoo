@@ -306,7 +306,8 @@ token(#{auth_provider := #{name := <<"kazoo">>
                           ,jwt_user_id_signature_hash := Hash
                           }
        ,payload := #{<<"identity_sig">> := IdentitySig}
-       }=Token) ->
+       }=Token
+     ) ->
     case kz_term:is_not_empty(IdentitySig)
         andalso identity_secret(Token)
     of
@@ -383,7 +384,7 @@ verify(Token) ->
 %% @doc Reset system key (provider identity secret).
 %% @end
 %%------------------------------------------------------------------------------
--spec reset_system_secret() -> {'ok', kz_json:object()} | {'error', any()}.
+-spec reset_system_secret() -> {'ok', kz_json:object()} | kz_datamgr:data_error().
 reset_system_secret() ->
     lager:warning("resetting system identity secret"),
     kapps_config:set_string(?CONFIG_CAT, ?KAZOO_SIGNATURE_ID, ?KAZOO_GEN_SIGNATURE_SECRET).
@@ -443,7 +444,8 @@ has_doc_secret(JObj) ->
 -spec reset_identity_secret(map()) -> 'ok' | {'error', any()}.
 reset_identity_secret(#{auth_db := Db
                        ,auth_id := Key
-                       }=Token) ->
+                       }=Token
+                     ) ->
     lager:debug("resetting identity secret, auth_db ~s auth_id ~s", [Db, Key]),
     case kz_datamgr:open_cache_doc(Db, Key) of
         {'ok', _JObj} ->

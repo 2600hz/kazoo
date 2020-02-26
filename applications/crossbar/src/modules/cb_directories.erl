@@ -308,13 +308,11 @@ read_directory(Id, Context) ->
 
 -spec load_directory_users(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_directory_users(Id, Context) ->
-    Context1 = crossbar_doc:load_view(?CB_USERS_LIST
-                                     ,[{'startkey', [Id]}
-                                      ,{'endkey', [Id, kz_json:new()]}
-                                      ]
-                                     ,Context
-                                     ,fun normalize_users_results/2
-                                     ),
+    Options = [{'startkey', [Id]}
+              ,{'endkey', [Id, kz_json:new()]}
+              ,{'mapper', fun normalize_users_results/2}
+              ],
+    Context1 = crossbar_view:load(Context, ?CB_USERS_LIST, Options),
     case cb_context:resp_status(Context1) of
         'success' ->
             Users = cb_context:resp_data(Context1),
@@ -361,16 +359,12 @@ on_successful_validation(DocId, Context) ->
 %%------------------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
+    crossbar_view:load(Context, ?CB_LIST, [{'mapper', crossbar_view:get_value_fun()}]).
 
 %%------------------------------------------------------------------------------
 %% @doc Normalizes the results of a view.
 %% @end
 %%------------------------------------------------------------------------------
--spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
-normalize_view_results(JObj, Acc) ->
-    [kz_json:get_value(<<"value">>, JObj)|Acc].
-
 -spec normalize_users_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_users_results(JObj, Acc) ->
     [kz_json:from_list([{<<"user_id">>, kz_doc:id(JObj)}

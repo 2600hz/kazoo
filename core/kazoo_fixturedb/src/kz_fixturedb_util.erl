@@ -36,7 +36,6 @@
 
         ,start_me/0, start_me/1, stop_me/1
 
-        ,db_to_disk/1, db_to_disk/2
         ,view_index_to_disk/3
         ]).
 
@@ -309,10 +308,10 @@ write_index_file(_, _, {'error', _}=Error) ->
 write_index_file(Path, NewLine, {'ok', IndexLines}) ->
     [Header|Lines] = binary:split(IndexLines, <<"\n">>, ['global']),
     ToWrite = [<<Header/binary, "\n">>
-              | [<<L/binary, "\n">>
-                     || L <- lists:usort(Lines),
-                        kz_term:is_not_empty(L)
-                ]
+                   | [<<L/binary, "\n">>
+                          || L <- lists:usort(Lines),
+                             kz_term:is_not_empty(L)
+                     ]
               ],
     case file:write_file(Path, ToWrite) of
         'ok' -> {'ok', NewLine};
@@ -355,51 +354,6 @@ design_view(Design) ->
         [DesignName] -> DesignName;
         [DesignName, ViewName|_] -> <<DesignName/binary, "+", ViewName/binary>>
     end.
-
--spec db_to_disk(kz_term:ne_binary()) -> 'ok' | kz_datamgr:data_error().
-db_to_disk(Database) ->
-    db_to_disk(Database, fun kz_term:always_true/1).
-
--type filter_fun() :: fun((kz_json:object()) -> boolean()).
--spec db_to_disk(kz_term:ne_binary(), filter_fun()) -> 'ok' | kz_datamgr:data_error().
-db_to_disk(Database, FilterFun) ->
-    case kz_datamgr:db_exists(Database) of
-        'true' -> db_to_disk_persist(Database, FilterFun);
-        'false' -> {'error', 'not_found'}
-    end.
-
-db_to_disk_persist(Database, FilterFun) ->
-    db_to_disk_persist(Database, FilterFun, get_page(Database, 'undefined')).
-
-get_page(Database, 'undefined') ->
-    query(Database, []);
-get_page(Database, StartKey) ->
-    query(Database, [{'startkey', StartKey}]).
-
-query(Database, Options) ->
-    kz_datamgr:paginate_results(Database, 'all_docs', ['include_docs' | Options]).
-
-db_to_disk_persist(Database, FilterFun, {'ok', ViewResults, 'undefined'}) ->
-    _ = filter_and_persist(Database, FilterFun, ViewResults),
-    lager:info("finished persisting ~s", [Database]);
-db_to_disk_persist(Database, FilterFun, {'ok', ViewResults, NextStartKey}) ->
-    _ = filter_and_persist(Database, FilterFun, ViewResults),
-    db_to_disk_persist(Database, FilterFun, get_page(Database, NextStartKey));
-db_to_disk_persist(_Database, _FilterFun, {'error', _E}=Error) ->
-    Error.
-
-filter_and_persist(Database, FilterFun, ViewResults) ->
-    _ = [persist(Database, Document) || ViewResult <- ViewResults,
-                                        Document <- [kz_json:get_json_value(<<"doc">>, ViewResult)],
-                                        FilterFun(Document)
-        ].
-
-persist(Database, Document) ->
-    Path = get_doc_path(Database, kz_doc:id(Document)),
-    'ok' = filelib:ensure_dir(Path),
-
-    lager:info("  persisting doc ~s to ~s", [kz_doc:id(Document), Path]),
-    'ok' = file:write_file(Database, kz_json:encode(Document, ['pretty'])).
 
 -spec view_index_to_disk(kz_term:ne_binary(), kz_term:ne_binary(), kz_datamgr:view_options()) -> 'ok'.
 view_index_to_disk(Database, ViewName, Options) ->

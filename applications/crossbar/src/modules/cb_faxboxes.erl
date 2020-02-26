@@ -312,12 +312,10 @@ generate_email_address(Context) ->
 %%------------------------------------------------------------------------------
 -spec faxbox_listing(cb_context:context()) -> cb_context:context().
 faxbox_listing(Context) ->
-    ViewOptions = ['include_docs'],
-    crossbar_doc:load_view(<<"faxbox/crossbar_listing">>
-                          ,ViewOptions
-                          ,Context
-                          ,fun normalize_view_results/2
-                          ).
+    ViewOptions = [{'mapper', fun normalize_view_results/2}
+                  ,'include_docs'
+                  ],
+    crossbar_view:load(Context, <<"faxbox/crossbar_listing">>, ViewOptions).
 
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_view_results(JObj, Acc) ->

@@ -15,7 +15,6 @@
 -export([load/2, load/3
         ,load_merge/2, load_merge/3, load_merge/4
         ,patch_and_validate/3, patch_and_validate/4
-        ,load_view/3, load_view/4, load_view/5, load_view/6
         ,load_attachment/4, load_docs/2
         ,save/1, save/2, save/3
         ,update/3, update/4
@@ -25,7 +24,6 @@
         ,rev_to_etag/1
         ,current_doc_vsn/0
         ,update_pvt_parameters/2, add_pvt_auth/3, pvt_updates/2
-        ,start_key/1, start_key/2
         ]).
 
 -export([handle_json_success/2]).
@@ -37,11 +35,6 @@
 -export([patch_the_doc/2
         ]).
 -endif.
-
--export_type([view_options/0
-             ,load_options/0
-             ,startkey/0
-             ]).
 
 -include("crossbar.hrl").
 
@@ -56,35 +49,12 @@
                   ,fun add_pvt_alphanum_name/3
                   ]).
 
--type direction() :: 'ascending' | 'descending'.
-
--type startkey() :: kz_json:api_json_term().
-
--type startkey_fun() :: 'undefined' |
-                        fun((cb_context:context()) -> startkey()) |
-                        fun((kz_term:proplist(), cb_context:context()) -> startkey()).
-
--type view_options() :: kazoo_data:view_options() |
-                        [{'databases', kz_term:ne_binaries()} |
-                         {'startkey_fun', startkey_fun()}
-                        ].
-
 -type load_option() :: {?OPTION_EXPECTED_TYPE, kz_term:ne_binary()} |
                        {'use_cache', boolean()}.
 -type load_options() :: kazoo_data:view_options() |
                         [load_option()].
 
--record(load_view_params, {view :: kz_term:api_binary()
-                          ,view_options = [] :: view_options()
-                          ,context :: cb_context:context()
-                          ,start_key :: startkey()
-                          ,should_paginate :: boolean()
-                          ,page_size :: non_neg_integer() | kz_term:api_binary()
-                          ,filter_fun :: filter_fun()
-                          ,dbs = [] :: kz_term:ne_binaries()
-                          ,direction = 'ascending' :: direction()
-                          }).
--type load_view_params() :: #load_view_params{}.
+-export_type([load_options/0]).
 
 %%------------------------------------------------------------------------------
 %% @doc Returns the version number attached to created/updated documents.
@@ -313,177 +283,6 @@ patch_the_doc(RequestData, ExistingDoc) ->
     PubJObj = kz_doc:public_fields(RequestData),
     kz_json:merge(fun kz_json:merge_left/2, PubJObj, ExistingDoc).
 
--spec load_view(kz_term:ne_binary() | 'all_docs', kz_term:proplist(), cb_context:context()) ->
-          cb_context:context().
-load_view(View, Options, Context) ->
-    load_view(View, Options, Context
-             ,start_key(Options, Context)
-             ,cb_context:pagination_page_size(Context)
-             ,'undefined'
-             ).
-
--spec load_view(kz_term:ne_binary() | 'all_docs', kz_term:proplist(), cb_context:context(), kz_json:json_term() | filter_fun()) ->
-          cb_context:context().
-load_view(View, Options, Context, FilterFun)
-  when is_function(FilterFun, 2);
-       is_function(FilterFun, 3) ->
-    load_view(View, Options, Context
-             ,start_key(Options, Context)
-             ,cb_context:pagination_page_size(Context)
-             ,FilterFun
-             );
-load_view(View, Options, Context, StartKey) ->
-    load_view(View, Options, Context, StartKey
-             ,cb_context:pagination_page_size(Context)
-             ).
-%% @equiv load_view(View, Options, Context, StartKey, PageSize, 'undefined')
-
--spec load_view(kz_term:ne_binary() | 'all_docs', kz_term:proplist(), cb_context:context(), kz_json:json_term(), pos_integer()) ->
-          cb_context:context().
-load_view(View, Options, Context, StartKey, PageSize) ->
-    load_view(View, Options, Context, StartKey, PageSize, 'undefined').
-
-%%------------------------------------------------------------------------------
-%% @doc This function attempts to load the context with the results of a view
-%% run against the accounts database.
-%%
-%% Failure here returns 500 or 503.
-%% @end
-%%------------------------------------------------------------------------------
-
--spec load_view(kz_term:ne_binary() | 'all_docs', kz_term:proplist(), cb_context:context(), kz_json:json_term(), pos_integer(), filter_fun()) ->
-          cb_context:context().
-load_view(View, Options, Context, StartKey, PageSize, FilterFun) ->
-    load_view(
-      #load_view_params{view = View
-                       ,view_options = Options
-                       ,context = cb_context:set_doc(Context, [])
-                       ,start_key = StartKey
-                       ,should_paginate = cb_context:should_paginate(Context)
-                       ,page_size = PageSize
-                       ,filter_fun = FilterFun
-                       ,dbs = [Db || Db <- props:get_value('databases', Options, [cb_context:db_name(Context)]),
-                                     kz_datamgr:db_exists(Db, View)
-                              ]
-                       ,direction = view_sort_direction(Options)
-                       }).
-
--spec view_sort_direction(kz_term:proplist()) -> direction().
-view_sort_direction(Options) ->
-    case props:get_value('descending', Options) of
-        'true' -> 'descending';
-        'undefined' -> 'ascending'
-    end.
-
-load_view(#load_view_params{dbs = []
-                           ,context = Context
-                           }) ->
-    case cb_context:resp_status(Context) of
-        'success' ->
-            lager:debug("databases exhausted"),
-            handle_datamgr_success(cb_context:doc(Context), Context);
-        _Status -> Context
-    end;
-load_view(#load_view_params{page_size = PageSize
-                           ,context = Context
-                           ,should_paginate = 'true'
-                           })
-  when is_integer(PageSize)
-       andalso PageSize =< 0 ->
-    lager:debug("page_size exhausted: ~p", [PageSize]),
-    case 'success' =:= cb_context:resp_status(Context) of
-        'false' -> Context;
-        'true' -> handle_datamgr_success(cb_context:doc(Context), Context)
-    end;
-load_view(#load_view_params{view = View
-                           ,view_options = Options
-                           ,context = Context
-                           ,start_key = StartKey
-                           ,page_size = PageSize
-                           ,dbs = [Db|RestDbs]=Dbs
-                           ,direction = _Direction
-                           } = LVPs) ->
-    Limit = PageSize + 1,
-
-    DefaultOptions =
-        props:filter_undefined(
-          [{'startkey', StartKey}
-          ,{'limit', Limit}
-           | props:delete_keys(['startkey', 'startkey_fun', 'limit', 'databases'], Options)
-          ]),
-
-    IncludeOptions =
-        case crossbar_filter:is_defined(Context) of
-            'true' -> ['include_docs' | props:delete('include_docs', DefaultOptions)];
-            'false' -> DefaultOptions
-        end,
-
-    ViewOptions =
-        case props:get_first_defined(['reduce', 'group', 'group_level'], IncludeOptions) of
-            'undefined' -> IncludeOptions;
-            'false' -> IncludeOptions;
-            _V -> props:delete('include_docs', IncludeOptions)
-        end,
-
-    lager:debug("kz_datamgr:get_results(~p, ~p, ~p)", [Db, View, ViewOptions]),
-    case kz_datamgr:get_results(Db, View, ViewOptions) of
-        %% There were more dbs, so move to the next one
-        {'error', 'not_found'} when [] =:= RestDbs ->
-            lager:debug("either the db ~s or view ~s was not found", [Db, View]),
-            crossbar_util:response_missing_view(Context);
-        {'error', 'not_found'} ->
-            lager:debug("either the db ~s or view ~s was not found", [Db, View]),
-            load_view(LVPs#load_view_params{dbs = RestDbs});
-        {'error', Error} ->
-            handle_datamgr_errors(Error, View, Context);
-        {'ok', JObjs} ->
-            lager:debug("paginating view '~s' from '~s', starting at '~p'", [View, Db, StartKey]),
-            handle_query_results(JObjs
-                                ,LVPs#load_view_params{dbs = Dbs
-                                                      ,context = cb_context:set_resp_status(Context, 'success')
-                                                      }
-                                )
-    end.
-
-handle_query_results(JObjs, LVPs) ->
-    [{'memory', End}] = process_info(self(), ['memory']),
-    MemoryLimit = kapps_config:get_integer(?CONFIG_CAT, <<"request_memory_limit">>),
-    handle_query_results(JObjs, LVPs, End, MemoryLimit).
-
-handle_query_results(JObjs, LVPs, _MemoryUsed, 'undefined') ->
-    handle_datamgr_pagination_success(JObjs, LVPs);
-handle_query_results(JObjs, LVPs, MemoryUsed, MemoryLimit) when MemoryUsed < MemoryLimit ->
-    lager:debug("under memory cap of ~p: ~p used", [MemoryLimit, MemoryUsed]),
-    handle_datamgr_pagination_success(JObjs, LVPs);
-handle_query_results(_JObjs, #load_view_params{context=Context}, _MemoryUsed, _MemoryLimit) ->
-    lager:warning("memory used ~p exceeds limit ~p", [_MemoryUsed, _MemoryLimit]),
-    crossbar_util:response_range_not_satisfiable(Context).
-
-%% @equiv cb_context:req_value(Context, <<"start_key">>)
--spec start_key(cb_context:context()) -> kz_json:api_json_term().
-start_key(Context) ->
-    cb_context:req_value(Context, <<"start_key">>).
-
--spec start_key(kz_term:proplist(), cb_context:context()) -> kz_json:api_json_term().
-start_key(Options, Context) ->
-    case props:get_value('startkey_fun', Options) of
-        'undefined' -> start_key_fun(Options, Context);
-        Fun when is_function(Fun, 2) -> Fun(Options, Context);
-        Fun when is_function(Fun, 1) -> Fun(Context)
-    end.
-
--spec start_key_fun(kz_term:proplist(), cb_context:context()) -> kz_json:api_json_term().
-start_key_fun(Options, Context) ->
-    case props:get_value('startkey', Options) of
-        'undefined' ->
-            StartKey = start_key(Context),
-            lager:debug("got start_key from request: ~p", [StartKey]),
-            StartKey;
-        StartKey ->
-            lager:debug("getting start_key from options: ~p", [StartKey]),
-            StartKey
-    end.
-
 %%------------------------------------------------------------------------------
 %% @doc This function attempts to load the context with the results of all the
 %% docs in the supplied Db, with the fold function weeding out those not
@@ -492,7 +291,7 @@ start_key_fun(Options, Context) ->
 %% Failure here returns 500 or 503.
 %% @end
 %%------------------------------------------------------------------------------
--spec load_docs(cb_context:context(), filter_fun()) -> cb_context:context().
+-spec load_docs(cb_context:context(), crossbar_view:user_mapper_fun()) -> cb_context:context().
 load_docs(Context, Filter)
   when is_function(Filter, 2);
        is_function(Filter, 3) ->
@@ -837,164 +636,6 @@ rev_to_etag(JObj) ->
         'undefined' -> 'undefined';
         Rev -> kz_term:to_list(Rev)
     end.
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec update_pagination_envelope_params(cb_context:context(), any(), kz_term:api_non_neg_integer()) ->
-          cb_context:context().
-update_pagination_envelope_params(Context, StartKey, PageSize) ->
-    update_pagination_envelope_params(Context
-                                     ,StartKey
-                                     ,PageSize
-                                     ,'undefined'
-                                     ,cb_context:should_paginate(Context)
-                                     ).
-
--spec update_pagination_envelope_params(cb_context:context(), any(), kz_term:api_non_neg_integer(), kz_term:api_binary()) ->
-          cb_context:context().
-update_pagination_envelope_params(Context, StartKey, PageSize, NextStartKey) ->
-    update_pagination_envelope_params(Context
-                                     ,StartKey
-                                     ,PageSize
-                                     ,NextStartKey
-                                     ,cb_context:should_paginate(Context)
-                                     ).
-
--spec update_pagination_envelope_params(cb_context:context(), any(), kz_term:api_non_neg_integer(), kz_term:api_binary(), boolean()) ->
-          cb_context:context().
-update_pagination_envelope_params(Context, _StartKey, _PageSize, _NextStartKey, 'false') ->
-    lager:debug("pagination disabled, removing resp envelope keys"),
-    RespEnvelope = kz_json:delete_keys([<<"start_key">>
-                                       ,<<"page_size">>
-                                       ,<<"next_start_key">>
-                                       ]
-                                      ,cb_context:resp_envelope(Context)
-                                      ),
-    cb_context:set_resp_envelope(Context, RespEnvelope);
-
-update_pagination_envelope_params(Context, StartKey, PageSize, NextStartKey, 'true') ->
-    RespEnvelope = cb_context:resp_envelope(Context),
-    CurrentPageSize = kz_json:get_integer_value(<<"page_size">>, RespEnvelope, 0),
-    NewRespEnvelope = kz_json:set_values(props:filter_undefined(
-                                           [{<<"start_key">>, StartKey}
-                                           ,{<<"page_size">>, PageSize + CurrentPageSize}
-                                           ,{<<"next_start_key">>, NextStartKey}
-                                           ])
-                                        ,RespEnvelope
-                                        ),
-    cb_context:set_resp_envelope(Context, NewRespEnvelope).
-
--spec handle_datamgr_pagination_success(kz_json:objects(), load_view_params()) ->
-          cb_context:context().
-%% If v1, just append results and try next database
-handle_datamgr_pagination_success([]
-                                 ,#load_view_params{dbs=[_Db|Dbs]
-                                                   ,should_paginate='false'
-                                                   } = LVPs
-                                 ) ->
-    lager:info("no results left, trying next DB"),
-    load_view(LVPs#load_view_params{dbs=Dbs});
-
-%% if no results from this db, go to next db (if any)
-handle_datamgr_pagination_success([]
-                                 ,#load_view_params{context = Context
-                                                   ,start_key = StartKey
-                                                   ,dbs=[_Db|Dbs]
-                                                   } = LVPs
-                                 ) ->
-    load_view(LVPs#load_view_params{context = update_pagination_envelope_params(Context, StartKey, 0)
-                                   ,dbs=Dbs
-                                   });
-
-handle_datamgr_pagination_success([_|_]=JObjs
-                                 ,#load_view_params{context = Context
-                                                   ,page_size = CurrentPageSize
-                                                   ,should_paginate = ShouldPaginate
-                                                   ,start_key = StartKey
-                                                   ,filter_fun = FilterFun
-                                                   ,direction = Direction
-                                                   ,dbs = [_|Dbs]
-                                                   } = LVPs
-                                 ) ->
-    PageSize = length(JObjs),
-    try lists:split(CurrentPageSize, JObjs) of
-        {Results, []} ->
-            %% exhausted this db, but may need more from Dbs to fulfill PageSize
-            Filtered = apply_filter(FilterFun, Results, Context, Direction),
-            UpdatedContext = update_pagination_envelope_params(Context, StartKey, PageSize),
-            NewContext = cb_context:set_doc(UpdatedContext, Filtered ++ cb_context:doc(Context)),
-            load_view(LVPs#load_view_params{context = NewContext
-                                           ,page_size = next_page_size(CurrentPageSize, PageSize, ShouldPaginate)
-                                           ,dbs = Dbs
-                                           });
-        {Results, [NextJObj]} ->
-            %% Current db may have more results to give
-            NextStartKey = kz_json:get_value(<<"key">>, NextJObj),
-            Filtered = apply_filter(FilterFun, Results, Context, Direction),
-            FilteredCount = length(Filtered),
-            lager:debug("next start key: ~p", [NextStartKey]),
-            lager:debug("page size: ~p filtered: ~p", [PageSize, FilteredCount]),
-            UpdatedContext = update_pagination_envelope_params(Context, StartKey, PageSize, NextStartKey),
-            NewContext = cb_context:set_doc(UpdatedContext, Filtered ++ cb_context:doc(Context)),
-            load_view(LVPs#load_view_params{context = NewContext
-                                           ,page_size = next_page_size(CurrentPageSize, FilteredCount, ShouldPaginate)
-                                           ,start_key = NextStartKey
-                                           })
-    catch
-        'error':'badarg' ->
-            Filtered = apply_filter(FilterFun, JObjs, Context, Direction),
-            FilteredCount = length(Filtered),
-            lager:debug("page size: ~p filtered: ~p", [PageSize, FilteredCount]),
-            UpdatedContext = update_pagination_envelope_params(Context, StartKey, FilteredCount),
-            NewContext = cb_context:set_doc(UpdatedContext, Filtered ++ cb_context:doc(Context)),
-            load_view(LVPs#load_view_params{context = NewContext
-                                           ,page_size = next_page_size(CurrentPageSize, FilteredCount, ShouldPaginate)
-                                           ,dbs = Dbs
-                                           })
-    end.
-
-next_page_size(CurrentPageSize, _FetchedPageSize, 'false') ->
-    CurrentPageSize;
-next_page_size(CurrentPageSize, FetchedPageSize, 'true') ->
-    CurrentPageSize - FetchedPageSize.
-
--type filter_fun() :: fun((kz_json:object(), kz_json:objects()) -> kz_json:objects()) |
-                      fun((cb_context:context(), kz_json:object(), kz_json:objects()) -> kz_json:objects()) |
-                      'undefined'.
-
--spec apply_filter(filter_fun(), kz_json:objects(), cb_context:context(), direction()) ->
-          kz_json:objects().
-apply_filter(FilterFun, JObjs, Context, Direction) ->
-    apply_filter(FilterFun, JObjs, Context, Direction, crossbar_filter:is_defined(Context)).
-
--spec apply_filter(filter_fun(), kz_json:objects(), cb_context:context(), direction(), boolean()) ->
-          kz_json:objects().
-apply_filter(FilterFun, JObjs, Context, Direction, HasQSFilter) ->
-    lager:debug("applying filter fun: ~p, qs filter: ~p to dir ~p", [FilterFun, HasQSFilter, Direction]),
-    Filtered0 = [JObj
-                 || JObj <- JObjs,
-                    crossbar_filter:by_doc(kz_json:get_value(<<"doc">>, JObj), Context, HasQSFilter)
-                ],
-    Filtered = maybe_apply_custom_filter(Context, FilterFun, Filtered0),
-    lager:debug("filter resulted in ~p out of ~p objects", [length(Filtered), length(JObjs)]),
-    case Direction of
-        'ascending' -> Filtered;
-        'descending' -> lists:reverse(Filtered)
-    end.
-
--spec maybe_apply_custom_filter(cb_context:context(), filter_fun(), kz_json:objects()) -> kz_json:objects().
-maybe_apply_custom_filter(_Context, 'undefined', JObjs) -> JObjs;
-maybe_apply_custom_filter(Context, FilterFun, JObjs) ->
-    Fun = case is_function(FilterFun, 2) of
-              'true' -> FilterFun;
-              'false' -> fun(J, Acc) -> FilterFun(Context, J, Acc) end
-          end,
-    [JObj
-     || JObj <- lists:foldl(Fun, [], JObjs),
-        not kz_term:is_empty(JObj)
-    ].
 
 -spec handle_datamgr_success(kz_json:json_term(), cb_context:context()) -> cb_context:context().
 handle_datamgr_success([], Context) ->

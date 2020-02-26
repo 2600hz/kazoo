@@ -223,26 +223,27 @@ validate(Context, ListId, ?ENTRIES, EntryId, ?VCARD) ->
 
 -spec validate_req(http_method(), cb_context:context(), path_tokens()) -> cb_context:context().
 validate_req(?HTTP_GET, Context, []) ->
-    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_list/2);
+    crossbar_view:load(Context, ?CB_LIST, [{'mapper', crossbar_view:get_value_fun()}]);
 validate_req(?HTTP_PUT, Context, []) ->
     validate_doc('undefined', ?TYPE_LIST, Context);
 
 validate_req(?HTTP_GET, Context, [ListId]) ->
     crossbar_doc:load(ListId, Context, ?TYPE_CHECK_OPTION(?TYPE_LIST));
 validate_req(?HTTP_DELETE, Context, [ListId]) ->
-    crossbar_doc:load_view(?ENTRIES_VIEW, [{'key', ListId}], Context);
+    crossbar_view:load(Context, ?ENTRIES_VIEW, [{'key', ListId}]);
 validate_req(?HTTP_POST, Context, [ListId]) ->
     validate_doc(ListId, ?TYPE_LIST, Context);
 validate_req(?HTTP_PATCH, Context, [ListId] = Path) ->
     crossbar_doc:patch_and_validate(ListId, Context, fun(_Id, C) -> validate_req(?HTTP_POST, C, Path) end);
 
 validate_req(?HTTP_GET, Context, [ListId, ?ENTRIES]) ->
-    crossbar_doc:load_view(?ENTRIES_VIEW, [{'key', ListId}], Context);
+    %% FIXME: why this doesn't normalize the db result??
+    crossbar_view:load(Context, ?ENTRIES_VIEW, [{'key', ListId}]);
 validate_req(?HTTP_PUT, Context, [ListId, ?ENTRIES]) ->
     ReqData = kz_json:set_values([{<<"list_id">>, ListId}], cb_context:req_data(Context)),
     validate_doc('undefined', ?TYPE_LIST_ENTRY, cb_context:set_req_data(Context, ReqData));
 validate_req(?HTTP_DELETE, Context, [ListId, ?ENTRIES]) ->
-    crossbar_doc:load_view(?ENTRIES_VIEW, [{'key', ListId}], Context);
+    crossbar_view:load(Context, ?ENTRIES_VIEW, [{'key', ListId}]);
 
 validate_req(?HTTP_GET, Context, [_ListId, ?ENTRIES, EntryId]) ->
     crossbar_doc:load(EntryId, Context, ?TYPE_CHECK_OPTION(?TYPE_LIST_ENTRY));
@@ -283,7 +284,7 @@ delete(Context, ListId) ->
 
 -spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 delete(Context, _ListId, ?ENTRIES) ->
-    Docs = [kz_json:get_value(<<"id">>, Entry) || Entry <- cb_context:doc(Context)],
+    Docs = [kz_doc:id(Entry) || Entry <- cb_context:doc(Context)],
     AccountDb = kzs_util:format_account_db(cb_context:db_name(Context)),
     %% do we need 'soft' delete as in crossbar_doc?
     _ = kz_datamgr:del_docs(AccountDb, Docs),
@@ -355,7 +356,3 @@ set_photo(JObj, Context) ->
             CT = kz_doc:attachment_content_type(cb_context:doc(Context), ?PHOTO),
             kz_json:set_value(?PHOTO, kz_json:from_list([{CT, Data}]), JObj)
     end.
-
--spec normalize_list(kz_json:object(), kz_json:objects()) -> kz_json:objects().
-normalize_list(JObj, Acc) ->
-    [kz_json:get_value(<<"value">>, JObj) | Acc].

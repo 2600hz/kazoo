@@ -212,19 +212,17 @@ validate(Context, ?EDITABLE) ->
     list_editable(Context);
 validate(Context, ?AVAILABLE) ->
     %% NOTE: list service plans available to this account for selection
-    AccountId = cb_context:account_id(Context),
-    ResellerId = kz_services_reseller:get_id(AccountId),
-    ResellerDb = kzs_util:format_account_db(ResellerId),
-    Options =
+    ResellerId = kz_services_reseller:get_id(cb_context:account_id(Context)),
+    IncludeDocs =
         case kz_term:is_true(cb_context:req_value(Context, <<"details">>, 'false')) of
             'false' -> [];
             'true' -> ['include_docs']
         end,
-    crossbar_doc:load_view(?CB_LIST
-                          ,Options
-                          ,cb_context:set_db_name(Context, ResellerDb)
-                          ,fun normalize_available_view_results/2
-                          );
+    Options = [{'databases', [kzs_util:format_account_db(ResellerId)]}
+              ,{'mapper', fun normalize_available_view_results/2}
+               | IncludeDocs
+              ],
+    crossbar_view:load(Context, ?CB_LIST, Options);
 validate(Context, ?SUMMARY) ->
     %% NOTE: summarize this accounts billing details based on the assigned service plans
     cb_context:setters(Context

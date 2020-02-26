@@ -121,7 +121,7 @@ handle_static(Data, Call, CaptureGroup) ->
 %%------------------------------------------------------------------------------
 -type cid_entry() :: {kz_term:ne_binary(), kz_term:ne_binary(), binary()}.
 -type list_cid_entry() :: list_cid_entry() |
-                          {'error', kz_datamgr:data_error()}.
+                          kz_datamgr:data_error().
 
 -spec handle_list(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle_list(Data, Call) ->

@@ -90,21 +90,12 @@ validate_hotdesks(Context, ?HTTP_GET, _) ->
     fetch_all_hotdesks(Context).
 
 %%------------------------------------------------------------------------------
-%% @doc Normalizes the results of a view.
-%% @end
-%%------------------------------------------------------------------------------
--spec normalize_view_results(kz_json:object(), kz_json:objects()) ->
-          kz_json:objects().
-normalize_view_results(JObj, Acc) ->
-    [kz_json:get_value(<<"value">>, JObj)|Acc].
-
-%%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
 -spec fetch_all_hotdesks(cb_context:context()) -> cb_context:context().
 fetch_all_hotdesks(Context) ->
-    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
+    crossbar_view:load(Context, ?CB_LIST, [{'mapper', crossbar_view:get_value_fun()}]).
 
 -spec fetch_user_hotdesks(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 fetch_user_hotdesks(DeviceId, Context) ->
@@ -119,11 +110,14 @@ fetch_user_hotdesks(DeviceId, Context) ->
 
 -spec fetch_users(kz_term:ne_binaries(), cb_context:context()) -> cb_context:context().
 fetch_users(UserIds, Context) ->
-    ViewOptions = [{'keys', UserIds}],
-    View = <<"users/list_by_id">>,
-    crossbar_doc:load_view(View, ViewOptions, Context, fun normalize_view_results/2).
+    ViewOptions = [{'keys', UserIds}
+                  ,{'mapper', crossbar_view:get_value_fun()}
+                  ],
+    crossbar_view:load(Context, <<"users/list_by_id">>, ViewOptions).
 
 -spec fetch_device_hotdesks(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 fetch_device_hotdesks(UserId, Context) ->
-    ViewOptions = [{'key', UserId}],
-    crossbar_doc:load_view(?CB_LIST, ViewOptions, Context, fun normalize_view_results/2).
+    ViewOptions = [{'key', UserId}
+                  ,{'mapper', crossbar_view:get_value_fun()}
+                  ],
+    crossbar_view:load(Context, ?CB_LIST, ViewOptions).

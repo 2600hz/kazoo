@@ -133,7 +133,7 @@ delete(Context, _DocId) ->
 %%------------------------------------------------------------------------------
 -spec load_menu_summary(cb_context:context()) -> cb_context:context().
 load_menu_summary(Context) ->
-    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
+    crossbar_view:load(Context, ?CB_LIST, [{'mapper', crossbar_view:get_value_fun()}]).
 
 %%------------------------------------------------------------------------------
 %% @doc Create a new menu document with the data provided, if it is valid
@@ -183,11 +183,3 @@ on_successful_validation('undefined', Context) ->
     cb_context:set_doc(Context, MenuDoc);
 on_successful_validation(DocId, Context) ->
     crossbar_doc:load_merge(DocId, Context, ?TYPE_CHECK_OPTION(kzd_menus:type())).
-
-%%------------------------------------------------------------------------------
-%% @doc Normalizes the results of a view.
-%% @end
-%%------------------------------------------------------------------------------
--spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
-normalize_view_results(JObj, Acc) ->
-    [kz_json:get_value(<<"value">>, JObj)|Acc].
