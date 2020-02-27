@@ -303,6 +303,8 @@ big_dataset_seq() ->
     lager:info("chunked/unpaginated and unbound memory resp returned ~p CDRs", [ChunkedUnpaginatedCount]),
     CDRCount = ChunkedUnpaginatedCount,
 
+    _ = kapps_config:set_default(<<"crossbar">>, <<"request_memory_limit">>, 1024 * 1024 * 5), % cap at 5Mb
+
     {'error', UnChunkedErrorJSON} = unpaginated_summary(API, AccountId, 'false'),
     lager:info("unchunked/unpaginated and bound memory resp: ~s", [UnChunkedErrorJSON]),
     UnChunkedErrorJObj = kz_json:decode(UnChunkedErrorJSON),

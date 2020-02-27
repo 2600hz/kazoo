@@ -94,7 +94,13 @@
         ,{<<"reseller_call_type">>, fun col_reseller_call_type/3}
         ]).
 
--type csv_column_fun() :: fun((kz_json:object(), kz_time:gregorian_seconds(), cb_context:context()) -> kz_term:ne_binary()).
+-define(CONTEXT_COLUMNS
+       ,[{<<"inception_direction">>, fun col_inception_direction/3}]
+       ).
+
+-define(INTERACTION_COLUMNS, ?COLUMNS ++ ?CONTEXT_COLUMNS).
+
+-type cdr_column_fun() :: fun((kz_json:object(), kz_time:gregorian_seconds(), cb_context:context()) -> kz_term:ne_binary()).
 
 %%%=============================================================================
 %%% API
@@ -446,7 +452,7 @@ normalize_cdr(Context, <<"json">>, Result) ->
     Duration = kzd_cdrs:duration_seconds(JObj, 0),
     Timestamp = kzd_cdrs:timestamp(JObj, 0) - Duration,
 
-    kz_json:from_list([{K, F(JObj, Timestamp, Context)} || {K, F} <- csv_rows(Context)]);
+    kz_json:from_list(props:filter_empty([{K, F(JObj, Timestamp, Context)} || {K, F} <- json_rows(Context)]));
 normalize_cdr(Context, <<"csv">>, Result) ->
     JObj = kz_json:get_json_value(<<"doc">>, Result),
     Duration = kzd_cdrs:duration_seconds(JObj, 0),
@@ -468,14 +474,30 @@ maybe_add_csv_header(Context, <<"csv">>, [Head | Tail]=Data) ->
             cb_context:set_resp_data(Context, [<<CSVHeader/binary, "\r\n", Head/binary>> | Tail])
     end.
 
--spec csv_rows(cb_context:context()) -> [{kz_term:ne_binary(), csv_column_fun()}].
+-spec csv_rows(cb_context:context()) -> [{kz_term:ne_binary(), cdr_column_fun()}].
 csv_rows(Context) ->
     case cb_context:fetch(Context, 'is_reseller', 'false') of
         'false' -> ?COLUMNS;
         'true' -> ?COLUMNS ++ ?COLUMNS_RESELLER
     end.
 
-%% see csv_column_fun() for specs for each function here
+-spec json_rows(cb_context:context()) -> [{kz_term:ne_binary(), cdr_column_fun()}].
+json_rows(Context) ->
+    json_rows(Context, interaction_path(Context)).
+
+-spec json_rows(cb_context:context(), atom()) -> [{kz_term:ne_binary(), cdr_column_fun()}].
+json_rows(Context, 'undefined') ->
+    case cb_context:fetch(Context, 'is_reseller', 'false') of
+        'false' -> ?COLUMNS;
+        'true' -> ?COLUMNS ++ ?COLUMNS_RESELLER
+    end;
+json_rows(Context, _) ->
+    case cb_context:fetch(Context, 'is_reseller', 'false') of
+        'false' -> ?INTERACTION_COLUMNS;
+        'true' -> ?INTERACTION_COLUMNS ++ ?COLUMNS_RESELLER
+    end.
+
+%% see cdr_column_fun() for specs for each function here
 col_id(JObj, _Timestamp, _Context) -> kz_doc:id(JObj, <<>>).
 col_call_id(JObj, _Timestamp, _Context) -> kzd_cdrs:call_id(JObj, <<>>).
 col_caller_id_number(JObj, _Timestamp, _Context) -> kzd_cdrs:caller_id_number(JObj, <<>>).
@@ -524,6 +546,28 @@ col_reseller_cost(JObj, _Timestamp, _Context) -> kz_term:to_binary(reseller_cost
 col_reseller_call_type(JObj, _Timestamp, _Context) -> kz_json:get_value([?KEY_CCV, <<"reseller_billing">>], JObj, <<>>).
 
 col_interaction_id(JObj, _Timestamp, _Context) -> kzd_cdrs:interaction_id(JObj, <<>>).
+
+col_inception_direction(JObj, _Timestamp, Context) ->
+    case interaction_path(Context) of
+        'account' ->
+            case kzd_cdrs:custom_channel_var(JObj, <<"authorizing_id">>) of
+                'undefined' -> <<"termination">>;
+                _AuthorizingId -> <<"origination">>
+            end;
+        'user' ->
+            case kzd_cdrs:call_direction(JObj) of
+                <<"inbound">> -> <<"origination">>;
+                <<"outbound">> -> <<"termination">>
+            end
+    end.
+
+-spec interaction_path(cb_context:context()) -> 'account' | 'user' | 'undefined'.
+interaction_path(Context) ->
+    case cb_context:req_nouns(Context) of
+        [{<<"cdrs">>, [?PATH_INTERACTION]}, {?KZ_ACCOUNTS_DB, _}|_] -> 'account';
+        [{<<"cdrs">>, [?PATH_INTERACTION]}, {<<"users">>, _}|_] -> 'user';
+        _Else -> 'undefined'
+    end.
 
 -spec pretty_print_datetime(kz_time:datetime() | kz_time:gregorian_second()) -> kz_term:ne_binary().
 pretty_print_datetime(Timestamp) when is_integer(Timestamp) ->

@@ -17,6 +17,7 @@
 -export([caller_id_number/1, caller_id_number/2, set_caller_id_number/2]).
 -export([custom_application_vars/1, custom_application_vars/2, set_custom_application_vars/2]).
 -export([custom_channel_vars/1, custom_channel_vars/2, set_custom_channel_vars/2]).
+-export([custom_channel_var/2, custom_channel_var/3]).
 -export([custom_sip_headers/1, custom_sip_headers/2, set_custom_sip_headers/2]).
 -export([digits_dialed/1, digits_dialed/2, set_digits_dialed/2]).
 -export([disposition/1, disposition/2, set_disposition/2]).
@@ -200,6 +201,14 @@ custom_channel_vars(Doc, Default) ->
 -spec set_custom_channel_vars(doc(), kz_json:object()) -> doc().
 set_custom_channel_vars(Doc, CustomChannelVars) ->
     kz_json:set_value([<<"custom_channel_vars">>], CustomChannelVars, Doc).
+
+-spec custom_channel_var(doc(), kz_term:ne_binary()) -> kz_json:api_json_term().
+custom_channel_var(Doc, CCV) ->
+    custom_channel_var(Doc, CCV, 'undefined').
+
+-spec custom_channel_var(doc(), kz_term:ne_binary(), Default) -> kz_json:json_term() | Default.
+custom_channel_var(Doc, CCV, Default) ->
+    kz_json:get_value(CCV, custom_channel_vars(Doc, kz_json:new()), Default).
 
 -spec custom_sip_headers(doc()) -> kz_term:api_object().
 custom_sip_headers(Doc) ->
