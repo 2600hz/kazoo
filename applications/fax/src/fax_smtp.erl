@@ -987,3 +987,4 @@ maybe_add_faxbox_info(#state{faxbox=FaxBoxDoc}) ->
     ,{<<"FaxBox-Name">>, kzd_faxbox:name(FaxBoxDoc)}
     ,{<<"FaxBox-Timezone">>, kzd_fax_box:timezone(FaxBoxDoc)}
     ].
+
