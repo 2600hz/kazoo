@@ -603,9 +603,27 @@ populate_resp(JObj, AccountId, UserId) ->
               [{<<"apps">>, load_apps(AccountId, UserId, Language)}
               ,{<<"language">>, Language}
               ,{<<"account_name">>, kzd_accounts:fetch_name(AccountId)}
-              ,{<<"is_reseller">>, kz_services_reseller:is_reseller(AccountId)}
+              ,{<<"cluster_id">>, kzd_cluster:id()}
               ,{<<"reseller_id">>, kz_services_reseller:get_id(AccountId)}
+              ,{<<"is_reseller">>, kz_services_reseller:is_reseller(AccountId)}
+              ,{<<"capabilities">>, get_capabilities()}
               ]),
+    kz_json:set_values(Props, JObj).
+
+-spec get_capabilities() -> kz_json:object().
+get_capabilities() ->
+    Routines = [fun get_transcription_capabilities/1],
+    lists:foldl(fun(F, J) -> F(J) end, kz_json:new(), Routines).
+
+-spec get_transcription_capabilities(kz_json:object()) -> kz_json:object().
+get_transcription_capabilities(JObj) ->
+    Props = [{[<<"voicemail">>, <<"transcription">>, <<"supported">>]
+             ,kazoo_asr:available()
+             }
+            ,{[<<"voicemail">>, <<"transcription">>, <<"default">>]
+             ,kvm_util:transcribe_default()
+             }
+            ],
     kz_json:set_values(Props, JObj).
 
 %%------------------------------------------------------------------------------
