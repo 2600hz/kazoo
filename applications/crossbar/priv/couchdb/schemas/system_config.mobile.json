@@ -1,0 +1,12 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "system_config.mobile",
+    "description": "Schema for mobile system_config",
+    "properties": {
+        "url": {
+            "description": "The base URL of the 2600Hz mobile service",
+            "type": "string"
+        }
+    },
+    "type": "object"
+}
