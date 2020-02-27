@@ -1,0 +1,12 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "system_config.phonebook",
+    "description": "Schema for phonebook system_config",
+    "properties": {
+        "url": {
+            "description": "The base URL of the 2600Hz phonebook service",
+            "type": "string"
+        }
+    },
+    "type": "object"
+}

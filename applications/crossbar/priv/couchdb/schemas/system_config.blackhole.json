@@ -88,6 +88,10 @@
             "description": "blackhole ssl_workers",
             "type": "integer"
         },
+        "url": {
+            "description": "The advertised URL of the Kazoo websocket",
+            "type": "string"
+        },
         "use_plaintext": {
             "default": true,
             "description": "blackhole use_plaintext",

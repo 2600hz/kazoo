@@ -1,0 +1,12 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "system_config.cluster_manager",
+    "description": "Schema for cluster_manager system_config",
+    "properties": {
+        "url": {
+            "description": "The base URL of the 2600Hz cluster manager service",
+            "type": "string"
+        }
+    },
+    "type": "object"
+}
