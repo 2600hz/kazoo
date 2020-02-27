@@ -12,10 +12,10 @@ Provides an auth-token via user credentials
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`account_name` | The account name of the user | `string(ABC..Z)` |   | `true` |  
+`account_name` | The account name of the user | `string(1..128)` |   | `true` |  
 `account_realm` | The account realm of the user | `string(4..253)` |   | `false` |  
 `credentials` | A hash of the user credentials | `string(1..64)` |   | `true` |  
-`method` | The hash method | `string(md5..sha)` | `md5` | `true` |  
+`method` | The hash method | `string('md5' | 'sha')` | `md5` | `false` |  
 `phone_number` | A phone number assigned to the users account | `string(1..64)` |   | `false` |  
 
 
