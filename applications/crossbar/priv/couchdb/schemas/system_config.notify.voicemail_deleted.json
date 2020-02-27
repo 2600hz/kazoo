@@ -1,0 +1,18 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "system_config.notify.voicemail_deleted",
+    "description": "Schema for notify.voicemail_deleted system_config",
+    "properties": {
+        "html_content_transfer_encoding": {
+            "default": "7BIT",
+            "description": "notify.voicemail_deleted html content transfer encoding",
+            "type": "string"
+        },
+        "text_content_transfer_encoding": {
+            "default": "7BIT",
+            "description": "notify.voicemail_deleted text content transfer encoding",
+            "type": "string"
+        }
+    },
+    "type": "object"
+}

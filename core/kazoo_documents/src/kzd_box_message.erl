@@ -294,16 +294,17 @@ update_media_id(MediaId, JObj) ->
     Metadata = set_media_id(MediaId, metadata(JObj)),
     set_metadata(Metadata, JObj).
 
--spec metadata(doc()) -> doc() | 'undefined'.
+-spec metadata(doc()) -> kz_json:api_object().
 metadata(JObj) ->
     metadata(JObj, 'undefined').
 
--spec metadata(doc(), Default) -> doc() | Default.
+-spec metadata(doc(), Default) -> kz_json:object() | Default.
 metadata(JObj, Default) ->
     Metadata = kz_json:get_json_value(?KEY_METADATA, JObj, Default),
     maybe_add_transcription(Metadata, JObj).
 
--spec maybe_add_transcription(doc(), doc()) -> doc().
+-spec maybe_add_transcription(kz_term:api_object(), doc()) -> kz_term:api_object().
+maybe_add_transcription('undefined', _JObj) -> 'undefined';
 maybe_add_transcription(Metadata, JObj) ->
     case kz_json:get_json_value(?KEY_TRANSCRIPTION, JObj) of
         'undefined' -> Metadata;

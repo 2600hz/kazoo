@@ -65,6 +65,7 @@
         ,voicemail_full/1, voicemail_full_v/1
         ,voicemail_new/1, voicemail_new_v/1
         ,voicemail_saved/1, voicemail_saved_v/1
+        ,voicemail_deleted/1, voicemail_deleted_v/1
 
          %% Webhook notifications
         ,webhook/1, webhook_v/1
@@ -128,6 +129,7 @@
         ,publish_voicemail_full/1, publish_voicemail_full/2
         ,publish_voicemail_new/1, publish_voicemail_new/2
         ,publish_voicemail_saved/1, publish_voicemail_saved/2
+        ,publish_voicemail_deleted/1, publish_voicemail_deleted/2
 
          %% Webhook notifications
         ,publish_webhook/1, publish_webhook/2
@@ -1130,6 +1132,23 @@ voicemail_full_definition() ->
                                         ,<<"Voicemail-Transcription">>
                                              | ?DEFAULT_OPTIONAL_HEADERS
                                         ]).
+-define(VOICEMAIL_DELETED_HEADERS, [<<"Account-ID">>
+                                   ,<<"From-Realm">>
+                                   ,<<"From-User">>
+                                   ,<<"To-Realm">>
+                                   ,<<"To-User">>
+                                   ,<<"Reason">>
+                                   ,<<"Voicemail-Box">>
+                                   ,<<"Voicemail-ID">>
+                                   ,<<"Voicemail-Timestamp">>
+                                   ]).
+-define(OPTIONAL_VOICEMAIL_DELETED_HEADERS, [<<"Call-ID">>
+                                            ,<<"Caller-ID-Name">>
+                                            ,<<"Caller-ID-Number">>
+                                            ,<<"Voicemail-Length">>
+                                            ,<<"Voicemail-Transcription">>
+                                                 | ?DEFAULT_OPTIONAL_HEADERS
+                                            ]).
 %%------------------------------------------------------------------------------
 %% @doc Get Voicemail New Notification API definition.
 %% @end
@@ -1169,6 +1188,25 @@ voicemail_saved_definition() ->
                     ,types = []
                     }.
 
+%%------------------------------------------------------------------------------
+%% @doc Get Voicemail Deleted Notification API definition.
+%% @end
+%%------------------------------------------------------------------------------
+-spec voicemail_deleted_definition() -> kapi_definition:api().
+voicemail_deleted_definition() ->
+    #kapi_definition{name = <<"voicemail_deleted">>
+                    ,friendly_name = <<"Voicemail Message Deleted">>
+                    ,description = <<"This event is triggered any time a voicemail message is deleted in the voicemail box">>
+                    ,build_fun = fun voicemail_deleted/1
+                    ,validate_fun = fun voicemail_deleted_v/1
+                    ,publish_fun = fun publish_voicemail_deleted/1
+                    ,binding = ?BINDING_STRING(<<"voicemail">>, <<"deleted">>)
+                    ,restrict_to = 'voicemail_deleted'
+                    ,required_headers = ?VOICEMAIL_DELETED_HEADERS
+                    ,optional_headers = ?OPTIONAL_VOICEMAIL_DELETED_HEADERS
+                    ,values = ?NOTIFY_VALUES(<<"voicemail_deleted">>)
+                    ,types = []
+                    }.
 
 %%%=============================================================================
 %%% Webhook Notifications Definitions
@@ -2488,6 +2526,29 @@ publish_voicemail_saved(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun voicemail_saved/1),
     kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
 
+%%------------------------------------------------------------------------------
+%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
+%% @end
+%%------------------------------------------------------------------------------
+-spec voicemail_deleted(kz_term:api_terms()) -> api_formatter_return().
+voicemail_deleted(Prop) ->
+    build_message(Prop, voicemail_deleted_definition()).
+
+-spec voicemail_deleted_v(kz_term:api_terms()) -> boolean().
+voicemail_deleted_v(Prop) ->
+    validate(Prop, voicemail_deleted_definition()).
+
+-spec publish_voicemail_deleted(kz_term:api_terms()) -> 'ok'.
+publish_voicemail_deleted(JObj) ->
+    publish_voicemail_deleted(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_voicemail_deleted(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
+publish_voicemail_deleted(API, ContentType) ->
+    #kapi_definition{binding = Binding
+                    ,values = Values
+                    } = voicemail_deleted_definition(),
+    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun voicemail_deleted/1),
+    kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%%=============================================================================
 %%% Webhook Notifications Functions

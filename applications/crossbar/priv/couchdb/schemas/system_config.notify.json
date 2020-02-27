@@ -36,6 +36,7 @@
                 "teletype_transaction",
                 "teletype_voicemail_full",
                 "teletype_voicemail_to_email",
+                "teletype_voicemail_deleted",
                 "teletype_webhook_disabled"
             ],
             "description": "teletype modules to start when teletype is started",
