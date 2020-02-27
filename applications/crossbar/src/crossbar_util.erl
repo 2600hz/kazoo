@@ -623,7 +623,7 @@ get_capabilities() ->
 
 -spec get_transcription_capabilities(kz_json:object()) -> kz_json:object().
 get_transcription_capabilities(JObj) ->
-    Props = [{[<<"voicemail">>, <<"transcription">>, <<"supported">>]
+    Props = [{[<<"voicemail">>, <<"transcription">>, <<"available">>]
              ,kazoo_asr:available()
              }
             ,{[<<"voicemail">>, <<"transcription">>, <<"default">>]
