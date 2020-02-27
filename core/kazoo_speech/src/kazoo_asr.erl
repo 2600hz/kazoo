@@ -9,14 +9,28 @@
 %%%-----------------------------------------------------------------------------
 -module(kazoo_asr).
 
--export([freeform/1, freeform/2, freeform/3, freeform/4
-        ,commands/2, commands/3, commands/4, commands/5
-        ,accepted_content_types/0
-        ,default_provider/0, default_provider/1, set_default_provider/1
-        ,preferred_content_type/0, preferred_content_type/1
-
-        ,provider_module/1
+-export([available/0
+        ,available/1
         ]).
+-export([freeform/1
+        ,freeform/2
+        ,freeform/3
+        ,freeform/4
+        ]).
+-export([commands/2
+        ,commands/3
+        ,commands/4
+        ,commands/5
+        ]).
+-export([accepted_content_types/0]).
+-export([default_provider/0
+        ,default_provider/1
+        ,set_default_provider/1
+        ]).
+-export([preferred_content_type/0
+        ,preferred_content_type/1
+        ]).
+-export([provider_module/1]).
 
 -include("kazoo_speech.hrl").
 
@@ -26,8 +40,24 @@
 -define(ACCEPTED_CONTENT_TYPES, [<<"audio/mpeg">>, <<"audio/wav">>, <<"application/wav">>]).
 
 %%%------------------------------------------------------------------------------
-%%% @doc
-%%% Return return configured or set the default ASR provider
+%%% @doc Return true if ASR is configured / available otherwise false.
+%%% @end
+%%%------------------------------------------------------------------------------
+-spec available() -> boolean().
+available() ->
+    available(default_provider()).
+
+-spec available(kz_term:ne_binary()) -> boolean().
+available(Provider) ->
+    try (kz_term:to_atom(<<"kazoo_asr_", Provider/binary>>, 'true')):available()
+    catch
+        'error':'undef' ->
+            lager:error("unknown provider ~s", [Provider]),
+            'false'
+    end.
+
+%%%------------------------------------------------------------------------------
+%%% @doc Return return configured or set the default ASR provider
 %%% @end
 %%%------------------------------------------------------------------------------
 -spec default_provider() -> kz_term:ne_binary().

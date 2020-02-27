@@ -10,17 +10,25 @@
 -module(kazoo_asr_ispeech).
 -behaviour(gen_asr_provider).
 
--export([preferred_content_type/0
-        ,accepted_content_types/0
-        ,freeform/4
-        ,commands/5
-        ,set_api_key/1
-        ]).
+-export([available/0]).
+-export([preferred_content_type/0]).
+-export([accepted_content_types/0]).
+-export([freeform/4]).
+-export([commands/5]).
+-export([set_api_key/1]).
 
 -include("kazoo_speech.hrl").
 
 -define(DEFAULT_ASR_CONTENT_TYPE, <<"application/wav">>).
 -define(SUPPORTED_CONTENT_TYPES, [<<"application/wav">>]).
+
+%%%------------------------------------------------------------------------------
+%%% @doc Return true if iSpeech ASR is configured / available otherwise false.
+%%% @end
+%%%------------------------------------------------------------------------------
+-spec available() -> boolean().
+available() ->
+    kz_term:is_not_empty(default_api_key()).
 
 %%%-----------------------------------------------------------------------------
 %%% @doc

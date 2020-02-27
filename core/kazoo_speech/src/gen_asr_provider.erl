@@ -11,6 +11,7 @@
 
 -include("kazoo_speech.hrl").
 
+-callback available() -> boolean().
 -callback preferred_content_type() -> kz_term:ne_binary().
 -callback accepted_content_types() -> kz_term:ne_binaries().
 -callback freeform(binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> asr_resp().
