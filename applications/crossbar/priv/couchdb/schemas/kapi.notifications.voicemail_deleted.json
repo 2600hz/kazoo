@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "_id": "kapi.notifications.voicemail_saved",
-    "description": "AMQP API for notifications.voicemail_saved",
+    "_id": "kapi.notifications.voicemail_deleted",
+    "description": "AMQP API for notifications.voicemail_deleted",
     "properties": {
         "Account-DB": {
             "type": "string"
@@ -35,7 +35,7 @@
         },
         "Event-Name": {
             "enum": [
-                "voicemail_saved"
+                "voicemail_deleted"
             ],
             "type": "string"
         },
@@ -55,6 +55,11 @@
             "type": "string"
         },
         "Reason": {
+            "enum": [
+                "dtmf",
+                "delete_after_notify",
+                "crossbar_action"
+            ],
             "type": "string"
         },
         "Reply-To": {
@@ -95,6 +100,7 @@
         "Account-ID",
         "From-Realm",
         "From-User",
+        "Reason",
         "To-Realm",
         "To-User",
         "Voicemail-Box",
