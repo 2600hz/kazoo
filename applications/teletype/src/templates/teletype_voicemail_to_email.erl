@@ -170,9 +170,10 @@ do_process_req(DataJObj) ->
 -spec macros(kz_json:object()) -> kz_term:proplist().
 macros(DataJObj) ->
     TemplateData = template_data(DataJObj),
-    EmailAttachements = email_attachments(DataJObj, TemplateData),
-    Macros = maybe_add_file_data(TemplateData, EmailAttachements),
-    props:set_value(<<"attachments">>, EmailAttachements, Macros).
+    IncludeAttachment = kz_json:is_true([<<"vmbox_doc">>, <<"should_include_attachment">>], DataJObj, 'true'),
+    EmailAttachments = maybe_email_attachments(DataJObj, TemplateData, IncludeAttachment),
+    Macros = maybe_add_file_data(TemplateData, EmailAttachments),
+    props:set_value(<<"attachments">>, EmailAttachments, Macros).
 
 -spec template_data(kz_json:object()) -> kz_term:proplist().
 template_data(DataJObj) ->
@@ -180,8 +181,11 @@ template_data(DataJObj) ->
      | build_template_data(DataJObj)
     ].
 
--spec email_attachments(kz_json:object(), kz_term:proplist()) -> attachments().
-email_attachments(DataJObj, Macros) ->
+-spec maybe_email_attachments(kz_json:object(), kz_term:proplist(), boolean()) -> attachments().
+maybe_email_attachments(_DataJObj, _Macros, 'false') ->
+    lager:debug("configured to not include attachments for this VM"),
+    [];
+maybe_email_attachments(DataJObj, Macros, 'true') ->
     email_attachments(DataJObj, Macros, teletype_util:is_preview(DataJObj)).
 
 -spec email_attachments(kz_json:object(), kz_term:proplist(), boolean()) -> attachments().
