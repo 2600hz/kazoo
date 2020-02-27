@@ -170,6 +170,12 @@ Attempts to build the docs site with `mkdocs` (basically a theme-less version of
 
 Runs an equivalent pass of CircleCI locally.
 
+## `make pest` and `make pest-all`
+
+[PEST](https://github.com/okeuday/pest#usage) - Primitive Erlang Security Tool
+
+Runs the security checks against changed (or all project) files and reports potential security threats. Not included in CI as most of the reports are speculative and probably not actionable (yet anyway)
+
 ## Spell checking
 
 With Kazoo's international audience, it is helpful to have a spellchecker available to help all contributors find and fix spelling mistakes.

@@ -93,3 +93,4 @@ core/kazoo_proper/priv/mp3.mp3
 /doc/engineering/.org/proper.tex
 /todo.org
 *.tar
+/make/pest-*
