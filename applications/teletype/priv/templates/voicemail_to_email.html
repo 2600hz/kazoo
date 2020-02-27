@@ -41,7 +41,11 @@
                     </td>
                 </tr>
                     <td bgcolor="#ffffff" style="padding:20px;font-family:'Open Sans',sans-serif;color:#555555;">
-                        <p style="margin:0;padding:0;font-family:'Open Sans',sans-serif;color:#555555;">You have a new voicemail from <b>{{caller_id.name_number}}</b> for your voicemail box at <b>{{voicemail.vmbox_name}} ({{voicemail.vmbox_number}})</b>.<br><br>Please find the message audio file in the attachment.</p>
+                        <p style="margin:0;padding:0;font-family:'Open Sans',sans-serif;color:#555555;">You have a new voicemail from <b>{{caller_id.name_number}}</b> for your voicemail box at <b>{{voicemail.vmbox_name}} ({{voicemail.vmbox_number}})</b>.
+                        {% if voicemail.file_name %}
+                            <br><br>Please find the message audio file in the attachment.
+                        {% endif %}
+                        </p>
                     </td>
                 </tr>
             </table>
