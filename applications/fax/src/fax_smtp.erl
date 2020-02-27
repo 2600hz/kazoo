@@ -29,6 +29,10 @@
         ,terminate/2
         ]).
 
+-ifdef(TEST).
+-export([decode_data/1]).
+-endif.
+
 -include("fax.hrl").
 
 -define(RELAY, 'true').
@@ -163,38 +167,56 @@ handle_DATA(From, To, Data, #state{doc='undefined'}=State) ->
         Error -> Error
     end;
 handle_DATA(From, To, Data, #state{options=Options}=State) ->
-    lager:debug("handle Data From ~p to ~p", [From,To]),
-
     Reference = kz_term:to_list(kz_binary:rand_hex(16)),
 
-    try mimemail:decode(Data) of
+    lager:debug("handle Data From ~p to ~p: reference: ~s", [From, To, Reference]),
+
+    case decode_data(Data) of
         {Type, SubType, Headers, Parameters, Body} ->
             lager:debug("message decoded successfully!"),
             case process_message(Type, SubType, Headers, Parameters, Body, State) of
                 {ProcessResult, #state{errors=[]}=NewState} ->
                     {ProcessResult, Reference, NewState};
                 {ProcessResult, #state{errors=[Error | _]}=NewState} ->
-                    {ProcessResult, <<"554 ",Error/binary>>, NewState}
-            end
-    catch
-        _What:_Why ->
-            lager:debug("message decode FAILED with ~p:~p", [_What, _Why]),
+                    {ProcessResult, <<"554 ", Error/binary>>, NewState}
+            end;
+        'error' ->
             handle_DATA_exception(Options, Reference, Data),
             {'error', "554 Message decode failed", State#state{errors=[<<"Message decode failed">>]
                                                               ,has_smtp_errors='true'
                                                               }}
     end.
 
--spec handle_DATA_exception(kz_term:proplist(), list(), binary()) -> 'ok'.
+-spec decode_data(iodata()) ->
+          'error' | mimemail:mimetuple().
+decode_data(Data) ->
+    DecodeOptions = [{'encoding', <<"utf-8">>}           %% default to utf8
+                    ,{'decode_attachments', 'true'}      %% decode base64/quoted-printable attachments
+                    ,{'allow_missing_version', 'true'}   %% assume default MIME version
+                    ,{'default_mime_version', <<"1.0">>} %% default MIME version
+                    ],
+
+    try mimemail:decode(Data, DecodeOptions)
+    catch
+        _What:_Why ->
+            ?LOG_INFO("Message decode FAILED with ~p:~p", [_What, _Why]),
+            'error'
+    end.
+
+-spec handle_DATA_exception(kz_term:proplist(), kz_term:ne_binary(), binary()) -> 'ok'.
 handle_DATA_exception(Options, Reference, Data) ->
     case props:get_is_true('dump', Options, 'false') of
         'false' -> 'ok';
         'true' ->
             %% optionally dump the failed email somewhere for analysis
-            File = "/tmp/"++Reference,
+            File = filename:join(["/tmp/", Reference]),
             case filelib:ensure_dir(File) of
-                'ok' -> kz_util:write_file(File, Data);
-                _ -> 'ok'
+                'ok' ->
+                    case kz_util:write_file(File, Data) of
+                        'ok' -> lager:debug("wrote DATA exception data to ~s", [File]);
+                        {'error', _E} -> lager:debug("failed to write DATA exception data to ~s: ~p", [File, _E])
+                    end;
+                {'error', _E} -> lager:debug("failed to ensure ~s: ~p", [File, _E])
             end
     end.
 

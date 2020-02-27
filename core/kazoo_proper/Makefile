@@ -6,6 +6,8 @@ ERLC_OPTS = +'{lager_extra_sinks, [data]}'
 
 MP3 = priv/mp3.mp3
 
+COMPILE_MOAR = assets
+
 all: compile assets
 
 assets: $(MP3)
