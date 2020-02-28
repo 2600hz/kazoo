@@ -346,7 +346,7 @@ presence(State, PresenceId, CallId, 'undefined', 'undefined') ->
                 ,{<<"To-Realm">>, Realm}
                 ,{<<"State">>, State}
                 ,{<<"Call-ID">>, CallId}
-                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                 ]),
     kapi_presence:publish_update(Command);
 presence(State, PresenceId, CallId, TargetURI, 'undefined') ->
@@ -361,7 +361,7 @@ presence(State, PresenceId, CallId, TargetURI, 'undefined') ->
                 ,{<<"To-Realm">>, Realm}
                 ,{<<"State">>, State}
                 ,{<<"Call-ID">>, CallId}
-                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                 ]),
     kapi_presence:publish_update(Command);
 presence(State, PresenceId, CallId, TargetURI, Call) ->
@@ -378,7 +378,7 @@ presence(State, PresenceId, CallId, TargetURI, Call) ->
                 ,{<<"To-Tag">>, kapps_call:to_tag(Call)}
                 ,{<<"State">>, State}
                 ,{<<"Call-ID">>, CallId}
-                 | kz_api:default_headers(module_as_app(Call), ?APP_VERSION)
+                | kz_api:default_headers(module_as_app(Call), ?APP_VERSION)
                 ]),
     kapi_presence:publish_update(Command).
 
@@ -426,7 +426,7 @@ channel_status(Call) ->
 b_channel_status('undefined') -> {'error', 'no_channel_id'};
 b_channel_status(<<ChannelId/binary>>) ->
     Command = [{<<"Call-ID">>, ChannelId}
-               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     Resp = kz_amqp_worker:call_collect(Command
                                       ,fun kapi_call:publish_channel_status_req/1
@@ -506,7 +506,7 @@ audio_macro(Prompts, Call, GroupId) ->
                   ,{<<"Msg-ID">>, NoopId}
                   ,{<<"Call-ID">>, kapps_call:call_id(Call)}
                   ])
-                | Queue
+               | Queue
                ],
     Command = [{<<"Application-Name">>, <<"queue">>}
               ,{<<"Commands">>, Commands}
@@ -956,7 +956,7 @@ receive_fax(ResourceFlag, ReceiveFlag, Call) ->
 receive_fax(ResourceFlag, ReceiveFlag, LocalFilename, Call) ->
     Commands = props:filter_undefined([{<<"Application-Name">>, <<"receive_fax">>}
                                       ,{<<"Fax-Local-Filename">>, LocalFilename}
-                                       | get_inbound_t38_settings(ResourceFlag, ReceiveFlag)
+                                      | get_inbound_t38_settings(ResourceFlag, ReceiveFlag)
                                       ]),
     send_command(Commands, Call).
 
@@ -1372,7 +1372,7 @@ soft_hold_command(CallId, UnholdKey, AMOH, BMOH, InsertAt) ->
                            ,{<<"Call-ID">>, CallId}
                            ,{<<"Insert-At">>, InsertAt}
                            ,{<<"Unhold-Key">>, UnholdKey}
-                            | build_moh_keys(AMOH, BMOH)
+                           | build_moh_keys(AMOH, BMOH)
                            ]).
 
 -spec build_moh_keys(kz_term:api_binary(), kz_term:api_binary()) ->
@@ -1835,7 +1835,7 @@ record_call(Media, Action, TimeLimit, Terminators, Call) ->
                 ,{<<"Time-Limit">>, Limit}
                 ,{<<"Terminators">>, Terminators}
                 ,{<<"Insert-At">>, <<"now">>}
-                 | Media
+                | Media
                 ]),
     send_command(Command, Call).
 
@@ -3398,7 +3398,7 @@ store_file(Filename, URLFun, Tries, Timeout, Call) ->
     API = fun() -> [{<<"Command">>, <<"send_http">>}
                    ,{<<"Args">>, kz_json:from_list(store_file_args(Filename, URLFun))}
                    ,{<<"FreeSWITCH-Node">>, kapps_call:switch_nodename(Call)}
-                    | kz_api:default_headers(AppName, AppVersion)
+                   | kz_api:default_headers(AppName, AppVersion)
                    ]
           end,
     do_store_file(Tries, Timeout, API, Msg, Call).
@@ -3408,7 +3408,12 @@ store_file(Filename, URLFun, Tries, Timeout, Call) ->
           'ok' | {'error', any()}.
 do_store_file(Tries, Timeout, API, Msg, Call) ->
     Payload = API(),
-    case kz_amqp_worker:call(Payload, fun kapi_switch:publish_command/1, fun kapi_switch:fs_reply_v/1, Timeout) of
+    case kz_amqp_worker:call(Payload
+                            ,fun kapi_switch:publish_fs_command/1
+                            ,fun kapi_switch:fs_reply_v/1
+                            ,Timeout
+                            )
+    of
         {'ok', JObj} ->
             case kz_json:get_ne_binary_value(<<"Result">>, JObj) of
                 <<"success">> -> 'ok';
@@ -3557,7 +3562,7 @@ sound_touch_command(Options, Call) ->
       [{<<"Application-Name">>, <<"sound_touch">>}
       ,{<<"Insert-At">>, <<"now">>}
       ,{<<"Call-ID">>, kapps_call:call_id(Call)}
-       | Options
+      | Options
       ]).
 
 -spec start_sound_touch(kz_term:proplist(), kapps_call:call()) -> 'ok'.

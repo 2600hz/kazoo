@@ -61,7 +61,7 @@ store_file(Filename, Url, Tries, Timeout, #{media_server := Node}=Map) ->
     API = fun() -> [{<<"Command">>, <<"send_http">>}
                    ,{<<"Args">>, kz_json:from_list(store_file_args(Filename, Url))}
                    ,{<<"FreeSWITCH-Node">>, Node}
-                    | kz_api:default_headers(AppName, AppVersion)
+                   | kz_api:default_headers(AppName, AppVersion)
                    ]
           end,
     do_store_file(Tries, Timeout, API, Msg, Map).
@@ -70,7 +70,12 @@ store_file(Filename, Url, Tries, Timeout, #{media_server := Node}=Map) ->
           'ok' | {'error', any()}.
 do_store_file(Tries, Timeout, API, Msg, #{media_server := Node}=Map) ->
     Payload = API(),
-    case kz_amqp_worker:call(Payload, fun kapi_switch:publish_command/1, fun kapi_switch:fs_reply_v/1, Timeout) of
+    case kz_amqp_worker:call(Payload
+                            ,fun kapi_switch:publish_fs_command/1
+                            ,fun kapi_switch:fs_reply_v/1
+                            ,Timeout
+                            )
+    of
         {'ok', JObj} ->
             case kz_json:get_ne_binary_value(<<"Result">>, JObj) of
                 <<"success">> -> 'ok';
