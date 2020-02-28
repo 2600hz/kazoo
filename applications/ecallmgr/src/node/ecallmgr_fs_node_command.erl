@@ -50,7 +50,7 @@ reply_error(Error, JObj) ->
              ],
     API = kz_json:set_values(Values, kz_api:remove_defaults(JObj)),
     Queue = kz_api:server_id(JObj),
-    kz_amqp_worker:cast(API, fun(P) -> kapi_switch:publish_reply(Queue, P) end).
+    kz_amqp_worker:cast(API, fun(P) -> kapi_switch:publish_fs_reply(Queue, P) end).
 
 -spec reply_error(kz_term:ne_binary(), kz_json:object(), kz_json:object()) -> 'ok'.
 reply_error(Error, EventData, JObj) ->
@@ -62,7 +62,7 @@ reply_error(Error, EventData, JObj) ->
              ],
     API = kz_json:set_values(Values, kz_api:remove_defaults(JObj)),
     Queue = kz_api:server_id(JObj),
-    kz_amqp_worker:cast(API, fun(P) -> kapi_switch:publish_reply(Queue, P) end).
+    kz_amqp_worker:cast(API, fun(P) -> kapi_switch:publish_fs_reply(Queue, P) end).
 
 -spec reply_success(kz_json:object(), kz_term:proplist()) -> 'ok'.
 reply_success(JObj, Response) ->
@@ -73,7 +73,7 @@ reply_success(JObj, Response) ->
              ],
     API = kz_json:set_values(Values, kz_api:remove_defaults(JObj)),
     Queue = kz_api:server_id(JObj),
-    kapi_switch:publish_reply(Queue, API).
+    kapi_switch:publish_fs_reply(Queue, API).
 
 -spec send_http(atom(), binary(), binary(),  kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 send_http(Node, File, Url, Method, JObj) ->
