@@ -5,6 +5,8 @@ DEPS_DIR = $(ROOT)/deps
 RELX = $(DEPS_DIR)/relx
 ELVIS = $(DEPS_DIR)/elvis
 TAGS = $(ROOT)/TAGS
+ERLANG_LS = $(ROOT)/erlang_ls.config
+PLT = $(ROOT)/.kazoo.plt
 
 ERLANG_MK = $(ROOT)/erlang.mk
 ERLANG_MK_COMMIT = 82179575d9191305805c8e6e8107be7c3f80a6be
@@ -183,6 +185,21 @@ $(TAGS):
 clean-tags:
 	$(if $(wildcard $(TAGS)), rm $(TAGS))
 
+erlang-ls: $(ERLANG_LS)
+
+$(ERLANG_LS):
+	@touch $(ERLANG_LS)
+	@echo "plt_path: $(PLT)" >> $(ERLANG_LS)
+	@echo "apps_dirs: " >> $(ERLANG_LS)
+	@echo " - $(ROOT)/core/*" >> $(ERLANG_LS)
+	@echo " - $(ROOT)/applications/*" >> $(ERLANG_LS)
+	@echo "deps_dirs: " >> $(ERLANG_LS)
+	@echo " - $(ROOT)/deps/*" >> $(ERLANG_LS)
+	@echo "generated $(ERLANG_LS)"
+
+clean-erlang-ls:
+	@rm $(ERLANG_LS)
+
 $(RELX):
 	wget 'https://erlang.mk/res/relx-v3.27.0' -O $@
 	chmod +x $@
@@ -224,7 +241,6 @@ fixture_shell:
 
 DIALYZER ?= dialyzer
 DIALYZER += --statistics --no_native
-PLT ?= .kazoo.plt
 
 OTP_APPS ?= erts kernel stdlib crypto public_key ssl asn1 inets xmerl
 EXCLUDE_DEPS = $(DEPS_DIR)/erlang_localtime/ebin
