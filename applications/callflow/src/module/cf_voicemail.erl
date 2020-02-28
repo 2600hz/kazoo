@@ -184,7 +184,7 @@
                  ,max_message_length = ?MAILBOX_DEFAULT_MSG_MAX_LENGTH :: pos_integer()
                  ,min_message_length = ?MAILBOX_DEFAULT_MSG_MIN_LENGTH :: pos_integer()
                  ,keys = #keys{} :: vm_keys()
-                 ,transcribe_voicemail = 'false' :: boolean()
+                 ,transcribe_voicemail = kvm_util:transcribe_default() :: boolean()
                  ,notifications :: kz_term:api_object()
                  ,after_notify_action = 'nothing' :: 'nothing' | 'delete' | 'save'
                  ,is_ff_rw_enabled = 'false' :: boolean()
@@ -1748,7 +1748,7 @@ get_mailbox_profile(Data, Call) ->
                     ,message_count =
                          MsgCount
                     ,transcribe_voicemail =
-                         kz_json:is_true(<<"transcribe">>, MailboxJObj, 'false')
+                         kz_json:is_true(<<"transcribe">>, MailboxJObj, kvm_util:transcribe_default())
                     ,notifications =
                          kz_json:get_json_value(<<"notifications">>, MailboxJObj)
                     ,after_notify_action = AfterNotifyAction

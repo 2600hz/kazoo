@@ -609,9 +609,95 @@ populate_resp(JObj, AccountId, UserId) ->
               [{<<"apps">>, load_apps(AccountId, UserId, Language)}
               ,{<<"language">>, Language}
               ,{<<"account_name">>, kzd_accounts:fetch_name(AccountId)}
-              ,{<<"is_reseller">>, kz_services_reseller:is_reseller(AccountId)}
+              ,{<<"cluster_id">>, kzd_cluster:id()}
               ,{<<"reseller_id">>, kz_services_reseller:get_id(AccountId)}
+              ,{<<"is_reseller">>, kz_services_reseller:is_reseller(AccountId)}
+              ,{<<"is_master_account">>, is_master_account(AccountId)}
+              ,{<<"capabilities">>, get_capabilities()}
+              ,{<<"ui_config">>, get_ui_config()}
               ]),
+    kz_json:set_values(Props, JObj).
+
+-spec get_ui_config() -> kz_json:object().
+get_ui_config() ->
+    Routines = [fun get_provisioner_config/1
+               ,fun get_mobile_config/1
+               ,fun get_kazoo_websocket_config/1
+               ,fun get_webrtc_websocket_config/1
+               ,fun get_phonebook_config/1
+               ,fun get_cluster_manager_config/1
+               ],
+    lists:foldl(fun(F, J) -> F(J) end, kz_json:new(), Routines).
+
+-spec get_provisioner_config(kz_json:object()) -> kz_json:object().
+get_provisioner_config(JObj) ->
+    case kapps_config:get_ne_binary(<<"provisioner">>, <<"provisioning_url">>) of
+        'undefined' -> JObj;
+        URL ->
+            kz_json:set_value([<<"api">>, <<"provisioner">>, <<"url">>], URL, JObj)
+    end.
+
+-spec get_mobile_config(kz_json:object()) -> kz_json:object().
+get_mobile_config(JObj) ->
+    case kapps_config:get_ne_binary(<<"mobile">>, <<"url">>) of
+        'undefined' -> JObj;
+        URL ->
+            kz_json:set_value([<<"api">>, <<"mobile">>, <<"url">>], URL, JObj)
+    end.
+
+-spec get_kazoo_websocket_config(kz_json:object()) -> kz_json:object().
+get_kazoo_websocket_config(JObj) ->
+    case kapps_config:get_ne_binary(<<"blackhole">>, <<"url">>) of
+        'undefined' -> JObj;
+        URL ->
+            kz_json:set_value([<<"api">>, <<"kazoo_websocket">>, <<"url">>], URL, JObj)
+    end.
+
+-spec get_webrtc_websocket_config(kz_json:object()) -> kz_json:object().
+get_webrtc_websocket_config(JObj) ->
+    case kapps_config:get_ne_binary(<<"webrtc">>, <<"url">>) of
+        'undefined' -> JObj;
+        URL ->
+            kz_json:set_value([<<"api">>, <<"webrtc_websocket">>, <<"url">>], URL, JObj)
+    end.
+
+-spec get_phonebook_config(kz_json:object()) -> kz_json:object().
+get_phonebook_config(JObj) ->
+    case kapps_config:get_ne_binary(<<"phonebook">>, <<"url">>) of
+        'undefined' -> JObj;
+        URL ->
+            kz_json:set_value([<<"api">>, <<"phonebook">>, <<"url">>], URL, JObj)
+    end.
+
+-spec get_cluster_manager_config(kz_json:object()) -> kz_json:object().
+get_cluster_manager_config(JObj) ->
+    case kapps_config:get_ne_binary(<<"cluster_manager">>, <<"url">>) of
+        'undefined' -> JObj;
+        URL ->
+            kz_json:set_value([<<"api">>, <<"cluster_manager">>, <<"url">>], URL, JObj)
+    end.
+
+-spec is_master_account(kz_term:ne_binary()) -> boolean().
+is_master_account(AccountId) ->
+    case kapps_util:get_master_account_id() of
+        {'ok', AccountId} -> 'true';
+        _Else -> 'false'
+    end.
+
+-spec get_capabilities() -> kz_json:object().
+get_capabilities() ->
+    Routines = [fun get_transcription_capabilities/1],
+    lists:foldl(fun(F, J) -> F(J) end, kz_json:new(), Routines).
+
+-spec get_transcription_capabilities(kz_json:object()) -> kz_json:object().
+get_transcription_capabilities(JObj) ->
+    Props = [{[<<"voicemail">>, <<"transcription">>, <<"available">>]
+             ,kazoo_asr:available()
+             }
+            ,{[<<"voicemail">>, <<"transcription">>, <<"default">>]
+             ,kvm_util:transcribe_default()
+             }
+            ],
     kz_json:set_values(Props, JObj).
 
 %%------------------------------------------------------------------------------

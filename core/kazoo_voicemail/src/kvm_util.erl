@@ -24,6 +24,8 @@
 
         ,publish_saved_notify/5, publish_voicemail_saved/5, publish_voicemail_deleted/3
         ,get_caller_id_name/1, get_caller_id_number/1
+
+        ,transcribe_default/0
         ]).
 
 -include("kz_voicemail.hrl").
@@ -286,6 +288,14 @@ get_caller_id_number(Call) ->
             Pre = <<(kz_term:to_binary(Prepend))/binary, CallerIdNumber/binary>>,
             kz_binary:truncate_right(Pre, kzd_schema_caller_id:external_name_max_length())
     end.
+
+%%------------------------------------------------------------------------------
+%% @doc Get trascribe default.
+%% @end
+%%------------------------------------------------------------------------------
+-spec transcribe_default() -> boolean().
+transcribe_default() ->
+    kapps_config:get_is_true(?VM_CONFIG_CAT, [?KEY_VOICEMAIL, <<"transcribe_default">>], 'false').
 
 %%%=============================================================================
 %%% Publish Notification

@@ -31374,6 +31374,10 @@
                     "description": "blackhole ssl_workers",
                     "type": "integer"
                 },
+                "url": {
+                    "description": "The advertised URL of the Kazoo websocket",
+                    "type": "string"
+                },
                 "use_plaintext": {
                     "default": true,
                     "description": "blackhole use_plaintext",
@@ -31751,6 +31755,11 @@
                             "minimum": 0,
                             "type": "integer"
                         },
+                        "transcribe_default": {
+                            "default": false,
+                            "description": "callflow voicemail transcribe_default",
+                            "type": "boolean"
+                        },
                         "vm_delete_amqp": {
                             "default": false,
                             "description": "send ampq message to notify about voicemail deletion",
@@ -32038,6 +32047,16 @@
                     "default": {},
                     "description": "cluster zones",
                     "type": "object"
+                }
+            },
+            "type": "object"
+        },
+        "system_config.cluster_manager": {
+            "description": "Schema for cluster_manager system_config",
+            "properties": {
+                "url": {
+                    "description": "The base URL of the 2600Hz cluster manager service",
+                    "type": "string"
                 }
             },
             "type": "object"
@@ -35121,6 +35140,16 @@
             },
             "type": "object"
         },
+        "system_config.mobile": {
+            "description": "Schema for mobile system_config",
+            "properties": {
+                "url": {
+                    "description": "The base URL of the 2600Hz mobile service",
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
         "system_config.mobile_manager": {
             "description": "Schema for mobile_manager system_config",
             "properties": {
@@ -36290,6 +36319,16 @@
                     "default": false,
                     "description": "omnipresence subscriptions sync enabled",
                     "type": "boolean"
+                }
+            },
+            "type": "object"
+        },
+        "system_config.phonebook": {
+            "description": "Schema for phonebook system_config",
+            "properties": {
+                "url": {
+                    "description": "The base URL of the 2600Hz phonebook service",
+                    "type": "string"
                 }
             },
             "type": "object"
@@ -37754,6 +37793,16 @@
                         "type": "string"
                     },
                     "type": "array"
+                }
+            },
+            "type": "object"
+        },
+        "system_config.webrtc": {
+            "description": "Schema for webrtc system_config",
+            "properties": {
+                "url": {
+                    "description": "The advertised URL of the webrtc socket",
+                    "type": "string"
                 }
             },
             "type": "object"

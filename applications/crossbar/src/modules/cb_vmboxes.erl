@@ -698,7 +698,19 @@ validate_unique_vmbox(VMBoxId, Context, _AccountDb) ->
 check_vmbox_schema(VMBoxId, Context) ->
     Context1 = maybe_migrate_notification_emails(Context),
     OnSuccess = fun(C) -> validate_media_extension(VMBoxId, C) end,
-    cb_context:validate_request_data(<<"vmboxes">>, Context1, OnSuccess).
+    cb_context:validate_request_data(find_schema(), Context1, OnSuccess).
+
+-spec find_schema() -> kz_json:api_object().
+find_schema() ->
+    case kz_json_schema:load(<<"vmboxes">>) of
+        {'ok', SchemaJObj} ->
+            Props = [{[<<"properties">>, <<"transcribe">>, <<"default">>]
+                     ,kvm_util:transcribe_default()
+                     }
+                    ],
+            kz_json:set_values(Props, SchemaJObj);
+        {'error', _E} -> 'undefined'
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc

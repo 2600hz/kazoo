@@ -11,12 +11,12 @@
 -module(kazoo_asr_google).
 -behaviour(gen_asr_provider).
 
--export([preferred_content_type/0
-        ,accepted_content_types/0
-        ,freeform/4
-        ,commands/5
-        ,set_api_key/1
-        ]).
+-export([available/0]).
+-export([preferred_content_type/0]).
+-export([accepted_content_types/0]).
+-export([freeform/4]).
+-export([commands/5]).
+-export([set_api_key/1]).
 
 -include("kazoo_speech.hrl").
 
@@ -30,6 +30,14 @@
 -define(GOOGLE_ASR_USE_ENHANCED, kapps_config:get_is_true(?GOOGLE_CONFIG_CAT, <<"asr_use_enhanced">>, 'true')).
 -define(GOOGLE_ASR_PREFERRED_CONTENT_TYPE, <<"application/wav">>).
 -define(GOOGLE_ASR_ACCEPTED_CONTENT_TYPES, [<<"audio/wav">>, <<"application/wav">>]).
+
+%%%------------------------------------------------------------------------------
+%%% @doc Return true if Google ASR is configured / available otherwise false.
+%%% @end
+%%%------------------------------------------------------------------------------
+-spec available() -> boolean().
+available() ->
+    kz_term:is_not_empty(?GOOGLE_ASR_KEY).
 
 %%%-----------------------------------------------------------------------------
 %%% @doc
