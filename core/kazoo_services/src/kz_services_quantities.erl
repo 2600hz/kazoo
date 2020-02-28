@@ -536,8 +536,9 @@ calculate_qubicle_queue_updates(JObj, Updates) ->
     case kz_doc:type(JObj) =:= <<"qubicle_queue">> of
         'false' -> Updates;
         'true' ->
-            Key = [<<"qubicle">>, <<"queues">>],
-            [{Key, 1} | Updates]
+            BKey = [<<"qubicle">>, <<"queues">>],
+            PKey = [<<"qubicle">>, <<"pro_queues">>],
+            [{BKey, 1}, {PKey, 1} | Updates]
     end.
 
 -spec calculate_qubicle_recipient_updates(kz_json:object(), kz_term:proplist()) -> kz_term:proplist().
@@ -547,8 +548,9 @@ calculate_qubicle_recipient_updates(JObj, Updates) ->
     of
         'false' -> Updates;
         'true' ->
-            Key = [<<"qubicle">>, <<"recipients">>],
-            [{Key, 1} | Updates]
+            BKey = [<<"qubicle">>, <<"recipients">>],
+            PKey = [<<"qubicle">>, <<"pro_recipients">>],
+            [{BKey, 1}, {PKey, 1} | Updates]
     end.
 
 -spec calculate_vmbox_updates(kz_json:object(), kz_term:proplist()) -> kz_term:proplist().
