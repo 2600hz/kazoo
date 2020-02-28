@@ -10,206 +10,391 @@
 %%%-----------------------------------------------------------------------------
 -module(kapi_switch).
 
--export([reload_acls/1, reload_acls_v/1]).
--export([reload_gateways/1, reload_gateways_v/1]).
--export([fs_xml_flush/1, fs_xml_flush_v/1]).
--export([notify/1, notify_v/1
-        ,notify_realm/1, notify_username/1
+-export([api_definitions/0, api_definition/1]).
+
+-export([reload_acls/1
+        ,reload_acls_v/1
+        ,publish_reload_acls/0
         ]).
--export([fs_command/1, fs_command_v/1]).
--export([fs_reply/1, fs_reply_v/1]).
+-export([reload_gateways/1
+        ,reload_gateways_v/1
+        ,publish_reload_gateways/0
+        ]).
+-export([fs_xml_flush/1
+        ,fs_xml_flush_v/1
+        ,publish_fs_xml_flush/1
+        ]).
+-export([notify/1
+        ,notify_v/1
+        ,publish_notify/1
+        ,publish_notify/2
+        ]).
+-export([fs_command/1
+        ,fs_command_v/1
+        ,publish_fs_command/1
+        ,publish_fs_command/2
+        ]).
+-export([fs_reply/1
+        ,fs_reply_v/1
+        ,publish_fs_reply/2
+        ]).
 
 -export([bind_q/2, unbind_q/2]).
 -export([declare_exchanges/0]).
 
--export([publish_reload_acls/0]).
--export([publish_reload_gateways/0]).
--export([publish_fs_xml_flush/1]).
--export([publish_notify/1, publish_notify/2]).
--export([publish_command/1, publish_command/2]).
--export([publish_reply/2]).
+-export([notify_realm/1, notify_username/1]).
 
 -include_lib("kz_amqp_util.hrl").
 
 -define(SWITCH_EXCHANGE, <<"switch">>).
 -define(SWITCH_EXCHANGE_TYPE, <<"topic">>).
 
-%% request to reload acl
--define(RELOAD_ACLS_HEADERS, []).
--define(OPTIONAL_RELOAD_ACLS_HEADERS, []).
--define(RELOAD_ACLS_VALUES, [{<<"Event-Name">>, <<"reload_acls">>}
-                            ,{<<"Event-Category">>, <<"switch_event">>}
-                            ]).
--define(RELOAD_ACLS_TYPES, []).
--define(RELOAD_ACLS_KEY, <<"switch.reload_acls">>).
+-ifdef(TEST).
+-export([notify_routing_key/2
+        ,fs_command_routing_key/1
+        ]).
+-endif.
 
-%% request to reload gateways
--define(RELOAD_GATEWAYS_HEADERS, []).
--define(OPTIONAL_RELOAD_GATEWAYS_HEADERS, []).
--define(RELOAD_GATEWAYS_VALUES, [{<<"Event-Name">>, <<"reload_gateways">>}
-                                ,{<<"Event-Category">>, <<"switch_event">>}
-                                ]).
--define(RELOAD_GATEWAYS_TYPES, []).
--define(RELOAD_GATEWAYS_KEY, <<"switch.reload_gateways">>).
+%%------------------------------------------------------------------------------
+%% @doc Get all API definitions of this module.
+%% @end
+%%------------------------------------------------------------------------------
+-spec api_definitions() -> kapi_definition:apis().
+api_definitions() ->
+    [reload_acls_definition()
+    ,reload_gateways_definition()
+    ,fs_xml_flush_definition()
+    ,notify_definition()
+    ,fs_command_definition()
+    ,fs_reply_definition()
+    ].
 
-%% request to flush fs xml cache
--define(FS_XML_FLUSH_HEADERS, [<<"Username">>]).
--define(OPTIONAL_FS_XML_FLUSH_HEADERS, [<<"Realm">>]).
--define(FS_XML_FLUSH_VALUES, [{<<"Event-Name">>, <<"fs_xml_flush">>}
-                             ,{<<"Event-Category">>, <<"switch_event">>}
-                             ]).
--define(FS_XML_FLUSH_TYPES, []).
--define(FS_XML_FLUSH_KEY, <<"switch.fs_xml_flush">>).
+%%------------------------------------------------------------------------------
+%% @doc Get API definition of the given `Name'.
+%% @see api_definitions/0
+%% @end
+%%------------------------------------------------------------------------------
+-spec api_definition(kz_term:text()) -> kapi_definition:api().
+api_definition(Name) when not is_binary(Name) ->
+    api_definition(kz_term:to_binary(Name));
+api_definition(<<"reload_acls">>) ->
+    reload_acls_definition();
+api_definition(<<"reload_gateways">>) ->
+    reload_gateways_definition();
+api_definition(<<"fs_xml_flush">>) ->
+    fs_xml_flush_definition();
+api_definition(<<"notify">>) ->
+    notify_definition();
+api_definition(<<"fs_command">>) ->
+    fs_command_definition();
+api_definition(<<"fs_reply">>) ->
+    fs_reply_definition().
 
--define(NOTIFY_HEADERS, [<<"Username">>, <<"Realm">>, <<"Event">>]).
--define(OPTIONAL_NOTIFY_HEADERS, [<<"Body">>, <<"Content-Type">>]).
--define(NOTIFY_VALUES, [{<<"Event-Category">>, <<"switch_event">>}
-                       ,{<<"Event-Name">>, <<"notify">>}
-                       ]).
--define(NOTIFY_TYPES, []).
--define(NOTIFY_KEY(Realm, Username)
-       ,kz_binary:join([<<"switch.notify">>
-                       ,kz_amqp_util:encode(Realm)
-                       ,kz_amqp_util:encode(Username)
-                       ]
-                      ,<<".">>
-                      )
-       ).
+-spec reload_acls_definition() -> kapi_definition:api().
+reload_acls_definition() ->
+    EventName = <<"reload_acls">>,
+    Category = <<"switch_event">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Reload ACLs">>}
+              ,{fun kapi_definition:set_description/2, <<"Request reload of FreeSWITCH ACLs">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun reload_acls/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun reload_acls_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_reload_acls/0}
+              ,{fun kapi_definition:set_binding/2, <<"switch.reload_acls">>}
+              ,{fun kapi_definition:set_required_headers/2, []}
+              ,{fun kapi_definition:set_optional_headers/2, []}
+              ,{fun kapi_definition:set_values/2
+               ,kapi_definition:event_type_headers(Category, EventName)
+               }
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
 
-%% request fs command
--define(FS_COMMAND_HEADERS, [<<"Command">>, <<"Args">>]).
--define(OPTIONAL_FS_COMMAND_HEADERS, [<<"FreeSWITCH-Node">>]).
--define(FS_COMMAND_VALUES, [{<<"Event-Name">>, <<"command">>}
-                           ,{<<"Event-Category">>, <<"switch_event">>}
-                           ]).
--define(FS_COMMAND_TYPES, []).
--define(FS_COMMAND_KEY(N), <<"switch.command.", (kz_amqp_util:encode(N))/binary>>).
+-spec reload_gateways_definition() -> kapi_definition:api().
+reload_gateways_definition() ->
+    EventName = <<"reload_gateways">>,
+    Category = <<"switch_event">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Reload Gateways">>}
+              ,{fun kapi_definition:set_description/2, <<"Request reload of FreeSWITCH gateways">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun reload_gateways/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun reload_gateways_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_reload_gateways/0}
+              ,{fun kapi_definition:set_binding/2, <<"switch.reload_gateways">>}
+              ,{fun kapi_definition:set_required_headers/2, []}
+              ,{fun kapi_definition:set_optional_headers/2, []}
+              ,{fun kapi_definition:set_values/2
+               ,kapi_definition:event_type_headers(Category, EventName)
+               }
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
 
-%% reply fs command
--define(FSREPLY_COMMAND_HEADERS, [<<"Command">>, <<"Result">>]).
--define(OPTIONAL_FSREPLY_COMMAND_HEADERS, [<<"FreeSWITCH-Node">>
-                                          ,<<"Error">>
-                                          ,<<"Response">>
-                                          ,<<"Event-Data">>
-                                          ]).
--define(FSREPLY_COMMAND_VALUES, [{<<"Event-Name">>, <<"reply">>}
-                                ,{<<"Event-Category">>, <<"switch_event">>}
-                                ]).
--define(FSREPLY_COMMAND_TYPES, []).
+-spec fs_xml_flush_definition() -> kapi_definition:api().
+fs_xml_flush_definition() ->
+    EventName = <<"fs_xml_flush">>,
+    Category = <<"switch_event">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Flush fs_xml_flush">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"Request flush of FreeSWITCH fs_xml_flush">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun fs_xml_flush/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun fs_xml_flush_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_fs_xml_flush/1}
+              ,{fun kapi_definition:set_binding/2, <<"switch.fs_xml_flush">>}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Username">>]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Realm">>]}
+              ,{fun kapi_definition:set_values/2
+               ,kapi_definition:event_type_headers(Category, EventName)
+               }
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
+
+-spec notify_definition() -> kapi_definition:api().
+notify_definition() ->
+    EventName = <<"notify">>,
+    Category = <<"switch_event">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Request NOTIFY message">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"Request that FreeSWITCH send a NOTIFY message">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun notify/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun notify_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_notify/1}
+              ,{fun kapi_definition:set_binding/2, fun notify_routing_key/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Event">>
+                                                            ,<<"Realm">>
+                                                            ,<<"Username">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Body">>
+                                                            ,<<"Content-Type">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,kapi_definition:event_type_headers(Category, EventName)
+               }
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
+
+-spec fs_command_definition() -> kapi_definition:api().
+fs_command_definition() ->
+    EventName = <<"command">>,
+    Category = <<"switch_event">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Request Command">>}
+              ,{fun kapi_definition:set_description/2, <<"Request a FreeSWITCH command">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun fs_command/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun fs_command_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_fs_command/1}
+              ,{fun kapi_definition:set_binding/2, fun fs_command_routing_key/1}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Args">>
+                                                            ,<<"Command">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"FreeSWITCH-Node">>]}
+              ,{fun kapi_definition:set_values/2
+               ,kapi_definition:event_type_headers(Category, EventName)
+               }
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
+
+-spec fs_reply_definition() -> kapi_definition:api().
+fs_reply_definition() ->
+    EventName = <<"reply">>,
+    Category = <<"switch_event">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Request Command's Reply">>}
+              ,{fun kapi_definition:set_description/2, <<"Reply to a FreeSWITCH command">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun fs_reply/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun fs_reply_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_fs_reply/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Command">>
+                                                            ,<<"Result">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Error">>
+                                                            ,<<"Event-Data">>
+                                                            ,<<"FreeSWITCH-Node">>
+                                                            ,<<"Response">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,kapi_definition:event_type_headers(Category, EventName)
+               }
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
 
 %%------------------------------------------------------------------------------
 %% @doc Request reload of FreeSWITCH ACLs.
 %% @end
 %%------------------------------------------------------------------------------
--spec reload_acls(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
-reload_acls(Prop) when is_list(Prop) ->
-    case reload_acls_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?RELOAD_ACLS_HEADERS, ?OPTIONAL_RELOAD_ACLS_HEADERS);
-        'false' -> {'error', "Proplist failed validation for switch event reload_acls req"}
-    end;
-reload_acls(JObj) ->
-    reload_acls(kz_json:to_proplist(JObj)).
+-spec reload_acls(kz_term:api_terms()) -> kz_api:api_formatter_return().
+reload_acls(Req) ->
+    kapi_definition:build_message(Req, reload_acls_definition()).
 
 -spec reload_acls_v(kz_term:api_terms()) -> boolean().
-reload_acls_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?RELOAD_ACLS_HEADERS, ?RELOAD_ACLS_VALUES, ?RELOAD_ACLS_TYPES);
-reload_acls_v(JObj) ->
-    reload_acls_v(kz_json:to_proplist(JObj)).
+reload_acls_v(Req) ->
+    kapi_definition:validate(Req, reload_acls_definition()).
+
+-spec publish_reload_acls() -> 'ok'.
+publish_reload_acls() ->
+    Definition = reload_acls_definition(),
+    {'ok', Payload} = kz_api:prepare_api_payload(kz_api:default_headers(<<"switch_event">>
+                                                                       ,kz_term:to_binary(?MODULE)
+                                                                       )
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:basic_publish(?SWITCH_EXCHANGE
+                              ,kapi_definition:binding(Definition)
+                              ,Payload
+                              ,?DEFAULT_CONTENT_TYPE
+                              ).
 
 %%------------------------------------------------------------------------------
 %% @doc Request reload of FreeSWITCH gateways.
 %% @end
 %%------------------------------------------------------------------------------
--spec reload_gateways(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
-reload_gateways(Prop) when is_list(Prop) ->
-    case reload_gateways_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?RELOAD_GATEWAYS_HEADERS, ?OPTIONAL_RELOAD_GATEWAYS_HEADERS);
-        'false' -> {'error', "Proplist failed validation for switch event reload_gateways req"}
-    end;
-reload_gateways(JObj) ->
-    reload_gateways(kz_json:to_proplist(JObj)).
+-spec reload_gateways(kz_term:api_terms()) -> kz_api:api_formatter_return().
+reload_gateways(Req) ->
+    kapi_definition:build_message(Req, reload_gateways_definition()).
 
 -spec reload_gateways_v(kz_term:api_terms()) -> boolean().
-reload_gateways_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?RELOAD_GATEWAYS_HEADERS, ?RELOAD_GATEWAYS_VALUES, ?RELOAD_GATEWAYS_TYPES);
-reload_gateways_v(JObj) ->
-    reload_gateways_v(kz_json:to_proplist(JObj)).
+reload_gateways_v(Req) ->
+    kapi_definition:validate(Req, reload_gateways_definition()).
+
+-spec publish_reload_gateways() -> 'ok'.
+publish_reload_gateways() ->
+    Definition = reload_gateways_definition(),
+    {'ok', Payload} = kz_api:prepare_api_payload(kz_api:default_headers(<<"switch_event">>
+                                                                       ,kz_term:to_binary(?MODULE)
+                                                                       )
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:basic_publish(?SWITCH_EXCHANGE
+                              ,kapi_definition:binding(Definition)
+                              ,Payload
+                              ,?DEFAULT_CONTENT_TYPE
+                              ).
 
 %%------------------------------------------------------------------------------
 %% @doc Request flush of FreeSWITCH `fs_xml_flush'.
 %% @end
 %%------------------------------------------------------------------------------
--spec fs_xml_flush(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
-fs_xml_flush(Prop) when is_list(Prop) ->
-    case fs_xml_flush_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?FS_XML_FLUSH_HEADERS, ?OPTIONAL_FS_XML_FLUSH_HEADERS);
-        'false' -> {'error', "Proplist failed validation for switch event fs_xml_flush req"}
-    end;
-fs_xml_flush(JObj) ->
-    fs_xml_flush(kz_json:to_proplist(JObj)).
+-spec fs_xml_flush(kz_term:api_terms()) -> kz_api:api_formatter_return().
+fs_xml_flush(Req) ->
+    kapi_definition:build_message(Req, fs_xml_flush_definition()).
 
 -spec fs_xml_flush_v(kz_term:api_terms()) -> boolean().
-fs_xml_flush_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?FS_XML_FLUSH_HEADERS, ?FS_XML_FLUSH_VALUES, ?FS_XML_FLUSH_TYPES);
-fs_xml_flush_v(JObj) ->
-    fs_xml_flush_v(kz_json:to_proplist(JObj)).
+fs_xml_flush_v(Req) ->
+    kapi_definition:validate(Req, fs_xml_flush_definition()).
+
+-spec publish_fs_xml_flush(kz_term:api_terms()) -> 'ok'.
+publish_fs_xml_flush(JObj) ->
+    publish_fs_xml_flush(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_fs_xml_flush(kz_term:api_terms(), binary()) -> 'ok'.
+publish_fs_xml_flush(Req, ContentType) ->
+    Definition = fs_xml_flush_definition(),
+    {'ok', Payload} = kz_api:prepare_api_payload(Req
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:basic_publish(?SWITCH_EXCHANGE
+                              ,kapi_definition:binding(Definition)
+                              ,Payload
+                              ,ContentType
+                              ).
 
 %%------------------------------------------------------------------------------
 %% @doc Request that FreeSWITCH send a `NOTIFY' message.
 %% @end
 %%------------------------------------------------------------------------------
--spec notify(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
-notify(Prop) when is_list(Prop) ->
-    case notify_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?NOTIFY_HEADERS, ?OPTIONAL_NOTIFY_HEADERS);
-        'false' -> {'error', "Proplist failed validation for switch event notify req"}
-    end;
-notify(JObj) ->
-    notify(kz_json:to_proplist(JObj)).
+-spec notify(kz_term:api_terms()) -> kz_api:api_formatter_return().
+notify(Req) ->
+    kapi_definition:build_message(Req, notify_definition()).
 
 -spec notify_v(kz_term:api_terms()) -> boolean().
-notify_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?NOTIFY_HEADERS, ?NOTIFY_VALUES, ?NOTIFY_TYPES);
-notify_v(JObj) ->
-    notify_v(kz_json:to_proplist(JObj)).
+notify_v(Req) ->
+    kapi_definition:validate(Req, notify_definition()).
+
+-spec publish_notify(kz_term:api_terms()) -> 'ok'.
+publish_notify(JObj) ->
+    publish_notify(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_notify(kz_term:api_terms(), binary()) -> 'ok'.
+publish_notify(Req, ContentType) ->
+    Definition = notify_definition(),
+    {'ok', Payload} = kz_api:prepare_api_payload(Req
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    Realm = notify_realm(Req),
+    Username = notify_username(Req),
+    kz_amqp_util:basic_publish(?SWITCH_EXCHANGE
+                              ,(kapi_definition:binding(Definition))(Realm, Username)
+                              ,Payload
+                              ,ContentType
+                              ).
 
 %%------------------------------------------------------------------------------
 %% @doc Request a FreeSWITCH command.
 %% @end
 %%------------------------------------------------------------------------------
--spec fs_command(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
-fs_command(Prop) when is_list(Prop) ->
-    case fs_command_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?FS_COMMAND_HEADERS, ?OPTIONAL_FS_COMMAND_HEADERS);
-        'false' -> {'error', "Proplist failed validation for switch command"}
-    end;
-fs_command(JObj) ->
-    fs_command(kz_json:to_proplist(JObj)).
+-spec fs_command(kz_term:api_terms()) -> kz_api:api_formatter_return().
+fs_command(Req) ->
+    kapi_definition:build_message(Req, fs_command_definition()).
 
 -spec fs_command_v(kz_term:api_terms()) -> boolean().
-fs_command_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?FS_COMMAND_HEADERS, ?FS_COMMAND_VALUES, ?FS_COMMAND_TYPES);
-fs_command_v(JObj) ->
-    fs_command_v(kz_json:to_proplist(JObj)).
+fs_command_v(Req) ->
+    kapi_definition:validate(Req, fs_command_definition()).
+
+-spec publish_fs_command(kz_term:api_terms()) -> 'ok'.
+publish_fs_command(JObj) ->
+    publish_fs_command(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_fs_command(kz_term:api_terms(), binary()) -> 'ok'.
+publish_fs_command(Req, ContentType) ->
+    Definition = fs_command_definition(),
+    {'ok', Payload} = kz_api:prepare_api_payload(Req
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:basic_publish(?SWITCH_EXCHANGE
+                              ,(kapi_definition:binding(Definition))(check_fs_node(Req))
+                              ,Payload
+                              ,ContentType
+                              ).
 
 %%------------------------------------------------------------------------------
 %% @doc Reply to a FreeSWITCH command.
 %% @end
 %%------------------------------------------------------------------------------
--spec fs_reply(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
-fs_reply(Prop) when is_list(Prop) ->
-    case fs_reply_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?FSREPLY_COMMAND_HEADERS, ?OPTIONAL_FSREPLY_COMMAND_HEADERS);
-        'false' -> {'error', "Proplist failed validation for switch command"}
-    end;
-fs_reply(JObj) ->
-    fs_reply(kz_json:to_proplist(JObj)).
+-spec fs_reply(kz_term:api_terms()) -> kz_api:api_formatter_return().
+fs_reply(Req) ->
+    kapi_definition:build_message(Req, fs_reply_definition()).
 
 -spec fs_reply_v(kz_term:api_terms()) -> boolean().
-fs_reply_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?FSREPLY_COMMAND_HEADERS, ?FSREPLY_COMMAND_VALUES, ?FSREPLY_COMMAND_TYPES);
-fs_reply_v(JObj) ->
-    fs_reply_v(kz_json:to_proplist(JObj)).
+fs_reply_v(Req) ->
+    kapi_definition:validate(Req, fs_reply_definition()).
+
+-spec publish_fs_reply(binary(), kz_term:api_terms()) -> 'ok'.
+publish_fs_reply(Queue, Req) ->
+    Definition = fs_reply_definition(),
+    {'ok', Payload} = kz_api:prepare_api_payload(Req
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:targeted_publish(Queue, Payload).
 
 -spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
@@ -218,22 +403,37 @@ bind_q(Queue, Props) ->
 bind_to_q(Q, 'undefined', _Props) ->
     'ok' = kz_amqp_util:bind_q_to_exchange(Q, <<"switch.*">>, ?SWITCH_EXCHANGE);
 bind_to_q(Q, ['reload_acls'|T], Props) ->
-    'ok' = kz_amqp_util:bind_q_to_exchange(Q, ?RELOAD_ACLS_KEY, ?SWITCH_EXCHANGE),
+    'ok' = kz_amqp_util:bind_q_to_exchange(Q
+                                          ,kapi_definition:binding(reload_acls_definition())
+                                          ,?SWITCH_EXCHANGE
+                                          ),
     bind_to_q(Q, T, Props);
 bind_to_q(Q, ['reload_gateways'|T], Props) ->
-    'ok' = kz_amqp_util:bind_q_to_exchange(Q, ?RELOAD_GATEWAYS_KEY, ?SWITCH_EXCHANGE),
+    'ok' = kz_amqp_util:bind_q_to_exchange(Q
+                                          ,kapi_definition:binding(reload_gateways_definition())
+                                          ,?SWITCH_EXCHANGE
+                                          ),
     bind_to_q(Q, T, Props);
 bind_to_q(Q, ['fs_xml_flush'|T], Props) ->
-    'ok' = kz_amqp_util:bind_q_to_exchange(Q, ?FS_XML_FLUSH_KEY, ?SWITCH_EXCHANGE),
+    'ok' = kz_amqp_util:bind_q_to_exchange(Q
+                                          ,kapi_definition:binding(fs_xml_flush_definition())
+                                          ,?SWITCH_EXCHANGE
+                                          ),
     bind_to_q(Q, T, Props);
 bind_to_q(Q, ['notify'|T], Props) ->
     Realm = props:get_value('realm', Props, <<"*">>),
     Username = props:get_value('username', Props, <<"*">>),
-    'ok' = kz_amqp_util:bind_q_to_exchange(Q, ?NOTIFY_KEY(Realm, Username), ?SWITCH_EXCHANGE),
+    'ok' = kz_amqp_util:bind_q_to_exchange(Q
+                                          ,(kapi_definition:binding(notify_definition()))(Realm, Username)
+                                          ,?SWITCH_EXCHANGE
+                                          ),
     bind_to_q(Q, T, Props);
 bind_to_q(Q, ['command'|T], Props) ->
-    Node = props:get_value('node', Props, <<"*">>),
-    'ok' = kz_amqp_util:bind_q_to_exchange(Q, ?FS_COMMAND_KEY(kz_term:to_binary(Node)), ?SWITCH_EXCHANGE),
+    Node = kz_term:to_binary(props:get_value('node', Props, <<"*">>)),
+    'ok' = kz_amqp_util:bind_q_to_exchange(Q
+                                          ,(kapi_definition:binding(fs_command_definition()))(Node)
+                                          ,?SWITCH_EXCHANGE
+                                          ),
     bind_to_q(Q, T, Props);
 bind_to_q(_Q, [], _Props) -> 'ok'.
 
@@ -244,22 +444,37 @@ unbind_q(Queue, Props) ->
 unbind_q_from(Q, 'undefined', _Props) ->
     'ok' = kz_amqp_util:unbind_q_from_exchange(Q, <<"switch.*">>, ?SWITCH_EXCHANGE);
 unbind_q_from(Q, ['reload_acls'|T], Props) ->
-    'ok' = kz_amqp_util:unbind_q_from_exchange(Q, ?RELOAD_ACLS_KEY, ?SWITCH_EXCHANGE),
+    'ok' = kz_amqp_util:unbind_q_from_exchange(Q
+                                              ,kapi_definition:binding(reload_acls_definition())
+                                              ,?SWITCH_EXCHANGE
+                                              ),
     unbind_q_from(Q, T, Props);
 unbind_q_from(Q, ['reload_gateways'|T], Props) ->
-    'ok' = kz_amqp_util:unbind_q_from_exchange(Q, ?RELOAD_GATEWAYS_KEY, ?SWITCH_EXCHANGE),
+    'ok' = kz_amqp_util:unbind_q_from_exchange(Q
+                                              ,kapi_definition:binding(reload_gateways_definition())
+                                              ,?SWITCH_EXCHANGE
+                                              ),
     unbind_q_from(Q, T, Props);
 unbind_q_from(Q, ['fs_xml_flush'|T], Props) ->
-    'ok' = kz_amqp_util:unbind_q_from_exchange(Q, ?FS_XML_FLUSH_KEY, ?SWITCH_EXCHANGE),
+    'ok' = kz_amqp_util:unbind_q_from_exchange(Q
+                                              ,kapi_definition:binding(fs_xml_flush_definition())
+                                              ,?SWITCH_EXCHANGE
+                                              ),
     unbind_q_from(Q, T, Props);
 unbind_q_from(Q, ['notify'|T], Props) ->
     Realm = props:get_value('realm', Props, <<"*">>),
     Username = props:get_value('username', Props, <<"*">>),
-    'ok' = kz_amqp_util:unbind_q_from_exchange(Q, ?NOTIFY_KEY(Realm, Username), ?SWITCH_EXCHANGE),
+    'ok' = kz_amqp_util:unbind_q_from_exchange(Q
+                                              ,(kapi_definition:binding(notify_definition()))(Realm, Username)
+                                              ,?SWITCH_EXCHANGE
+                                              ),
     unbind_q_from(Q, T, Props);
 unbind_q_from(Q, ['command'|T], Props) ->
-    Node = props:get_value('node', Props, <<"*">>),
-    'ok' = kz_amqp_util:unbind_q_from_exchange(Q, ?FS_COMMAND_KEY(kz_term:to_binary(Node)), ?SWITCH_EXCHANGE),
+    Node = kz_term:to_binary(props:get_value('node', Props, <<"*">>)),
+    'ok' = kz_amqp_util:unbind_q_from_exchange(Q
+                                              ,(kapi_definition:binding(fs_command_definition()))(Node)
+                                              ,?SWITCH_EXCHANGE
+                                              ),
     unbind_q_from(Q, T, Props);
 unbind_q_from(_Q, [], _Props) -> 'ok'.
 
@@ -271,44 +486,6 @@ unbind_q_from(_Q, [], _Props) -> 'ok'.
 declare_exchanges() ->
     kz_amqp_util:new_exchange(?SWITCH_EXCHANGE, ?SWITCH_EXCHANGE_TYPE).
 
--spec publish_reload_acls() -> 'ok'.
-publish_reload_acls() ->
-    Defaults = kz_api:default_headers(<<"switch_event">>, kz_term:to_binary(?MODULE)),
-    {'ok', Payload} = kz_api:prepare_api_payload(Defaults, ?RELOAD_ACLS_VALUES, fun reload_acls/1),
-    kz_amqp_util:basic_publish(?SWITCH_EXCHANGE, ?RELOAD_ACLS_KEY, Payload, ?DEFAULT_CONTENT_TYPE).
-
--spec publish_reload_gateways() -> 'ok'.
-publish_reload_gateways() ->
-    Defaults = kz_api:default_headers(<<"switch_event">>, kz_term:to_binary(?MODULE)),
-    {'ok', Payload} = kz_api:prepare_api_payload(Defaults, ?RELOAD_GATEWAYS_VALUES, fun reload_gateways/1),
-    kz_amqp_util:basic_publish(?SWITCH_EXCHANGE, ?RELOAD_GATEWAYS_KEY, Payload, ?DEFAULT_CONTENT_TYPE).
-
--spec publish_fs_xml_flush(kz_term:api_terms()) -> 'ok'.
-publish_fs_xml_flush(JObj) ->
-    publish_fs_xml_flush(JObj, ?DEFAULT_CONTENT_TYPE).
-
--spec publish_fs_xml_flush(kz_term:api_terms(), binary()) -> 'ok'.
-publish_fs_xml_flush(Req, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?FS_XML_FLUSH_VALUES, fun fs_xml_flush/1),
-    kz_amqp_util:basic_publish(?SWITCH_EXCHANGE, ?FS_XML_FLUSH_KEY, Payload, ContentType).
-
--spec publish_notify(kz_term:api_terms()) -> 'ok'.
-publish_notify(JObj) ->
-    publish_notify(JObj, ?DEFAULT_CONTENT_TYPE).
-
--spec publish_notify(kz_term:api_terms(), binary()) -> 'ok'.
-publish_notify(Req, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?NOTIFY_VALUES, fun notify/1),
-
-    Realm = notify_realm(Req),
-    Username = notify_username(Req),
-
-    kz_amqp_util:basic_publish(?SWITCH_EXCHANGE
-                              ,?NOTIFY_KEY(Realm, Username)
-                              ,Payload
-                              ,ContentType
-                              ).
-
 -spec notify_realm(kz_term:api_terms()) -> kz_term:api_ne_binary().
 notify_realm(API) ->
     get_value(API, <<"Realm">>, 'undefined').
@@ -316,21 +493,6 @@ notify_realm(API) ->
 -spec notify_username(kz_term:api_terms()) -> kz_term:api_ne_binary().
 notify_username(API) ->
     get_value(API, <<"Username">>, 'undefined').
-
--spec publish_command(kz_term:api_terms()) -> 'ok'.
-publish_command(JObj) ->
-    publish_command(JObj, ?DEFAULT_CONTENT_TYPE).
-
--spec publish_command(kz_term:api_terms(), binary()) -> 'ok'.
-publish_command(Req, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?FS_COMMAND_VALUES, fun fs_command/1),
-    N = check_fs_node(Req),
-    kz_amqp_util:basic_publish(?SWITCH_EXCHANGE, ?FS_COMMAND_KEY(N), Payload, ContentType).
-
--spec publish_reply(binary(), kz_term:api_terms()) -> 'ok'.
-publish_reply(Queue, Req) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?FSREPLY_COMMAND_VALUES, fun fs_reply/1),
-    kz_amqp_util:targeted_publish(Queue, Payload).
 
 -spec check_fs_node(kz_term:api_terms()) -> kz_term:api_ne_binary().
 check_fs_node(API) ->
@@ -345,3 +507,16 @@ get_value(JObj, Key, Default) ->
 -spec get_value(kz_term:api_terms(), kz_json:key(), Default, fun()) -> kz_term:ne_binary() | Default.
 get_value(API, Key, Default, Get) ->
     Get(Key, API, Default).
+
+-spec notify_routing_key(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
+notify_routing_key(Realm, Username) ->
+    kz_binary:join([<<"switch.notify">>
+                   ,kz_amqp_util:encode(Realm)
+                   ,kz_amqp_util:encode(Username)
+                   ]
+                  ,<<".">>
+                  ).
+
+-spec fs_command_routing_key(kz_term:ne_binary()) -> kz_term:ne_binary().
+fs_command_routing_key(Node) ->
+    <<"switch.command.", (kz_amqp_util:encode(Node))/binary>>.
