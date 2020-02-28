@@ -188,6 +188,11 @@
                     "minimum": 0,
                     "type": "integer"
                 },
+                "transcribe_default": {
+                    "default": false,
+                    "description": "callflow voicemail transcribe_default",
+                    "type": "boolean"
+                },
                 "vm_delete_amqp": {
                     "default": false,
                     "description": "send ampq message to notify about voicemail deletion",
