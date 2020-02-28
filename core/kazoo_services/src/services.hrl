@@ -94,7 +94,9 @@
                               }
                              ,{<<"qubicle">>
                               ,[<<"queues">>
+                               ,<<"pro_queues">>
                                ,<<"recipients">>
+                               ,<<"pro_recipients">>
                                ]
                               }
                              ,{<<"voicemails">>
