@@ -96,3 +96,4 @@ core/kazoo_proper/priv/mp3.mp3
 /make/pest-*
 # asdf-vm "local" versions handler
 .tool-versions
+/erlang_ls.config
