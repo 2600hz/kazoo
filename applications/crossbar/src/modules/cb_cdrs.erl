@@ -452,7 +452,7 @@ normalize_cdr(Context, <<"json">>, Result) ->
     Duration = kzd_cdrs:duration_seconds(JObj, 0),
     Timestamp = kzd_cdrs:timestamp(JObj, 0) - Duration,
 
-    kz_json:from_list(props:filter_empty([{K, F(JObj, Timestamp, Context)} || {K, F} <- json_rows(Context)]));
+    kz_json:from_list(props:filter_empty_strings([{K, F(JObj, Timestamp, Context)} || {K, F} <- json_rows(Context)]));
 normalize_cdr(Context, <<"csv">>, Result) ->
     JObj = kz_json:get_json_value(<<"doc">>, Result),
     Duration = kzd_cdrs:duration_seconds(JObj, 0),
