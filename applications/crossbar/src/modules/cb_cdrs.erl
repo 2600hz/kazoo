@@ -226,7 +226,7 @@ load_chunk_view(Context, ViewName, Options0) ->
     Options = [{'is_chunked', 'true'}
               ,{'chunk_size', ?MAX_BULK}
               ,{'max_range', ?MOD_MAX_RANGE}
-               | Options0
+              | Options0
               ],
     crossbar_view:load_modb(cb_context:setters(fix_qs_filter_keys(Context), Setters), ViewName, Options).
 
@@ -322,7 +322,7 @@ get_view_options([{<<"cdrs">>, [?PATH_INTERACTION]}, {?KZ_ACCOUNTS_DB, _}|_]) ->
        ,{'group_level', 2}
        ,{'reduce', 'true'}
        ,{'no_filter', 'true'}
-        | maybe_add_stale_to_options(?STALE_CDR)
+       | maybe_add_stale_to_options(?STALE_CDR)
        ])
     };
 get_view_options([{<<"cdrs">>, [?PATH_INTERACTION]}, {<<"users">>, [OwnerId]}|_]) ->
@@ -335,7 +335,7 @@ get_view_options([{<<"cdrs">>, [?PATH_INTERACTION]}, {<<"users">>, [OwnerId]}|_]
        ,{'group_level', 3}
        ,{'reduce', 'true'}
        ,{'no_filter', 'true'}
-        | maybe_add_stale_to_options(?STALE_CDR)
+       | maybe_add_stale_to_options(?STALE_CDR)
        ])
     };
 get_view_options(_) ->
@@ -409,7 +409,9 @@ normalize_cdr(Context, <<"json">>, Result) ->
     Duration = kzd_cdrs:duration_seconds(JObj, 0),
     Timestamp = kzd_cdrs:timestamp(JObj, 0) - Duration,
 
-    kz_json:from_list([{K, apply_row_mapper(K, F, JObj, Timestamp, Context)} || {K, F} <- csv_rows(Context)]);
+    MappedFields = [{K, apply_row_mapper(K, F, JObj, Timestamp, Context)} || {K, F} <- csv_rows(Context)],
+    FilteredFields = props:filter_empty_strings(MappedFields),
+    kz_json:from_list(FilteredFields);
 normalize_cdr(Context, <<"csv">>, Result) ->
     JObj = kz_json:get_json_value(<<"doc">>, Result),
     Duration = kzd_cdrs:duration_seconds(JObj, 0),

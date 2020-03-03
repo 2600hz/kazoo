@@ -33,7 +33,7 @@
         ,replace_value/3
         ,unique/1
         ,filter/2
-        ,filter_empty/1
+        ,filter_empty/1, filter_empty_strings/1
         ,filter_undefined/1
         ,to_log/1, to_log/2
         ]).
@@ -111,6 +111,14 @@ filter_empty(Props) ->
 -spec is_not_empty(kz_term:proplist_property()) -> boolean().
 is_not_empty({_, V}) -> not kz_term:is_empty(V);
 is_not_empty(_V) -> 'true'.
+
+-spec filter_empty_strings([{any(), any()} | atom()]) -> [{any(), any()} | atom()].
+filter_empty_strings(Props) ->
+    filter(fun is_not_empty_string/1, Props).
+
+-spec is_not_empty_string(kz_term:proplist_property()) -> boolean().
+is_not_empty_string({_, <<>>}) -> 'false';
+is_not_empty_string(_) -> 'true'.
 
 -spec filter_undefined(kz_term:proplist()) -> kz_term:proplist().
 filter_undefined(Props) ->

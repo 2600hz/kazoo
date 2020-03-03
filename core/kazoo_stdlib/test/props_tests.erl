@@ -34,9 +34,20 @@ filter_empty_test_() ->
     ,?_assertEqual([], props:filter_empty([{'a', 0}, {'b', []}, {'c', <<>>}, {'z', 'undefined'}]))
     ,?_assertEqual(['a'], props:filter_empty(['a']))
     ,?_assertEqual(['a'], props:filter_empty(['a', {'b', 0}]))
-    ,?_assertEqual([], props:filter_empty([{<<"a">>, undefined}]))
-    ,?_assertEqual([{<<"a">>, false}], props:filter_empty([{<<"a">>, false}]))
-    ,?_assertEqual([{<<"a">>, true}], props:filter_empty([{<<"a">>, true}]))
+    ,?_assertEqual([], props:filter_empty([{<<"a">>, 'undefined'}]))
+    ,?_assertEqual([{<<"a">>, 'false'}], props:filter_empty([{<<"a">>, 'false'}]))
+    ,?_assertEqual([{<<"a">>, 'true'}], props:filter_empty([{<<"a">>, 'true'}]))
+    ].
+
+filter_empty_strings_test_() ->
+    [?_assertEqual([], props:filter_empty_strings([]))
+    ,?_assertEqual([{'a', 10}, {'b', 8}, {'c', 6}], props:filter_empty_strings([{'a', 10}, {'b', 8}, {'c', 6}]))
+    ,?_assertEqual([{'a', 0}, {'b', []}, {'z', 'undefined'}], props:filter_empty_strings([{'a', 0}, {'b', []}, {'c', <<>>}, {'z', 'undefined'}]))
+    ,?_assertEqual(['a'], props:filter_empty_strings(['a']))
+    ,?_assertEqual(['a', {'b', 0}], props:filter_empty_strings(['a', {'b', 0}]))
+    ,?_assertEqual([{<<"a">>, 'undefined'}], props:filter_empty_strings([{<<"a">>, 'undefined'}]))
+    ,?_assertEqual([{<<"a">>, 'false'}], props:filter_empty_strings([{<<"a">>, 'false'}]))
+    ,?_assertEqual([{<<"a">>, 'true'}], props:filter_empty_strings([{<<"a">>, 'true'}]))
     ].
 
 filter_undefined_test_() ->
@@ -45,7 +56,7 @@ filter_undefined_test_() ->
     ,?_assertEqual([], props:filter_undefined([]))
     ,?_assertEqual([{'a', 10}, {'b', 8}, {'c', 6}], props:filter_undefined([{'a', 10}, {'b', 8}, {'c', 6}]))
     ,?_assertEqual([{'a', 0}, {'b', []}, {'c', <<>>}], props:filter_undefined([{'a', 0}, {'b', []}, {'c', <<>>}, {'z', 'undefined'}]))
-    ,?_assertEqual([{<<"pouet">>, null}], props:filter_undefined([{<<"pouet">>, null}]))
+    ,?_assertEqual([{<<"pouet">>, 'null'}], props:filter_undefined([{<<"pouet">>, 'null'}]))
     ].
 
 unique_test_() ->

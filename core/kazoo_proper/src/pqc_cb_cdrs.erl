@@ -28,7 +28,7 @@
 -include("kazoo_proper.hrl").
 -include_lib("kazoo_stdlib/include/kz_databases.hrl").
 
--define(ACCOUNT_NAMES, [<<"account_for_cdrs">>]).
+-define(ACCOUNT_NAMES, [<<?MODULE_STRING>>]).
 -define(CDRS_PER_MONTH, 4).
 
 -spec summary(pqc_cb_api:state(), kz_term:ne_binary()) -> pqc_cb_api:response().
@@ -357,7 +357,11 @@ seq_cdr(API, AccountId, CDR) ->
     InteractionId = kzd_cdrs:interaction_id(CDR),
 
     FetchResp = fetch(API, AccountId, CDRId),
-    'true' = cdr_exists(CDR, [kz_json:get_json_value(<<"data">>, kz_json:decode(FetchResp))]),
+    FetchedJObj = kz_json:get_json_value(<<"data">>, kz_json:decode(FetchResp)),
+    'true' = cdr_exists(CDR, [FetchedJObj]),
+
+    %% KZOO-45: Ensure empty strings have been stripped
+    'undefined' = kz_json:get_ne_binary_value(<<"media_server">>, FetchedJObj),
 
     %% Should be able to convert CDR ID to interaction_id
     LegsResp = legs(API, AccountId, CDRId),
