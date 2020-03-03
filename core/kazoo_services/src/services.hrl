@@ -98,10 +98,10 @@
                                ]
                               }
                              ,{<<"qubicle">>
-                              ,[<<"queues">>
-                               ,<<"pro_queues">>
-                               ,<<"recipients">>
-                               ,<<"pro_recipients">>
+                              ,[<<"basic_queue">>
+                               ,<<"pro_queue">>
+                               ,<<"basic_recipient">>
+                               ,<<"pro_recipient">>
                                ]
                               }
                              ,{<<"voicemails">>
