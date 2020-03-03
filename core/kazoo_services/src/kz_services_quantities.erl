@@ -533,7 +533,7 @@ calculate_qubicle_queue_updates(JObj, Updates) ->
         'false' -> Updates;
         'true' ->
             Offering = kz_json:get_ne_value(<<"pvt_offering">>, JObj, <<"basic">>),
-            Key = <<Offering/binary, "_queue">>,
+            Key = [<<"qubicle">>, <<Offering/binary, "_queue">>],
             [{Key, 1} | Updates]
     end.
 
@@ -545,7 +545,7 @@ calculate_qubicle_recipient_updates(JObj, Updates) ->
         'false' -> Updates;
         'true' ->
             Offering = kz_json:get_ne_value([<<"qubicle">>, <<"recipient">>, <<"offering">>], JObj, <<"basic">>),
-            Key = <<Offering/binary, "_recipient">>,
+            Key = [<<"qubicle">>, <<Offering/binary, "_recipient">>],
             [{Key, 1} | Updates]
     end.
 
