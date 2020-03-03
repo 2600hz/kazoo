@@ -139,6 +139,9 @@
 
 -type get_key() :: key() | path().
 
+-define(ENCODE_OPTIONS, ['error_on_undefined']).
+-define(DECODE_OPTIONS, ['utf8_invalid_char_as_is']).
+
 -spec new() -> object().
 new() -> ?JSON_WRAPPER([]).
 
@@ -146,7 +149,11 @@ new() -> ?JSON_WRAPPER([]).
 encode(JObj) -> encode(JObj, []).
 
 -spec encode(json_term(), encode_options()) -> kz_term:text().
-encode(JObj, Options) -> jiffy:encode(JObj, Options).
+encode(JObj, Options) ->
+    case jiffy:encode(JObj, lists:merge(?ENCODE_OPTIONS, Options)) of
+        L when is_list(L) -> list_to_binary(L);
+        B when is_binary(B) -> B
+    end.
 
 -spec unsafe_decode(iolist() | kz_term:ne_binary()) -> json_term().
 unsafe_decode(Thing) when is_list(Thing);
@@ -155,7 +162,7 @@ unsafe_decode(Thing) when is_list(Thing);
 
 -spec unsafe_decode(iolist() | kz_term:ne_binary(), kz_term:ne_binary()) -> json_term().
 unsafe_decode(JSON, <<"application/json">>) ->
-    try jiffy:decode(JSON)
+    try jiffy:decode(JSON, ?DECODE_OPTIONS)
     catch
         'throw':{'error',{_Loc, 'invalid_string'}}=Error ->
             lager:debug("invalid string(near char ~p) in input, checking for unicode", [_Loc]),
