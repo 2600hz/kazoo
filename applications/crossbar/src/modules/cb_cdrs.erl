@@ -452,13 +452,20 @@ normalize_cdr(Context, <<"json">>, Result) ->
     Duration = kzd_cdrs:duration_seconds(JObj, 0),
     Timestamp = kzd_cdrs:timestamp(JObj, 0) - Duration,
 
-    kz_json:from_list(props:filter_empty([{K, F(JObj, Timestamp, Context)} || {K, F} <- json_rows(Context)]));
+    MappedRows = [{K, F(JObj, Timestamp, Context)} || {K, F} <- json_rows(Context)],
+    maybe_filter_empties(MappedRows, kapps_config:is_true(?MOD_CONFIG_CAT, <<"should_filter_empty_strings">>, 'false'));
 normalize_cdr(Context, <<"csv">>, Result) ->
     JObj = kz_json:get_json_value(<<"doc">>, Result),
     Duration = kzd_cdrs:duration_seconds(JObj, 0),
     Timestamp = kzd_cdrs:timestamp(JObj, 0) - Duration,
 
     <<(kz_binary:join([F(JObj, Timestamp, Context) || {_, F} <- csv_rows(Context)], <<",">>))/binary, "\r\n">>.
+
+-spec maybe_filter_empties(kz_term:proplist(), boolean()) -> kz_json:objects().
+maybe_filter_empties(Rows, 'true') ->
+    kz_json:from_list(props:filter_empty_strings(Rows));
+maybe_filter_empties(Rows, 'false') ->
+    kz_json:from_list(Rows).
 
 -spec maybe_add_csv_header(cb_context:context(), kz_term:ne_binary(), kz_json:objects() | kz_term:binaries()) -> cb_context:context().
 maybe_add_csv_header(Context, _, []) ->

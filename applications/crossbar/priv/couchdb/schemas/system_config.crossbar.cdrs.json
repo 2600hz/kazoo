@@ -18,6 +18,11 @@
             "default": 2682000,
             "description": "crossbar.cdrs maximum range",
             "type": "integer"
+        },
+        "should_filter_empty_strings": {
+            "default": false,
+            "description": "crossbar cdrs should_filter_empty_strings",
+            "type": "boolean"
         }
     },
     "type": "object"
