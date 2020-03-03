@@ -19,6 +19,11 @@
             "description": "maximum range (in seconds) prior to the current date allowed for CDR requests",
             "minimum": 1,
             "type": "integer"
+        },
+        "should_filter_empty_strings": {
+            "default": false,
+            "description": "If true, API will strip keys with \"\" as values before sending the response (decrease payload)",
+            "type": "boolean"
         }
     },
     "type": "object"
