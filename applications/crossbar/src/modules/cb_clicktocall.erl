@@ -35,7 +35,6 @@
 
 -define(CONNECT_CALL, <<"connect">>).
 -define(HISTORY, <<"history">>).
--define(CB_LIST, <<"click2call/crossbar_listing">>).
 -define(HISTORY_LIST, <<"clicktocall/history_listing">>).
 -define(PVT_TYPE, kzd_clicktocall:type()).
 -define(CONNECT_C2C_URL, [{<<"clicktocall">>, [_, ?CONNECT_CALL]}
@@ -226,7 +225,11 @@ delete(Context, _) ->
 %%------------------------------------------------------------------------------
 -spec load_c2c_summary(cb_context:context()) -> cb_context:context().
 load_c2c_summary(Context) ->
-    crossbar_view:load(Context, ?CB_LIST, [{'mapper', crossbar_view:get_value_fun()}]).
+    Options = [{'startkey', [kzd_clicktocall:type()]}
+              ,{'endkey', [kzd_clicktocall:type(), kz_datamgr:view_highest_value()]}
+              ,{'mapper', crossbar_view:get_value_fun()}
+              ],
+    crossbar_view:load(Context, ?KZD_LIST_BY_TYPE_ID, Options).
 
 -spec load_c2c(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_c2c(C2CId, Context) ->
@@ -266,7 +269,11 @@ maybe_migrate_history(Account) ->
     AccountId = kzs_util:format_account_id(Account),
     AccountDb = kzs_util:format_account_db(Account),
 
-    case kz_datamgr:get_results(AccountDb, ?CB_LIST, ['include_docs']) of
+    Options = [{'startkey', [kzd_clicktocall:type()]}
+              ,{'endkey', [kzd_clicktocall:type(), kz_datamgr:view_highest_value()]}
+               | 'include_docs'
+              ],
+    case kz_datamgr:get_results(AccountDb, ?KZD_LIST_BY_TYPE_ID, Options) of
         {'ok', []} -> 'ok';
         {'ok', C2Cs} -> migrate_histories(AccountId, AccountDb, C2Cs);
         {'error', _} -> 'ok'
