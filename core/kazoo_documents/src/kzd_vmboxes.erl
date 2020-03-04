@@ -1,6 +1,6 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2010-2020, 2600Hz
-%%% @doc
+%%% @doc Accessors for `vmboxes' document.
 %%% This Source Code Form is subject to the terms of the Mozilla Public
 %%% License, v. 2.0. If a copy of the MPL was not distributed with this
 %%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -10,6 +10,7 @@
 -module(kzd_vmboxes).
 
 -export([new/0]).
+-export([announcement_only/1, announcement_only/2, set_announcement_only/2]).
 -export([check_if_owner/1, check_if_owner/2, set_check_if_owner/2]).
 -export([delete_after_notify/1, delete_after_notify/2, set_delete_after_notify/2]).
 -export([flags/1, flags/2, set_flags/2]).
@@ -31,10 +32,12 @@
 -export([require_pin/1, require_pin/2, set_require_pin/2]).
 -export([save_after_notify/1, save_after_notify/2, set_save_after_notify/2]).
 -export([seek_duration_ms/1, seek_duration_ms/2, set_seek_duration_ms/2]).
+-export([should_include_attachment/1, should_include_attachment/2, set_should_include_attachment/2]).
 -export([skip_envelope/1, skip_envelope/2, set_skip_envelope/2]).
 -export([skip_greeting/1, skip_greeting/2, set_skip_greeting/2]).
 -export([skip_instructions/1, skip_instructions/2, set_skip_instructions/2]).
 -export([timezone/1, timezone/2, set_timezone/2]).
+-export([transcribe/1, transcribe/2, set_transcribe/2]).
 
 
 -include("kz_documents.hrl").
@@ -47,6 +50,18 @@
 -spec new() -> doc().
 new() ->
     kz_json_schema:default_object(?SCHEMA).
+
+-spec announcement_only(doc()) -> boolean().
+announcement_only(Doc) ->
+    announcement_only(Doc, false).
+
+-spec announcement_only(doc(), Default) -> boolean() | Default.
+announcement_only(Doc, Default) ->
+    kz_json:get_boolean_value([<<"announcement_only">>], Doc, Default).
+
+-spec set_announcement_only(doc(), boolean()) -> doc().
+set_announcement_only(Doc, AnnouncementOnly) ->
+    kz_json:set_value([<<"announcement_only">>], AnnouncementOnly, Doc).
 
 -spec check_if_owner(doc()) -> boolean().
 check_if_owner(Doc) ->
@@ -92,9 +107,13 @@ is_setup(Doc) ->
 is_setup(Doc, Default) ->
     kz_json:get_boolean_value([<<"is_setup">>], Doc, Default).
 
+-spec set_is_setup(doc(), boolean()) -> doc().
+set_is_setup(Doc, IsSetup) ->
+    kz_json:set_value([<<"is_setup">>], IsSetup, Doc).
+
 -spec is_voicemail_ff_rw_enabled(doc()) -> boolean().
 is_voicemail_ff_rw_enabled(Doc) ->
-    is_voicemail_ff_rw_enabled(Doc, 'false').
+    is_voicemail_ff_rw_enabled(Doc, false).
 
 -spec is_voicemail_ff_rw_enabled(doc(), Default) -> boolean() | Default.
 is_voicemail_ff_rw_enabled(Doc, Default) ->
@@ -103,10 +122,6 @@ is_voicemail_ff_rw_enabled(Doc, Default) ->
 -spec set_is_voicemail_ff_rw_enabled(doc(), boolean()) -> doc().
 set_is_voicemail_ff_rw_enabled(Doc, IsVoicemailFfRwEnabled) ->
     kz_json:set_value([<<"is_voicemail_ff_rw_enabled">>], IsVoicemailFfRwEnabled, Doc).
-
--spec set_is_setup(doc(), boolean()) -> doc().
-set_is_setup(Doc, IsSetup) ->
-    kz_json:set_value([<<"is_setup">>], IsSetup, Doc).
 
 -spec mailbox(doc()) -> kz_term:api_ne_binary().
 mailbox(Doc) ->
@@ -300,6 +315,18 @@ seek_duration_ms(Doc, Default) ->
 set_seek_duration_ms(Doc, SeekDurationMs) ->
     kz_json:set_value([<<"seek_duration_ms">>], SeekDurationMs, Doc).
 
+-spec should_include_attachment(doc()) -> boolean().
+should_include_attachment(Doc) ->
+    should_include_attachment(Doc, true).
+
+-spec should_include_attachment(doc(), Default) -> boolean() | Default.
+should_include_attachment(Doc, Default) ->
+    kz_json:get_boolean_value([<<"should_include_attachment">>], Doc, Default).
+
+-spec set_should_include_attachment(doc(), boolean()) -> doc().
+set_should_include_attachment(Doc, ShouldIncludeAttachment) ->
+    kz_json:set_value([<<"should_include_attachment">>], ShouldIncludeAttachment, Doc).
+
 -spec skip_envelope(doc()) -> boolean().
 skip_envelope(Doc) ->
     skip_envelope(Doc, false).
@@ -347,3 +374,15 @@ timezone(Doc, Default) ->
 -spec set_timezone(doc(), kz_term:ne_binary()) -> doc().
 set_timezone(Doc, Timezone) ->
     kz_json:set_value([<<"timezone">>], Timezone, Doc).
+
+-spec transcribe(doc()) -> boolean().
+transcribe(Doc) ->
+    transcribe(Doc, false).
+
+-spec transcribe(doc(), Default) -> boolean() | Default.
+transcribe(Doc, Default) ->
+    kz_json:get_boolean_value([<<"transcribe">>], Doc, Default).
+
+-spec set_transcribe(doc(), boolean()) -> doc().
+set_transcribe(Doc, Transcribe) ->
+    kz_json:set_value([<<"transcribe">>], Transcribe, Doc).
