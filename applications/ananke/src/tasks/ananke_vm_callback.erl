@@ -113,7 +113,7 @@ get_voicemail_number(AccountDb, Mailbox) ->
 get_callflows(AccountDb) ->
     Options = [{'startkey', [kzd_callflows:type()]}
               ,{'endkey', [kzd_callflows:type(), kz_datamgr:view_highest_value()]}
-               | 'include_docs'
+               ,'include_docs'
               ],
     case kz_datamgr:get_results(AccountDb, ?KZD_LIST_BY_TYPE_ID, Options) of
         {'ok', Callflows} -> Callflows;

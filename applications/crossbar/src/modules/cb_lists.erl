@@ -45,7 +45,7 @@ maybe_migrate(Account) ->
     AccountDb = kzs_util:format_account_db(Account),
     Options = [{'startkey', [?TYPE_LIST]}
               ,{'endkey', [?TYPE_LIST, kz_datamgr:view_highest_value()]}
-               | 'include_docs'
+               ,'include_docs'
               ],
     case kz_datamgr:get_results(AccountDb, ?KZD_LIST_BY_TYPE_ID, Options) of
         {'ok', Lists} -> migrate(AccountDb, Lists);

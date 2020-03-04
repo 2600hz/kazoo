@@ -276,7 +276,7 @@ load_default_apps() ->
     {'ok', MasterAccountDb} = kapps_util:get_master_account_db(),
     Options = [{'startkey', [<<"app">>]}
               ,{'endkey', [<<"app">>, kz_datamgr:view_highest_value()]}
-               | 'include_docs'
+               ,'include_docs'
               ],
     case kz_datamgr:get_results(MasterAccountDb, ?KZD_LIST_BY_TYPE_ID, Options) of
         {'ok', JObjs} ->
