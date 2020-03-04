@@ -24,8 +24,7 @@
 
 -include("crossbar.hrl").
 
--define(CB_LIST, <<"groups/crossbar_listing">>).
--define(CB_LIST_BY_USER, <<"groups/crossbar_listing_by_user">>).
+-define(LIST_BY_USER, <<"groups/listing_by_user">>).
 
 %%%=============================================================================
 %%% API
@@ -185,15 +184,24 @@ validate_patch(Id, Context) ->
 %%------------------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    case cb_context:user_id(Context) of
-        'undefined' ->
-            crossbar_view:load(Context, ?CB_LIST, [{'mapper', crossbar_view:get_value_fun()}]);
-        UserId ->
-            Options = [{'key', UserId}
-                      ,{'mapper', crossbar_view:get_value_fun()}
-                      ],
-            crossbar_view:load(Context, ?CB_LIST_BY_USER, Options)
-    end.
+    {View, Options} = get_view_and_options(cb_context:user_id(Context)),
+    crossbar_view:load(Context, View, Options).
+
+-spec get_view_and_options(kz_term:api_ne_binary()) ->
+          {kz_term:ne_binary(), crossbar_view:options()}.
+get_view_and_options('undefined') ->
+    {?KZD_LIST_BY_TYPE_ID
+    ,[{'startkey', [<<"group">>]}
+     ,{'endkey', [<<"group">>, kz_datamgr:view_highest_value()]}
+     ,{'mapper', crossbar_view:get_value_fun()}
+     ]
+    };
+get_view_and_options(UserId) ->
+    {?LIST_BY_USER
+    ,[{'key', UserId}
+     ,{'mapper', crossbar_view:get_value_fun()}
+     ]
+    }.
 
 %%------------------------------------------------------------------------------
 %% @doc
