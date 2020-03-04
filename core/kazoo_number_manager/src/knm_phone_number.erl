@@ -620,6 +620,8 @@ to_public_json(PN) ->
           props:filter_empty(
             [{<<"created">>, kz_doc:created(JObj)}
             ,{<<"modified">>, kz_doc:modified(JObj)}
+            ,State
+            ,UsedBy
             ,{<<"features">>, kz_json:from_list(ReadOnlyFeatures)}
             ,{<<"carrier_module">>, ModuleName}
             ])
