@@ -150,25 +150,34 @@ voicemail_full(AccountId, Box) ->
 -spec fax_inbound_to_email(kz_term:ne_binary()) -> ok.
 fax_inbound_to_email(AccountId) ->
     AccountDb = kzs_util:format_account_db(AccountId),
-    case kz_datamgr:get_results(AccountDb, <<"faxes/crossbar_listing">>, ['include_docs']) of
-        {'ok', Faxes} -> find_fax_with_attachment(AccountId, Faxes);
+    Options = [{'startkey', [kzd_fax_box:type()]}
+              ,{'endkey', [kzd_fax_box:type(), kz_datamgr:view_highest_value()]}
+              ],
+    case kz_datamgr:get_results(AccountDb, ?KZD_LIST_BY_TYPE_ID, Options) of
+        {'ok', Faxes} -> find_fax_with_attachment(AccountId, [kz_doc:id(J) || J <- Faxes]);
         {'error', _E} ->
             lager:debug("failed to find faxes: ~p", [_E])
     end.
 
 find_fax_with_attachment(_AccountId, []) ->
     lager:debug("failed to find fax with attachment in ~s", [_AccountId]);
-find_fax_with_attachment(AccountId, [Fax|Faxes]) ->
-    case kz_doc:attachment_names(kz_json:get_value(<<"doc">>, Fax)) of
-        [] -> find_fax_with_attachment(AccountId, Faxes);
-        _As -> fax_inbound_to_email(AccountId, kz_json:get_value(<<"doc">>, Fax))
+find_fax_with_attachment(AccountId, [FaxboxId|Ids]) ->
+    MODB = kazoo_modb:get_modb(AccountId),
+    Options = [{'startkey', [FaxboxId, <<"inbox">>]}
+              ,{'endkey', [FaxboxId, <<"inbox">>, kz_datamgr:view_highest_value()]}
+              ,{'first_when_multiple', 'true'}
+              ,'include_docs'
+              ],
+    case kz_datamgr:get_single_result(MODB, <<"faxes/list_by_faxbox">>, Options) of
+        {'error', _} -> find_fax_with_attachment(AccountId, Ids);
+        {'ok', Fax} -> fax_inbound_to_email(AccountId, kz_json:get_value(<<"doc">>, Fax))
     end.
 
 -spec fax_inbound_to_email(kz_term:ne_binary(), kz_term:ne_binary() | kz_json:object()) ->
           kz_amqp_worker:request_return().
-fax_inbound_to_email(AccountId, ?NE_BINARY=FaxId) ->
-    AccountDb = kzs_util:format_account_db(AccountId),
-    {'ok', Fax} = kz_datamgr:open_cache_doc(AccountDb, FaxId),
+fax_inbound_to_email(AccountId, ?MATCH_MODB_PREFIX(Year,Month,_) = FaxId) ->
+    AccountDb = kzs_util:format_account_id(AccountId, kz_term:to_integer(Year), kz_term:to_integer(Month)),
+    {'ok', Fax} = kz_datamgr:open_doc(AccountDb, FaxId),
     fax_inbound_to_email(AccountId, Fax);
 fax_inbound_to_email(AccountId, Fax) ->
     Message = props:filter_undefined(

@@ -11,8 +11,6 @@
 -define(PER_PAGE_PAUSE,
         kapps_config:get_integer(?MOD_CONFIG_CAT, <<"per_page_pause_ms">>, ?MILLISECONDS_IN_SECOND)).
 
--define(CROSSBAR_LISTING, <<"faxes/crossbar_listing">>).
-
 -define(STALE_AFTER, kapps_config:get_integer(?MOD_CONFIG_CAT, <<"stale_after_s">>, 7 * ?SECONDS_IN_DAY)).
 
 

@@ -119,7 +119,7 @@ fetch_fax_docs(#{<<"start_key">> := StartKey}=State) ->
 -spec fetch_fax_docs(map(), kz_term:proplist()) -> {kz_json:objects(), map()}.
 
 fetch_fax_docs(State, Options) ->
-    case kz_datamgr:paginate_results(?KZ_FAXES_DB, ?CROSSBAR_LISTING, Options) of
+    case kz_datamgr:paginate_results(?KZ_FAXES_DB, <<"faxes/crossbar_listing">>, Options) of
         {'ok', Page, 'undefined'} ->
             {filter_datetime(Page), bump(State#{<<"start_key">> => 'done'}, <<"total_docs">>, length(Page))};
         {'ok', Page, NextKey} ->

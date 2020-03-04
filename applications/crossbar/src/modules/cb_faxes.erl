@@ -33,7 +33,6 @@
 
 -define(ATTACHMENT, <<"attachment">>).
 
--define(CB_LIST_ALL, <<"faxes/crossbar_listing">>).
 -define(CB_LIST_BY_FAXBOX, <<"faxes/list_by_faxbox">>).
 -define(CB_LIST_BY_OWNERID, <<"faxes/list_by_ownerid">>).
 -define(CB_LIST_BY_FOLDER, <<"faxes/list_by_folder">>).
