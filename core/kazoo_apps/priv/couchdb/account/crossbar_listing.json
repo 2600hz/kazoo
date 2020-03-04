@@ -1,0 +1,25 @@
+{
+    "_id": "_design/crossbar_listing",
+    "kazoo": {
+        "view_map": [
+            {
+                "classification": "account"
+            }
+        ]
+    },
+    "language": "javascript",
+    "views": {
+        "list_by_type_id": {
+            "map": [
+                "function(doc) {",
+                "  if doc.pvt_deleted return;",
+                "  var doc_type = doc.pvt_type",
+                "  switch (doc_type)",
+                "    default:",
+                "      emit([doc_type, doc._id], null);",
+                "  }",
+                "}"
+            ]
+        }
+    }
+}
