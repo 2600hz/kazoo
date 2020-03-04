@@ -36,8 +36,6 @@
         ,get_value_fun/0
         ,get_key_fun/0
         ,get_id_fun/0
-
-        ,high_value_key/0
         ]).
 
 -include("crossbar.hrl").
@@ -476,7 +474,7 @@ expand_min_max_key('min_max', 'ascending') ->
     'false';
 expand_min_max_key('min_max', 'descending') ->
     lager:debug("padding descending composite key"),
-    high_value_key();
+    kz_datamgr:view_highest_value();
 expand_min_max_key(RangeKey, _) -> RangeKey.
 
 -spec maybe_min_max_pad(kz_term:api_non_neg_integer(), api_range_key()) -> api_range_key() | ['min_max'].
@@ -487,9 +485,6 @@ maybe_min_max_pad(KeyMinLength, RangeKey) ->
 -spec min_max_pad(non_neg_integer(), api_range_key()) -> api_range_key() | ['min_max'].
 min_max_pad(0, RangeKey) -> RangeKey;
 min_max_pad(N, RangeKey) -> min_max_pad(N-1, ['min_max' | RangeKey]).
-
--spec high_value_key() -> kz_term:ne_binary().
-high_value_key() -> <<16#fff0/utf8>>.
 
 %% @equiv direction(Context, [])
 -spec direction(cb_context:context()) -> direction().

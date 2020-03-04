@@ -84,6 +84,8 @@
         ,design_info/2
         ,design_compact/2
         ,maybe_adapt_multilines/1
+
+        ,view_highest_value/0
         ]).
 
 -export([get_uuid/0, get_uuid/1
@@ -1438,6 +1440,13 @@ get_uuids(Count) -> get_uuids(Count, ?UUID_SIZE).
 
 -spec get_uuids(pos_integer(), pos_integer()) -> kz_term:ne_binaries().
 get_uuids(Count, Size) -> [get_uuid(Size) || _ <- lists:seq(1, Count)].
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec view_highest_value() -> kz_term:ne_binary().
+view_highest_value() -> <<16#fff0/utf8>>.
 
 %%%=============================================================================
 %%% Misc functions

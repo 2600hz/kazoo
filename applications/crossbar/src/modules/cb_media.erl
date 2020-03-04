@@ -604,7 +604,7 @@ load_media_docs_by_language(Context, Language) ->
           cb_context:context().
 load_media_docs_by_language(Context, Language, 'undefined') ->
     Options = [{'startkey', [Language]}
-              ,{'endkey', [Language, crossbar_view:high_value_key()]}
+              ,{'endkey', [Language, kz_datamgr:view_highest_value()]}
               ,{'reduce', 'false'}
               ,{'mapper', crossbar_view:get_id_fun()}
               ,{'databases', [?KZ_MEDIA_DB]}
@@ -612,7 +612,7 @@ load_media_docs_by_language(Context, Language, 'undefined') ->
     crossbar_view:load(Context, ?CB_LIST_BY_LANG, Options);
 load_media_docs_by_language(Context, Language, _AccountId) ->
     Options = [{'startkey', [Language]}
-              ,{'endkey', [Language, crossbar_view:high_value_key()]}
+              ,{'endkey', [Language, kz_datamgr:view_highest_value()]}
               ,{'reduce', 'false'}
               ,{'mapper', crossbar_view:get_id_fun()}
               ],
@@ -649,7 +649,7 @@ load_media_docs_by_prompt(Context, PromptId) ->
 -spec load_media_docs_by_prompt(cb_context:context(), kz_term:ne_binary(), kz_term:api_binary()) -> cb_context:context().
 load_media_docs_by_prompt(Context, PromptId, 'undefined') ->
     Options = [{'startkey', [PromptId]}
-              ,{'endkey', [PromptId, crossbar_view:high_value_key()]}
+              ,{'endkey', [PromptId, kz_datamgr:view_highest_value()]}
               ,{'reduce', 'false'}
               ,{'mapper', fun normalize_prompt_results/2}
               ,{'databases', [?KZ_MEDIA_DB]}
@@ -658,7 +658,7 @@ load_media_docs_by_prompt(Context, PromptId, 'undefined') ->
     crossbar_view:load(Context, ?CB_LIST_BY_PROMPT, Options);
 load_media_docs_by_prompt(Context, PromptId, _AccountId) ->
     Options = [{'startkey', [PromptId]}
-              ,{'endkey', [PromptId, crossbar_view:high_value_key()]}
+              ,{'endkey', [PromptId, kz_datamgr:view_highest_value()]}
               ,{'reduce', 'false'}
               ,{'mapper', fun normalize_prompt_results/2}
               ,'include_docs'
