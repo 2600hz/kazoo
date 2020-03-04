@@ -1,3 +1,8 @@
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2020, 2600Hz
+%%% @doc Bind for AMQP configuration change events and remove entries from cache
+%%% @end
+%%%-----------------------------------------------------------------------------
 -module(kz_cache_listener).
 -behaviour(gen_listener).
 
@@ -187,7 +192,7 @@ exec_bindings(Name, JObj) ->
     Id = kz_json:get_ne_binary_value(<<"ID">>, JObj),
     Event = kz_api:event_name(JObj),
     RK = kz_binary:join([<<"kapi.conf">>, Name, Db, Type, Event, Id], <<".">>),
-    kazoo_bindings:pmap(RK, JObj),
+    _ = kazoo_bindings:pmap(RK, JObj),
     lager:debug("executed pmap routing key ~s", [RK]).
 
 -spec handle_document_change(kz_json:object(), atom()) -> 'ok' | 'false'.
@@ -205,7 +210,7 @@ handle_document_change(JObj, Name) ->
         andalso lager:debug("removed ~p keys for ~s/~s/~s", [length(_Keys), Db, Id, Type]).
 
 -spec handle_document_change(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), atom()) ->
-                                    list().
+          list().
 handle_document_change(Db, <<"database">>, _Id, Name) ->
     MatchSpec = match_db_changed(Db),
     lists:foldl(fun(Obj, Removed) ->

@@ -1,3 +1,8 @@
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2020, 2600Hz
+%%% @doc Periodically walk the cache's ETS table and remove expired entries
+%%% @end
+%%%-----------------------------------------------------------------------------
 -module(kz_cache_lru).
 -behaviour(gen_server).
 

@@ -37,11 +37,17 @@ init() ->
 %%------------------------------------------------------------------------------
 -spec authenticate(bh_context:context(), kz_json:object()) -> bh_context:context().
 authenticate(Context, _Payload) ->
-    Token = bh_context:auth_token(Context),
+    auth_token(Context, bh_context:auth_token(Context)).
+
+-spec auth_token(bh_context:context(), kz_term:api_binary()) -> bh_context:context().
+auth_token(Context, 'undefined') ->
+    lager:debug("no token included"),
+    bh_context:add_error(Context, <<"missing authenticatation token">>);
+auth_token(Context, Token) ->
     lager:debug("trying to authenticate with token: ~s", [Token]),
     case kz_auth:validate_token(Token) of
         {'ok', JObj} ->
-            lager:debug("token auth is valid, authenticating : ~p", [JObj]),
+            lager:info("token auth is valid, authenticating : ~p", [JObj]),
             AccountId = kz_json:get_ne_value(<<"account_id">>, JObj),
             bh_context:set_auth_account_id(Context, AccountId);
         {'error', R} ->
