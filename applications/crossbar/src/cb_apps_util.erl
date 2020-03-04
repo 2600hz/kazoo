@@ -274,7 +274,11 @@ allowed_app(AccountId, AppId) ->
 -spec load_default_apps() -> kz_json:objects().
 load_default_apps() ->
     {'ok', MasterAccountDb} = kapps_util:get_master_account_db(),
-    case kz_datamgr:get_results(MasterAccountDb, ?CB_APPS_STORE_LIST, ['include_docs']) of
+    Options = [{'startkey', [<<"app">>]}
+              ,{'endkey', [<<"app">>, kz_datamgr:view_highest_value()]}
+               | 'include_docs'
+              ],
+    case kz_datamgr:get_results(MasterAccountDb, ?KZD_LIST_BY_TYPE_ID, Options) of
         {'ok', JObjs} ->
             [maybe_set_account(MasterAccountDb, JObj)
              || JObj <- JObjs

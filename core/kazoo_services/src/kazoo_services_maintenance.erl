@@ -704,9 +704,9 @@ maybe_open_app(VendorId, Id, PlanApp) ->
 -spec maybe_find_app(kz_term:ne_binary(), kz_term:api_binary()) -> kz_term:proplist().
 maybe_find_app(_VendorId, 'undefined') -> [];
 maybe_find_app(?NE_BINARY = VendorId, Name) ->
-    ViewOptions = [{'key', Name}],
+    ViewOptions = [{'key', [<<"app">>, Name]}],
     VendorDb = kzs_util:format_account_db(VendorId),
-    case kz_datamgr:get_results(VendorDb, <<"apps_store/crossbar_listing">>, ViewOptions) of
+    case kz_datamgr:get_results(VendorDb, ?KZD_LIST_BY_TYPE_ID, ViewOptions) of
         {'ok', [App|_]} ->
             Id = kz_doc:id(App),
             io:format("  correcting invalid application ~s with ~s/~s~n"

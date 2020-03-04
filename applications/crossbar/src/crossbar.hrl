@@ -21,8 +21,6 @@
 
 -define(LIST_BY_USERNAME, <<"users/list_by_username">>).
 
--define(CB_APPS_STORE_LIST, <<"apps_store/crossbar_listing">>).
-
 -define(NO_ENVELOPE_CONTENT_TYPES, []).
 
 -define(INBOUND_HOOK, <<"hooks">>).

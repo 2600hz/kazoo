@@ -1017,7 +1017,10 @@ find_metadata(AppPath) ->
 -spec apps() -> 'no_return'.
 apps() ->
     {'ok', MA} = kapps_util:get_master_account_db(),
-    case kz_datamgr:get_results(MA, ?CB_APPS_STORE_LIST) of
+    Options = [{'startkey', [<<"app">>]}
+              ,{'endkey', [<<"app">>, kz_datamgr:view_highest_value()]}
+              ],
+    case kz_datamgr:get_results(MA, ?KZD_LIST_BY_TYPE_ID, Options) of
         {'error', _R} -> ?SUP_LOG_DEBUG("failed to read apps in ~s: ~p", [MA, _R]);
         {'ok', JObjs} -> lists:foreach(fun print_app/1, JObjs)
     end,
@@ -1040,10 +1043,10 @@ app(AppNameOrId) ->
           kz_datamgr:data_error() |
           {'error', 'multiple_results'}.
 find_app(Db, Name) ->
-    ViewOptions = [{'key', Name}
+    ViewOptions = [{'key', [<<"app">>, Name]}
                   ,'include_docs'
                   ],
-    kz_datamgr:get_single_result(Db, ?CB_APPS_STORE_LIST, ViewOptions).
+    kz_datamgr:get_single_result(Db, ?KZD_LIST_BY_TYPE_ID, ViewOptions).
 
 view_app(AppJObj) ->
     M = maps:with([<<"name">>, <<"id">>, <<"phase">>, <<"i18n">>
