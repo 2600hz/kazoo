@@ -104,13 +104,20 @@ handle_req(JObj, Props) ->
 
 -spec get_voicemail_number(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_binary().
 get_voicemail_number(AccountDb, Mailbox) ->
-    {'ok', Callflows} = kz_datamgr:get_results(AccountDb
-                                              ,<<"callflows/crossbar_listing">>
-                                              ,['include_docs']
-                                              ),
-    case [Cf || Cf <- Callflows, is_voicemail_cf(Cf)] of
+    case [Cf || Cf <- get_callflows(AccountDb), is_voicemail_cf(Cf)] of
         [] -> 'undefined';
         [VMCallflow | _] -> get_callflow_number(VMCallflow, Mailbox)
+    end.
+
+-spec get_callflows(kz_term:ne_binary()) -> kz_json:objects().
+get_callflows(AccountDb) ->
+    Options = [{'startkey', [kzd_callflows:type()]}
+              ,{'endkey', [kzd_callflows:type(), kz_datamgr:view_highest_value()]}
+               | 'include_docs'
+              ],
+    case kz_datamgr:get_results(AccountDb, ?KZD_LIST_BY_TYPE_ID, Options) of
+        {'ok', Callflows} -> Callflows;
+        {'error', _} -> []
     end.
 
 -spec is_voicemail_cf(kz_json:object()) -> boolean().
@@ -138,7 +145,7 @@ get_cf_flow(JObj) ->
 
 -spec get_callflow_number(kz_json:object(), kz_term:ne_binary()) -> kz_term:api_binary().
 get_callflow_number(Callflow, _Mailbox) ->
-    case kz_json:get_value([<<"doc">>, <<"numbers">>], Callflow, ['undefined']) of
+    case kz_json:get_value([<<"doc">>, <<"numbers">>], Callflow, []) of
         [] -> 'undefined';
         [Number | _] -> Number
     end.
