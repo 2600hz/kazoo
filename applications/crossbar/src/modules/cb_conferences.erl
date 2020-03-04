@@ -39,7 +39,6 @@
 -include("crossbar.hrl").
 -include_lib("nklib/include/nklib.hrl").
 
--define(CB_LIST, <<"conferences/crossbar_listing">>).
 -define(CB_LIST_BY_NUMBER, <<"conference/listing_by_number">>).
 
 -define(PARTICIPANTS, <<"participants">>).
@@ -132,7 +131,11 @@ validate(Context, ConferenceId, ?PARTICIPANTS, ParticipantId) ->
 %%------------------------------------------------------------------------------
 -spec validate_conferences(http_method(), cb_context:context()) -> cb_context:context().
 validate_conferences(?HTTP_GET, Context) ->
-    LoadedContext = crossbar_view:load(Context, ?CB_LIST, [{'mapper', crossbar_view:get_value_fun()}]),
+    Options = [{'startkey', [kzd_conference:type()]}
+              ,{'endkey', [kzd_conference:type(), kz_datamgr:view_highest_value()]}
+              ,{'mapper', crossbar_view:get_value_fun()}
+              ],
+    LoadedContext = crossbar_view:load(Context, ?KZD_LIST_BY_TYPE_ID, Options),
     case cb_context:resp_status(LoadedContext) of
         'success' ->
             Context1 = search_conferences(LoadedContext),
@@ -240,7 +243,7 @@ maybe_build_conference(ConferenceId, Context) ->
 
 -spec build_conference(path_token(), cb_context:context()) -> cb_context:context().
 build_conference(ConferenceId, Context) ->
-    Conference = kz_doc:set_id(kzd_conference:new(), ConferenceId),
+    Conference = kz_doc:set_id(kzd_conferences:new(), ConferenceId),
     Merged = kz_json:merge(Conference, cb_context:req_data(Context)),
     crossbar_doc:handle_datamgr_success(Merged, Context).
 
@@ -301,7 +304,7 @@ add_realtime(Context, RunningConferences) ->
                         }
                        ]).
 
--spec add_realtime_fold(kzd_conference:doc(), kz_json:object()) -> kz_json:object().
+-spec add_realtime_fold(kzd_conferences:doc(), kz_json:object()) -> kz_json:object().
 add_realtime_fold(Conference, ReadOnly) ->
     Realtime = kz_json:get_value(kz_doc:id(Conference), ReadOnly, empty_realtime_data()),
     kz_json:merge(Conference, Realtime).

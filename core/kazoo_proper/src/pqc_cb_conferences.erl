@@ -49,7 +49,7 @@ patch(API, AccountId, ConferenceId, PatchJObj) ->
 delete(API, AccountId, ConferenceId) ->
     pqc_cb_crud:delete(API, conference_url(AccountId, ConferenceId)).
 
--spec update(pqc_cb_api:state(), kz_term:ne_binary(), kzd_conference:doc()) -> pqc_cb_api:response().
+-spec update(pqc_cb_api:state(), kz_term:ne_binary(), kzd_conferences:doc()) -> pqc_cb_api:response().
 update(API, AccountId, ConferenceJObj) ->
     Envelope = pqc_cb_api:create_envelope(ConferenceJObj),
     pqc_cb_crud:update(API, conference_url(AccountId, kz_doc:id(ConferenceJObj)), Envelope).
