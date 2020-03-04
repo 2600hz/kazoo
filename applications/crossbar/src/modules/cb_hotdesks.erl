@@ -23,9 +23,6 @@
 
 -include("crossbar.hrl").
 
--define(VIEW_FILE, <<"views/hotdesks.json">>).
--define(CB_LIST, <<"hotdesks/crossbar_listing">>).
-
 %%%=============================================================================
 %%% API
 %%%=============================================================================
@@ -95,7 +92,11 @@ validate_hotdesks(Context, ?HTTP_GET, _) ->
 %%------------------------------------------------------------------------------
 -spec fetch_all_hotdesks(cb_context:context()) -> cb_context:context().
 fetch_all_hotdesks(Context) ->
-    crossbar_view:load(Context, ?CB_LIST, [{'mapper', crossbar_view:get_value_fun()}]).
+    Options = [{'startkey', [<<"hotdesk">>]}
+              ,{'endkey', [<<"hotdesk">>, kz_datamgr:view_highest_value()]}
+              ,{'mapper', crossbar_view:get_value_fun()}
+              ],
+    crossbar_view:load(Context, ?KZD_LIST_BY_TYPE_ID, Options).
 
 -spec fetch_user_hotdesks(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 fetch_user_hotdesks(DeviceId, Context) ->
@@ -117,7 +118,7 @@ fetch_users(UserIds, Context) ->
 
 -spec fetch_device_hotdesks(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 fetch_device_hotdesks(UserId, Context) ->
-    ViewOptions = [{'key', UserId}
-                  ,{'mapper', crossbar_view:get_value_fun()}
-                  ],
-    crossbar_view:load(Context, ?CB_LIST, ViewOptions).
+    Options = [{'key', [<<"hotdesk">>, UserId]}
+              ,{'mapper', crossbar_view:get_value_fun()}
+              ],
+    crossbar_view:load(Context, ?KZD_LIST_BY_TYPE_ID, Options).
