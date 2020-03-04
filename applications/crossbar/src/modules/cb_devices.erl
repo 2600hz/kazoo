@@ -37,7 +37,7 @@
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".devices">>).
 
--define(CB_LIST, <<"devices/crossbar_listing">>).
+-define(CB_LIST, <<"crossbar_listing/list_by_type_id">>).
 -define(OWNER_LIST, <<"devices/listing_by_owner">>).
 -define(CB_LIST_MAC, <<"devices/listing_by_macaddress">>).
 
@@ -261,7 +261,11 @@ load_device_summary(Context, [{<<"devices">>, []}, {<<"users">>, [UserId]} | _])
                   ],
     crossbar_view:load(Context, ?OWNER_LIST, ViewOptions);
 load_device_summary(Context, _ReqNouns) ->
-    crossbar_view:load(Context, ?CB_LIST, [{'mapper', crossbar_view:get_value_fun()}]).
+    Options = [{'startkey', [kzd_devices:type()]}
+              ,{'endkey', [kzd_devices:type(), kz_datamgr:view_highest_value()]}
+              ,{'mapper', crossbar_view:get_value_fun()}
+              ],
+    crossbar_view:load(Context, ?CB_LIST, Options).
 
 %%------------------------------------------------------------------------------
 %% @doc

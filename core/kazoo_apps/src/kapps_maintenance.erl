@@ -122,7 +122,7 @@
 -type bind() :: 'migrate' | 'refresh' | 'refresh_account' | 'register_views'.
 -type text_or_integer() :: kz_term:text() | integer().
 
--define(DEVICES_CB_LIST, <<"devices/crossbar_listing">>).
+-define(DEVICES_CB_LIST, <<"crossbar_listing/list_by_type_id">>).
 -define(RESELLER_VIEW_FILE, <<"views/reseller.json">>).
 
 -define(ACCOUNTS_AGG_NOTIFY_VIEW_FILE, <<"views/notify.json">>).
@@ -756,7 +756,11 @@ ensure_aggregate_devices([Account|Accounts], Total) ->
 -spec ensure_aggregate_device(kz_term:ne_binary()) -> 'ok'.
 ensure_aggregate_device(Account) ->
     AccountDb = kzs_util:format_account_db(Account),
-    case kz_datamgr:get_results(AccountDb, ?DEVICES_CB_LIST, ['include_docs']) of
+    Options = [{'startkey', [kzd_devices:type()]}
+              ,{'endkey', [kzd_devices:type(), kz_datamgr:view_highest_value()]}
+               | 'include_docs'
+              ],
+    case kz_datamgr:get_results(AccountDb, ?DEVICES_CB_LIST, Options) of
         {'ok', Devices} ->
             AccountRealm = kzd_accounts:fetch_realm(Account),
             _ = remove_aggregate_devices(AccountDb, AccountRealm, Devices),

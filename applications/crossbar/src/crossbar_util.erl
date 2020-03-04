@@ -1149,11 +1149,14 @@ get_devices_by_owner(AccountDb, OwnerId) ->
             []
     end.
 
--spec get_account_devices(kz_term:api_binary()) -> kz_term:ne_binaries().
+-spec get_account_devices(kz_term:api_binary()) -> kz_json:objects().
 get_account_devices('undefined') -> [];
 get_account_devices(Account) ->
     AccountDb = kzs_util:format_account_db(Account),
-    case kz_datamgr:get_results(AccountDb, <<"devices/crossbar_listing">>, []) of
+    Options = [{'startkey', [kzd_devices:type()]}
+              ,{'endkey', [kzd_devices:type(), kz_datamgr:view_highest_value()]}
+              ],
+    case kz_datamgr:get_results(AccountDb, <<"crossbar_listing/list_by_type_id">>, Options) of
         {'ok', JObjs} -> [kz_json:get_value(<<"value">>, JObj) || JObj <- JObjs];
         {'error', _R} ->
             lager:warning("unable to find device documents owned by ~s: ~p", [AccountDb, _R]),

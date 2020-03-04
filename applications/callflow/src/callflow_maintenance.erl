@@ -417,14 +417,18 @@ print_users_level_call_restrictions(DbName) ->
 
 -spec print_devices_level_call_restrictions(kz_term:ne_binary()) -> 'ok'.
 print_devices_level_call_restrictions(DbName) ->
-    case kz_datamgr:get_results(DbName, <<"devices/crossbar_listing">>) of
-        {'ok', JObj} ->
+    Options = [{'startkey', [kzd_devices:type()]}
+              ,{'endkey', [kzd_devices:type(), kz_datamgr:view_highest_value()]}
+              ],
+    case kz_datamgr:get_results(DbName, <<"crossbar_listing/list_by_type_id">>, Options) of
+        {'ok', JObjs} ->
             io:format("\n\nDevice level classifiers:\n"),
             lists:foreach(fun(UserObj) ->
-                                  io:format("\nDevice: ~s\n\n", [kz_json:get_value([<<"value">>,<<"name">>],UserObj)]),
+                                  io:format("\nDevice: ~s\n\n", [kz_json:get_value([<<"value">>, <<"name">>], UserObj)]),
                                   print_call_restrictions(DbName, kz_doc:id(UserObj))
                           end,
-                          JObj);
+                          JObjs
+                         );
         {'error', E} ->
             io:format("An error occurred: ~p", [E])
     end.
