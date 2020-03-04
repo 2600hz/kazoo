@@ -1,0 +1,29 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.registration.reg_query_resp",
+    "description": "AMQP API for registration.reg_query_resp",
+    "properties": {
+        "Count": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "directory"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "reg_query_resp"
+            ],
+            "type": "string"
+        },
+        "Fields": {
+            "type": "string"
+        },
+        "Registrar-Age": {
+            "type": "string"
+        }
+    },
+    "type": "object"
+}

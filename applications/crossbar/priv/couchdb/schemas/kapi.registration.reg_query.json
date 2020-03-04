@@ -1,0 +1,32 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.registration.reg_query",
+    "description": "AMQP API for registration.reg_query",
+    "properties": {
+        "Count-Only": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "directory"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "reg_query"
+            ],
+            "type": "string"
+        },
+        "Fields": {
+            "type": "string"
+        },
+        "Realm": {
+            "type": "string"
+        },
+        "Username": {
+            "type": "string"
+        }
+    },
+    "type": "object"
+}
