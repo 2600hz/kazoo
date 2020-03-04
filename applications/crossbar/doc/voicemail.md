@@ -44,6 +44,7 @@ Key | Description | Type | Default | Required | Support Level
 `require_pin` | Determines if a pin is required to check the voicemail from the users devices | `boolean()` | `false` | `false` | `supported`
 `save_after_notify` | Move the voicemail to save folder after the notification has been sent (This setting will override delete_after_notify) | `boolean()` | `false` | `false` | `supported`
 `seek_duration_ms` | callflow fastforward and rewind seek duration | `integer()` | `10000` | `false` |  
+`should_include_attachment` | Whether or not to include the attachment when sending a new voicemail to email notification | `boolean()` | `true` | `false` | `supported`
 `skip_envelope` | Determines if the envelope should be skipped | `boolean()` | `false` | `false` | `beta`
 `skip_greeting` | Determines if the greeting should be skipped | `boolean()` | `false` | `false` | `supported`
 `skip_instructions` | Determines if the instructions after the greeting and prior to composing a message should be played | `boolean()` | `false` | `false` | `supported`

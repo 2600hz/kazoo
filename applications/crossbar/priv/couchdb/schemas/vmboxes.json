@@ -143,6 +143,12 @@
             "minimum": 0,
             "type": "integer"
         },
+        "should_include_attachment": {
+            "default": true,
+            "description": "Whether or not to include the attachment when sending a new voicemail to email notification",
+            "support_level": "supported",
+            "type": "boolean"
+        },
         "skip_envelope": {
             "default": false,
             "description": "Determines if the envelope should be skipped",
