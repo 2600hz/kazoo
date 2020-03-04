@@ -1,0 +1,177 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.cdr.report",
+    "description": "AMQP API for cdr.report",
+    "properties": {
+        "Account-ID": {
+            "type": "string"
+        },
+        "Billing-Seconds": {
+            "type": "string"
+        },
+        "Call-Control": {
+            "type": "string"
+        },
+        "Call-Debug": {
+            "type": "string"
+        },
+        "Call-Direction": {
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Call-Interaction": {
+            "type": "string"
+        },
+        "Callee-ID-Name": {
+            "type": "string"
+        },
+        "Callee-ID-Number": {
+            "type": "string"
+        },
+        "Caller-Context": {
+            "type": "string"
+        },
+        "Caller-Destination-Number": {
+            "type": "string"
+        },
+        "Caller-Dialplan": {
+            "type": "string"
+        },
+        "Caller-ID-Name": {
+            "type": "string"
+        },
+        "Caller-ID-Number": {
+            "type": "string"
+        },
+        "Caller-Profile": {
+            "type": "string"
+        },
+        "Channel-Answer-State": {
+            "type": "string"
+        },
+        "Channel-Call-State": {
+            "type": "string"
+        },
+        "Channel-Created-Time": {
+            "type": "integer"
+        },
+        "Channel-Name": {
+            "type": "string"
+        },
+        "Channel-State": {
+            "type": "string"
+        },
+        "Custom-Application-Vars": {
+            "type": "object"
+        },
+        "Custom-Channel-Vars": {
+            "type": "object"
+        },
+        "Custom-SIP-Headers": {
+            "type": "object"
+        },
+        "Disposition": {
+            "type": "string"
+        },
+        "Duration-Seconds": {
+            "type": "string"
+        },
+        "Extended-Data": {
+            "type": "string"
+        },
+        "From": {
+            "type": "string"
+        },
+        "From-Tag": {
+            "type": "string"
+        },
+        "From-URI": {
+            "type": "string"
+        },
+        "Hangup-Cause": {
+            "type": "string"
+        },
+        "Hangup-Code": {
+            "type": "string"
+        },
+        "Local-SDP": {
+            "type": "string"
+        },
+        "Media-Server": {
+            "type": "string"
+        },
+        "Originated-Legs": {
+            "type": "string"
+        },
+        "Originating-Leg-UUID": {
+            "type": "string"
+        },
+        "Other-Leg": {
+            "type": "string"
+        },
+        "Other-Leg-Call-ID": {
+            "type": "string"
+        },
+        "Other-Leg-Caller-ID-Name": {
+            "type": "string"
+        },
+        "Other-Leg-Caller-ID-Number": {
+            "type": "string"
+        },
+        "Other-Leg-Destination-Number": {
+            "type": "string"
+        },
+        "Other-Leg-Direction": {
+            "type": "string"
+        },
+        "Presence-ID": {
+            "type": "string"
+        },
+        "Remote-SDP": {
+            "type": "string"
+        },
+        "Request": {
+            "type": "string"
+        },
+        "Ringing-Seconds": {
+            "type": "string"
+        },
+        "Switch-Hostname": {
+            "type": "string"
+        },
+        "Switch-Nodename": {
+            "type": "string"
+        },
+        "Switch-URI": {
+            "type": "string"
+        },
+        "Switch-URL": {
+            "type": "string"
+        },
+        "Timestamp": {
+            "type": "string"
+        },
+        "To": {
+            "type": "string"
+        },
+        "To-Tag": {
+            "type": "string"
+        },
+        "To-URI": {
+            "type": "string"
+        },
+        "Transfer-History": {
+            "type": "string"
+        },
+        "User-Agent": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Account-ID",
+        "Call-ID"
+    ],
+    "type": "object"
+}

@@ -30,4 +30,4 @@ init() ->
 
 -spec publish_cdr(map()) -> any().
 publish_cdr(#{payload := JObj}) ->
-	kapi_cdr:publish_report(JObj).
+    kapi_cdr:publish_report(JObj).

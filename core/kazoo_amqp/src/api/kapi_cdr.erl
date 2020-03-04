@@ -21,13 +21,13 @@
         ]).
 
 -export([account_id/1
-		,call_id/1
-		,timestamp/1
-		,interaction_id/1
-		,interaction_key/1
-		,interaction_timestamp/1
-		,interaction_is_root/1
-		]).
+        ,call_id/1
+        ,timestamp/1
+        ,interaction_id/1
+        ,interaction_key/1
+        ,interaction_timestamp/1
+        ,interaction_is_root/1
+        ]).
 
 -include_lib("kz_amqp_util.hrl").
 
@@ -35,63 +35,63 @@
 
 -define(CDR_REPORT_REQUIRED_HEADERS
        ,[<<"Account-ID">>
-		,<<"Call-ID">>
-		]).
+        ,<<"Call-ID">>
+        ]).
 
 -define(CDR_REPORT_OPTIONAL_HEADERS
        ,[<<"Timestamp">>
-		,<<"Channel-Created-Time">>
-		,<<"Call-Interaction">>
-		,<<"Call-Direction">>
-		,<<"Channel-State">>
-		,<<"Channel-Call-State">>
-		,<<"Channel-Name">>
-		,<<"Channel-Answer-State">>
-		,<<"Caller-ID-Number">>
-		,<<"Caller-ID-Name">>
-		,<<"Callee-ID-Number">>
-		,<<"Callee-ID-Name">>
-		,<<"Caller-Profile">>
-		,<<"Caller-Context">>
-		,<<"Caller-Dialplan">>
-		,<<"To-Tag">>
-		,<<"From-Tag">>
-		,<<"Presence-ID">>
-		,<<"Media-Server">>
-		,<<"Switch-Hostname">>
-		,<<"Switch-Nodename">>
-		,<<"Switch-URL">>
-		,<<"Switch-URI">>
-		,<<"User-Agent">>
-		,<<"Custom-Application-Vars">>
-		,<<"Custom-Channel-Vars">>
-		,<<"Custom-SIP-Headers">>
-		,<<"Call-Control">>
-		,<<"Request">>
-		,<<"To">>
-		,<<"To-URI">>
-		,<<"From">>
-		,<<"From-URI">>
-		,<<"Caller-Destination-Number">>
-		,<<"Originated-Legs">>
-		,<<"Other-Leg-Direction">>
-		,<<"Other-Leg-Caller-ID-Name">>
-		,<<"Other-Leg-Caller-ID-Number">>
-		,<<"Other-Leg-Destination-Number">>
-		,<<"Other-Leg-Call-ID">>
-		,<<"Other-Leg">>
-		,<<"Remote-SDP">>
-		,<<"Local-SDP">>
-		,<<"Duration-Seconds">>
-		,<<"Ringing-Seconds">>
-		,<<"Billing-Seconds">>
-		,<<"Hangup-Code">>
-		,<<"Hangup-Cause">>
-		,<<"Disposition">>
-		,<<"Extended-Data">>
-		,<<"Transfer-History">>
-		,<<"Originating-Leg-UUID">>
-		,<<"Call-Debug">>
+        ,<<"Channel-Created-Time">>
+        ,<<"Call-Interaction">>
+        ,<<"Call-Direction">>
+        ,<<"Channel-State">>
+        ,<<"Channel-Call-State">>
+        ,<<"Channel-Name">>
+        ,<<"Channel-Answer-State">>
+        ,<<"Caller-ID-Number">>
+        ,<<"Caller-ID-Name">>
+        ,<<"Callee-ID-Number">>
+        ,<<"Callee-ID-Name">>
+        ,<<"Caller-Profile">>
+        ,<<"Caller-Context">>
+        ,<<"Caller-Dialplan">>
+        ,<<"To-Tag">>
+        ,<<"From-Tag">>
+        ,<<"Presence-ID">>
+        ,<<"Media-Server">>
+        ,<<"Switch-Hostname">>
+        ,<<"Switch-Nodename">>
+        ,<<"Switch-URL">>
+        ,<<"Switch-URI">>
+        ,<<"User-Agent">>
+        ,<<"Custom-Application-Vars">>
+        ,<<"Custom-Channel-Vars">>
+        ,<<"Custom-SIP-Headers">>
+        ,<<"Call-Control">>
+        ,<<"Request">>
+        ,<<"To">>
+        ,<<"To-URI">>
+        ,<<"From">>
+        ,<<"From-URI">>
+        ,<<"Caller-Destination-Number">>
+        ,<<"Originated-Legs">>
+        ,<<"Other-Leg-Direction">>
+        ,<<"Other-Leg-Caller-ID-Name">>
+        ,<<"Other-Leg-Caller-ID-Number">>
+        ,<<"Other-Leg-Destination-Number">>
+        ,<<"Other-Leg-Call-ID">>
+        ,<<"Other-Leg">>
+        ,<<"Remote-SDP">>
+        ,<<"Local-SDP">>
+        ,<<"Duration-Seconds">>
+        ,<<"Ringing-Seconds">>
+        ,<<"Billing-Seconds">>
+        ,<<"Hangup-Code">>
+        ,<<"Hangup-Cause">>
+        ,<<"Disposition">>
+        ,<<"Extended-Data">>
+        ,<<"Transfer-History">>
+        ,<<"Originating-Leg-UUID">>
+        ,<<"Call-Debug">>
         ]).
 
 
@@ -150,11 +150,11 @@ publish_report(API) ->
                                                 ,kapi_definition:values(Definition)
                                                 ,kapi_definition:build_fun(Definition)
                                                 ),
-	RK = list_to_binary(["cdr.report."
-						,account_id(API)
-						,"."
-						,kz_amqp_util:encode(call_id(API))
-						]),
+    RK = list_to_binary(["cdr.report."
+                        ,account_id(API)
+                        ,"."
+                        ,kz_amqp_util:encode(call_id(API))
+                        ]),
     kz_amqp_util:basic_publish(?CDR_EXCHANGE, RK, Payload).
 
 %%------------------------------------------------------------------------------
@@ -199,7 +199,7 @@ unbind_q(_Q, _Props, []) -> 'ok'.
 %%------------------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-	kz_amqp_util:new_exchange(?CDR_EXCHANGE, <<"topic">>).
+    kz_amqp_util:new_exchange(?CDR_EXCHANGE, <<"topic">>).
 
 %%------------------------------------------------------------------------------
 %% @doc Helpers.
@@ -208,48 +208,48 @@ declare_exchanges() ->
 -spec account_id(kz_term:api_terms()) -> kz_term:ne_binary().
 account_id(Props)
   when is_list(Props) ->
-	props:get_ne_binary_value(<<"Account-ID">>, Props);
+    props:get_ne_binary_value(<<"Account-ID">>, Props);
 account_id(JObj) ->
-	kz_json:get_ne_binary_value(<<"Account-ID">>, JObj).
+    kz_json:get_ne_binary_value(<<"Account-ID">>, JObj).
 
 -spec call_id(kz_term:api_terms()) -> kz_term:ne_binary().
 call_id(Props)
   when is_list(Props) ->
-	props:get_ne_binary_value(<<"Call-ID">>, Props);
+    props:get_ne_binary_value(<<"Call-ID">>, Props);
 call_id(JObj) ->
-	kz_json:get_ne_binary_value(<<"Call-ID">>, JObj).
+    kz_json:get_ne_binary_value(<<"Call-ID">>, JObj).
 
 -spec timestamp(kz_term:api_terms()) -> kz_time:gregorian_seconds().
 timestamp(Props)
   when is_list(Props) ->
-	props:get_integer_value(<<"Timestamp">>, Props);
+    props:get_integer_value(<<"Timestamp">>, Props);
 timestamp(JObj) ->
-	kz_json:get_integer_value(<<"Timestamp">>, JObj).
+    kz_json:get_integer_value(<<"Timestamp">>, JObj).
 
 -spec interaction_id(kz_term:api_terms()) -> kz_term:ne_binary().
 interaction_id(Props)
   when is_list(Props) ->
-	interaction_id(kz_json:from_list(Props));
+    interaction_id(kz_json:from_list(Props));
 interaction_id(JObj) ->
-	kz_json:get_ne_binary_value([<<"Call-Interaction">>, <<"Id">>], JObj).
+    kz_json:get_ne_binary_value([<<"Call-Interaction">>, <<"Id">>], JObj).
 
 -spec interaction_key(kz_term:api_terms()) -> kz_term:ne_binary().
 interaction_key(Props)
   when is_list(Props) ->
-	interaction_key(kz_json:from_list(Props));
+    interaction_key(kz_json:from_list(Props));
 interaction_key(JObj) ->
-	kz_json:get_ne_binary_value([<<"Call-Interaction">>, <<"Key">>], JObj).
+    kz_json:get_ne_binary_value([<<"Call-Interaction">>, <<"Key">>], JObj).
 
 -spec interaction_timestamp(kz_term:api_terms()) -> kz_time:gregorian_seconds().
 interaction_timestamp(Props)
   when is_list(Props) ->
-	interaction_timestamp(kz_json:from_list(Props));
+    interaction_timestamp(kz_json:from_list(Props));
 interaction_timestamp(JObj) ->
-	kz_json:get_integer_value([<<"Call-Interaction">>, <<"Timestamp">>], JObj).
+    kz_json:get_integer_value([<<"Call-Interaction">>, <<"Timestamp">>], JObj).
 
 -spec interaction_is_root(kz_term:api_terms()) -> boolean().
 interaction_is_root(Props)
   when is_list(Props) ->
-	interaction_is_root(kz_json:from_list(Props));
+    interaction_is_root(kz_json:from_list(Props));
 interaction_is_root(JObj) ->
-	kz_json:get_boolean_value([<<"Call-Interaction">>, <<"Is-Root">>], JObj).
+    kz_json:get_boolean_value([<<"Call-Interaction">>, <<"Is-Root">>], JObj).

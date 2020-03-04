@@ -87,6 +87,7 @@ declare_exchanges() ->
     _ = kapi_sysconf:declare_exchanges(),
     _ = kapi_switch:declare_exchanges(),
     _ = kapi_presence:declare_exchanges(),
+    _ = kapi_cdr:declare_exchanges(),
     kapi_self:declare_exchanges().
 
 -spec node_bindings() -> 'ok'.
