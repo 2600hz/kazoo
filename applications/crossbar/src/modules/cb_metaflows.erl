@@ -27,8 +27,6 @@
 
 -include("crossbar.hrl").
 
--define(CB_LIST, <<"metaflows/crossbar_listing">>).
-
 %%%=============================================================================
 %%% API
 %%%=============================================================================
@@ -82,64 +80,71 @@ validate(Context) ->
 
 -spec validate_metaflows(cb_context:context(), http_method()) -> cb_context:context().
 validate_metaflows(Context, ?HTTP_GET) ->
-    validate_get_metaflows(Context, thing_doc(Context));
+    validate_get_metaflows(thing_doc(Context));
 validate_metaflows(Context, ?HTTP_POST) ->
     cb_context:validate_request_data(<<"metaflows">>, Context, fun validate_set_metaflows/1);
 validate_metaflows(Context, ?HTTP_DELETE) ->
-    validate_delete_metaflows(Context, thing_doc(Context)).
+    validate_delete_metaflows(thing_doc(Context)).
 
--spec thing_doc(cb_context:context()) -> kz_term:api_object().
+-spec thing_doc(cb_context:context()) -> cb_context:context().
 thing_doc(Context) ->
-    case cb_context:req_nouns(Context) of
-        [{<<"metaflows">>, []}, {_Thing, [ThingId]} | _] ->
-            lager:debug("loading thing from '~s': '~s'", [_Thing, ThingId]),
-            thing_doc(Context, ThingId);
-        _Nouns -> 'undefined'
-    end.
+    thing_doc(Context, cb_context:req_nouns(Context)).
 
--spec thing_doc(cb_context:context(), kz_term:ne_binary()) -> kz_term:api_object().
-thing_doc(Context, ThingId) ->
-    Context1 = crossbar_doc:load(ThingId, Context, ?TYPE_CHECK_OPTION_ANY),
-    case cb_context:resp_status(Context1) of
-        'success' -> cb_context:doc(Context1);
-        _Status ->
-            lager:debug("failed to load thing ~s", [ThingId]),
-            'undefined'
-    end.
+-spec thing_doc(cb_context:context(), req_nouns()) -> cb_context:context().
+thing_doc(Context, [{<<"metaflows">>, []}, {<<"devices">>, ThingId} | _]) ->
+    load_thing_doc(Context, ThingId, kzd_devices:type());
+thing_doc(Context, [{<<"metaflows">>, []}, {<<"users">>, ThingId} | _]) ->
+    load_thing_doc(Context, ThingId, kzd_users:type());
+thing_doc(Context, [{<<"metaflows">>, []}, {<<"accounts">>, ThingId}]) ->
+    load_thing_doc(Context, ThingId, kzd_accounts:type());
+thing_doc(Context, _) ->
+    crossbar_util:response_bad_identifier(<<"account, user or device ID is missing from url">>, Context).
 
--spec validate_get_metaflows(cb_context:context(), kz_term:api_object()) -> cb_context:context().
-validate_get_metaflows(Context, 'undefined') ->
-    {'ok', AccountDoc} = kzd_accounts:fetch(cb_context:account_id(Context)),
-    validate_get_metaflows(Context, AccountDoc);
-validate_get_metaflows(Context, Doc) ->
+load_thing_doc(Context, ThingId, Type) ->
+    lager:debug("loading metaflows from '~s': '~s'", [Type, ThingId]),
+    crossbar_doc:load(ThingId, Context, ?TYPE_CHECK_OPTION(Type)).
+
+-spec validate_get_metaflows(cb_context:context()) -> cb_context:context().
+validate_get_metaflows(Context) ->
+    validate_get_metaflows(Context, cb_context:resp_status(Context)).
+
+-spec validate_get_metaflows(cb_context:context(), crossbar_status()) -> cb_context:context().
+validate_get_metaflows(Context, 'success') ->
+    Doc = cb_context:doc(Context),
     Metaflows = kz_json:get_value(<<"metaflows">>, Doc, kz_json:new()),
-    crossbar_util:response(Metaflows, Context).
+    crossbar_util:response(Metaflows, Context);
+validate_get_metaflows(Context, _) ->
+    Context.
 
--spec validate_delete_metaflows(cb_context:context(), kz_term:api_object()) -> cb_context:context().
-validate_delete_metaflows(Context, 'undefined') ->
-    {'ok', AccountDoc} = kzd_accounts:fetch(cb_context:account_id(Context)),
-    validate_delete_metaflows(Context, AccountDoc);
-validate_delete_metaflows(Context, Doc) ->
-    crossbar_util:response(kz_json:new()
-                          ,cb_context:set_doc(Context
-                                             ,kz_json:delete_key(<<"metaflows">>, Doc)
-                                             )).
+-spec validate_delete_metaflows(cb_context:context()) -> cb_context:context().
+validate_delete_metaflows(Context) ->
+    case cb_context:resp_status(Context) of
+        'success' ->
+            Doc = cb_context:doc(Context),
+            crossbar_util:response(kz_json:new()
+                                  ,cb_context:set_doc(Context
+                                                     ,kz_json:delete_key(<<"metaflows">>, Doc)
+                                                     )
+                                  );
+        _ ->
+             Context
+    end.
 
 -spec validate_set_metaflows(cb_context:context()) ->
           cb_context:context().
 validate_set_metaflows(Context) ->
     lager:debug("metaflow data is valid, setting on thing"),
-    validate_set_metaflows(Context, cb_context:doc(Context), thing_doc(Context)).
+    Metaflows = cb_context:doc(Context),
+    Context1 = thing_doc(Context),
+    validate_set_metaflows(Context1, Metaflows, cb_context:resp_status(Context1)).
 
--spec validate_set_metaflows(cb_context:context(), kz_json:object(), kz_term:api_object()) ->
+-spec validate_set_metaflows(cb_context:context(), kz_json:object(), crossbar_status()) ->
           cb_context:context().
-validate_set_metaflows(Context, Metaflows, 'undefined') ->
-    lager:debug("no doc found, using account doc"),
-    {'ok', AccountDoc} = kzd_accounts:fetch(cb_context:account_id(Context)),
-    validate_set_metaflows(Context, Metaflows, AccountDoc);
-validate_set_metaflows(Context, Metaflows, Doc) ->
-    Doc1 = kz_json:set_value(<<"metaflows">>, Metaflows, Doc),
-    crossbar_util:response(Metaflows, cb_context:set_doc(Context, Doc1)).
+validate_set_metaflows(Context, Metaflows, 'success') ->
+    Doc = kz_json:set_value(<<"metaflows">>, Metaflows, cb_context:doc(Context)),
+    crossbar_util:response(Metaflows, cb_context:set_doc(Context, Doc));
+validate_set_metaflows(Context, _, _) ->
+    Context.
 
 %%------------------------------------------------------------------------------
 %% @doc If the HTTP verb is POST, execute the actual action, usually a db save.
