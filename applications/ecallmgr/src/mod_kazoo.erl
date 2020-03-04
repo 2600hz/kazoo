@@ -123,20 +123,7 @@ bind(Node, Type, Timeout) ->
             {'error', 'exception'}
     end.
 
--spec fetch_reply(map()) -> 'ok' | {'ok', any()} | {'error', any()}.
-fetch_reply(#{node := Node, section := Section, fetch_id := FetchID, reply := Reply, timeout := Timeout})
-  when Timeout >= 0 ->
-    try gen_server:call({'mod_kazoo', Node}, {'fetch_reply', Section, FetchID, Reply}, Timeout) of
-        'timeout' -> {'error', 'timeout'};
-        {'ok', <<"-ERR ", Reason/binary>>} -> internal_fs_error(Reason);
-        {'ok', <<"+OK ", Result/binary>>} when Result =/= <<>> -> {'ok', Result};
-        {'ok', <<"+OK", _/binary>>} -> 'ok';
-        Result -> Result
-    catch
-        _E:_R:_ ->
-            lager:info("failed to send fetch reply to ~s: ~p ~p", [Node, _E, _R]),
-            {'error', 'exception'}
-    end;
+-spec fetch_reply(map()) -> 'ok'.
 fetch_reply(#{node := Node, section := Section, fetch_id := FetchID, reply := Reply}) ->
     gen_server:cast({'mod_kazoo', Node}, {'fetch_reply', Section, FetchID, Reply}).
 
