@@ -37,7 +37,6 @@
 -define(NOTIFICATION_MIME_TYPES, [{<<"text">>, <<"html">>, '*'}
                                  ,{<<"text">>, <<"plain">>, '*'}
                                  ]).
--define(CB_LIST, <<"notifications/crossbar_listing">>).
 -define(PREVIEW, <<"preview">>).
 -define(SMTP_LOG, <<"smtplog">>).
 -define(CUSTOMER_UPDATE, <<"customer_update">>).
@@ -1229,7 +1228,7 @@ fetch_summary_available(Context) ->
                   ,{'should_paginate', 'false'}
                   ,{'unchunkable', 'true'}
                   ],
-    Context1 = crossbar_view:load(Context, ?CB_LIST, ViewOptions),
+    Context1 = crossbar_view:load(Context, <<"notifications/crossbar_listing">>, ViewOptions),
     case cb_context:resp_status(Context1) of
         'success' ->
             cache_available(Context1),
@@ -1261,8 +1260,11 @@ fetch_available() ->
 
 -spec summary_account(cb_context:context()) -> cb_context:context().
 summary_account(Context) ->
-    Options = [{'mapper', select_normalize_fun(Context)}],
-    Context1 = crossbar_view:load(Context, ?CB_LIST, Options),
+    Options = [{'startkey', [kz_notification:type()]}
+              ,{'endkey', [kz_notification:type(), kz_datamgr:view_highest_value()]}
+              ,{'mapper', select_normalize_fun(Context)}
+              ],
+    Context1 = crossbar_view:load(Context, ?KZD_LIST_BY_TYPE_ID, Options),
     summary_account(Context1, cb_context:resp_status(Context1)).
 
 -spec summary_account(cb_context:context(), crossbar_status()) -> cb_context:context().
