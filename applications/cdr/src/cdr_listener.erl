@@ -37,14 +37,13 @@
 
 -define(SERVER, ?MODULE).
 
--define(RESPONDERS, [{'cdr_channel_destroy'
-                     ,[{<<"call_event">>, <<"CHANNEL_DESTROY">>}]
-                     }
+-define(RESPONDERS, [{'cdr_channel_destroy', [{<<"call_event">>, <<"CHANNEL_DESTROY">>}]}
+                    ,{'cdr_report', [{<<"cdr">>, <<"report">>}]}
                     ]).
--define(BINDINGS, [{'call'
-                   ,[{'restrict_to', ['CHANNEL_DESTROY']}]
-                   }
+-define(BINDINGS, [{'call', [{'restrict_to', ['CHANNEL_DESTROY']}]}
+                  ,{'cdr', [{'restrict_to', ['report']}]}
                   ]).
+
 -define(QUEUE_NAME, <<"cdr_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).

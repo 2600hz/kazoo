@@ -5,4 +5,14 @@
 	<field name="Other-Leg-Destination-Number" />
 	<field name="Other-Leg-Call-ID" type="first-of"
 		value="Other-Leg-Unique-ID|Other-Leg-Call-ID|variable_origination_uuid" />
+    <field name="Other-Leg" type="static" serialize-as="object">
+	    <fields verbose="false">
+			<field name="Direction" />
+			<field name="Caller-ID-Name" />
+			<field name="Caller-ID-Number" />
+			<field name="Destination-Number" />
+			<field name="Call-ID" type="first-of"
+				value="Other-Leg-Unique-ID|Other-Leg-Call-ID|variable_origination_uuid" />
+	    </fields>
+	</field>
 </definition>

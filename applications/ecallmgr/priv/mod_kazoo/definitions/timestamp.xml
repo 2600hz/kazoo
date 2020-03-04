@@ -1,0 +1,5 @@
+<definition name="timestamp">
+    <field name="Timestamp" type="expand"
+          value="${expr(ceil((${Event-Date-Timestamp} / 1000000) + $${UNIX_EPOCH_IN_GREGORIAN}))}"
+          serialize-as="number" />
+</definition>

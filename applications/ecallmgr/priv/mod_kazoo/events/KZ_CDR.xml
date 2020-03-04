@@ -1,0 +1,53 @@
+<event name="KZ_CDR">
+	<fields verbose="false">
+		<field name="Event-Category" type="static" value="cdr" />
+		<field name="Event-Name" type="static" value="report" />
+		<field name="msg-id" type="reference" />
+		<field name="App-Name" type="static" value="freeswitch" />
+		<field name="App-Version" type="static" value="1.0" />
+		<field name="timestamp" type="reference" />
+		<field name="Unique-ID" as="Call-ID" />
+		<field name="Caller-Channel-Created-Time" as="Channel-Created-Time" serialize-as="number"/>
+		<field name="Core-UUID" as="Node" />
+		<field name="variable_domain_name" as="Domain-Name" />
+		<field name="variable_ecallmgr_Account-ID" as="Account-ID" />
+		<field name="call-interaction" type="reference" />
+		<field name="call-direction" type="reference" />
+		<field name="channel-state" type="reference" />
+		<field name="caller-id" type="reference" />
+		<field name="caller-context" type="reference" />
+		<field name="sip-tags" type="reference" />
+		<field name="presence-id" type="reference" />
+		<field name="loopback" type="reference" />
+		<field name="freeswitch-url" type="reference" />
+		<field name="user-agent" type="reference" />
+		<field name="Custom-Channel-Vars" type="reference" />
+		<field name="Custom-Application-Vars" type="reference" />
+		<field name="Control" type="reference" />
+		<field name="from-to" type="reference" />
+		<field name="other-leg" type="reference" />
+		<field name="sdp" type="reference" />
+		<field name="call-duration" type="reference" />
+		<field name="hangup-fields" type="reference" />
+		<field name="variable_Media-Recordings" as="Media-Recordings" as-array="true"/>
+		
+		<field name="transfer-history" type="reference"/>
+		<field name="originated-legs" type="reference" />		
+		<field name="variable_originating_leg_uuid" as="Originating-Leg-UUID" />
+		
+		<field name="Extended-Data" type="static" serialize-as="object">
+			<fields verbose="false">
+				<field name="_json_callflow" as="Channel-CallFlow" serialize-as="raw"/>
+				<field name="_json_channel_stats" as="Channel-Stats" serialize-as="raw"/>
+				<field name="_json_channel_media_errors" as="Channel-Media-Errors" serialize-as="raw"/>
+				<field name="_json_application_log" as="Channel-Application-Log" serialize-as="raw"/>
+			</fields>
+		</field>
+		<field name="debug-call" type="reference" />
+	</fields>
+	<filters>
+		<filter name="${variable_Call-Control-Node}" type="include" compare="field" value="Target-Node" />
+		<filter name="variable_hangup_cause" type="exclude" compare="value" value="CALL_REJECTED" />
+		<filter name="variable_hangup_cause" type="exclude" compare="value" value="WRONG_CALL_STATE" />
+	</filters>
+</event>

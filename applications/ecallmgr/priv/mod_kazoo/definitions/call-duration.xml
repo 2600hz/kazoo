@@ -3,6 +3,9 @@
 		serialize-as="number" />
 	<field name="variable_progresssec" as="Ringing-Seconds"
 		serialize-as="number" />
+
+    <!--  mod_expr takes | as expr end, so we need ^^! in first-of  -->
 	<field name="Billing-Seconds" type="expand"
-		value="${expr(ceil(first-of(variable_billmsec|#0) / 1000))}" serialize-as="number" />
+		value="${expr(ceil(${first-of(^^!variable_billmsec!#0)} / 1000))}" serialize-as="number" />
+    <field name="variable_billmsec" as="Billing-Milli-Seconds" serialize-as="number" />
 </definition>
