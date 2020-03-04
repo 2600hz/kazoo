@@ -23,19 +23,6 @@
                 "}"
             ]
         },
-        "crossbar_listing": {
-            "map": [
-                "function(doc) {",
-                "  if (doc.pvt_type != 'faxbox' || doc.pvt_deleted) return;",
-                "  emit(doc._id, {",
-                "    'id': doc._id,",
-                "    'name': doc.name,",
-                "    'created': doc.pvt_created,",
-                "    'flags': doc.flags || []",
-                "  });",
-                "}"
-            ]
-        },
         "email_address": {
             "map": [
                 "function(doc) {",

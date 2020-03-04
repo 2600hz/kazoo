@@ -129,7 +129,6 @@
 
 -define(VMBOX_VIEW, <<"vmboxes/crossbar_listing">>).
 -define(PMEDIA_VIEW, <<"media/listing_private_media">>).
--define(FAXBOX_VIEW, <<"faxbox/crossbar_listing">>).
 
 -define(DEFAULT_PAUSE, 1 * ?MILLISECONDS_IN_SECOND).
 
@@ -662,7 +661,11 @@ ensure_aggregate_faxboxes([Account|Accounts], Total) ->
 -spec ensure_aggregate_faxbox(kz_term:ne_binary()) -> 'ok'.
 ensure_aggregate_faxbox(Account) ->
     AccountDb = kzs_util:format_account_db(Account),
-    case kz_datamgr:get_results(AccountDb, ?FAXBOX_VIEW, ['include_docs']) of
+    Options = [{'startkey', [kzd_fax_box:type()]}
+              ,{'endkey', [kzd_fax_box:type(), kz_datamgr:view_highest_value()]}
+               | 'include_docs'
+              ],
+    case kz_datamgr:get_results(AccountDb, ?KZD_LIST_BY_TYPE_ID, Options) of
         {'ok', Faxboxes} ->
             update_or_add_to_faxes_db([kz_json:get_json_value(<<"doc">>, Faxbox) || Faxbox <- Faxboxes]);
         {'error', _} -> 'ok'
