@@ -101,7 +101,7 @@ dep_inet_cidr = git https://github.com/2600hz/erlang-inet_cidr.git 1.0.2
 dep_jesse = git https://github.com/2600hz/jesse 1.5-rc13
 # used by kazoo_schemas primarily
 
-dep_jiffy = git https://github.com/2600hz/jiffy master  ## utf8 decode
+dep_jiffy = git https://github.com/2600hz/erlang-jiffy 2600hz
 # includes changes from lazedo/utf8
 # used by kz_json, nklib, jesse, lager, maybe couchbeam if compiled
 

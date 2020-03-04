@@ -1113,8 +1113,8 @@ are_all_there(Values, Keys, Vs, Ks) ->
 
 codec_test_() ->
     [?_assertEqual(?CODEC_JOBJ, kz_json:decode(kz_json:encode(?CODEC_JOBJ)))
-    ,?_assertThrow({error,{invalid_ejson,undefined}}, kz_json:encode(undefined))
-    ,?_assertThrow({error,{invalid_ejson,undefined}}, kz_json:encode(?JSON_WRAPPER(?PROPS_WITH_UNDEFINED)))
+    ,?_assertException(error,{invalid_ejson,undefined}, kz_json:encode(undefined))
+    ,?_assertException(error,{invalid_ejson,undefined}, kz_json:encode(?JSON_WRAPPER(?PROPS_WITH_UNDEFINED)))
     ,?_assert(kz_json:are_equal(kz_json:from_list(?PROPS_WITH_UNDEFINED)
                                ,kz_json:decode(kz_json:encode(kz_json:from_list(?PROPS_WITH_UNDEFINED)))
                                ))
@@ -1437,7 +1437,7 @@ from_map_test_() ->
      ,?_assertEqual(?FROM_MAP_JSON_4_RIGHT, kz_json:from_map(?FROM_MAP_MAP_4))
      }
     ,{"error encoding the invalid json generated in from_map with a mixed proplist inside map"
-     ,?_assertException(throw, {error,{invalid_ejson,{opt1,<<"my-opt1">>}}}, kz_json:encode(?FROM_MAP_JSON_4_WRONG))
+     ,?_assertException(error, {invalid_ejson,{opt1,<<"my-opt1">>}}, kz_json:encode(?FROM_MAP_JSON_4_WRONG))
      }
     ,{"encoding the invalid json generated in from_map with a mixed proplist inside map"
      ,?_assertEqual(kz_json:encode(?FROM_MAP_JSON_4_RIGHT), kz_json:encode(kz_json:from_map(?FROM_MAP_MAP_4)))
@@ -1478,12 +1478,10 @@ utf8_binary_values_test_() ->
      ,?_assertEqual(UTF8Recursive, kz_json:from_list_recursive(Recursive))
      }
     ,{"When encoding a NOT utf8 ready object it should fail"
-     ,?_assertException(throw, {error,{invalid_string,V}},
-                        kz_json:encode(?JSON_WRAPPER(Props)))
+     ,?_assertException(error, {invalid_string,V}, kz_json:encode(?JSON_WRAPPER(Props)))
      }
     ,{"When encoding a NOT utf8 ready object it should fail"
-     ,?_assertException(throw, {error,{invalid_string,V}},
-                        kz_json:encode(?JSON_WRAPPER([{K, ?JSON_WRAPPER(Props)}])))
+     ,?_assertException(error, {invalid_string,V}, kz_json:encode(?JSON_WRAPPER([{K, ?JSON_WRAPPER(Props)}])))
      }
     ,{"When encoding a utf8 ready object it should work"
      ,?_assertEqual(UTF8EncJObj, kz_json:encode(UTF8JObj))
