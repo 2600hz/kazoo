@@ -27,8 +27,6 @@
 
 -include("crossbar.hrl").
 
--define(CB_LIST, <<"menus/crossbar_listing">>).
-
 %%%=============================================================================
 %%% API
 %%%=============================================================================
@@ -133,7 +131,11 @@ delete(Context, _DocId) ->
 %%------------------------------------------------------------------------------
 -spec load_menu_summary(cb_context:context()) -> cb_context:context().
 load_menu_summary(Context) ->
-    crossbar_view:load(Context, ?CB_LIST, [{'mapper', crossbar_view:get_value_fun()}]).
+    Options = [{'startkey', [kzd_menus:type()]}
+              ,{'endkey', [kzd_menus:type(), kz_datamgr:view_highest_value()]}
+              ,{'mapper', crossbar_view:get_value_fun()}
+              ],
+    crossbar_view:load(Context, ?KZD_LIST_BY_TYPE_ID, Options).
 
 %%------------------------------------------------------------------------------
 %% @doc Create a new menu document with the data provided, if it is valid

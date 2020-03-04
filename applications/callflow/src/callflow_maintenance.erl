@@ -191,7 +191,11 @@ migrate_menus() ->
 migrate_menus(Account) ->
     Db = kzs_util:format_account_db(Account),
     lager:info("migrating all menus in ~s", [Db]),
-    case kz_datamgr:get_results(Db, <<"menus/crossbar_listing">>, ['include_docs']) of
+    Options = [{'startkey', [kzd_menus:type()]}
+              ,{'endkey', [kzd_menus:type(), kz_datamgr:view_highest_value()]}
+              ,'include_docs'
+              ],
+    case kz_datamgr:get_results(Db, ?KZD_LIST_BY_TYPE_ID, Options) of
         {'ok', []} ->
             lager:info("db ~s has no menus", [Db]),
             'done';
