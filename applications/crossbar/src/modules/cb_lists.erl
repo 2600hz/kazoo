@@ -26,7 +26,6 @@
 
 -include("crossbar.hrl").
 
--define(CB_LIST, <<"lists/crossbar_listing">>).
 -define(ENTRIES_VIEW, <<"lists/entries">>).
 -define(ENTRIES, <<"entries">>).
 -define(VCARD, <<"vcard">>).
@@ -44,7 +43,11 @@
 -spec maybe_migrate(kz_term:ne_binary()) -> 'ok'.
 maybe_migrate(Account) ->
     AccountDb = kzs_util:format_account_db(Account),
-    case kz_datamgr:get_results(AccountDb, ?CB_LIST, ['include_docs']) of
+    Options = [{'startkey', [?TYPE_LIST]}
+              ,{'endkey', [?TYPE_LIST, kz_datamgr:view_highest_value()]}
+               | 'include_docs'
+              ],
+    case kz_datamgr:get_results(AccountDb, ?KZD_LIST_BY_TYPE_ID, Options) of
         {'ok', Lists} -> migrate(AccountDb, Lists);
         {'error', _} -> 'ok'
     end.
@@ -223,7 +226,11 @@ validate(Context, ListId, ?ENTRIES, EntryId, ?VCARD) ->
 
 -spec validate_req(http_method(), cb_context:context(), path_tokens()) -> cb_context:context().
 validate_req(?HTTP_GET, Context, []) ->
-    crossbar_view:load(Context, ?CB_LIST, [{'mapper', crossbar_view:get_value_fun()}]);
+    Options = [{'startkey', [?TYPE_LIST]}
+              ,{'endkey', [?TYPE_LIST, kz_datamgr:view_highest_value()]}
+              ,{'mapper', crossbar_view:get_value_fun()}
+              ],
+    crossbar_view:load(Context, ?KZD_LIST_BY_TYPE_ID, Options);
 validate_req(?HTTP_PUT, Context, []) ->
     validate_doc('undefined', ?TYPE_LIST, Context);
 

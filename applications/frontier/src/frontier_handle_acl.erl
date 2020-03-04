@@ -80,7 +80,7 @@ run_acl_query(Entity, IncludeRealm) ->
     ViewOpts = build_view_options(Entity, IncludeRealm),
     {'ok', UserDb} = kapps_util:get_account_by_realm(frontier_utils:extract_realm(Entity)),
     lager:debug("looking for ~s's acls in ~s", [Entity, UserDb]),
-    case kz_datamgr:get_results(UserDb, <<"access_lists/crossbar_listing">>, ViewOpts) of
+    case kz_datamgr:get_results(UserDb, ?KZD_LIST_BY_TYPE_ID, ViewOpts) of
         {'ok', Results} ->
             lager:debug("found ~p records", [length(Results)]),
             Results;
@@ -94,10 +94,10 @@ build_view_options(Entity, IncludeRealm) ->
     case binary:split(Entity, <<"@">>) of
         [User, _OnRealm] = Keys ->
             case IncludeRealm of
-                'true' -> [{'keys', Keys}];
-                _ -> [{'key', User}]
+                'true' -> [{'keys', [<<"list">>] ++ Keys}];
+                _ -> [{'key', [<<"list">>, User]}]
             end;
-        [JustRealm] -> [{'key', JustRealm}]
+        [JustRealm] -> [{'key', [<<"list">>, JustRealm]}]
     end.
 
 -spec make_deny_acl(kz_term:ne_binary(), boolean()) -> kz_json:objects().
