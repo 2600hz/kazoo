@@ -551,7 +551,9 @@ maybe_import_credentials(_UserId, Context) ->
 
 -spec maybe_set_identity_secret(kz_term:api_ne_binary(), cb_context:context()) -> cb_context:context().
 maybe_set_identity_secret(_UserId, Context) ->
-    case crossbar_auth:has_identity_secret(Context) of
+    case crossbar_auth:has_identity_secret(Context)
+        orelse cb_context:has_errors(Context)
+    of
         'true' -> Context;
         'false' ->
             lager:debug("initalizing identity secret"),
@@ -683,6 +685,13 @@ on_successful_validation(UserId, Context) ->
 
 -spec maybe_rehash_creds(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 maybe_rehash_creds(_UserId, Context) ->
+    case cb_context:has_errors(Context) of
+        'false' -> rehash_creds(Context);
+        'true' -> Context
+    end.
+
+-spec rehash_creds(cb_context:context()) -> cb_context:context().
+rehash_creds(Context) ->
     JObj = cb_context:doc(Context),
     Username = kzd_users:username(JObj),
     CurrentJObj = cb_context:fetch(Context, 'db_doc', kz_json:new()),
