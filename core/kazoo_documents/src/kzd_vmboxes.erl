@@ -377,7 +377,7 @@ set_timezone(Doc, Timezone) ->
 
 -spec transcribe(doc()) -> boolean().
 transcribe(Doc) ->
-    transcribe(Doc, false).
+    transcribe(Doc, kvm_util:transcribe_default()).
 
 -spec transcribe(doc(), Default) -> boolean() | Default.
 transcribe(Doc, Default) ->
