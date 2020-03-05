@@ -5,8 +5,6 @@
 -include_lib("kazoo_amqp/include/kz_api_literals.hrl").
 -include_lib("kazoo_numbers/include/knm_phone_number.hrl").
 
--define(LOCAL_RESOURCES_VIEW, <<"resources/crossbar_listing">>).
-
 -define(LIST_ROUTES_BY_NUMBER, <<"routes/listing_by_number">>).
 -define(LIST_ROUTE_DUPS, <<"routes/listing_by_assignment">>).
 -define(LIST_ROUTE_ACCOUNTS, <<"routes/listing_by_account">>).

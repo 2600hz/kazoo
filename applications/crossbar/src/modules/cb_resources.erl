@@ -25,7 +25,6 @@
 
 -include("crossbar.hrl").
 
--define(CB_LIST, <<"resources/crossbar_listing">>).
 -define(JOBS_LIST, <<"resources/jobs_listing">>).
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".resources">>).
 -define(COLLECTION, <<"collection">>).
@@ -414,7 +413,11 @@ leak_job_fields(Context) ->
 %%------------------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    crossbar_view:load(Context, ?CB_LIST, [{'mapper', crossbar_view:get_value_fun()}]).
+    Options = [{'startkey', [<<"resource">>]}
+              ,{'endkey', [<<"resource">>, kz_datamgr:view_highest_value()]}
+              ,{'mapper', crossbar_view:get_value_fun()}
+              ],
+    crossbar_view:load(Context, ?KZD_LIST_BY_TYPE_ID, Options).
 
 %%------------------------------------------------------------------------------
 %% @doc Attempt to load a summarized listing of all instances of this
