@@ -19,7 +19,6 @@
 
 -include("crossbar.hrl").
 
--define(CB_LIST, <<"pivot/crossbar_listing">>).
 -define(CB_DEBUG_LIST, <<"pivot/debug_listing">>).
 -define(CB_FIRST_ITERATION, <<"pivot/first_iteration">>).
 

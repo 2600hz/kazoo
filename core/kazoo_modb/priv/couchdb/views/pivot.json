@@ -9,14 +9,6 @@
     },
     "language": "javascript",
     "views": {
-        "crossbar_listing": {
-            "map": [
-                "function(doc) {",
-                "  if (doc.pvt_type != 'pivot' || doc.pvt_deleted) return;",
-                "  emit(doc._id, null);",
-                "}"
-            ]
-        },
         "debug_listing": {
             "map": [
                 "function(doc) {",
