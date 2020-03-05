@@ -53,6 +53,7 @@
                 "  emit([doc.custom_channel_vars.owner_id, doc.interaction_time, doc.interaction_key, channel_time], {",
                 "    id: doc._id,",
                 "    channel_time: channel_time,",
+                "    billing_seconds: doc.billing_seconds || 0,",
                 "    leg: doc.channel_loopback_leg || '_'",
                 "  });",
                 "}"
