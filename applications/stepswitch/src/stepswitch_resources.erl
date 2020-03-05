@@ -938,9 +938,12 @@ fetch_local_resources(AccountId) ->
 -else.
 fetch_local_resources(AccountId) ->
     AccountDb = kzs_util:format_account_db(AccountId),
-    ViewOptions = ['include_docs'],
+    ViewOptions = [{'startkey', [<<"resource">>]}
+                  ,{'endkey', [<<"resource">>, kz_datamgr:view_highest_value()]}
+                  ,'include_docs'
+                  ],
     lager:debug("local resource cache miss, fetching from db ~s", [AccountDb]),
-    case kz_datamgr:get_results(AccountDb, ?LIST_RESOURCES_BY_ID, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, ?KZD_LIST_BY_TYPE_ID, ViewOptions) of
         {'error', _R} ->
             lager:warning("unable to fetch local resources from ~s: ~p", [AccountId, _R]),
             [];

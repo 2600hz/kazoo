@@ -24,7 +24,6 @@
 
 -include("crossbar.hrl").
 
--define(CB_LIST, <<"resources/resource_templates">>).
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".resource_templates">>).
 
 %%%=============================================================================
@@ -89,10 +88,12 @@ validate(Context) ->
 -spec validate_resource_templates(http_method(), cb_context:context()) -> cb_context:context().
 validate_resource_templates(?HTTP_GET, Context) ->
     %% setting db here to make note that the db could be different account id
-    Options = [{'databases', [cb_context:db_name(Context)]}
+    Options = [{'startkey', [<<"resource_template">>]}
+              ,{'endkey', [<<"resource_template">>, kz_datamgr:view_highest_value()]}
+              ,{'databases', [cb_context:db_name(Context)]}
               ,{'mapper', crossbar_view:get_value_fun()}
               ],
-    crossbar_view:load(Context, ?CB_LIST, Options);
+    crossbar_view:load(Context, ?KZD_LIST_BY_TYPE_ID, Options);
 validate_resource_templates(?HTTP_PUT, Context) ->
     case is_allowed_to_update(Context) of
         'true' -> validate_request('undefined', Context);
