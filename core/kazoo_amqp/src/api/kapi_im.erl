@@ -11,137 +11,210 @@
 %%%-----------------------------------------------------------------------------
 -module(kapi_im).
 
--export([inbound/1, inbound_v/1
-        ,outbound/1, outbound_v/1
-        ,bind_q/2, unbind_q/2
+-export([api_definitions/0, api_definition/1]).
+
+-export([inbound/1
+        ,inbound_v/1
+        ,publish_inbound/1
+        ,publish_inbound/2
+        ]).
+-export([outbound/1
+        ,outbound_v/1
+        ,publish_outbound/1
+        ,publish_outbound/2
+        ]).
+
+-export([bind_q/2, unbind_q/2
         ,declare_exchanges/0
-        ,publish_inbound/1, publish_inbound/2
-        ,publish_outbound/1, publish_outbound/2
         ]).
 
 -include_lib("kz_amqp_util.hrl").
-
--define(LOWER(X), kz_term:to_lower_binary(X)).
 
 -define(IM_EXCHANGE, <<"im">>).
 -define(EVENT_CATEGORIES, [<<"sms">>, <<"mms">>]).
 -define(IM_CONTENT_TYPE, <<"application/json">>).
 
-%% Inbound
--define(INBOUND_REQ_EVENT_NAME, <<"inbound">>).
--define(INBOUND_HEADERS, [<<"Message-ID">>
-                         ,<<"Body">>
-                         ,<<"From">>
-                         ,<<"To">>
-                         ]).
--define(OPTIONAL_INBOUND_HEADERS, [<<"Custom-Vars">>
-                                  ,<<"Custom-SIP-Headers">>
-                                  ,<<"Request">>
-                                  ,<<"Account-ID">>
-                                  ,<<"Route-Type">>
-                                  ,<<"System-ID">>
-                                  ,<<"Route-ID">>
-                                  ,<<"Transaction-ID">>
-                                  ,<<"Charges">>
-                                  ]).
--define(INBOUND_TYPES, [{<<"To">>, fun is_binary/1}
-                       ,{<<"From">>, fun is_binary/1}
-                       ,{<<"Request">>, fun is_binary/1}
-                       ,{<<"Message-ID">>, fun is_binary/1}
-                       ,{<<"System-ID">>, fun is_binary/1}
-                       ,{<<"Custom-Vars">>, fun kz_json:is_json_object/1}
-                       ,{<<"Body">>, fun is_binary/1}
-                       ]).
--define(INBOUND_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORIES}
-                            ,{<<"Event-Name">>, ?INBOUND_REQ_EVENT_NAME}
-                            ,{<<"Route-Type">>, [<<"onnet">>, <<"offnet">>]}
-                            ]).
+-ifdef(TEST).
+-export([routing_key/4
+        ]).
+-endif.
 
--define(INBOUND_RK(Category, RouteType, MsgId), inbound_routing_key(Category, RouteType, MsgId)).
+%%------------------------------------------------------------------------------
+%% @doc Get all API definitions of this module.
+%% @end
+%%------------------------------------------------------------------------------
+-spec api_definitions() -> kapi_definition:apis().
+api_definitions() ->
+    [inbound_definition()
+    ,outbound_definition()
+    ].
 
--define(BIND_INBOUND_RK(Category, Props)
-       ,?INBOUND_RK(Category
-                   ,bind_route_type(Props)
-                   ,bind_message_id(Props)
-                   )).
+%%------------------------------------------------------------------------------
+%% @doc Get API definition of the given `Name'.
+%% @see api_definitions/0
+%% @end
+%%------------------------------------------------------------------------------
+-spec api_definition(kz_term:text()) -> kapi_definition:api().
+api_definition(Name) when not is_binary(Name) ->
+    api_definition(kz_term:to_binary(Name));
+api_definition(<<"inbound">>) ->
+    inbound_definition();
+api_definition(<<"outbound">>) ->
+    outbound_definition().
 
--define(PUBLISH_INBOUND_RK(Props)
-       ,?INBOUND_RK(kz_api:event_category(Props)
-                   ,route_type(Props)
-                   ,message_id(Props)
-                   )).
+-spec inbound_definition() -> kapi_definition:api().
+inbound_definition() ->
+    EventName = <<"inbound">>,
+    Category = ?EVENT_CATEGORIES,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Inbound">>}
+              ,{fun kapi_definition:set_description/2, <<"SMS MMS Inbound">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun inbound/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun inbound_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_inbound/1}
+              ,{fun kapi_definition:set_binding/2, fun publish_inbound_routing_key/1}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Body">>
+                                                            ,<<"From">>
+                                                            ,<<"Message-ID">>
+                                                            ,<<"To">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Account-ID">>
+                                                            ,<<"Charges">>
+                                                            ,<<"Custom-SIP-Headers">>
+                                                            ,<<"Custom-Vars">>
+                                                            ,<<"Request">>
+                                                            ,<<"Route-ID">>
+                                                            ,<<"Route-Type">>
+                                                            ,<<"System-ID">>
+                                                            ,<<"Transaction-ID">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Route-Type">>, [<<"onnet">>, <<"offnet">>]}
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2
+               ,[{<<"Body">>, fun is_binary/1}
+                ,{<<"Custom-Vars">>, fun kz_json:is_json_object/1}
+                ,{<<"From">>, fun is_binary/1}
+                ,{<<"Message-ID">>, fun is_binary/1}
+                ,{<<"Request">>, fun is_binary/1}
+                ,{<<"System-ID">>, fun is_binary/1}
+                ,{<<"To">>, fun is_binary/1}
+                ]
+               }
+              ],
+    kapi_definition:setters(Setters).
 
-%% Outbound
--define(OUTBOUND_REQ_EVENT_NAME, <<"outbound">>).
--define(OUTBOUND_HEADERS, [<<"Message-ID">>
-                          ,<<"Body">>
-                          ,<<"From">>
-                          ,<<"To">>
-                          ]).
--define(OPTIONAL_OUTBOUND_HEADERS, [<<"Custom-Vars">>
-                                   ,<<"Request">>
-                                   ,<<"Account-ID">>, <<"Application-ID">>
-                                   ,<<"Route-Type">>, <<"System-ID">>, <<"Route-ID">>
-                                   ,<<"Originator-Properties">>, <<"Target-Properties">>
-                                   ,<<"Originator-Flags">>, <<"Target-Flags">>
-                                   ,<<"Endpoints">>
-                                   ,<<"Transaction-ID">>
-                                   ]).
--define(OUTBOUND_TYPES, [{<<"To">>, fun is_binary/1}
-                        ,{<<"From">>, fun is_binary/1}
-                        ,{<<"Request">>, fun is_binary/1}
-                        ,{<<"Message-ID">>, fun is_binary/1}
-                        ,{<<"System-ID">>, fun is_binary/1}
-                        ,{<<"Custom-Vars">>, fun kz_json:is_json_object/1}
-                        ,{<<"Body">>, fun is_binary/1}
-                        ,{<<"Endpoints">>, fun is_list/1}
-                        ]).
--define(OUTBOUND_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORIES}
-                             ,{<<"Event-Name">>, ?OUTBOUND_REQ_EVENT_NAME}
-                             ,{<<"Route-Type">>, [<<"onnet">>, <<"offnet">>]}
-                             ]).
+-spec outbound_definition() -> kapi_definition:api().
+outbound_definition() ->
+    EventName = <<"outbound">>,
+    Category = ?EVENT_CATEGORIES,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Outbound">>}
+              ,{fun kapi_definition:set_description/2, <<"SMS MMS Outbound">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun outbound/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun outbound_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_outbound/1}
+              ,{fun kapi_definition:set_binding/2, fun publish_outbound_routing_key/1}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Body">>
+                                                            ,<<"From">>
+                                                            ,<<"Message-ID">>
+                                                            ,<<"To">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Account-ID">>
+                                                            ,<<"Application-ID">>
+                                                            ,<<"Custom-Vars">>
+                                                            ,<<"Endpoints">>
+                                                            ,<<"Originator-Flags">>
+                                                            ,<<"Originator-Properties">>
+                                                            ,<<"Request">>
+                                                            ,<<"Route-ID">>
+                                                            ,<<"Route-Type">>
+                                                            ,<<"System-ID">>
+                                                            ,<<"Target-Flags">>
+                                                            ,<<"Target-Properties">>
+                                                            ,<<"Transaction-ID">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Route-Type">>, [<<"onnet">>, <<"offnet">>]}
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2
+               ,[{<<"Body">>, fun is_binary/1}
+                ,{<<"Custom-Vars">>, fun kz_json:is_json_object/1}
+                ,{<<"Endpoints">>, fun is_list/1}
+                ,{<<"From">>, fun is_binary/1}
+                ,{<<"Message-ID">>, fun is_binary/1}
+                ,{<<"Request">>, fun is_binary/1}
+                ,{<<"System-ID">>, fun is_binary/1}
+                ,{<<"To">>, fun is_binary/1}
+                ]}
+              ],
+    kapi_definition:setters(Setters).
 
--define(OUTBOUND_RK(Category, RouteId, MsgId), outbound_routing_key(Category, RouteId, MsgId)).
-
--define(BIND_OUTBOUND_RK(Category, Props)
-       ,?OUTBOUND_RK(Category
-                    ,bind_route_id(Props)
-                    ,bind_message_id(Props)
-                    )).
-
--define(PUBLISH_OUTBOUND_RK(Props)
-       ,?OUTBOUND_RK(kz_api:event_category(Props)
-                    ,route_id(Props)
-                    ,message_id(Props)
-                    )).
-
--spec inbound(kz_term:api_terms()) -> {'ok', iolist()} |
-          {'error', string()}.
-inbound(Prop) when is_list(Prop) ->
-    case inbound_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?INBOUND_HEADERS, ?OPTIONAL_INBOUND_HEADERS);
-        'false' -> {'error', "Proplist failed validation for inbound"}
-    end;
-inbound(JObj) -> inbound(kz_json:to_proplist(JObj)).
+%%------------------------------------------------------------------------------
+%% @doc SMS MMS Inbound
+%% @end
+%%------------------------------------------------------------------------------
+-spec inbound(kz_term:api_terms()) -> kz_api:api_formatter_return().
+inbound(Req) ->
+    kapi_definition:build_message(Req, inbound_definition()).
 
 -spec inbound_v(kz_term:api_terms()) -> boolean().
-inbound_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?INBOUND_HEADERS, ?INBOUND_REQ_VALUES, ?INBOUND_TYPES);
-inbound_v(JObj) -> inbound_v(kz_json:to_proplist(JObj)).
+inbound_v(Req) ->
+    kapi_definition:validate(Req, inbound_definition()).
 
--spec outbound(kz_term:api_terms()) -> {'ok', iolist()} |
-          {'error', string()}.
-outbound(Prop) when is_list(Prop) ->
-    case outbound_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?OUTBOUND_HEADERS, ?OPTIONAL_OUTBOUND_HEADERS);
-        'false' -> {'error', "Proplist failed validation for outbound"}
-    end;
-outbound(JObj) -> outbound(kz_json:to_proplist(JObj)).
+-spec publish_inbound(kz_term:api_terms()) -> 'ok'.
+publish_inbound(Req) ->
+    publish_inbound(Req, []).
+
+-spec publish_inbound(kz_term:api_terms(), kz_term:proplist()) -> 'ok'.
+publish_inbound(Req, AMQPOptions) ->
+    Definition = inbound_definition(),
+    {'ok', Payload} = kz_api:prepare_api_payload(Req
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:basic_publish(exchange_id(Req)
+                              ,(kapi_definition:binding(Definition))(Req)
+                              ,Payload
+                              ,?IM_CONTENT_TYPE
+                              ,maybe_gzip(Req, AMQPOptions)
+                              ).
+
+%%------------------------------------------------------------------------------
+%% @doc SMS MMS Inbound
+%% @end
+%%------------------------------------------------------------------------------
+-spec outbound(kz_term:api_terms()) -> kz_api:api_formatter_return().
+outbound(Req) ->
+    kapi_definition:build_message(Req, outbound_definition()).
 
 -spec outbound_v(kz_term:api_terms()) -> boolean().
-outbound_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?OUTBOUND_HEADERS, ?OUTBOUND_REQ_VALUES, ?OUTBOUND_TYPES);
-outbound_v(JObj) -> outbound_v(kz_json:to_proplist(JObj)).
+outbound_v(Req) ->
+    kapi_definition:validate(Req, outbound_definition()).
+
+-spec publish_outbound(kz_term:api_terms()) -> 'ok'.
+publish_outbound(JObj) ->
+    publish_outbound(JObj, []).
+
+-spec publish_outbound(kz_term:api_terms(), kz_term:proplist()) -> 'ok'.
+publish_outbound(Req, AMQPOptions) ->
+    Definition = outbound_definition(),
+    {'ok', Payload} = kz_api:prepare_api_payload(Req
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:basic_publish(exchange_id(Req)
+                              ,(kapi_definition:binding(Definition))(Req)
+                              ,Payload
+                              ,?IM_CONTENT_TYPE
+                              ,maybe_gzip(Req, AMQPOptions)
+                              ).
 
 %%------------------------------------------------------------------------------
 %% @doc Bind AMQP Queue for routing requests.
@@ -153,20 +226,32 @@ bind_q(Queue, Props) ->
 
 -spec bind_q(kz_term:ne_binary(), kz_term:proplist(), kz_term:proplist()) -> 'ok'.
 bind_q(Queue, Props, 'undefined') ->
-    _ = [kz_amqp_util:bind_q_to_exchange(Queue, ?BIND_INBOUND_RK(Category, Props), bind_exchange_id(Props))
+    _ = [kz_amqp_util:bind_q_to_exchange(Queue
+                                        ,bind_inbound_routing_key(Category, Props)
+                                        ,bind_exchange_id(Props)
+                                        )
          || Category <- bind_categories(Props)
         ],
-    _ = [kz_amqp_util:bind_q_to_exchange(Queue, ?BIND_OUTBOUND_RK(Category, Props), bind_exchange_id(Props))
+    _ = [kz_amqp_util:bind_q_to_exchange(Queue
+                                        ,bind_outbound_routing_key(Category, Props)
+                                        ,bind_exchange_id(Props)
+                                        )
          || Category <- bind_categories(Props)
         ],
     'ok';
 bind_q(Queue, Props, ['inbound'|Restrict]) ->
-    _ = [kz_amqp_util:bind_q_to_exchange(Queue, ?BIND_INBOUND_RK(Category, Props), bind_exchange_id(Props))
+    _ = [kz_amqp_util:bind_q_to_exchange(Queue
+                                        ,bind_inbound_routing_key(Category, Props)
+                                        ,bind_exchange_id(Props)
+                                        )
          || Category <- bind_categories(Props)
         ],
     bind_q(Queue, Props, Restrict);
 bind_q(Queue, Props, ['outbound'|Restrict]) ->
-    _ = [kz_amqp_util:bind_q_to_exchange(Queue, ?BIND_OUTBOUND_RK(Category, Props), bind_exchange_id(Props))
+    _ = [kz_amqp_util:bind_q_to_exchange(Queue
+                                        ,bind_outbound_routing_key(Category, Props)
+                                        ,bind_exchange_id(Props)
+                                        )
          || Category <- bind_categories(Props)
         ],
     bind_q(Queue, Props, Restrict);
@@ -178,20 +263,32 @@ unbind_q(Queue, Props) ->
 
 -spec unbind_q(kz_term:ne_binary(), kz_term:proplist(), kz_term:proplist()) -> 'ok'.
 unbind_q(Queue, Props, 'undefined') ->
-    _ = [kz_amqp_util:unbind_q_from_exchange(Queue, ?BIND_INBOUND_RK(Category, Props), bind_exchange_id(Props))
+    _ = [kz_amqp_util:unbind_q_from_exchange(Queue
+                                            ,bind_inbound_routing_key(Category, Props)
+                                            ,bind_exchange_id(Props)
+                                            )
          || Category <- bind_categories(Props)
         ],
-    _ = [kz_amqp_util:unbind_q_from_exchange(Queue, ?BIND_OUTBOUND_RK(Category, Props), bind_exchange_id(Props))
+    _ = [kz_amqp_util:unbind_q_from_exchange(Queue
+                                            ,bind_outbound_routing_key(Category, Props)
+                                            ,bind_exchange_id(Props)
+                                            )
          || Category <- bind_categories(Props)
         ],
     'ok';
 unbind_q(Queue, Props, ['inbound'|Restrict]) ->
-    _ = [kz_amqp_util:unbind_q_from_exchange(Queue, ?BIND_INBOUND_RK(Category, Props), bind_exchange_id(Props))
+    _ = [kz_amqp_util:unbind_q_from_exchange(Queue
+                                            ,bind_inbound_routing_key(Category, Props)
+                                            ,bind_exchange_id(Props)
+                                            )
          || Category <- bind_categories(Props)
         ],
     unbind_q(Queue, Props, Restrict);
 unbind_q(Queue, Props, ['outbound'|Restrict]) ->
-    _ = [kz_amqp_util:unbind_q_from_exchange(Queue, ?BIND_OUTBOUND_RK(Category, Props), bind_exchange_id(Props))
+    _ = [kz_amqp_util:unbind_q_from_exchange(Queue
+                                            ,bind_outbound_routing_key(Category, Props)
+                                            ,bind_exchange_id(Props)
+                                            )
          || Category <- bind_categories(Props)
         ],
     unbind_q(Queue, Props, Restrict);
@@ -215,7 +312,7 @@ bind_route_id(Props) ->
 
 -spec bind_route_type(kz_term:api_terms()) -> kz_term:ne_binary().
 bind_route_type(Props) ->
-    ?LOWER(props:get_value('route_type', Props, <<"*">>)).
+    to_lower(props:get_value('route_type', Props, <<"*">>)).
 
 -spec exchange_id(kz_term:api_terms()) -> kz_term:ne_binary().
 exchange_id(Props)
@@ -234,14 +331,14 @@ message_id(JObj) ->
 -spec route_id(kz_term:api_terms()) -> kz_term:api_ne_binary().
 route_id(Props)
   when is_list(Props) ->
-    ?LOWER(props:get_value(<<"Route-ID">>, Props));
+    to_lower(props:get_value(<<"Route-ID">>, Props));
 route_id(JObj) ->
     route_id(kz_json:to_proplist(JObj)).
 
 -spec route_type(kz_term:api_terms()) -> kz_term:ne_binary().
 route_type(Props)
   when is_list(Props) ->
-    ?LOWER(props:get_value(<<"Route-Type">>, Props));
+    to_lower(props:get_value(<<"Route-Type">>, Props));
 route_type(JObj) ->
     route_type(kz_json:to_proplist(JObj)).
 
@@ -253,31 +350,25 @@ route_type(JObj) ->
 declare_exchanges() ->
     kz_amqp_util:new_exchange(?IM_EXCHANGE, <<"topic">>).
 
--spec publish_inbound(kz_term:api_terms()) -> 'ok'.
-publish_inbound(Req) ->
-    publish_inbound(Req, []).
+-spec publish_outbound_routing_key(kz_term:proplist()) -> kz_term:ne_binary().
+publish_outbound_routing_key(Props) ->
+    outbound_routing_key(kz_api:event_category(Props), route_id(Props), message_id(Props)).
 
--spec publish_inbound(kz_term:api_terms(), kz_term:proplist()) -> 'ok'.
-publish_inbound(Req, AMQPOptions) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?INBOUND_REQ_VALUES, fun inbound/1),
-    Exchange = exchange_id(Req),
-    RK = ?PUBLISH_INBOUND_RK(Req),
-    kz_amqp_util:basic_publish(Exchange, RK, Payload, ?IM_CONTENT_TYPE, maybe_gzip(Req, AMQPOptions)).
-
--spec publish_outbound(kz_term:api_terms()) -> 'ok'.
-publish_outbound(JObj) ->
-    publish_outbound(JObj, []).
-
--spec publish_outbound(kz_term:api_terms(), kz_term:proplist()) -> 'ok'.
-publish_outbound(Req, AMQPOptions) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?OUTBOUND_REQ_VALUES, fun outbound/1),
-    Exchange = exchange_id(Req),
-    RK = ?PUBLISH_OUTBOUND_RK(Req),
-    kz_amqp_util:basic_publish(Exchange, RK, Payload, ?IM_CONTENT_TYPE, maybe_gzip(Req, AMQPOptions)).
+-spec bind_outbound_routing_key(kz_term:ne_binary(), kz_term:proplist()) -> kz_term:ne_binary().
+bind_outbound_routing_key(Category, Props) ->
+    outbound_routing_key(Category, bind_route_id(Props), bind_message_id(Props)).
 
 -spec outbound_routing_key(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 outbound_routing_key(Category, RouteId, MsgId) ->
     routing_key(Category, <<"outbound">>, RouteId, MsgId).
+
+-spec publish_inbound_routing_key(kz_term:proplist()) -> kz_term:ne_binary().
+publish_inbound_routing_key(Props) ->
+    inbound_routing_key(kz_api:event_category(Props), route_type(Props), message_id(Props)).
+
+-spec bind_inbound_routing_key(kz_term:ne_binary(), kz_term:proplist()) -> kz_term:ne_binary().
+bind_inbound_routing_key(Category, Props) ->
+    inbound_routing_key(Category, bind_route_type(Props), bind_message_id(Props)).
 
 -spec inbound_routing_key(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 inbound_routing_key(Category, RouteType, MsgId) ->
