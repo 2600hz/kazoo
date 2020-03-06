@@ -42,7 +42,7 @@ authenticate(Context, _Payload) ->
 -spec auth_token(bh_context:context(), kz_term:api_binary()) -> bh_context:context().
 auth_token(Context, 'undefined') ->
     lager:debug("no token included"),
-    bh_context:add_error(Context, <<"missing authenticatation token">>);
+    bh_context:add_error(Context, <<"authentication token required">>);
 auth_token(Context, Token)
   when is_binary(Token)->
     lager:debug("trying to authenticate with token: ~s", [Token]),
@@ -57,4 +57,4 @@ auth_token(Context, Token)
     end;
 auth_token(Context, _Token) ->
     lager:warning("token is not of required type, , ~p", [_Token]),
-    bh_context:add_error(Context, <<"invalid token">>).
+    bh_context:add_error(Context, <<"invalid authentication token format">>).
