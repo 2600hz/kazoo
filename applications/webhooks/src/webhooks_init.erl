@@ -92,9 +92,13 @@ init_module(Module) ->
 
 -spec existing_modules() -> kz_term:atoms().
 existing_modules() ->
-    existing_modules(code:lib_dir(kz_term:to_atom(?APP_NAME))).
+    existing_modules(code:lib_dir(kz_term:to_atom(?APP_NAME))) ++
+    existing_modules(code:lib_dir('qubicle')).
 
 -spec existing_modules(string()) -> kz_term:atoms().
+existing_modules({'error', 'bad_name'}) ->
+    [];
+
 existing_modules(WebhooksRoot) ->
     ModulesDirectory = filename:join(WebhooksRoot, "ebin"),
     Extension = ".beam",
