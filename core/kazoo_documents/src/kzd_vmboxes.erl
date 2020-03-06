@@ -32,7 +32,8 @@
 -export([require_pin/1, require_pin/2, set_require_pin/2]).
 -export([save_after_notify/1, save_after_notify/2, set_save_after_notify/2]).
 -export([seek_duration_ms/1, seek_duration_ms/2, set_seek_duration_ms/2]).
--export([should_include_attachment/1, should_include_attachment/2, set_should_include_attachment/2]).
+-export([include_message_on_notify/1, include_message_on_notify/2, set_include_message_on_notify/2]).
+-export([include_transcription_on_notify/1, include_transcription_on_notify/2, set_include_transcription_on_notify/2]).
 -export([skip_envelope/1, skip_envelope/2, set_skip_envelope/2]).
 -export([skip_greeting/1, skip_greeting/2, set_skip_greeting/2]).
 -export([skip_instructions/1, skip_instructions/2, set_skip_instructions/2]).
@@ -315,17 +316,29 @@ seek_duration_ms(Doc, Default) ->
 set_seek_duration_ms(Doc, SeekDurationMs) ->
     kz_json:set_value([<<"seek_duration_ms">>], SeekDurationMs, Doc).
 
--spec should_include_attachment(doc()) -> boolean().
-should_include_attachment(Doc) ->
-    should_include_attachment(Doc, true).
+-spec include_message_on_notify(doc()) -> boolean().
+include_message_on_notify(Doc) ->
+    include_message_on_notify(Doc, true).
 
--spec should_include_attachment(doc(), Default) -> boolean() | Default.
-should_include_attachment(Doc, Default) ->
-    kz_json:get_boolean_value([<<"should_include_attachment">>], Doc, Default).
+-spec include_message_on_notify(doc(), Default) -> boolean() | Default.
+include_message_on_notify(Doc, Default) ->
+    kz_json:get_boolean_value([<<"include_message_on_notify">>], Doc, Default).
 
--spec set_should_include_attachment(doc(), boolean()) -> doc().
-set_should_include_attachment(Doc, ShouldIncludeAttachment) ->
-    kz_json:set_value([<<"should_include_attachment">>], ShouldIncludeAttachment, Doc).
+-spec set_include_message_on_notify(doc(), boolean()) -> doc().
+set_include_message_on_notify(Doc, ShouldIncludeAttachment) ->
+    kz_json:set_value([<<"include_message_on_notify">>], ShouldIncludeAttachment, Doc).
+
+-spec include_transcription_on_notify(doc()) -> boolean().
+include_transcription_on_notify(Doc) ->
+    include_transcription_on_notify(Doc, true).
+
+-spec include_transcription_on_notify(doc(), Default) -> boolean() | Default.
+include_transcription_on_notify(Doc, Default) ->
+    kz_json:get_boolean_value([<<"include_transcription_on_notify">>], Doc, Default).
+
+-spec set_include_transcription_on_notify(doc(), boolean()) -> doc().
+set_include_transcription_on_notify(Doc, ShouldIncludeAttachment) ->
+    kz_json:set_value([<<"include_transcription_on_notify">>], ShouldIncludeAttachment, Doc).
 
 -spec skip_envelope(doc()) -> boolean().
 skip_envelope(Doc) ->
