@@ -26,6 +26,8 @@ Key | Description | Type | Default | Required | Support Level
 `delete_after_notify` | Move the voicemail to delete folder after the notification has been sent | `boolean()` | `false` | `false` | `supported`
 `flags.[]` |   | `string()` |   | `false` | `supported`
 `flags` | Flags set by external applications | `array(string())` |   | `false` | `supported`
+`include_message_on_notify` | Whether or not to include the attachment when sending a new voicemail to email notification | `boolean()` | `true` | `false` | `supported`
+`include_transcription_on_notify` | Whether or not to include the transcription when sending a new voicemail to email notification | `boolean()` | `true` | `false` | `supported`
 `is_setup` | Determines if the user has completed the initial configuration | `boolean()` | `false` | `false` | `supported`
 `is_voicemail_ff_rw_enabled` | callflow allow fastforward and rewind during voicemail message playback | `boolean()` | `false` | `false` |  
 `mailbox` | The voicemail box number | `string(1..30)` |   | `true` | `supported`

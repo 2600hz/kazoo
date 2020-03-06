@@ -36387,6 +36387,16 @@
                     },
                     "type": "array"
                 },
+                "include_message_on_notify": {
+                    "default": true,
+                    "description": "Whether or not to include the attachment when sending a new voicemail to email notification",
+                    "type": "boolean"
+                },
+                "include_transcription_on_notify": {
+                    "default": true,
+                    "description": "Whether or not to include the transcription when sending a new voicemail to email notification",
+                    "type": "boolean"
+                },
                 "is_setup": {
                     "default": false,
                     "description": "Determines if the user has completed the initial configuration",
