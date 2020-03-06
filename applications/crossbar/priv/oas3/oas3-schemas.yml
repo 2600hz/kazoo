@@ -14697,6 +14697,18 @@
         'type': string
       'type': array
       'x-support_level': supported
+    'include_message_on_notify':
+      'default': true
+      'description': |-
+        Whether or not to include the attachment when sending a new voicemail to email notification
+      'type': boolean
+      'x-support_level': supported
+    'include_transcription_on_notify':
+      'default': true
+      'description': |-
+        Whether or not to include the transcription when sending a new voicemail to email notification
+      'type': boolean
+      'x-support_level': supported
     'is_setup':
       'default': false
       'description': Determines if the user has completed the initial configuration
@@ -14799,12 +14811,6 @@
       'description': callflow fastforward and rewind seek duration
       'minimum': 0
       'type': integer
-    'should_include_attachment':
-      'default': true
-      'description': |-
-        Whether or not to include the attachment when sending a new voicemail to email notification
-      'type': boolean
-      'x-support_level': supported
     'skip_envelope':
       'default': false
       'description': Determines if the envelope should be skipped
