@@ -4,7 +4,7 @@
 		value="kazoo_event_name|Event-Subclass|Event-Name" />
 	<field name="Event-Date-Timestamp" as="Msg-ID" />
 	<field name="Timestamp" type="expand"
-		value="${expr(ceil((${Event-Date-Timestamp} / 1000000) + $${UNIX_EPOCH_IN_GREGORIAN}))}"
+		value="${expr(ceil((${Event-Date-Timestamp} / 1000000) + ${UNIX_EPOCH_IN_GREGORIAN}))}"
 		serialize-as="number" />
 	<field name="variable_sip_origination_call_uuid" as="Origination-Call-ID" />
 	<field name="Call-ID" type="first-of"
