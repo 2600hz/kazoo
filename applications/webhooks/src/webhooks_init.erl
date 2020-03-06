@@ -109,7 +109,7 @@ existing_modules(WebhooksRoot) ->
             ,"webhooks_sup"
             ,"webhooks_util"
             ],
-    Pattern = filename:join(ModulesDirectory, "*"++Extension),
+    Pattern = filename:join(ModulesDirectory, "webhooks*"++Extension),
     [kz_term:to_atom(Module, 'true')
      || Path <- filelib:wildcard(Pattern),
         not lists:member((Module=filename:basename(Path, Extension)), Utils)
