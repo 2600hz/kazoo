@@ -10,6 +10,8 @@
 -export([check_if_owner/1, check_if_owner/2, set_check_if_owner/2]).
 -export([delete_after_notify/1, delete_after_notify/2, set_delete_after_notify/2]).
 -export([flags/1, flags/2, set_flags/2]).
+-export([include_message_on_notify/1, include_message_on_notify/2, set_include_message_on_notify/2]).
+-export([include_transcription_on_notify/1, include_transcription_on_notify/2, set_include_transcription_on_notify/2]).
 -export([is_setup/1, is_setup/2, set_is_setup/2]).
 -export([is_voicemail_ff_rw_enabled/1, is_voicemail_ff_rw_enabled/2, set_is_voicemail_ff_rw_enabled/2]).
 -export([mailbox/1, mailbox/2, set_mailbox/2]).
@@ -93,6 +95,30 @@ flags(Doc, Default) ->
 -spec set_flags(doc(), kz_term:ne_binaries()) -> doc().
 set_flags(Doc, Flags) ->
     kz_json:set_value([<<"flags">>], Flags, Doc).
+
+-spec include_message_on_notify(doc()) -> boolean().
+include_message_on_notify(Doc) ->
+    include_message_on_notify(Doc, true).
+
+-spec include_message_on_notify(doc(), Default) -> boolean() | Default.
+include_message_on_notify(Doc, Default) ->
+    kz_json:get_boolean_value([<<"include_message_on_notify">>], Doc, Default).
+
+-spec set_include_message_on_notify(doc(), boolean()) -> doc().
+set_include_message_on_notify(Doc, IncludeMessageOnNotify) ->
+    kz_json:set_value([<<"include_message_on_notify">>], IncludeMessageOnNotify, Doc).
+
+-spec include_transcription_on_notify(doc()) -> boolean().
+include_transcription_on_notify(Doc) ->
+    include_transcription_on_notify(Doc, true).
+
+-spec include_transcription_on_notify(doc(), Default) -> boolean() | Default.
+include_transcription_on_notify(Doc, Default) ->
+    kz_json:get_boolean_value([<<"include_transcription_on_notify">>], Doc, Default).
+
+-spec set_include_transcription_on_notify(doc(), boolean()) -> doc().
+set_include_transcription_on_notify(Doc, IncludeTranscriptionOnNotify) ->
+    kz_json:set_value([<<"include_transcription_on_notify">>], IncludeTranscriptionOnNotify, Doc).
 
 -spec is_setup(doc()) -> boolean().
 is_setup(Doc) ->
