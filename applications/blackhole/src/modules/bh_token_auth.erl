@@ -48,7 +48,7 @@ authenticate(Context, Payload) ->
 -spec authenticate(kz_term:api_binary(), bh_context:context(), kz_json:object()) -> bh_context:context().
 authenticate('undefined', Context, _Payload) ->
     lager:debug("failed to authenticate with undefined token"),
-    bh_context:add_error(Context, <<"failed to authenticate with undefined token">>);
+    bh_context:add_error(Context, <<"authentication token required">>);
 authenticate(Token, Context, _Payload)
   when is_binary(Token)->
     lager:debug("trying to authenticate with token: ~s", [Token]),
@@ -63,4 +63,4 @@ authenticate(Token, Context, _Payload)
     end;
 authenticate(_Token, Context, _Payload) ->
     lager:warning("token is not of required type, ~p", [_Token]),
-    bh_context:add_error(Context, <<"invalid token">>).
+    bh_context:add_error(Context, <<"invalid authentication token format">>).

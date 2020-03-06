@@ -113,7 +113,7 @@ from_json(JObj) ->
 -spec from_json(context(), kz_json:object()) -> context().
 from_json(Context, JObj) ->
     Rand = kz_binary:rand_hex(16),
-    Setters = [{fun set_auth_token/2, kz_json:get_value(<<"auth_token">>, JObj)}
+    Setters = [{fun set_auth_token/2, kz_json:get_ne_binary_value(<<"auth_token">>, JObj)}
               ,{fun set_req_id/2, kz_json:get_ne_binary_value(<<"request_id">>, JObj, Rand)}
               ,{fun set_name/2, kz_json:get_value(<<"name">>, JObj)}
               ,{fun set_metadata/2, kz_json:get_value(<<"metadata">>, JObj)}
