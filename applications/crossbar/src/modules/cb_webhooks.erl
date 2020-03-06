@@ -64,7 +64,6 @@ init() ->
 
 -spec init_master_account_db() -> 'ok'.
 init_master_account_db() ->
-    lager:info("MARKDEBUG LOADING HOOKS"),
     maybe_revise_schema(get_available_hook_ids()).
 
 maybe_revise_schema({'error', _}) ->
@@ -83,7 +82,6 @@ maybe_revise_schema(HookIds, SchemaJObj) ->
     HookNames = lists:usort([<<"all">> | HookIds]),
     Updated = kz_json:set_value([<<"properties">>, <<"hook">>, <<"enum">>], HookNames, SchemaJObj),
 
-    lager:info("MARKDEBUG ABOUT TO SET ~p ~p ~p", [HookNames, Updated, SchemaJObj]),
     case kz_json:are_equal(kz_doc:public_fields(SchemaJObj), kz_doc:public_fields(Updated)) of
         'true' -> 'ok';
         'false' ->
@@ -113,7 +111,6 @@ get_available_hook_ids(MasterDb) ->
             lager:warning("failed to find registered webhooks: ~p", [_E]),
             Error;
         {'ok', Hooks} ->
-            lager:info("MARKDEBUG ALL HOOKS ~p", [Hooks]),
             ToRemoveHooks = [<<"callflow">>
                             ,<<"inbound_fax">>
                             ,<<"outbound_fax">>
