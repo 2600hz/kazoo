@@ -305,7 +305,13 @@ include_message_on_notify(Doc) ->
 
 -spec include_message_on_notify(doc(), Default) -> boolean() | Default.
 include_message_on_notify(Doc, Default) ->
-    kz_json:get_boolean_value([<<"include_message_on_notify">>], Doc, Default).
+    case kz_json:get_first_defined([<<"include_message_on_notify">>
+                                   ,<<"should_include_attachment">>
+                                   ], Doc)
+    of
+        'undefined' -> Default;
+        Value -> kz_term:is_true(Value)
+    end.
 
 -spec set_include_message_on_notify(doc(), boolean()) -> doc().
 set_include_message_on_notify(Doc, ShouldIncludeAttachment) ->
