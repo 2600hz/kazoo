@@ -14,6 +14,8 @@
                 "function(doc) {",
                 "  if (doc.pvt_deleted) return;",
                 "  var doc_type = doc.pvt_type;",
+                "  if (!doc_type) return;",
+                "  if (doc_type === 'number') return;",
                 "  switch (doc_type) {",
                 "    case 'account':",
                 "      emit(['account', doc._id], {",
