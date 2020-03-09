@@ -24,8 +24,6 @@
 
 -include("crossbar.hrl").
 
--define(CB_LIST, <<"trunkstore/crossbar_listing">>).
-
 %%%=============================================================================
 %%% API
 %%%=============================================================================
@@ -267,7 +265,8 @@ on_successful_validation(Id, Context) ->
 %%------------------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    Options = [{'mapper', crossbar_view:get_id_fun()}
-              ,{'reduce', 'false'}
+    Options = [{'startkey', [<<"sys_info">>]}
+              ,{'endkey', [<<"sys_info">>, kz_datamgr:view_highest_value()]}
+              ,{'mapper', crossbar_view:get_id_fun()}
               ],
-    crossbar_view:load(Context, ?CB_LIST, Options).
+    crossbar_view:load(Context, ?KZD_LIST_BY_TYPE_ID, Options).

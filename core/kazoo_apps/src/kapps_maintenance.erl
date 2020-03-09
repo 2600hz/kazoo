@@ -1428,10 +1428,11 @@ migrate_limits(Account) ->
 -spec clean_trunkstore_docs(kz_term:ne_binary(), integer(), integer()) ->
           {integer(), integer()}.
 clean_trunkstore_docs(AccountDb, TwowayTrunks, InboundTrunks) ->
-    ViewOptions = ['include_docs'
-                  ,{'reduce', 'false'}
+    ViewOptions = [{'startkey', [<<"sys_info">>]}
+                  ,{'endkey', [<<"sys_info">>, kz_datamgr:view_highest_value()]}
+                  ,'include_docs'
                   ],
-    case kz_datamgr:get_results(AccountDb, <<"trunkstore/crossbar_listing">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, ?KZD_LIST_BY_TYPE_ID, ViewOptions) of
         {'ok', JObjs} -> clean_trunkstore_docs(AccountDb, JObjs, TwowayTrunks, InboundTrunks);
         {'error', _}=E -> E
     end.
