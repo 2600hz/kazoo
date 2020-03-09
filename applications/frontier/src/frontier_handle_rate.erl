@@ -243,7 +243,7 @@ fetch_rates(_, _, [], _) ->
     [];
 fetch_rates(EntityList, IncludeRealm, MethodList, AccountDB) ->
     lager:info("run db query..."),
-    Keys = [[E, M] || E <- [?DEVICE_DEFAULT_RATES | EntityList], M <- MethodList],
+    Keys = [[<<"rate_limits">>, E, M] || E <- [?DEVICE_DEFAULT_RATES | EntityList], M <- MethodList],
     ViewOpts = [{'keys', Keys}],
     Results = case kz_datamgr:get_results(AccountDB, ?RATES_CROSSBAR_LISTING, ViewOpts) of
                   {'ok', JObjs} ->
