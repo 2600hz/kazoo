@@ -407,7 +407,10 @@ print_call_restrictions(DbName, DocId) ->
 
 -spec print_users_level_call_restrictions(kz_term:ne_binary()) -> 'ok'.
 print_users_level_call_restrictions(DbName) ->
-    case kz_datamgr:get_results(DbName, <<"users/crossbar_listing">>) of
+    Options = [{'startkey', [kzd_users:type()]}
+              ,{'endkey', [kzd_users:type(), kz_datamgr:view_highest_value()]}
+              ],
+    case kz_datamgr:get_results(DbName, ?KZD_LIST_BY_TYPE_ID, Options) of
         {'ok', JObj} ->
             io:format("\n\nUser level classifiers:\n"),
             lists:foreach(fun(UserObj) ->

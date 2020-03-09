@@ -34,7 +34,6 @@
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".users">>).
 
--define(CB_LIST, <<"users/crossbar_listing">>).
 -define(LIST_BY_HOTDESK_ID, <<"users/list_by_hotdesk_id">>).
 -define(LIST_BY_PRESENCE_ID, <<"devices/listing_by_presence_id">>).
 
@@ -446,7 +445,11 @@ send_email(Context) ->
 %%------------------------------------------------------------------------------
 -spec load_users_summary(cb_context:context()) -> cb_context:context().
 load_users_summary(Context) ->
-    crossbar_view:load(Context, ?CB_LIST, [{'mapper', crossbar_view:get_value_fun()}]).
+    Options = [{'startkey', [kzd_users:type()]}
+              ,{'endkey', [kzd_users:type(), kz_datamgr:view_highest_value()]}
+              ,{'mapper', crossbar_view:get_value_fun()}
+              ],
+    crossbar_view:load(Context, ?KZD_LIST_BY_TYPE_ID, Options).
 
 %%------------------------------------------------------------------------------
 %% @doc Load a user document from the database

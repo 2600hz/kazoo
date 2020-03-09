@@ -111,10 +111,10 @@ fetch_user_hotdesks(DeviceId, Context) ->
 
 -spec fetch_users(kz_term:ne_binaries(), cb_context:context()) -> cb_context:context().
 fetch_users(UserIds, Context) ->
-    ViewOptions = [{'keys', UserIds}
+    ViewOptions = [{'keys', [[kzd_users:type(), UserId] || UserId <- UserIds]}
                   ,{'mapper', crossbar_view:get_value_fun()}
                   ],
-    crossbar_view:load(Context, <<"users/list_by_id">>, ViewOptions).
+    crossbar_view:load(Context, ?KZD_LIST_BY_TYPE_ID, ViewOptions).
 
 -spec fetch_device_hotdesks(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 fetch_device_hotdesks(UserId, Context) ->

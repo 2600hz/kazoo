@@ -21,7 +21,6 @@
 -define(TEMPLATE_ID, <<"customer_update">>).
 
 -define(ACC_CHILDREN_LIST, <<"accounts/listing_by_children">>).
--define(ACC_USERS_LIST, <<"users/crossbar_listing">>).
 
 -define(TEMPLATE_MACROS
        ,kz_json:from_list(
@@ -111,7 +110,10 @@ process_account(AccountId, DataJObj) ->
             [send_update_to_user(UserJObj, DataJObj)];
         _ ->
             AccountDb = kzs_util:format_account_db(AccountId),
-            {'ok', Users} = kz_datamgr:get_results(AccountDb, ?ACC_USERS_LIST, []),
+            Options = [{'startkey', [kzd_users:type()]}
+                      ,{'endkey', [kzd_users:type(), kz_datamgr:view_highest_value()]}
+                      ],
+            {'ok', Users} = kz_datamgr:get_results(AccountDb, ?KZD_LIST_BY_TYPE_ID, Options),
             lists:flatten(select_users_to_update([kz_json:get_value(<<"value">>, User) || User <- Users], DataJObj))
     end.
 

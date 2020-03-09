@@ -140,7 +140,11 @@ admin_user_properties(DataJObj) ->
 
 -spec account_admin_user_properties(kz_term:ne_binary()) -> kz_term:proplist().
 account_admin_user_properties(AccountId) ->
-    case kz_datamgr:get_results(AccountId, <<"users/crossbar_listing">>, ['include_docs']) of
+    Options = [{'startkey', [kzd_users:type()]}
+              ,{'endkey', [kzd_users:type(), kz_datamgr:view_highest_value()]}
+              ,'include_docs'
+              ],
+    case kz_datamgr:get_results(AccountId, ?KZD_LIST_BY_TYPE_ID, Options) of
         {'error', _E} ->
             ?LOG_DEBUG("failed to get user listing from ~s: ~p", [AccountId, _E]),
             [];

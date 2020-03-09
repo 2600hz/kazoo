@@ -630,7 +630,10 @@ account_nouns() ->
     end.
 
 master_admin(MasterAccountId) ->
-    case kz_datamgr:get_results(MasterAccountId, <<"users/crossbar_listing">>, []) of
+    Options = [{'startkey', [kzd_users:type()]}
+              ,{'endkey', [kzd_users:type(), kz_datamgr:view_highest_value()]}
+              ],
+    case kz_datamgr:get_results(MasterAccountId, ?KZD_LIST_BY_TYPE_ID, Options) of
         {'ok', Users} -> find_first_admin(Users);
         {'error', _} -> 'undefined'
     end.

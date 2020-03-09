@@ -90,7 +90,11 @@ voicemail_to_email(AccountId, VMBox,  [Message|_]) ->
 -spec skel(kz_term:ne_binary()) -> ok.
 skel(AccountId) ->
     AccountDb = kzs_util:format_account_db(AccountId),
-    case kz_datamgr:get_results(AccountDb, <<"users/crossbar_listing">>, ['include_docs']) of
+    Options = [{'startkey', [kzd_users:type()]}
+              ,{'endkey', [kzd_users:type(), kz_datamgr:view_highest_value()]}
+              ,'include_docs'
+              ],
+    case kz_datamgr:get_results(AccountDb, ?KZD_LIST_BY_TYPE_ID, Options) of
         {'ok', Users} -> find_user_for_skel(AccountId, Users);
         {'error', _E} -> lager:debug("failed to find users for ~s: ~p", [AccountId, _E])
     end.
