@@ -1260,8 +1260,8 @@ fetch_available() ->
 
 -spec summary_account(cb_context:context()) -> cb_context:context().
 summary_account(Context) ->
-    Options = [{'startkey', [kz_notification:type()]}
-              ,{'endkey', [kz_notification:type(), kz_datamgr:view_highest_value()]}
+    Options = [{'startkey', [kz_notification:pvt_type()]}
+              ,{'endkey', [kz_notification:pvt_type(), kz_datamgr:view_highest_value()]}
               ,{'mapper', select_normalize_fun(Context)}
               ],
     Context1 = crossbar_view:load(Context, ?KZD_LIST_BY_TYPE_ID, Options),
