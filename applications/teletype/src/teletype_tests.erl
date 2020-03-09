@@ -31,7 +31,11 @@ voicemail_to_email(?NE_BINARY=AccountId) ->
 -spec find_vmboxes(kz_term:ne_binary()) -> kz_json:objects().
 find_vmboxes(?NE_BINARY=AccountId) ->
     AccountDb = kzs_util:format_account_db(AccountId),
-    case kz_datamgr:get_results(AccountDb, <<"vmboxes/crossbar_listing">>, ['include_docs']) of
+    Options = [{'startkey', [kzd_voicemail_box:type()]}
+              ,{'endkey', [kzd_voicemail_box:type(), kz_datamgr:view_highest_value()]}
+              ,'include_docs'
+              ],
+    case kz_datamgr:get_results(AccountDb, ?KZD_LIST_BY_TYPE_ID, Options) of
         {'ok', VMBoxes} -> VMBoxes;
         {'error', _E} ->
             lager:debug("failed to query ~s for vm boxes: ~p", [AccountId, _E]),

@@ -141,7 +141,11 @@ migrate_recorded_names([Account|Accounts]) ->
 migrate_recorded_name(Db) ->
     lager:info("migrating all name recordings from vmboxes w/ owner_id in ~s", [Db]),
 
-    case kz_datamgr:get_results(Db, <<"vmboxes/crossbar_listing">>, ['include_docs']) of
+    Options = [{'startkey', [kzd_voicemail_box:type()]}
+              ,{'endkey', [kzd_voicemail_box:type(), kz_datamgr:view_highest_value()]}
+              ,'include_docs'
+              ],
+    case kz_datamgr:get_results(Db, ?KZD_LIST_BY_TYPE_ID, Options) of
         {'ok', []} -> lager:info("no vmboxes in ~s", [Db]);
         {'error', _E} -> lager:info("unable to get vm box list: ~p", [_E]);
         {'ok', VMBoxes} ->

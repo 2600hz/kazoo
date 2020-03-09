@@ -34,7 +34,6 @@
 -include("crossbar.hrl").
 -include_lib("kazoo_documents/include/kazoo_documents.hrl").
 
--define(CB_LIST, <<"vmboxes/crossbar_listing">>).
 -define(MSG_LISTING_BY_MAILBOX, <<"mailbox_messages/listing_by_mailbox">>).
 
 -define(BOX_ID_KEY_INDEX, 2).
@@ -794,7 +793,11 @@ validate_patch(Context, BoxId)->
 %%------------------------------------------------------------------------------
 -spec load_vmbox_summary(cb_context:context()) -> cb_context:context().
 load_vmbox_summary(Context) ->
-    Context1 = crossbar_view:load(Context, ?CB_LIST, [{'mapper', crossbar_view:get_value_fun()}]),
+    Options = [{'startkey', [kzd_voicemail_box:type()]}
+              ,{'endkey', [kzd_voicemail_box:type(), kz_datamgr:view_highest_value()]}
+              ,{'mapper', crossbar_view:get_value_fun()}
+              ],
+    Context1 = crossbar_view:load(Context, ?KZD_LIST_BY_TYPE_ID, Options),
     load_vmbox_summary(Context1, cb_context:resp_status(Context1)).
 
 -spec load_vmbox_summary(cb_context:cb_context(), crossbar_status()) -> cb_context:context().
@@ -1279,7 +1282,11 @@ maybe_migrate_vm_box(Box) ->
 -spec migrate(kz_term:ne_binary()) -> 'ok'.
 migrate(Account) ->
     AccountDb = kzs_util:format_account_db(Account),
-    case kz_datamgr:get_results(AccountDb, ?CB_LIST, ['include_docs']) of
+    Options = [{'startkey', [kzd_voicemail_box:type()]}
+              ,{'endkey', [kzd_voicemail_box:type(), kz_datamgr:view_highest_value()]}
+              ,'include_docs'
+              ],
+    case kz_datamgr:get_results(AccountDb, ?KZD_LIST_BY_TYPE_ID, Options) of
         {'ok', []} -> 'ok';
         {'error', _E} -> io:format("failed to check account ~s for voicemail boxes: ~p~n", [Account, _E]);
         {'ok', Boxes} ->

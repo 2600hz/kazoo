@@ -127,7 +127,6 @@
 
 -define(ACCOUNTS_AGG_NOTIFY_VIEW_FILE, <<"views/notify.json">>).
 
--define(VMBOX_VIEW, <<"vmboxes/crossbar_listing">>).
 -define(PMEDIA_VIEW, <<"media/listing_private_media">>).
 
 -define(DEFAULT_PAUSE, 1 * ?MILLISECONDS_IN_SECOND).
@@ -1346,12 +1345,15 @@ cleanup_orphan_modbs() ->
 -spec get_messages(kz_term:ne_binary()) -> kz_term:ne_binaries().
 get_messages(Account) ->
     AccountDb = kzs_util:format_account_db(Account),
-    ViewOptions = ['include_docs'],
-    case kz_datamgr:get_results(AccountDb, ?VMBOX_VIEW, ViewOptions) of
+    Options = [{'startkey', [kzd_voicemail_box:type()]}
+              ,{'endkey', [kzd_voicemail_box:type(), kz_datamgr:view_highest_value()]}
+              ,'include_docs'
+              ],
+    case kz_datamgr:get_results(AccountDb, ?KZD_LIST_BY_TYPE_ID, Options) of
         {'ok', ViewRes} ->
             lists:foldl(fun extract_messages/2, [], ViewRes);
         {'error', _E} ->
-            lager:error("could not load view ~p: ~p", [?VMBOX_VIEW, _E]),
+            lager:error("could not get vmboxes ~p: ~p", [_E]),
             []
     end.
 

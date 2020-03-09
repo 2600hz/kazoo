@@ -4,8 +4,6 @@
 -include_lib("kazoo_stdlib/include/kz_log.hrl").
 -include_lib("kazoo_documents/include/kazoo_documents.hrl").
 
--define(VMBOX_CB_LIST, <<"vmboxes/crossbar_listing">>).
-
 -define(APP_NAME, <<"callflow">>).
 -define(APP_VERSION, <<"4.0.0">>).
 -define(VM_CONFIG_CAT, <<"callflow">>).

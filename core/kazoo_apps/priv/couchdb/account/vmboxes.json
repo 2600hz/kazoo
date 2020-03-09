@@ -9,22 +9,6 @@
     },
     "language": "javascript",
     "views": {
-        "crossbar_listing": {
-            "map": [
-                "function(doc) {",
-                "  if (doc.pvt_type != 'vmbox' || doc.pvt_deleted) return;",
-                "  var messges_count = doc.messages ? doc.messages.length || 0 : 0;",
-                "  emit(doc.name, {",
-                "    id: doc._id,",
-                "    name: doc.name,",
-                "    mailbox: doc.mailbox,",
-                "    owner_id: doc.owner_id,",
-                "    messages: messges_count,",
-                "    flags: doc.flags || []",
-                "  });",
-                "}"
-            ]
-        },
         "legacy_msg_by_timestamp": {
             "map": [
                 "function(doc) {",
