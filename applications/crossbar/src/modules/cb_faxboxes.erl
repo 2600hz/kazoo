@@ -313,7 +313,7 @@ faxbox_listing(Context) ->
     Options = [{'startkey', [kzd_fax_box:type()]}
               ,{'endkey', [kzd_fax_box:type(), kz_datamgr:view_highest_value()]}
               ,{'mapper', fun normalize_view_results/2}
-               ,'include_docs'
+              ,'include_docs'
               ],
     crossbar_view:load(Context, ?KZD_LIST_BY_TYPE_ID, Options).
 

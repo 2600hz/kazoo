@@ -271,7 +271,7 @@ maybe_migrate_history(Account) ->
 
     Options = [{'startkey', [kzd_clicktocall:type()]}
               ,{'endkey', [kzd_clicktocall:type(), kz_datamgr:view_highest_value()]}
-               ,'include_docs'
+              ,'include_docs'
               ],
     case kz_datamgr:get_results(AccountDb, ?KZD_LIST_BY_TYPE_ID, Options) of
         {'ok', []} -> 'ok';

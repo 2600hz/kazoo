@@ -127,7 +127,7 @@ validate_delete_metaflows(Context) ->
                                                      )
                                   );
         _ ->
-             Context
+            Context
     end.
 
 -spec validate_set_metaflows(cb_context:context()) ->

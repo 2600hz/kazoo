@@ -662,7 +662,7 @@ ensure_aggregate_faxbox(Account) ->
     AccountDb = kzs_util:format_account_db(Account),
     Options = [{'startkey', [kzd_fax_box:type()]}
               ,{'endkey', [kzd_fax_box:type(), kz_datamgr:view_highest_value()]}
-               ,'include_docs'
+              ,'include_docs'
               ],
     case kz_datamgr:get_results(AccountDb, ?KZD_LIST_BY_TYPE_ID, Options) of
         {'ok', Faxboxes} ->
@@ -760,7 +760,7 @@ ensure_aggregate_device(Account) ->
     AccountDb = kzs_util:format_account_db(Account),
     Options = [{'startkey', [kzd_devices:type()]}
               ,{'endkey', [kzd_devices:type(), kz_datamgr:view_highest_value()]}
-               ,'include_docs'
+              ,'include_docs'
               ],
     case kz_datamgr:get_results(AccountDb, ?DEVICES_CB_LIST, Options) of
         {'ok', Devices} ->
