@@ -24,8 +24,6 @@
 
 -include("crossbar.hrl").
 
--define(CB_LIST, <<"temporal_rules_sets/crossbar_listing">>).
-
 %%%=============================================================================
 %%% API
 %%%=============================================================================
@@ -168,7 +166,11 @@ validate_patch(Id, Context) ->
 %%------------------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    crossbar_view:load(Context, ?CB_LIST, [{'mapper', crossbar_view:get_value_fun()}]).
+    Options = [{'startkey', [<<"temporal_rule_set">>]}
+              ,{'endkey', [<<"temporal_rule_set">>, kz_datamgr:view_highest_value()]}
+              ,{'mapper', crossbar_view:get_value_fun()}
+              ],
+    crossbar_view:load(Context, ?KZD_LIST_BY_TYPE_ID, Options).
 
 %%------------------------------------------------------------------------------
 %% @doc
