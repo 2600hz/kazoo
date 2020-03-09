@@ -12,7 +12,7 @@
         "list_by_type_id": {
             "map": [
                 "function(doc) {",
-                "  if doc.pvt_deleted return;",
+                "  if (doc.pvt_deleted) return;",
                 "  var doc_type = doc.pvt_type;",
                 "  switch (doc_type) {",
                 "    case 'account':",
