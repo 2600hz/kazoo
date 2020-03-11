@@ -57,7 +57,7 @@ delete(_AccountId, AccountJObj) ->
                     ,DeleteRoutines
                     )
     of
-        {DeletedAccount, []} -> {'ok', DeletedAccount};
+        {DeletedAccount, []} ->   {'ok', DeletedAccount};
         {_AccountJObj, Errors} -> {'error', Errors}
     end.
 
