@@ -533,7 +533,9 @@ get_leg_vars(JObj) -> get_leg_vars(kz_json:to_proplist(JObj)).
 
 -spec maybe_endpoint_privacy_header(kz_term:proplist()) -> kz_term:ne_binaries().
 maybe_endpoint_privacy_header(Prop) ->
-    case kz_privacy:has_flags(Prop) of
+    case kz_privacy:has_flags(Prop)
+        andalso kz_privacy:use_sip_privacy_header()
+    of
         'true' -> [<<"sip_h_Privacy=id">>];
         'false' -> []
     end.
@@ -589,23 +591,12 @@ channel_vars_handle_asserted_identity({Props, Results}=Acc) ->
 
 -spec build_asserted_identity(kz_term:ne_binary(), kz_term:prolist(), iolist()) -> channel_var_fold().
 build_asserted_identity(AssertedIdentity, Props, Results) ->
-    case kz_privacy:has_flags(Props) of
-        'true' ->
-            {Props
-            ,[<<"sip_cid_type=none">>
-             ,<<"sip_h_Privacy=id">>
-             ,<<"sip_h_P-Asserted-Identity='", AssertedIdentity/binary, "'">>
-                  | Results
-             ]
-            };
-        'false' ->
-            {Props
-            ,[<<"sip_cid_type=none">>
-             ,<<"sip_h_P-Asserted-Identity='", AssertedIdentity/binary, "'">>
-                  | Results
-             ]
-            }
-    end.
+    {Props
+    ,[<<"sip_cid_type=none">>
+     ,<<"sip_h_P-Asserted-Identity='", AssertedIdentity/binary, "'">>
+          | Results
+     ] ++ maybe_endpoint_privacy_header(Props)
+    }.
 
 -spec create_asserted_identity_header(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()) ->
           kz_term:api_binary().
