@@ -200,7 +200,7 @@ empty_device() ->
     check_expectations(?FUNCTION_NAME, Merged, Expectations).
 
 empty_object() ->
-     kz_json:new().
+    kz_json:new().
 
 check_expectations(Test, Merged, Expectations) ->
     [{kz_term:to_list(kz_binary:join([Test, Type, Direction, Network]))
