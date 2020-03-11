@@ -26,6 +26,7 @@ call_recording_test_() ->
     ,device_off_user_off_account_on()
     ,device_undefined_user_off_account_on()
     ,device_undefined_user_undefined_account_on()
+    ,empty_device()
     ].
 
 device_on() ->
@@ -182,6 +183,29 @@ all_on() ->
     Merged = kz_endpoint:merge_attribute(<<"call_recording">>, AccountDoc, DeviceDoc, UserDoc),
 
     check_expectations(?FUNCTION_NAME, Merged, Expectations).
+
+%% KZOO-53: if account is set to record, and device/user settings are empty JSON object, use account
+empty_device() ->
+    Expectations = [{<<"account">>, <<"inbound">>, <<"offnet">>,   'true'}
+                   ,{<<"account">>, <<"inbound">>, <<"onnet">>,    'true'}
+                   ,{<<"account">>, <<"outbound">>, <<"offnet">>,  'true'}
+                   ,{<<"account">>, <<"outbound">>, <<"onnet">>,   'true'}
+                   ,{<<"endpoint">>, <<"inbound">>, <<"offnet">>,  'false'}
+                   ,{<<"endpoint">>, <<"inbound">>, <<"onnet">>,   'false'}
+                   ,{<<"endpoint">>, <<"outbound">>, <<"offnet">>, 'false'}
+                   ,{<<"endpoint">>, <<"outbound">>, <<"onnet">>,  'false'}
+                   ],
+
+    AccountDoc = kzd_accounts:set_call_recording(kzd_accounts:new(), kz_json:from_list([{<<"account">>, all_on_object()}])),
+    UserDoc = kzd_users:set_call_recording(kzd_users:new(), empty_object()),
+    DeviceDoc = kzd_devices:set_call_recording(kzd_devices:new(), empty_object()),
+
+    Merged = kz_endpoint:merge_attribute(<<"call_recording">>, AccountDoc, DeviceDoc, UserDoc),
+
+    check_expectations(?FUNCTION_NAME, Merged, Expectations).
+
+empty_object() ->
+    kz_json:new().
 
 check_expectations(Test, Merged, Expectations) ->
     [{kz_term:to_list(kz_binary:join([Test, Type, Direction, Network]))
