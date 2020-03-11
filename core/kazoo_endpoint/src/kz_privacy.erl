@@ -28,6 +28,7 @@
 -export([anonymous_caller_id_name/0, anonymous_caller_id_name/1
         ,anonymous_caller_id_number/0, anonymous_caller_id_number/1
         ]).
+-export([use_sip_privacy_header/0]).
 
 -include("kazoo_endpoint.hrl").
 -include_lib("kazoo_amqp/include/kapi_offnet_resource.hrl").
@@ -39,6 +40,8 @@
 
 -define(KEY_ANONYMOUS_NUMBER, <<"default_privacy_number">>).
 -define(DEFAULT_ANONYMOUS_NUMBER, <<"anonymous">>).
+
+-define(KEY_PRIVACY_HEADER, <<"use_sip_privacy_header">>).
 
 -define(KEY_ANONYMOUS_NAMES, <<"anonymous_cid_names">>).
 -define(KEY_ANONYMOUS_NUMBERS, <<"anonymous_cid_numbers">>).
@@ -454,6 +457,14 @@ anonymous_caller_id_number('undefined') ->
     anonymous_caller_id_number();
 anonymous_caller_id_number(AccountId) ->
     kapps_account_config:get_global(AccountId, ?PRIVACY_CAT, ?KEY_ANONYMOUS_NUMBER, ?DEFAULT_ANONYMOUS_NUMBER).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec use_sip_privacy_header() -> boolean().
+use_sip_privacy_header() ->
+    kapps_config:get_is_true(?PRIVACY_CAT, ?KEY_PRIVACY_HEADER, 'true').
 
 %%------------------------------------------------------------------------------
 %% @doc Get Key from JObj, if not found look into CCV
