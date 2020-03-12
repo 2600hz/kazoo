@@ -185,7 +185,7 @@
                     ,magic_pathed = 'false' :: boolean()
                     ,should_paginate :: kz_term:api_boolean()
                     ,host_url = <<>> :: binary()
-                    ,master_account_id = 'undefined' :: kz_term:ne_binary()
+                    ,master_account_id = 'undefined' :: kz_term:api_ne_binary()
                     }).
 
 -define(MAX_RANGE, kapps_config:get_pos_integer(?CONFIG_CAT
