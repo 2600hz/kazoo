@@ -403,7 +403,7 @@ delete(Context, Account) ->
 
     case kzdb_account:delete(AccountId) of
         {'ok', AccountJObj} ->
-            Context1 = cb_context:set_doc(Context, AccountJObj),
+            Context1 = crossbar_doc:handle_datamgr_success(AccountJObj, Context),
             _ = maybe_update_descendants_count(kzd_accounts:tree(AccountJObj)),
             _ = provisioner_util:maybe_delete_account(cb_context:account_id(Context)
                                                      ,cb_context:auth_token(Context)

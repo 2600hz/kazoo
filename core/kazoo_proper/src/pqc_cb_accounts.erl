@@ -26,7 +26,7 @@
         ,postcondition/3
 
          %% kapps_maintenance:check_release callback
-        ,seq/0, seq_44832/0
+        ,seq/0, seq_44832/0, seq_kzoo_54/0
         ]).
 
 -export([account_url/1]).
@@ -35,7 +35,7 @@
 
 -include("kazoo_proper.hrl").
 
--define(ACCOUNT_NAMES, [<<"account_for_accounts">>]).
+-define(ACCOUNT_NAMES, [<<?MODULE_STRING>>]).
 
 -type account_id() :: {'call', 'pqc_kazoo_model', 'account_id_by_name', [pqc_cb_api:state() | proper_types:type()]} |
                       kz_term:ne_binary().
@@ -50,18 +50,20 @@ command(Model, Name) ->
 symbolic_account_id(Model, Name) ->
     {'call', 'pqc_kazoo_model', 'account_id_by_name', [Model, Name]}.
 
--spec create_account(pqc_cb_api:state(), kz_term:ne_binary()) -> pqc_cb_api:response().
-create_account(API, NewAccountName) ->
-    create_account(API, NewAccountName, pqc_cb_api:auth_account_id(API)).
+-spec create_account(pqc_cb_api:state(), kz_json:object() | kz_term:ne_binary()) -> pqc_cb_api:response().
+create_account(API, NewAccount) ->
+    create_account(API, NewAccount, pqc_cb_api:auth_account_id(API)).
 
--spec create_account(pqc_cb_api:state(), kz_term:ne_binary(), kz_term:ne_binary()) -> pqc_cb_api:response().
-create_account(API, NewAccountName, AccountId) ->
+-spec create_account(pqc_cb_api:state(), kz_json:object() | kz_term:ne_binary(), kz_term:ne_binary()) -> pqc_cb_api:response().
+create_account(API, <<NewAccountName/binary>>, AuthAccountId) ->
     RequestData = kz_json:from_list([{<<"name">>, NewAccountName}]),
+    create_account(API, RequestData, AuthAccountId);
+create_account(API, RequestData, AuthAccountId) ->
     RequestEnvelope = pqc_cb_api:create_envelope(RequestData),
 
     Resp = pqc_cb_api:make_request([#expectation{response_codes=[201, 500]}]
                                   ,fun kz_http:put/3
-                                  ,account_url(AccountId)
+                                  ,account_url(AuthAccountId)
                                   ,pqc_cb_api:request_headers(API)
                                   ,kz_json:encode(RequestEnvelope)
                                   ),
@@ -193,7 +195,8 @@ postcondition(Model
 seq() ->
     _ = enable_and_delete_topup(),
     _ = enable_and_disable_account_using_patch(),
-    seq_44832().
+    seq_44832(),
+    seq_kzoo_54().
 
 -spec seq_44832() -> 'ok'.
 seq_44832() ->
@@ -219,6 +222,42 @@ seq_44832() ->
 
     _ = cleanup(API),
     ?INFO("finished double-POST check").
+
+-spec seq_kzoo_54() -> 'ok'.
+seq_kzoo_54() ->
+    API = pqc_cb_api:init_api(['crossbar'], ['cb_accounts']),
+
+    AccountReq = kz_json:from_list([{<<"name">>, <<?MODULE_STRING>>}
+                                   ,{<<"realm">>, <<?MODULE_STRING>>}
+                                   ]
+                                  ),
+
+    CustomAccountResp = create_account(API, AccountReq),
+    lager:info("created custom account ~s", [CustomAccountResp]),
+
+    CustomAccountJObj = kz_json:get_value(<<"data">>, kz_json:decode(CustomAccountResp)),
+    CustomAccountId = kz_doc:id(CustomAccountJObj),
+    <<?MODULE_STRING>> = kzd_accounts:name(CustomAccountJObj),
+    <<?MODULE_STRING>> = kzd_accounts:realm(CustomAccountJObj),
+
+    CustomDeleteResp = delete_account(API, CustomAccountId),
+    CustomAccountId = kz_doc:id(kz_json:get_value(<<"data">>, kz_json:decode(CustomDeleteResp))),
+
+    RealmSuffix = kapps_config:get_binary(<<"crossbar.accounts">>, <<"account_realm_suffix">>),
+    DefaultCreateResp = create_account(API, <<?MODULE_STRING>>),
+    lager:info("created default account ~s", [DefaultCreateResp]),
+
+    DefaultAccountJObj = kz_json:get_value(<<"data">>, kz_json:decode(DefaultCreateResp)),
+    DefaultAccountId = kz_doc:id(DefaultAccountJObj),
+    <<?MODULE_STRING>> = kzd_accounts:name(DefaultAccountJObj),
+    lager:info("realm ~s is suffixed by ~s", [kzd_accounts:realm(DefaultAccountJObj), RealmSuffix]),
+    {_, _} = binary:match(kzd_accounts:realm(DefaultAccountJObj), RealmSuffix),
+
+    DefaultDeleteResp = delete_account(API, DefaultAccountId),
+    DefaultAccountId = kz_doc:id(kz_json:get_value(<<"data">>, kz_json:decode(DefaultDeleteResp))),
+
+    _ = cleanup(API),
+    ?INFO("finished name/realm checks").
 
 -spec enable_and_delete_topup() -> 'ok'.
 enable_and_delete_topup() ->
