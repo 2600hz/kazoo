@@ -503,7 +503,8 @@ check_dtmf_type(#{payload := Payload}) ->
 
 -spec build_leg_vars(kz_json:object() | kz_term:proplist()) -> kz_term:ne_binaries().
 build_leg_vars([]) -> [];
-build_leg_vars([_|_]=Prop) -> lists:foldr(fun kazoo_var_to_fs_var/2, [], Prop);
+build_leg_vars([_|_]=Prop) ->
+    lists:foldr(fun kazoo_var_to_fs_var/2, maybe_endpoint_privacy_header(Prop), Prop);
 build_leg_vars(JObj) -> build_leg_vars(kz_json:to_proplist(JObj)).
 
 -spec get_leg_vars(kz_json:object() | kz_term:proplist()) -> iolist().
@@ -519,13 +520,25 @@ get_leg_vars([Binary|_]=Binaries)
 get_leg_vars([_|_]=Prop) ->
     ["[^^", ?BRIDGE_CHANNEL_VAR_SEPARATOR
     ,string:join([kz_term:to_list(V)
-                  || V <- lists:foldr(fun kazoo_var_to_fs_var/2, [], Prop)
+                  || V <- lists:foldr(fun kazoo_var_to_fs_var/2
+                                     ,maybe_endpoint_privacy_header(Prop)
+                                     ,Prop
+                                     )
                  ]
                 ,?BRIDGE_CHANNEL_VAR_SEPARATOR
                 )
     ,"]"
     ];
 get_leg_vars(JObj) -> get_leg_vars(kz_json:to_proplist(JObj)).
+
+-spec maybe_endpoint_privacy_header(kz_term:proplist()) -> kz_term:ne_binaries().
+maybe_endpoint_privacy_header(Prop) ->
+    case kz_privacy:has_flags(Prop)
+        andalso kz_privacy:use_sip_privacy_header()
+    of
+        'true' -> [<<"sip_h_Privacy=id">>];
+        'false' -> []
+    end.
 
 -spec get_channel_vars(kz_json:object() | kz_term:proplist()) -> iolist().
 get_channel_vars(Param) ->
@@ -578,23 +591,12 @@ channel_vars_handle_asserted_identity({Props, Results}=Acc) ->
 
 -spec build_asserted_identity(kz_term:ne_binary(), kz_term:prolist(), iolist()) -> channel_var_fold().
 build_asserted_identity(AssertedIdentity, Props, Results) ->
-    case kz_privacy:has_flags(Props) of
-        'true' ->
-            {Props
-            ,[<<"sip_cid_type=none">>
-             ,<<"sip_h_Privacy=id">>
-             ,<<"sip_h_P-Asserted-Identity=", AssertedIdentity/binary>>
-                  | Results
-             ]
-            };
-        'false' ->
-            {Props
-            ,[<<"sip_cid_type=none">>
-             ,<<"sip_h_P-Asserted-Identity=", AssertedIdentity/binary>>
-                  | Results
-             ]
-            }
-    end.
+    {Props
+    ,[<<"sip_cid_type=none">>
+     ,<<"sip_h_P-Asserted-Identity='", AssertedIdentity/binary, "'">>
+          | Results
+     ] ++ maybe_endpoint_privacy_header(Props)
+    }.
 
 -spec create_asserted_identity_header(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()) ->
           kz_term:api_binary().

@@ -63,6 +63,18 @@ fetch_dialplan(Node, UUID, JObj, _ControlPid) ->
         [_|_]=Apps -> Apps
     end.
 
+%%------------------------------------------------------------------------------
+%% @doc Anonymize CIDs if privacy method is kazoo and execute privacy command if
+%% privacy method is `sip'.
+%%
+%% FIXME: This would execute privacy command twice for calls:
+%% 1) when cf_privacy is setting CCVs
+%% 2) when stepswitch bridges the call
+%%
+%% Maybe we can check for the app to be `bridge' or `privacy', but it also has
+%% side effect that it won't do anything for one leg call during `set' command.
+%% @end
+%%------------------------------------------------------------------------------
 -spec enforce_privacy(atom(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 enforce_privacy(Node, UUID, JObj) ->
     AnonymizedJObj = kz_privacy:enforce(JObj),

@@ -69,6 +69,11 @@
             "default": "0000000000",
             "description": "Default Caller ID Number should be shown for anonymous calls",
             "type": "string"
+        },
+        "use_sip_privacy_header": {
+            "default": true,
+            "description": "privacy use_sip_privacy_header",
+            "type": "boolean"
         }
     },
     "type": "object"
