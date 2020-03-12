@@ -55,11 +55,6 @@
             "description": "privacy method",
             "type": "string"
         },
-        "privacy_mode": {
-            "default": "kazoo",
-            "description": "Default privacy mode for anonymous calls",
-            "type": "string"
-        },
         "privacy_name": {
             "default": "anonymous",
             "description": "Default Caller ID Name should be shown for anonymous calls",
@@ -69,6 +64,11 @@
             "default": "0000000000",
             "description": "Default Caller ID Number should be shown for anonymous calls",
             "type": "string"
+        },
+        "use_sip_privacy_header": {
+            "default": false,
+            "description": "privacy use_sip_privacy_header",
+            "type": "boolean"
         }
     },
     "type": "object"
