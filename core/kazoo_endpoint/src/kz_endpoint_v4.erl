@@ -483,7 +483,7 @@ get_user_record_call_properties(UserDoc) ->
 -spec get_device_record_call_properties(kzd_devices:doc() | 'undefined') -> kz_json:object().
 get_device_record_call_properties('undefined') -> kz_json:new();
 get_device_record_call_properties(DeviceDoc) ->
-    case kzd_users:call_recording(DeviceDoc) of
+    case kzd_devices:call_recording(DeviceDoc) of
         'undefined' -> get_legacy_record_call_properties(DeviceDoc);
         CallRecording -> endpoint_recording(CallRecording)
     end.
@@ -507,7 +507,12 @@ get_legacy_record_call_properties(EndpointDoc) ->
 
 -spec endpoint_recording(kzd_call_recording:doc()) -> kz_json:object().
 endpoint_recording(RecordCall) ->
-    kz_json:from_list([{<<"endpoint">>, merge_call_recording(RecordCall)}]).
+    endpoint_recording(RecordCall, kz_json:is_empty(RecordCall)).
+
+-spec endpoint_recording(kzd_call_recording:doc(), boolean()) -> kz_json:object().
+endpoint_recording(RecordCall, 'false') ->
+    kz_json:from_list([{<<"endpoint">>, merge_call_recording(RecordCall)}]);
+endpoint_recording(RecordCall, 'true') -> RecordCall.
 
 %% deprecated, to be removed
 -spec get_record_call_properties(kz_json:object()) -> kz_json:object().
