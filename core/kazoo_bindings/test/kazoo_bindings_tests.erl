@@ -31,6 +31,7 @@
 -endif.
 -include_lib("eunit/include/eunit.hrl").
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
+-include_lib("kazoo_stdlib/include/kazoo_dbg.hrl").
 
 %% EUNIT and PropEr TESTING %%
 -spec binding_matches(kz_term:ne_binary(), binary()) -> boolean().
@@ -71,20 +72,13 @@ bindings_match_test_() ->
 %% Left commented out because this was really useful for stepping through
 %% individual tests and I want to keep it here for reference in the future
 %% dbg_test() ->
-%%     dbg:start(),
-
-%%     dbg:tracer(),
-
-%%     dbg:tpl(kazoo_bindings, [{'_', [], [$_]}]),
-%%     dbg:p(all, c),
-
+%%     ?DBG_START,
+%%     ?DBG_TRACE('kazoo_bindings'),
 
 %%     Result = binding_matches(<<"W0.*.m.m.#">>, <<"W0.m.m.m.5">>),
 
-
-%%     dbg:stop_clear(),
-%%     dbg:stop(),
-%%     ?assertEqual('true', Result).
+%%     ?DBG_STOP,
+%%     ?assert(Result).
 
 weird_bindings_test_() ->
     [?_assertEqual('true', binding_matches(<<"#.A.*">>, <<"A.a.A.a">>))

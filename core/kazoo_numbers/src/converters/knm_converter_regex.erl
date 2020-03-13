@@ -93,9 +93,14 @@ to_1npan(Num) ->
 to_e164(<<"+",_/binary>> = N) -> N;
 to_e164(Number) ->
     Converters = get_e164_converters(),
-    Regexes = kz_json:get_keys(Converters),
-    maybe_convert_to_e164(Regexes, Converters, Number).
+    to_e164_using_regexps(Number, Converters).
 
+-spec to_e164_using_regexps(kz_term:ne_binary(), kz_json:object()) -> kz_term:ne_binary().
+to_e164_using_regexps(Number, Converters) ->
+    Regexps = kz_json:get_keys(Converters),
+    maybe_convert_to_e164(Number, Converters, Regexps).
+
+-spec to_e164(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 to_e164(<<"+",_/binary>> = N, _AccountId) -> N;
 to_e164(Number, Account) ->
     AccountId = kzs_util:format_account_id(Account),
@@ -109,8 +114,8 @@ to_e164(Number, Account) ->
 -spec to_e164_from_account(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 to_e164_from_account(Number, ?NE_BINARY = AccountId) ->
     Converters = get_e164_converters(AccountId),
-    Regexes = kz_json:get_keys(Converters),
-    maybe_convert_to_e164(Regexes, Converters, Number).
+    Regexps = kz_json:get_keys(Converters),
+    maybe_convert_to_e164(Number, Converters, Regexps).
 
 to_e164_from_account_dialplan(Number, AccountId, 'undefined') ->
     to_e164_from_account(Number, AccountId);
@@ -166,15 +171,15 @@ get_e164_converters(AccountId) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec maybe_convert_to_e164(kz_term:ne_binaries(), kz_json:object(), kz_term:ne_binary()) -> kz_term:ne_binary().
-maybe_convert_to_e164([], _, Number) -> Number;
-maybe_convert_to_e164([Regex|Regexs], Converters, Number) ->
-    case re:run(Number, Regex, [{'capture', 'all', 'binary'}]) of
+-spec maybe_convert_to_e164(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binaries()) -> kz_term:ne_binary().
+maybe_convert_to_e164(Number, _Converters, []) -> Number;
+maybe_convert_to_e164(Number, Converters, [Regexp|Regexps]) ->
+    case re:run(Number, Regexp, [{'capture', 'all', 'binary'}]) of
         'nomatch' ->
-            maybe_convert_to_e164(Regexs, Converters, Number);
+            maybe_convert_to_e164(Number, Converters, Regexps);
         {'match', Captures} ->
             Root = lists:last(Captures),
-            Prefix = kz_json:get_binary_value([Regex, <<"prefix">>], Converters, <<>>),
-            Suffix = kz_json:get_binary_value([Regex, <<"suffix">>], Converters, <<>>),
+            Prefix = kz_json:get_binary_value([Regexp, <<"prefix">>], Converters, <<>>),
+            Suffix = kz_json:get_binary_value([Regexp, <<"suffix">>], Converters, <<>>),
             <<Prefix/binary, Root/binary, Suffix/binary>>
     end.
