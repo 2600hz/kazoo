@@ -35,11 +35,16 @@ parse_args([Mod | Rest], #{modules := Modules}=Opts) ->
 run_eunit(#{modules := []}) ->
     io:format('user', "No modules are specified.\n", []),
     usage();
-run_eunit(#{modules := Modules}=Opts) ->
+run_eunit(#{modules := Modules
+           ,report_dir := Dir
+           }=Opts) ->
     _Cover = maybe_start_cover(Opts),
     TestMods = filter_same_name_test_modules(Modules),
 
-    case eunit:test(TestMods, ['verbose']) of
+    case eunit:test(TestMods, ['verbose'
+                              ,{'report', {'eunit_surefire', [{'dir', Dir}]}}
+                              ])
+    of
         'ok' ->
             maybe_stop_cover(Opts),
             erlang:halt();
