@@ -115,7 +115,7 @@ get_callflows(AccountDb) ->
               ,{'endkey', [kzd_callflows:type(), kz_datamgr:view_highest_value()]}
               ,'include_docs'
               ],
-    case kz_datamgr:get_results(AccountDb, ?KZD_LIST_BY_TYPE_ID, Options) of
+    case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, Options) of
         {'ok', Callflows} -> Callflows;
         {'error', _} -> []
     end.

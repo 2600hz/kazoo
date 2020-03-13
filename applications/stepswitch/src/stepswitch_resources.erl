@@ -943,7 +943,7 @@ fetch_local_resources(AccountId) ->
                   ,'include_docs'
                   ],
     lager:debug("local resource cache miss, fetching from db ~s", [AccountDb]),
-    case kz_datamgr:get_results(AccountDb, ?KZD_LIST_BY_TYPE_ID, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, ViewOptions) of
         {'error', _R} ->
             lager:warning("unable to fetch local resources from ~s: ~p", [AccountId, _R]),
             [];

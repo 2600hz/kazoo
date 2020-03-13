@@ -135,7 +135,7 @@ validate_conferences(?HTTP_GET, Context) ->
               ,{'endkey', [kzd_conference:type(), kz_datamgr:view_highest_value()]}
               ,{'mapper', crossbar_view:get_value_fun()}
               ],
-    LoadedContext = crossbar_view:load(Context, ?KZD_LIST_BY_TYPE_ID, Options),
+    LoadedContext = crossbar_view:load(Context, ?KZ_VIEW_LIST_UNIFORM, Options),
     case cb_context:resp_status(LoadedContext) of
         'success' ->
             Context1 = search_conferences(LoadedContext),

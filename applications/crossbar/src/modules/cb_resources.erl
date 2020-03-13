@@ -417,7 +417,7 @@ summary(Context) ->
               ,{'endkey', [<<"resource">>, kz_datamgr:view_highest_value()]}
               ,{'mapper', crossbar_view:get_value_fun()}
               ],
-    crossbar_view:load(Context, ?KZD_LIST_BY_TYPE_ID, Options).
+    crossbar_view:load(Context, ?KZ_VIEW_LIST_UNIFORM, Options).
 
 %%------------------------------------------------------------------------------
 %% @doc Attempt to load a summarized listing of all instances of this

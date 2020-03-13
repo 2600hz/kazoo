@@ -144,7 +144,7 @@ account_admin_user_properties(AccountId) ->
               ,{'endkey', [kzd_users:type(), kz_datamgr:view_highest_value()]}
               ,'include_docs'
               ],
-    case kz_datamgr:get_results(AccountId, ?KZD_LIST_BY_TYPE_ID, Options) of
+    case kz_datamgr:get_results(AccountId, ?KZ_VIEW_LIST_UNIFORM, Options) of
         {'error', _E} ->
             ?LOG_DEBUG("failed to get user listing from ~s: ~p", [AccountId, _E]),
             [];

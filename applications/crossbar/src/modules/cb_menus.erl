@@ -135,7 +135,7 @@ load_menu_summary(Context) ->
               ,{'endkey', [kzd_menus:type(), kz_datamgr:view_highest_value()]}
               ,{'mapper', crossbar_view:get_value_fun()}
               ],
-    crossbar_view:load(Context, ?KZD_LIST_BY_TYPE_ID, Options).
+    crossbar_view:load(Context, ?KZ_VIEW_LIST_UNIFORM, Options).
 
 %%------------------------------------------------------------------------------
 %% @doc Create a new menu document with the data provided, if it is valid

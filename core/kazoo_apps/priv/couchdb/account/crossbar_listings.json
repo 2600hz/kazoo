@@ -1,5 +1,5 @@
 {
-    "_id": "_design/crossbar_listing",
+    "_id": "_design/crossbar_listings",
     "kazoo": {
         "view_map": [
             {
@@ -9,7 +9,7 @@
     },
     "language": "javascript",
     "views": {
-        "list_by_type_id": {
+        "uniform": {
             "map": [
                 "function(doc) {",
                 "  if (doc.pvt_deleted) return;",

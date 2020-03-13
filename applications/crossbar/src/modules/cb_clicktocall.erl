@@ -229,7 +229,7 @@ load_c2c_summary(Context) ->
               ,{'endkey', [kzd_clicktocall:type(), kz_datamgr:view_highest_value()]}
               ,{'mapper', crossbar_view:get_value_fun()}
               ],
-    crossbar_view:load(Context, ?KZD_LIST_BY_TYPE_ID, Options).
+    crossbar_view:load(Context, ?KZ_VIEW_LIST_UNIFORM, Options).
 
 -spec load_c2c(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_c2c(C2CId, Context) ->
@@ -273,7 +273,7 @@ maybe_migrate_history(Account) ->
               ,{'endkey', [kzd_clicktocall:type(), kz_datamgr:view_highest_value()]}
               ,'include_docs'
               ],
-    case kz_datamgr:get_results(AccountDb, ?KZD_LIST_BY_TYPE_ID, Options) of
+    case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, Options) of
         {'ok', []} -> 'ok';
         {'ok', C2Cs} -> migrate_histories(AccountId, AccountDb, C2Cs);
         {'error', _} -> 'ok'

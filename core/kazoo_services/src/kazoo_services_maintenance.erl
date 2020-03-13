@@ -706,7 +706,7 @@ maybe_find_app(_VendorId, 'undefined') -> [];
 maybe_find_app(?NE_BINARY = VendorId, Name) ->
     ViewOptions = [{'key', [<<"app">>, Name]}],
     VendorDb = kzs_util:format_account_db(VendorId),
-    case kz_datamgr:get_results(VendorDb, ?KZD_LIST_BY_TYPE_ID, ViewOptions) of
+    case kz_datamgr:get_results(VendorDb, ?KZ_VIEW_LIST_UNIFORM, ViewOptions) of
         {'ok', [App|_]} ->
             Id = kz_doc:id(App),
             io:format("  correcting invalid application ~s with ~s/~s~n"

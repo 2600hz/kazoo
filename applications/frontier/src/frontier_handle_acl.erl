@@ -80,7 +80,7 @@ run_acl_query(Entity, IncludeRealm) ->
     ViewOpts = build_view_options(Entity, IncludeRealm),
     {'ok', UserDb} = kapps_util:get_account_by_realm(frontier_utils:extract_realm(Entity)),
     lager:debug("looking for ~s's acls in ~s", [Entity, UserDb]),
-    case kz_datamgr:get_results(UserDb, ?KZD_LIST_BY_TYPE_ID, ViewOpts) of
+    case kz_datamgr:get_results(UserDb, ?KZ_VIEW_LIST_UNIFORM, ViewOpts) of
         {'ok', Results} ->
             lager:debug("found ~p records", [length(Results)]),
             Results;

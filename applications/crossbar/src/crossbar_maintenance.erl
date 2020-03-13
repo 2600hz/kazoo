@@ -633,7 +633,7 @@ master_admin(MasterAccountId) ->
     Options = [{'startkey', [kzd_users:type()]}
               ,{'endkey', [kzd_users:type(), kz_datamgr:view_highest_value()]}
               ],
-    case kz_datamgr:get_results(MasterAccountId, ?KZD_LIST_BY_TYPE_ID, Options) of
+    case kz_datamgr:get_results(MasterAccountId, ?KZ_VIEW_LIST_UNIFORM, Options) of
         {'ok', Users} -> find_first_admin(Users);
         {'error', _} -> 'undefined'
     end.
@@ -1023,7 +1023,7 @@ apps() ->
     Options = [{'startkey', [<<"app">>]}
               ,{'endkey', [<<"app">>, kz_datamgr:view_highest_value()]}
               ],
-    case kz_datamgr:get_results(MA, ?KZD_LIST_BY_TYPE_ID, Options) of
+    case kz_datamgr:get_results(MA, ?KZ_VIEW_LIST_UNIFORM, Options) of
         {'error', _R} -> ?SUP_LOG_DEBUG("failed to read apps in ~s: ~p", [MA, _R]);
         {'ok', JObjs} -> lists:foreach(fun print_app/1, JObjs)
     end,
@@ -1049,7 +1049,7 @@ find_app(Db, Name) ->
     ViewOptions = [{'key', [<<"app">>, Name]}
                   ,'include_docs'
                   ],
-    kz_datamgr:get_single_result(Db, ?KZD_LIST_BY_TYPE_ID, ViewOptions).
+    kz_datamgr:get_single_result(Db, ?KZ_VIEW_LIST_UNIFORM, ViewOptions).
 
 view_app(AppJObj) ->
     M = maps:with([<<"name">>, <<"id">>, <<"phase">>, <<"i18n">>

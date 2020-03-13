@@ -159,7 +159,7 @@ load_callflow_summary(Context) ->
               ,{'endkey', [kzd_callflows:type(), kz_datamgr:view_highest_value()]}
               ,{'mapper', crossbar_view:get_value_fun()}
               ],
-    crossbar_view:load(Context, ?KZD_LIST_BY_TYPE_ID, Options).
+    crossbar_view:load(Context, ?KZ_VIEW_LIST_UNIFORM, Options).
 
 %%------------------------------------------------------------------------------
 %% @doc Load a callflow document from the database

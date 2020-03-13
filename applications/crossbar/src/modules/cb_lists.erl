@@ -47,7 +47,7 @@ maybe_migrate(Account) ->
               ,{'endkey', [?TYPE_LIST, kz_datamgr:view_highest_value()]}
               ,'include_docs'
               ],
-    case kz_datamgr:get_results(AccountDb, ?KZD_LIST_BY_TYPE_ID, Options) of
+    case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, Options) of
         {'ok', Lists} -> migrate(AccountDb, Lists);
         {'error', _} -> 'ok'
     end.
@@ -230,7 +230,7 @@ validate_req(?HTTP_GET, Context, []) ->
               ,{'endkey', [?TYPE_LIST, kz_datamgr:view_highest_value()]}
               ,{'mapper', crossbar_view:get_value_fun()}
               ],
-    crossbar_view:load(Context, ?KZD_LIST_BY_TYPE_ID, Options);
+    crossbar_view:load(Context, ?KZ_VIEW_LIST_UNIFORM, Options);
 validate_req(?HTTP_PUT, Context, []) ->
     validate_doc('undefined', ?TYPE_LIST, Context);
 

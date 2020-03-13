@@ -58,7 +58,7 @@
                        ,?KZ_PENDING_NOTIFY_DB
                        ]).
 
--define(KZD_LIST_BY_TYPE_ID, <<"crossbar_listing/list_by_type_id">>).
+-define(KZ_VIEW_LIST_UNIFORM, <<"crossbar_listings/uniform">>).
 
 -define(KZ_DATABASES_HRL, 'true').
 -endif.

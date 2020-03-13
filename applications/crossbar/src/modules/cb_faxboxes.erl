@@ -315,7 +315,7 @@ faxbox_listing(Context) ->
               ,{'mapper', fun normalize_view_results/2}
               ,'include_docs'
               ],
-    crossbar_view:load(Context, ?KZD_LIST_BY_TYPE_ID, Options).
+    crossbar_view:load(Context, ?KZ_VIEW_LIST_UNIFORM, Options).
 
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_view_results(JObj, Acc) ->

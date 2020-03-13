@@ -190,7 +190,7 @@ summary(Context) ->
 -spec get_view_and_options(kz_term:api_ne_binary()) ->
           {kz_term:ne_binary(), crossbar_view:options()}.
 get_view_and_options('undefined') ->
-    {?KZD_LIST_BY_TYPE_ID
+    {?KZ_VIEW_LIST_UNIFORM
     ,[{'startkey', [<<"group">>]}
      ,{'endkey', [<<"group">>, kz_datamgr:view_highest_value()]}
      ,{'mapper', crossbar_view:get_value_fun()}

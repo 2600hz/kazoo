@@ -145,7 +145,7 @@ migrate_recorded_name(Db) ->
               ,{'endkey', [kzd_voicemail_box:type(), kz_datamgr:view_highest_value()]}
               ,'include_docs'
               ],
-    case kz_datamgr:get_results(Db, ?KZD_LIST_BY_TYPE_ID, Options) of
+    case kz_datamgr:get_results(Db, ?KZ_VIEW_LIST_UNIFORM, Options) of
         {'ok', []} -> lager:info("no vmboxes in ~s", [Db]);
         {'error', _E} -> lager:info("unable to get vm box list: ~p", [_E]);
         {'ok', VMBoxes} ->
@@ -199,7 +199,7 @@ migrate_menus(Account) ->
               ,{'endkey', [kzd_menus:type(), kz_datamgr:view_highest_value()]}
               ,'include_docs'
               ],
-    case kz_datamgr:get_results(Db, ?KZD_LIST_BY_TYPE_ID, Options) of
+    case kz_datamgr:get_results(Db, ?KZ_VIEW_LIST_UNIFORM, Options) of
         {'ok', []} ->
             lager:info("db ~s has no menus", [Db]),
             'done';
@@ -414,7 +414,7 @@ print_users_level_call_restrictions(DbName) ->
     Options = [{'startkey', [kzd_users:type()]}
               ,{'endkey', [kzd_users:type(), kz_datamgr:view_highest_value()]}
               ],
-    case kz_datamgr:get_results(DbName, ?KZD_LIST_BY_TYPE_ID, Options) of
+    case kz_datamgr:get_results(DbName, ?KZ_VIEW_LIST_UNIFORM, Options) of
         {'ok', JObj} ->
             io:format("\n\nUser level classifiers:\n"),
             lists:foreach(fun(UserObj) ->

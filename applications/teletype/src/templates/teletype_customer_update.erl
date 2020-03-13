@@ -113,7 +113,7 @@ process_account(AccountId, DataJObj) ->
             Options = [{'startkey', [kzd_users:type()]}
                       ,{'endkey', [kzd_users:type(), kz_datamgr:view_highest_value()]}
                       ],
-            {'ok', Users} = kz_datamgr:get_results(AccountDb, ?KZD_LIST_BY_TYPE_ID, Options),
+            {'ok', Users} = kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, Options),
             lists:flatten(select_users_to_update([kz_json:get_value(<<"value">>, User) || User <- Users], DataJObj))
     end.
 

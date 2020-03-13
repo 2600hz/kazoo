@@ -93,7 +93,7 @@ validate_resource_templates(?HTTP_GET, Context) ->
               ,{'databases', [cb_context:db_name(Context)]}
               ,{'mapper', crossbar_view:get_value_fun()}
               ],
-    crossbar_view:load(Context, ?KZD_LIST_BY_TYPE_ID, Options);
+    crossbar_view:load(Context, ?KZ_VIEW_LIST_UNIFORM, Options);
 validate_resource_templates(?HTTP_PUT, Context) ->
     case is_allowed_to_update(Context) of
         'true' -> validate_request('undefined', Context);

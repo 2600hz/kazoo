@@ -1264,7 +1264,7 @@ summary_account(Context) ->
               ,{'endkey', [kz_notification:pvt_type(), kz_datamgr:view_highest_value()]}
               ,{'mapper', select_normalize_fun(Context)}
               ],
-    Context1 = crossbar_view:load(Context, ?KZD_LIST_BY_TYPE_ID, Options),
+    Context1 = crossbar_view:load(Context, ?KZ_VIEW_LIST_UNIFORM, Options),
     summary_account(Context1, cb_context:resp_status(Context1)).
 
 -spec summary_account(cb_context:context(), crossbar_status()) -> cb_context:context().

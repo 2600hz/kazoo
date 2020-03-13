@@ -797,7 +797,7 @@ load_vmbox_summary(Context) ->
               ,{'endkey', [kzd_voicemail_box:type(), kz_datamgr:view_highest_value()]}
               ,{'mapper', crossbar_view:get_value_fun()}
               ],
-    Context1 = crossbar_view:load(Context, ?KZD_LIST_BY_TYPE_ID, Options),
+    Context1 = crossbar_view:load(Context, ?KZ_VIEW_LIST_UNIFORM, Options),
     load_vmbox_summary(Context1, cb_context:resp_status(Context1)).
 
 -spec load_vmbox_summary(cb_context:cb_context(), crossbar_status()) -> cb_context:context().
@@ -1286,7 +1286,7 @@ migrate(Account) ->
               ,{'endkey', [kzd_voicemail_box:type(), kz_datamgr:view_highest_value()]}
               ,'include_docs'
               ],
-    case kz_datamgr:get_results(AccountDb, ?KZD_LIST_BY_TYPE_ID, Options) of
+    case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, Options) of
         {'ok', []} -> 'ok';
         {'error', _E} -> io:format("failed to check account ~s for voicemail boxes: ~p~n", [Account, _E]);
         {'ok', Boxes} ->

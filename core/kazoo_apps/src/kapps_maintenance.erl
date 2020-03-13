@@ -664,7 +664,7 @@ ensure_aggregate_faxbox(Account) ->
               ,{'endkey', [kzd_fax_box:type(), kz_datamgr:view_highest_value()]}
               ,'include_docs'
               ],
-    case kz_datamgr:get_results(AccountDb, ?KZD_LIST_BY_TYPE_ID, Options) of
+    case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, Options) of
         {'ok', Faxboxes} ->
             update_or_add_to_faxes_db([kz_json:get_json_value(<<"doc">>, Faxbox) || Faxbox <- Faxboxes]);
         {'error', _} -> 'ok'
@@ -1349,7 +1349,7 @@ get_messages(Account) ->
               ,{'endkey', [kzd_voicemail_box:type(), kz_datamgr:view_highest_value()]}
               ,'include_docs'
               ],
-    case kz_datamgr:get_results(AccountDb, ?KZD_LIST_BY_TYPE_ID, Options) of
+    case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, Options) of
         {'ok', ViewRes} ->
             lists:foldl(fun extract_messages/2, [], ViewRes);
         {'error', _E} ->
@@ -1434,7 +1434,7 @@ clean_trunkstore_docs(AccountDb, TwowayTrunks, InboundTrunks) ->
                   ,{'endkey', [<<"sys_info">>, kz_datamgr:view_highest_value()]}
                   ,'include_docs'
                   ],
-    case kz_datamgr:get_results(AccountDb, ?KZD_LIST_BY_TYPE_ID, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, ViewOptions) of
         {'ok', JObjs} -> clean_trunkstore_docs(AccountDb, JObjs, TwowayTrunks, InboundTrunks);
         {'error', _}=E -> E
     end.

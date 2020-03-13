@@ -278,7 +278,7 @@ load_default_apps() ->
               ,{'endkey', [<<"app">>, kz_datamgr:view_highest_value()]}
               ,'include_docs'
               ],
-    case kz_datamgr:get_results(MasterAccountDb, ?KZD_LIST_BY_TYPE_ID, Options) of
+    case kz_datamgr:get_results(MasterAccountDb, ?KZ_VIEW_LIST_UNIFORM, Options) of
         {'ok', JObjs} ->
             [maybe_set_account(MasterAccountDb, JObj)
              || JObj <- JObjs

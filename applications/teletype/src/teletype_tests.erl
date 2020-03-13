@@ -35,7 +35,7 @@ find_vmboxes(?NE_BINARY=AccountId) ->
               ,{'endkey', [kzd_voicemail_box:type(), kz_datamgr:view_highest_value()]}
               ,'include_docs'
               ],
-    case kz_datamgr:get_results(AccountDb, ?KZD_LIST_BY_TYPE_ID, Options) of
+    case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, Options) of
         {'ok', VMBoxes} -> VMBoxes;
         {'error', _E} ->
             lager:debug("failed to query ~s for vm boxes: ~p", [AccountId, _E]),
@@ -98,7 +98,7 @@ skel(AccountId) ->
               ,{'endkey', [kzd_users:type(), kz_datamgr:view_highest_value()]}
               ,'include_docs'
               ],
-    case kz_datamgr:get_results(AccountDb, ?KZD_LIST_BY_TYPE_ID, Options) of
+    case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, Options) of
         {'ok', Users} -> find_user_for_skel(AccountId, Users);
         {'error', _E} -> lager:debug("failed to find users for ~s: ~p", [AccountId, _E])
     end.
@@ -161,7 +161,7 @@ fax_inbound_to_email(AccountId) ->
     Options = [{'startkey', [kzd_fax_box:type()]}
               ,{'endkey', [kzd_fax_box:type(), kz_datamgr:view_highest_value()]}
               ],
-    case kz_datamgr:get_results(AccountDb, ?KZD_LIST_BY_TYPE_ID, Options) of
+    case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, Options) of
         {'ok', Faxes} -> find_fax_with_attachment(AccountId, [kz_doc:id(J) || J <- Faxes]);
         {'error', _E} ->
             lager:debug("failed to find faxes: ~p", [_E])
