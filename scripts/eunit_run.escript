@@ -39,7 +39,7 @@ run_eunit(#{modules := Modules}=Opts) ->
     _Cover = maybe_start_cover(Opts),
     TestMods = filter_same_name_test_modules(Modules),
 
-    case eunit:test({'inparallel', TestMods}, eunit_options(Opts)) of
+    case eunit:test(TestMods, eunit_options(Opts)) of
         'ok' ->
             maybe_stop_cover(Opts),
             erlang:halt();
