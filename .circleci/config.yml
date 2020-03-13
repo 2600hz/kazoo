@@ -106,6 +106,16 @@ jobs:
       - run:
           name: Running Eunit/Proper tests
           command: make eunit
+      - run:
+          name: Save test results
+          command: |
+            mkdir -p ~/test-results/junit/
+            find . -type f -name "TEST-*.xml" -exec cp {} ~/test-results/junit/ \;
+          when: always
+      - store_test_results:
+          path: ~/test-results
+      - store_artifacts:
+          path: ~/test-results/junit/
       ## disabling this for now until we figure out why it is crashing, and how to set token
       # - run:
       #     name: Uploading Coverage Report
