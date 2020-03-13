@@ -268,12 +268,12 @@ print_help() ->
 %%------------------------------------------------------------------------------
 -spec print_erl_term_args_help() -> no_return().
 print_erl_term_args_help() ->
-    stdout("Erlang term argumnets must be proplery encapsulated as below:", []),
-    stdout("  * Atoms: atom", []),
-    stdout("  * Srings: \"this is a string\"", []),
-    stdout("  * Binarys: \"<<\\\"Etc/UTC\\\">>\"", []),
-    stdout("  * Tuples: \"{{2020, 01, 01}, {01, 20, 30}}\"", []),
-    stdout("  * Lists: \"[1,2,3,4]\"", []),
+    stdout("Erlang term arguments must be correctly wrapped / formated as below:", []),
+    stdout("  * Atom: atom", []),
+    stdout("  * String: \"this is a string\"", []),
+    stdout("  * Binary: \"<<\\\"Etc/UTC\\\">>\"", []),
+    stdout("  * Tuple: \"{{2020, 01, 01}, {01, 20, 30}}\"", []),
+    stdout("  * List: \"[1,2,3,4]\"", []),
     halt(1).
 
 -spec stdout(string(), list()) -> 'ok'.
