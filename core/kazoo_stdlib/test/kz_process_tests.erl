@@ -11,17 +11,27 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
-spawns_test_() ->
-    [?_assert(is_pid(kz_process:spawn(fun() -> io:format("x") end)))
-    ,?_assert(is_pid(kz_process:spawn(fun(X) -> io:format("~p", [X]) end, ['x'])))
-    ,?_assert(is_pid(kz_process:spawn_link(fun() -> io:format("x") end)))
-    ,?_assert(is_pid(kz_process:spawn_link(fun(X) -> io:format("~p",[X]) end, ['x'])))
-    ,?_assertMatch({_,_}, kz_process:spawn_monitor(fun(X) -> io:format("~p",[X]) end, ['x']))
+process_test_() ->
+    {'setup'
+    ,fun() -> 'ok' end
+    ,[spawns()
+     ,runs_in()
+     ]
+    }.
+
+
+spawns() ->
+    [?_assert(is_pid(kz_process:spawn(fun() -> 'true' = kz_term:is_true('true') end)))
+    ,?_assert(is_pid(kz_process:spawn(fun(X) -> 'false' = kz_term:is_true(X) end, ['x'])))
+    ,?_assert(is_pid(kz_process:spawn_link(fun() -> 'true' = kz_term:is_true('true') end)))
+    ,?_assert(is_pid(kz_process:spawn_link(fun(X) -> 'false' = kz_term:is_true(X) end, ['x'])))
+    ,?_assertMatch({_,_}, kz_process:spawn_monitor(fun(X) -> 'false' = kz_term:is_true(X) end, ['x']))
     ].
 
-runs_in_test_() ->
-    [?_assertEqual('timeout', kz_process:runs_in(1, fun timer:sleep/1, [10]))
-    ,?_assertEqual({'ok','ok'}, kz_process:runs_in(10, fun timer:sleep/1, [1]))
-    ,?_assertEqual('timeout', kz_process:runs_in(1.0, fun timer:sleep/1, [10]))
-    ,?_assertEqual({'ok','ok'}, kz_process:runs_in(10.0, fun timer:sleep/1, [1]))
+runs_in() ->
+    F = fun timer:sleep/1,
+    [?_assertEqual('timeout', kz_process:runs_in(1, F, [10]))
+    ,?_assertEqual({'ok','ok'}, kz_process:runs_in(100, F, [1]))
+    ,?_assertEqual('timeout', kz_process:runs_in(1.0, F, [10]))
+    ,?_assertEqual({'ok','ok'}, kz_process:runs_in(100.0, F, [1]))
     ].

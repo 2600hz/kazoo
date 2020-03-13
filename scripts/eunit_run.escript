@@ -35,22 +35,24 @@ parse_args([Mod | Rest], #{modules := Modules}=Opts) ->
 run_eunit(#{modules := []}) ->
     io:format('user', "No modules are specified.\n", []),
     usage();
-run_eunit(#{modules := Modules
-           ,report_dir := Dir
-           }=Opts) ->
+run_eunit(#{modules := Modules}=Opts) ->
     _Cover = maybe_start_cover(Opts),
     TestMods = filter_same_name_test_modules(Modules),
 
-    case eunit:test(TestMods, ['verbose'
-                              ,{'report', {'eunit_surefire', [{'dir', Dir}]}}
-                              ])
-    of
+    case eunit:test({'inparallel', TestMods}, eunit_options(Opts)) of
         'ok' ->
             maybe_stop_cover(Opts),
             erlang:halt();
         'error' ->
             erlang:halt(1)
     end.
+
+eunit_options(#{report_dir := Dir}) ->
+    ['verbose'
+    ,{'report', {'eunit_surefire', [{'dir', Dir}]}}
+    ];
+eunit_options(_Options) ->
+    ['verbose'].
 
 is_loaded(M) ->
     case 'true' =:= code:is_loaded(M)
@@ -59,7 +61,7 @@ is_loaded(M) ->
         'true' -> 'true';
         {'module', M} -> 'true';
         {'error', _E} ->
-            io:format("failed to find ~p: ~p~n", [M, _E]),
+            io:format('user', "failed to find ~p: ~p~n", [M, _E]),
             'false'
     end.
 
