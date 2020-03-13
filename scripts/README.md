@@ -799,3 +799,11 @@ returns next release based on branch & tags.
 ## `increment_version.bash`
 
 routine to increment a version
+
+## `extract_view_js.py`
+Extract JavaScript inside a view function and save it to a file. Helpful when you're developing the view
+and you want to with the JavaScript comfortably in your editor. (Use `replace_view_js_from_file` do save back the JS code to view)
+
+## `replace_view_js_from_file.py`
+Replace JavaScript inside a view function from a file. Helpful when you're developing the view
+and you want to with the JavaScript comfortably in your editor. (Use `extract_view_js` to extract JS code from view)
