@@ -265,11 +265,11 @@ validate_patch(Id, Context) ->
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
     Options = [{'startkey', [<<"multi_factor">>]}
-              ,{'endkey', [<<"multi_factor">>, kz_json:new()]}
+              ,{'endkey', [<<"multi_factor">>, kz_datamgr:view_highest_value()]}
               ,{'unchunkable', 'true'}
               ,{'mapper', crossbar_view:get_value_fun()}
               ],
-    C1 = crossbar_view:load(Context, <<"auth/providers_by_type">>, Options),
+    C1 = crossbar_view:load(Context, ?KZ_VIEW_LIST_UNIFORM, Options),
     C2 = system_summary(Context),
     cb_context:set_resp_data(C1, merge_summary(cb_context:resp_data(C1), cb_context:resp_data(C2))).
 
