@@ -1156,7 +1156,7 @@ get_account_devices(Account) ->
     Options = [{'startkey', [kzd_devices:type()]}
               ,{'endkey', [kzd_devices:type(), kz_datamgr:view_highest_value()]}
               ],
-    case kz_datamgr:get_results(AccountDb, <<"crossbar_listing/list_by_type_id">>, Options) of
+    case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, Options) of
         {'ok', JObjs} -> [kz_json:get_value(<<"value">>, JObj) || JObj <- JObjs];
         {'error', _R} ->
             lager:warning("unable to find device documents owned by ~s: ~p", [AccountDb, _R]),

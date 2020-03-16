@@ -173,7 +173,7 @@ FixtureDB uses a new cutting edge advanced high performance technique called Hum
 All view result are in the `views` database's directory. Since views are tricky when it comes to `reduce`, `group_level`, `startkey` and etc..., every time FixtureDB sees these view options, it hashes the view options and will add it to the file name. For example:
 
 ```erlang
-(fixturedb@hes.2600hz.com)17> kz_fixturedb_util:get_view_path(<<"account%2Fac%2Fco%2Funt0000000000000000000000001">>, <<"crossbar_listing/list_by_id_type">>, []).
+(fixturedb@hes.2600hz.com)17> kz_fixturedb_util:get_view_path(<<"account%2Fac%2Fco%2Funt0000000000000000000000001">>, <<"crossbar_listings/uniform">>, []).
 
 "/opt/kazoo/core/kazoo_fixturedb/priv/dbs/account%2Fac%2Fco%2Funt0000000000000000000000001/views/users+crossbar_listing.json"
 ```
@@ -181,7 +181,7 @@ All view result are in the `views` database's directory. Since views are tricky 
 As you can see above when there is no complex view options (in this example an empty options `[]`) the filename is simply reflecting the view name. Here is an example with a complex view options:
 
 ```erlang
-(fixturedb@hes.2600hz.com)18> kz_fixturedb_util:get_view_path(<<"account%2Fac%2Fco%2Funt0000000000000000000000001">>, <<"crossbar_listing/list_by_id_type">>, [{startkey,[<<"user">>]},{endkey, [<<"user">>, {[]}]},include_docs]).
+(fixturedb@hes.2600hz.com)18> kz_fixturedb_util:get_view_path(<<"account%2Fac%2Fco%2Funt0000000000000000000000001">>, <<"crossbar_listings/uniform">>, [{startkey,[<<"user">>]},{endkey, [<<"user">>, {[]}]},include_docs]).
 
 "/opt/kazoo/core/kazoo_fixturedb/priv/dbs/account%2Fac%2Fco%2Funt0000000000000000000000001/views/users+crossbar_listing-ba9ee0020a95e519332f16eacf0a3324.json"
 ```

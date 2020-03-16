@@ -431,7 +431,7 @@ print_devices_level_call_restrictions(DbName) ->
     Options = [{'startkey', [kzd_devices:type()]}
               ,{'endkey', [kzd_devices:type(), kz_datamgr:view_highest_value()]}
               ],
-    case kz_datamgr:get_results(DbName, <<"crossbar_listing/list_by_type_id">>, Options) of
+    case kz_datamgr:get_results(DbName, ?KZ_VIEW_LIST_UNIFORM, Options) of
         {'ok', JObjs} ->
             io:format("\n\nDevice level classifiers:\n"),
             lists:foreach(fun(UserObj) ->
