@@ -126,8 +126,8 @@ fold_over_module(Module, Config0, Routines) ->
     catch
         _E:R ->
             ST = erlang:get_stacktrace(),
-            io:format("error processing ~s: '~s': ~p~n", [Module, _E, R]),
-            [io:format("~p~n", [S]) || S <- ST],
+            io:format('user', "~nerror processing ~s: '~s': ~p~n", [Module, _E, R]),
+            [io:format('user', "~p~n", [S]) || S <- ST],
             throw({'error', Module, R})
     end.
 

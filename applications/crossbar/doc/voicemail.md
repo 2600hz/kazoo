@@ -23,6 +23,7 @@ Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
 `announcement_only` | Determine if the mailbox should only play announcements | `boolean()` | `false` | `false` | `unsupported`
 `check_if_owner` | Determines if when the user calls their own voicemail they should be prompted to sign in | `boolean()` | `true` | `false` | `supported`
+`datetime_format` | Format to say a message's date and time. Format mirrors PHP date() | `string()` |   | `false` |  
 `delete_after_notify` | Move the voicemail to delete folder after the notification has been sent | `boolean()` | `false` | `false` | `supported`
 `flags.[]` |   | `string()` |   | `false` | `supported`
 `flags` | Flags set by external applications | `array(string())` |   | `false` | `supported`

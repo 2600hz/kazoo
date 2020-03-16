@@ -24,11 +24,15 @@
 -module(cf_voicemail).
 -behaviour(gen_cf_action).
 
--include("callflow.hrl").
--include_lib("kazoo_stdlib/include/kazoo_json.hrl").
-
 -export([handle/2]).
 -export([new_message/4]).
+
+-ifdef(TEST).
+-export([to_vm_datetime/3]).
+-endif.
+
+-include("callflow.hrl").
+-include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 
 -define(KEY_VOICEMAIL, <<"voicemail">>).
 -define(KEY_MAX_MESSAGE_COUNT, <<"max_message_count">>).
@@ -66,6 +70,12 @@
                                 ,[?KEY_VOICEMAIL, ?KEY_MAX_BOX_NUMBER_LENGTH]
                                 ,15
                                 )).
+
+-define(MAILBOX_DEFAULT_DATETIME_FORMAT
+       ,kapps_config:get_binary(?CF_CONFIG_CAT
+                               ,[?KEY_VOICEMAIL, <<"datetime_format">>]
+                               ,<<"F j Y \\a\\t H:i">>
+                               )).
 
 -define(MAX_LOGIN_ATTEMPTS
        ,kapps_config:get_integer(?CF_CONFIG_CAT
@@ -194,6 +204,7 @@
                  ,media_extension :: kz_term:api_ne_binary()
                  ,forward_type :: kz_term:api_ne_binary()
                  ,oldest_message_first = 'false' :: boolean()
+                 ,datetime_format :: kz_term:api_ne_binary()
                  }).
 -type mailbox() :: #mailbox{}.
 
@@ -863,21 +874,34 @@ message_count_prompts(New, Saved) ->
 %%------------------------------------------------------------------------------
 -spec message_prompt(kz_json:objects(), binary(), non_neg_integer(), mailbox()) ->
           kapps_call_command:audio_macro_prompts().
-message_prompt([H|_]=Messages, Message, Count, #mailbox{timezone=Timezone
-                                                       ,skip_envelope='false'
-                                                       ,keys=Keys
-                                                       ,is_ff_rw_enabled=AllowFfRw
-                                                       }) ->
+message_prompt([H|_]=Messages
+              ,Message
+              ,Count
+              ,#mailbox{timezone=Timezone
+                       ,skip_envelope='false'
+                       ,keys=Keys
+                       ,is_ff_rw_enabled=AllowFfRw
+                       ,datetime_format=DateTimeFormat
+                       }
+              ) ->
+    UTCTimestamp = calendar:gregorian_seconds_to_datetime(kz_json:get_integer_value(<<"timestamp">>, H)),
+    DateTimeString = to_vm_datetime(DateTimeFormat, Timezone, UTCTimestamp),
+
     [{'prompt', <<"vm-message_number">>}
     ,{'say', kz_term:to_binary(Count - length(Messages) + 1), <<"number">>}
     ,play_prompt(Message, AllowFfRw, Keys)
     ,{'prompt', <<"vm-received">>}
-    ,{'say',  get_unix_epoch(kz_json:get_integer_value(<<"timestamp">>, H), Timezone), <<"current_date_time">>}
+    ,{'say', DateTimeString}
     ,{'prompt', <<"vm-message_menu">>}
     ];
-message_prompt(Messages, Message, Count, #mailbox{is_ff_rw_enabled=AllowFfRw
-                                                 ,keys=Keys
-                                                 ,skip_envelope='true'}) ->
+message_prompt(Messages
+              ,Message
+              ,Count
+              ,#mailbox{is_ff_rw_enabled=AllowFfRw
+                       ,keys=Keys
+                       ,skip_envelope='true'
+                       }
+              ) ->
     lager:debug("mailbox is set to skip playing message envelope"),
     [{'prompt', <<"vm-message_number">>}
     ,{'say', kz_term:to_binary(Count - length(Messages) + 1), <<"number">>}
@@ -889,6 +913,12 @@ play_prompt(Message, 'true'=_AllowFfRw, #keys{rewind=RW, fastforward=FF}=_Keys) 
     {'play', Message, ?ANY_DIGIT -- [RW, FF]};
 play_prompt(Message, 'false', _Keys) ->
     {'play', Message}.
+
+-spec to_vm_datetime(kz_term:api_ne_binary(), kz_term:ne_binary(), integer()) -> kz_term:ne_binary().
+to_vm_datetime('undefined', Timezone, UTCTimestamp) ->
+    to_vm_datetime(?MAILBOX_DEFAULT_DATETIME_FORMAT, Timezone, UTCTimestamp);
+to_vm_datetime(DateTimeFormat, Timezone, UTCTimestamp) ->
+    qdate:to_string(DateTimeFormat, Timezone, UTCTimestamp).
 
 %%------------------------------------------------------------------------------
 %% @doc Plays back a message then the menu, and continues to loop over the
@@ -1847,6 +1877,7 @@ get_mailbox_profile(Data, Call) ->
                     ,media_extension = kzd_voicemail_box:media_extension(MailboxJObj)
                     ,forward_type = ?DEFAULT_FORWARD_TYPE
                     ,oldest_message_first = kzd_vmboxes:oldest_message_first(MailboxJObj)
+                    ,datetime_format = kzd_vmboxes:datetime_format(MailboxJObj)
                     };
         {'error', R} ->
             lager:info("failed to load voicemail box ~s, ~p", [Id, R]),
@@ -2242,18 +2273,6 @@ update_doc(Key, Value, Id, Call) ->
 -spec tmp_file(kz_term:ne_binary()) -> kz_term:ne_binary().
 tmp_file(Ext) ->
     <<(kz_binary:rand_hex(16))/binary, ".", Ext/binary>>.
-
-%%------------------------------------------------------------------------------
-%% @doc Accepts Universal Coordinated Time (UTC) and convert it to binary
-%% encoded Unix epoch in the provided timezone
-%% @end
-%%------------------------------------------------------------------------------
--spec get_unix_epoch(kz_time:gregorian_seconds(), kz_term:ne_binary()) ->
-          kz_term:ne_binary().
-get_unix_epoch(Epoch, Timezone) ->
-    UtcDateTime = calendar:gregorian_seconds_to_datetime(Epoch),
-    LocalDateTime = localtime:utc_to_local(UtcDateTime, Timezone),
-    kz_term:to_binary(calendar:datetime_to_gregorian_seconds(LocalDateTime) - ?UNIX_EPOCH_IN_GREGORIAN).
 
 %%------------------------------------------------------------------------------
 %% @doc

@@ -8,6 +8,7 @@
 -export([new/0]).
 -export([announcement_only/1, announcement_only/2, set_announcement_only/2]).
 -export([check_if_owner/1, check_if_owner/2, set_check_if_owner/2]).
+-export([datetime_format/1, datetime_format/2, set_datetime_format/2]).
 -export([delete_after_notify/1, delete_after_notify/2, set_delete_after_notify/2]).
 -export([flags/1, flags/2, set_flags/2]).
 -export([is_setup/1, is_setup/2, set_is_setup/2]).
@@ -70,6 +71,18 @@ check_if_owner(Doc, Default) ->
 -spec set_check_if_owner(doc(), boolean()) -> doc().
 set_check_if_owner(Doc, CheckIfOwner) ->
     kz_json:set_value([<<"check_if_owner">>], CheckIfOwner, Doc).
+
+-spec datetime_format(doc()) -> kz_term:api_binary().
+datetime_format(Doc) ->
+    datetime_format(Doc, 'undefined').
+
+-spec datetime_format(doc(), Default) -> binary() | Default.
+datetime_format(Doc, Default) ->
+    kz_json:get_binary_value([<<"datetime_format">>], Doc, Default).
+
+-spec set_datetime_format(doc(), binary()) -> doc().
+set_datetime_format(Doc, DatetimeFormat) ->
+    kz_json:set_value([<<"datetime_format">>], DatetimeFormat, Doc).
 
 -spec delete_after_notify(doc()) -> boolean().
 delete_after_notify(Doc) ->

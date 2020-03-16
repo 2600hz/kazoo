@@ -29409,6 +29409,11 @@
                 },
                 "voicemail": {
                     "properties": {
+                        "datetime_format": {
+                            "default": "F j Y \\a\\t H:i",
+                            "description": "default datetime_format for speaking the date and time to the caller",
+                            "type": "string"
+                        },
                         "delete_after_notify": {
                             "default": false,
                             "description": "callflow delete after notify",
@@ -36374,6 +36379,10 @@
                     "default": true,
                     "description": "Determines if when the user calls their own voicemail they should be prompted to sign in",
                     "type": "boolean"
+                },
+                "datetime_format": {
+                    "description": "Format to say a message's date and time. Format mirrors PHP date()",
+                    "type": "string"
                 },
                 "delete_after_notify": {
                     "default": false,

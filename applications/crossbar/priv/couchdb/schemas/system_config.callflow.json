@@ -107,6 +107,11 @@
         },
         "voicemail": {
             "properties": {
+                "datetime_format": {
+                    "default": "F j Y \\a\\t H:i",
+                    "description": "default datetime_format for speaking the date and time to the caller",
+                    "type": "string"
+                },
                 "delete_after_notify": {
                     "default": false,
                     "description": "callflow delete after notify",
