@@ -37,26 +37,10 @@ elif sys.argv[4] in ['map', 'reduce']:
 else:
     print_usage()
 
-def multiline_view(js):
+def beautify(js):
     opts = jsbeautifier.default_options()
     opts.indent_size = 2
-
-    js = jsbeautifier.beautify(''.join(js), opts)
-    multiLine = []
-    for line in js.split('\n'):
-        if not line:
-            continue
-        multiLine.append(line)
-    return multiLine
-
-def read_js_file():
-    try:
-        with open(jsfile) as fd:
-            return fd.read()
-    except Exception as e:
-        print('failed to read {}'.format(jsfile))
-        print(e)
-        exit(1)
+    return jsbeautifier.beautify(''.join(js), opts)
 
 def read_design():
     try:
@@ -67,15 +51,13 @@ def read_design():
         print(e)
         exit(2)
 
-js = read_js_file()
 design_doc = read_design()
 
 try:
-    design_doc['views'][view_name][view_function] = multiline_view(js)
-    data = json.dumps(design_doc, sort_keys=True, indent=4, separators=(",", ": "))
-    wrote = open(design_file, 'w').write(data + '\n')
+    js = design_doc['views'][view_name][view_function]
+    wrote = open(jsfile, 'w').write(beautify(js) + '\n')
     print('Wrote {}'.format(wrote))
 except Exception as e:
-    print('failed to repalce javascript for {}/{}'.format(view_name, view_function))
+    print('failed to extract javascript for {}/{}'.format(view_name, view_function))
     print(e)
     exit(3)
