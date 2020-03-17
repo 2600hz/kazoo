@@ -39,7 +39,6 @@ else:
 
 def beautify(js):
     opts = jsbeautifier.default_options()
-    opts.indent_size = 2
     return jsbeautifier.beautify(''.join(js), opts)
 
 def read_design():

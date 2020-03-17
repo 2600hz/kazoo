@@ -44,15 +44,13 @@ def multiline_view(js):
     js = jsbeautifier.beautify(''.join(js), opts)
     multiLine = []
     for line in js.split('\n'):
-        if not line:
-            continue
         multiLine.append(line)
     return multiLine
 
 def read_js_file():
     try:
         with open(jsfile) as fd:
-            return fd.read()
+            return fd.read().split('\n')
     except Exception as e:
         print('failed to read {}'.format(jsfile))
         print(e)

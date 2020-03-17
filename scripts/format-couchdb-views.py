@@ -22,8 +22,8 @@ def multiline_view(js):
     js = jsbeautifier.beautify(''.join(js), opts)
     multiLine = []
     for line in js.split('\n'):
-        if not line:
-            continue
+        # if not line:
+        #     continue
         multiLine.append(line)
     return multiLine
 
