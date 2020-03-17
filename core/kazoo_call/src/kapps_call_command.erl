@@ -234,6 +234,8 @@
              ,store_fun/0
              ,collect_digits_return/0
              ]).
+-define(DEFAULT_SAY_TYPE, <<"name_spelled">>).
+-define(DEFAULT_SAY_METHOD, <<"pronounced">>).
 
 -type store_fun() :: kz_term:ne_binary() | fun(() -> kz_term:ne_binary()).
 
@@ -518,10 +520,10 @@ build_macro({'prompt', PromptName, Lang, Leg}, {Call, GroupId, Queue}) ->
                           ),
     {Call, GroupId, [kz_json:set_value(<<"Group-ID">>, GroupId, Command) | Queue]};
 build_macro({'say', Say}, {Call, GroupId, Queue}) ->
-    Command = say_command(Say, <<"name_spelled">>, <<"pronounced">>, kapps_call:language(Call), Call),
+    Command = say_command(Say, ?DEFAULT_SAY_TYPE, ?DEFAULT_SAY_METHOD, kapps_call:language(Call), Call),
     {Call, GroupId, [kz_json:set_value(<<"Group-ID">>, GroupId, Command) | Queue]};
 build_macro({'say', Say, Type}, {Call, GroupId, Queue}) ->
-    Command = say_command(Say, Type, <<"pronounced">>, kapps_call:language(Call), Call),
+    Command = say_command(Say, Type, ?DEFAULT_SAY_METHOD, kapps_call:language(Call), Call),
     {Call, GroupId, [kz_json:set_value(<<"Group-ID">>, GroupId, Command) | Queue]};
 build_macro({'say', Say, Type, Method}, {Call, GroupId, Queue}) ->
     Command = say_command(Say, Type, Method, kapps_call:language(Call), Call),
@@ -2133,11 +2135,11 @@ b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInva
 %%------------------------------------------------------------------------------
 -spec say(kz_term:ne_binary(), kapps_call:call()) -> 'ok'.
 say(Say, Call) ->
-    say(Say, <<"name_spelled">>, Call).
+    say(Say, ?DEFAULT_SAY_TYPE, Call).
 
 -spec say(kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) -> 'ok'.
 say(Say, Type, Call) ->
-    say(Say, Type, <<"pronounced">>, Call).
+    say(Say, Type, ?DEFAULT_SAY_METHOD, Call).
 
 -spec say(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) -> 'ok'.
 say(Say, Type, Method, Call) ->
@@ -2155,11 +2157,11 @@ say(Say, Type, Method, Language, Gender, Call) ->
 
 -spec say_command(kz_term:ne_binary(), kapps_call:call()) -> kz_json:object().
 say_command(Say, Call) ->
-    say_command(Say, <<"name_spelled">>, Call).
+    say_command(Say, ?DEFAULT_SAY_TYPE, Call).
 
 -spec say_command(kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) -> kz_json:object().
 say_command(Say, Type, Call) ->
-    say_command(Say, Type, <<"pronounced">>, Call).
+    say_command(Say, Type, ?DEFAULT_SAY_METHOD, Call).
 
 -spec say_command(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) -> kz_json:object().
 say_command(Say, Type, Method, Call) ->
@@ -2181,10 +2183,10 @@ say_command(Say, Type, Method, Language, Gender, Call) ->
       ,{<<"Call-ID">>, kapps_call:call_id(Call)}
       ]).
 
-say_type('undefined') -> <<"name_spelled">>;
+say_type('undefined') -> ?DEFAULT_SAY_TYPE;
 say_type(T) -> T.
 
-say_method('undefined') -> <<"pronounced">>;
+say_method('undefined') -> ?DEFAULT_SAY_METHOD;
 say_method(M) -> M.
 
 say_language('undefined', Call) -> kapps_call:language(Call);
