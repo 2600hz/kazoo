@@ -23,6 +23,8 @@ prev_date_test_() ->
     [?_assertEqual({2020,02,02}, kz_date:previous_day({2020,02,03}))
     ,?_assertEqual({2020,01,31}, kz_date:previous_day({2020,02,01}))
     ,?_assertEqual({2019,12,31}, kz_date:previous_day({2020,01,01}))
+    ,?_assertEqual({2020,02,29}, kz_date:previous_day({2020,03,01}))
+    ,?_assertEqual({2019,02,28}, kz_date:previous_day({2019,03,01}))
     ].
 
 pad_month_test_() ->
