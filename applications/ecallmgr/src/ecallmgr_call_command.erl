@@ -403,9 +403,9 @@ get_fs_app(_Node, _UUID, JObj, <<"say">>) ->
             Txt = kz_json:get_ne_binary_value(<<"Say-Text">>, JObj),
             Gender = kz_json:get_ne_binary_value(<<"Gender">>, JObj, <<>>),
 
-            Arg = kz_binary:join([Lang, Type, Method, Gender, Txt], <<" ">>),
-            lager:debug("say_string command ~s", [Arg]),
-            {<<"say_string">>, Arg}
+            Arg = kz_binary:join([<<"say_string">>, Lang, Lang, Type, Method, Gender, Txt], <<" ">>),
+            lager:debug("say command playback(~s)", [Arg]),
+            {<<"playback">>, Arg}
     end;
 
 get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
