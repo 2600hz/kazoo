@@ -879,7 +879,8 @@ message_prompt([H|_]=Messages, Message, Count, #mailbox{timezone=Timezone
     ];
 message_prompt(Messages, Message, Count, #mailbox{is_ff_rw_enabled=AllowFfRw
                                                  ,keys=Keys
-                                                 ,skip_envelope='true'}) ->
+                                                 ,skip_envelope='true'
+                                                 }) ->
     lager:debug("mailbox is set to skip playing message envelope"),
     [{'prompt', <<"vm-message_number">>}
     ,{'say', kz_term:to_binary(Count - length(Messages) + 1), <<"number">>}

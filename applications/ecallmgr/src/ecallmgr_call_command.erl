@@ -405,7 +405,7 @@ get_fs_app(_Node, _UUID, JObj, <<"say">>) ->
 
             Arg = kz_binary:join([<<"say_string">>, Lang, Lang, Type, Method, Gender, Txt], <<" ">>),
             lager:debug("say command playback(~s)", [Arg]),
-            {<<"playback">>, Arg}
+            {<<"playback">>, <<"${", Arg/binary, "}">>}
     end;
 
 get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
