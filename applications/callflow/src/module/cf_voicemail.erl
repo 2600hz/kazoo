@@ -885,6 +885,18 @@ message_prompt(Messages, Message, Count, #mailbox{is_ff_rw_enabled=AllowFfRw
     ,{'prompt', <<"vm-message_menu">>}
     ].
 
+%%------------------------------------------------------------------------------
+%% @doc Accepts Universal Coordinated Time (UTC) and convert it to binary
+%% encoded Unix epoch in the provided timezone
+%% @end
+%%------------------------------------------------------------------------------
+-spec get_unix_epoch(kz_time:gregorian_seconds(), kz_term:ne_binary()) ->
+          kz_term:ne_binary().
+get_unix_epoch(Epoch, Timezone) ->
+    UtcDateTime = calendar:gregorian_seconds_to_datetime(Epoch),
+    LocalDateTime = localtime:utc_to_local(UtcDateTime, Timezone),
+    kz_term:to_binary(calendar:datetime_to_gregorian_seconds(LocalDateTime) - ?UNIX_EPOCH_IN_GREGORIAN).
+
 play_prompt(Message, 'true'=_AllowFfRw, #keys{rewind=RW, fastforward=FF}=_Keys) ->
     {'play', Message, ?ANY_DIGIT -- [RW, FF]};
 play_prompt(Message, 'false', _Keys) ->
@@ -2242,18 +2254,6 @@ update_doc(Key, Value, Id, Call) ->
 -spec tmp_file(kz_term:ne_binary()) -> kz_term:ne_binary().
 tmp_file(Ext) ->
     <<(kz_binary:rand_hex(16))/binary, ".", Ext/binary>>.
-
-%%------------------------------------------------------------------------------
-%% @doc Accepts Universal Coordinated Time (UTC) and convert it to binary
-%% encoded Unix epoch in the provided timezone
-%% @end
-%%------------------------------------------------------------------------------
--spec get_unix_epoch(kz_time:gregorian_seconds(), kz_term:ne_binary()) ->
-          kz_term:ne_binary().
-get_unix_epoch(Epoch, Timezone) ->
-    UtcDateTime = calendar:gregorian_seconds_to_datetime(Epoch),
-    LocalDateTime = localtime:utc_to_local(UtcDateTime, Timezone),
-    kz_term:to_binary(calendar:datetime_to_gregorian_seconds(LocalDateTime) - ?UNIX_EPOCH_IN_GREGORIAN).
 
 %%------------------------------------------------------------------------------
 %% @doc
