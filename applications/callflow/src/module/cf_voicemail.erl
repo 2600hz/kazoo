@@ -868,11 +868,13 @@ message_prompt([H|_]=Messages, Message, Count, #mailbox{timezone=Timezone
                                                        ,keys=Keys
                                                        ,is_ff_rw_enabled=AllowFfRw
                                                        }) ->
+    Epoch = get_unix_epoch(kz_json:get_integer_value(<<"timestamp">>, H), Timezone),
+
     [{'prompt', <<"vm-message_number">>}
     ,{'say', kz_term:to_binary(Count - length(Messages) + 1), <<"number">>}
     ,play_prompt(Message, AllowFfRw, Keys)
     ,{'prompt', <<"vm-received">>}
-    ,{'say',  get_unix_epoch(kz_json:get_integer_value(<<"timestamp">>, H), Timezone), <<"current_date_time">>}
+    ,{'say', Epoch, <<"current_date_time">>}
     ,{'prompt', <<"vm-message_menu">>}
     ];
 message_prompt(Messages, Message, Count, #mailbox{is_ff_rw_enabled=AllowFfRw
