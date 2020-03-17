@@ -1,7 +1,7 @@
 [
     {
         "id": "user0000000000000000000000000001",
-        "key": "User One",
+        "key": ["user", "user0000000000000000000000000001"],
         "value": {
             "email": "user-1001@2600hz.local",
             "features": [
