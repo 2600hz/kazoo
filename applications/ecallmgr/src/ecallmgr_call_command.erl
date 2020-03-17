@@ -397,15 +397,15 @@ get_fs_app(_Node, _UUID, JObj, <<"say">>) ->
     case kapi_dialplan:say_v(JObj) of
         'false' -> {'error', <<"say failed to execute as JObj did not validate">>};
         'true' ->
-            Lang = say_language(kz_json:get_value(<<"Language">>, JObj)),
-            Type = kz_json:get_value(<<"Type">>, JObj),
-            Method = kz_json:get_value(<<"Method">>, JObj),
-            Txt = kz_json:get_value(<<"Say-Text">>, JObj),
-            Gender = kz_json:get_value(<<"Gender">>, JObj, <<>>),
+            Lang = say_language(kz_json:get_ne_binary_value(<<"Language">>, JObj)),
+            Type = kz_json:get_ne_binary_value(<<"Type">>, JObj),
+            Method = kz_json:get_ne_binary_value(<<"Method">>, JObj),
+            Txt = kz_json:get_ne_binary_value(<<"Say-Text">>, JObj),
+            Gender = kz_json:get_ne_binary_value(<<"Gender">>, JObj, <<>>),
 
-            Arg = list_to_binary([Lang, " ", Type, " ", Method, " ", Txt, " ", Gender]),
-            lager:debug("say command ~s", [Arg]),
-            {<<"say">>, Arg}
+            Arg = kz_binary:join([Lang, Type, Method, Gender, Txt], <<" ">>),
+            lager:debug("say_string command ~s", [Arg]),
+            {<<"say_string">>, Arg}
     end;
 
 get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
