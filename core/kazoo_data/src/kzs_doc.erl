@@ -246,7 +246,7 @@ copy_doc(Src, Dst, CopySpec, CopyFun, Opts) ->
         {'ok', SourceDoc} ->
             Props = [{<<"_id">>, DestDocId}
                     ,{<<"pvt_account_db">>, DestDbName}
-                    | [{Key, 'null'} || Key <- ?DELETE_KEYS]
+                     | [{Key, 'null'} || Key <- ?DELETE_KEYS]
                     ],
             DestinationDoc = kz_json:set_values(Props, SourceDoc),
             Doc = copy_transform(Transform, SourceDoc, DestinationDoc),
