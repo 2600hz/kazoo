@@ -20,8 +20,6 @@
 -include("frontier.hrl").
 
 -define(DEVICE_DEFAULT_RATES, <<"device-default-rate-limits">>).
--define(RATES_CROSSBAR_LISTING, <<"rate_limits/crossbar_listing">>).
--define(RATES_LISTING_BY_OWNER, <<"rate_limits/list_by_owner">>).
 
 -spec is_device_defaults(kz_json:object()) -> boolean().
 is_device_defaults(JObj) ->
@@ -245,7 +243,7 @@ fetch_rates(EntityList, IncludeRealm, MethodList, AccountDB) ->
     lager:info("run db query..."),
     Keys = [[<<"rate_limits">>, E, M] || E <- [?DEVICE_DEFAULT_RATES | EntityList], M <- MethodList],
     ViewOpts = [{'keys', Keys}],
-    Results = case kz_datamgr:get_results(AccountDB, ?RATES_CROSSBAR_LISTING, ViewOpts) of
+    Results = case kz_datamgr:get_results(AccountDB, ?KZ_VIEW_LIST_UNIFORM, ViewOpts) of
                   {'ok', JObjs} ->
                       lager:info("got ~p records for entities ~p from db document", [length(JObjs), EntityList]),
                       JObjs;
@@ -283,8 +281,8 @@ check_fallbacks(Tree, MethodList, Realm) ->
           atom() | kz_json:objects().
 check_fallback(AccountId, 'empty', MethodList, Realm) ->
     AccountDB = kzs_util:format_account_db(AccountId),
-    ViewOpts = [{'key', AccountId}],
-    case kz_datamgr:get_results(AccountDB, ?RATES_LISTING_BY_OWNER, ViewOpts) of
+    ViewOpts = [{'key', [<<"rate_limits">>, <<"by_owner">>, AccountId]}],
+    case kz_datamgr:get_results(AccountDB, ?KZ_VIEW_LIST_UNIFORM, ViewOpts) of
         {'ok', []} -> 'empty';
         {'ok', [JObj]} ->
             Fallback = kz_doc:id(JObj),

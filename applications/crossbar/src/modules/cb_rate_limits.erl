@@ -26,8 +26,6 @@
 
 -include("crossbar.hrl").
 
--define(LISTING_BY_OWNER, <<"rate_limits/list_by_owner">>).
-
 %%%=============================================================================
 %%% API
 %%%=============================================================================
@@ -137,8 +135,8 @@ validate_post_rate_limits(Context) ->
 
 -spec get_rate_limits_id_for_thing(cb_context:context(), kz_term:ne_binary()) -> kz_term:api_binaries().
 get_rate_limits_id_for_thing(Context, ThingId) ->
-    ViewOpt = [{'key', ThingId}],
-    case kz_datamgr:get_results(cb_context:db_name(Context), ?LISTING_BY_OWNER, ViewOpt) of
+    ViewOpt = [{'key', [<<"rate_limits">>, <<"by_owner">>, ThingId]}],
+    case kz_datamgr:get_results(cb_context:db_name(Context), ?KZ_VIEW_LIST_UNIFORM, ViewOpt) of
         {'ok', JObjs} ->
             [get_id(JB) || JB <- JObjs];
         {'error', _Err} ->
