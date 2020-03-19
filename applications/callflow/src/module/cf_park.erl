@@ -21,8 +21,6 @@
 -export([maybe_cleanup_slot/3]).
 
 -define(PARKED_CALL_DOC_TYPE, <<"parked_call">>).
--define(PARKED_CALLS_VIEW, <<"parking/parked_calls">>).
--define(PARKED_CALL_VIEW, <<"parking/parked_call">>).
 
 -define(SLOT_DOC_ID(A), <<"parking-slot-", A/binary>>).
 
@@ -487,7 +485,8 @@ update_call_id(Replaces, Call) ->
     CallId = cf_exe:callid(Call),
     lager:info("update parked call id ~s with new call id ~s", [Replaces, CallId]),
     AccountDb = kapps_call:account_db(Call),
-    case kz_datamgr:get_result_doc(AccountDb, ?PARKED_CALL_VIEW, Replaces) of
+    Key = [?PARKED_CALL_DOC_TYPE, <<"by_call_id">>, Replaces],
+    case kz_datamgr:get_result_doc(AccountDb, ?KZ_VIEW_LIST_UNIFORM, Key) of
         {'ok', Doc} ->
             ?SLOT_DOC_ID(SlotNumber) = kz_doc:id(Doc),
             lager:info("found parked call id ~s in slot ~s", [Replaces, SlotNumber]),
@@ -563,10 +562,12 @@ maybe_get_ringback_id(Call) ->
 %%------------------------------------------------------------------------------
 -spec get_parked_calls(kapps_call:call() | kz_term:ne_binary()) -> kz_json:object().
 get_parked_calls(?NE_BINARY = AccountDb) ->
-    Options = ['include_docs'
+    Options = [{'startkey', [?PARKED_CALL_DOC_TYPE, <<"by_id">>]}
+              ,{'endkey', [?PARKED_CALL_DOC_TYPE, <<"by_id">>, kz_datamgr:view_highest_value()]}
               ,{'doc_type', ?PARKED_CALL_DOC_TYPE}
+              ,'include_docs'
               ],
-    case kz_datamgr:get_results(AccountDb, ?PARKED_CALLS_VIEW, Options) of
+    case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, Options) of
         {'error', _} -> load_parked_calls([]);
         {'ok', JObjs} -> load_parked_calls(JObjs)
     end;

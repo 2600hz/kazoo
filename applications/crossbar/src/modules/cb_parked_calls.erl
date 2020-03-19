@@ -21,7 +21,6 @@
 
 -define(MOD_CONFIG_CAT, <<"callflow.park">>).
 -define(DB_DOC_NAME, kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"db_doc_name">>, <<"parked_calls">>)).
--define(PARKED_CALLS_VIEW, <<"parking/parked_calls">>).
 -define(PARKED_CALL_DOC_TYPE, <<"parked_call">>).
 -define(SLOT_DOC_ID(A), <<"parking-slot-", A/binary>>).
 
@@ -41,9 +40,12 @@ resource_exists() -> 'true'.
 validate(Context) ->
     Options = [{'mapper', fun normalize_view_results/2}
               ,{'doc_type', ?PARKED_CALL_DOC_TYPE}
+              ,{'startkey', [?PARKED_CALL_DOC_TYPE, <<"by_id">>]}
+              ,{'endkey', [?PARKED_CALL_DOC_TYPE, <<"by_id">>, kz_datamgr:view_highest_value()]}
+              ,{}
               ,'include_docs'
               ],
-    Context1 = crossbar_view:load(Context, ?PARKED_CALLS_VIEW, Options),
+    Context1 = crossbar_view:load(Context, ?KZ_VIEW_LIST_UNIFORM, Options),
     case cb_context:resp_status(Context) of
         'success' -> cb_context:set_resp_data(Context1, build_slots(cb_context:doc(Context1)));
         _ -> Context1
