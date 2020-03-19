@@ -33,7 +33,6 @@
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 -include_lib("kazoo_amqp/src/api/kapi_dialplan.hrl").
--include_lib("kazoo_amqp/src/api/kapi_call.hrl").
 -include_lib("kazoo_stdlib/include/kz_log.hrl").
 
 -type ast() :: [erl_parse:abstract_form()].
@@ -118,7 +117,7 @@ ast_to_list_of_binaries(?MOD_FUN_ARGS('kapi_dialplan', 'optional_bridge_req_head
 ast_to_list_of_binaries(?MOD_FUN_ARGS('kapi_dialplan', 'optional_bridge_req_endpoint_headers', []), Binaries) ->
     ?OPTIONAL_BRIDGE_REQ_ENDPOINT_HEADERS ++ Binaries;
 ast_to_list_of_binaries(?MOD_FUN_ARGS('kapi_call', 'optional_call_event_headers', []), Binaries) ->
-    ?OPTIONAL_CALL_EVENT_HEADERS ++ Binaries;
+    kapi_call:optional_call_event_headers() ++ Binaries;
 ast_to_list_of_binaries(?LIST(?LIST(_, _)=H, T), Binaries) ->
     ast_to_list_of_binaries(T, [ast_to_list_of_binaries(H) | Binaries]);
 ast_to_list_of_binaries(?LIST(H, T), Binaries) ->

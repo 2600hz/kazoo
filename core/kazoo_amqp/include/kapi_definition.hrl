@@ -1,13 +1,20 @@
 -ifndef(KAPI_DEFINITION_HRL).
--type binding() :: kz_term:api_ne_binary() | fun((...) -> kz_term:ne_binary()).
 
--record(kapi_definition, {name :: kz_term:api_ne_binary()
-                         ,friendly_name :: kz_term:api_ne_binary()
+-type event_name_fun() :: fun((kz_term:api_terms()) -> kz_term:ne_binary()).
+-type name() :: kz_term:ne_binary() | event_name_fun().
+-type friendly_name() :: kz_term:api_ne_binary().
+-type binding() :: kz_term:api_ne_binary() | fun((...) -> kz_term:ne_binary()).
+-type build_fun() :: fun((kz_term:api_terms()) -> kz_api:api_formatter_return()).
+-type validate_fun() :: fun((kz_term:api_terms()) -> boolean()).
+-type publish_fun() :: fun((...) -> 'ok').
+
+-record(kapi_definition, {name :: name() | 'undefined'
+                         ,friendly_name :: friendly_name()
                          ,description :: kz_term:api_ne_binary()
-                         ,category = 'undefined' :: kz_term:api_ne_binary()
-                         ,build_fun :: fun((kz_term:api_terms()) -> kz_api:api_formatter_return()) | 'undefined'
-                         ,validate_fun :: fun((kz_term:api_terms()) -> boolean()) | 'undefined'
-                         ,publish_fun :: fun((...) -> 'ok') | 'undefined'
+                         ,category :: kz_term:api_ne_binary()
+                         ,build_fun ::  build_fun() | 'undefined'
+                         ,validate_fun :: validate_fun() | 'undefined'
+                         ,publish_fun ::  publish_fun() | 'undefined'
                          ,binding = 'undefined' :: binding()
                          ,restrict_to = 'undefined' :: kz_term:api_atom()
                          ,required_headers = [] :: kz_api:api_headers()

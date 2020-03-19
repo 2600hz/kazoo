@@ -32,6 +32,11 @@
              }).
 -type acc() :: #acc{}.
 
+-ifdef(TEST).
+-export([base_schema/2
+        ]).
+-endif.
+
 -spec to_schemas() -> 'ok'.
 to_schemas() ->
     kz_json:foreach(fun update_schema/1, process()).
@@ -298,10 +303,17 @@ kapi_schema(#acc{app_schemas=Schemas
         Schema -> Schema
     end.
 
+-spec base_schema(kz_term:ne_binary(), kapi_definition:name()) -> kz_json:object().
 base_schema(<<KAPI/binary>>, <<API/binary>>) ->
     kz_json:from_list([{<<"_id">>, <<"kapi.", KAPI/binary, ".", API/binary>>}
                       ,{<<"$schema">>, <<"http://json-schema.org/draft-04/schema#">>}
                       ,{<<"description">>, <<"AMQP API for ", KAPI/binary, ".", API/binary>>}
+                      ,{<<"type">>, <<"object">>}
+                      ]);
+base_schema(<<KAPI/binary>>, _) ->
+    kz_json:from_list([{<<"_id">>, <<"kapi.", KAPI/binary>>}
+                      ,{<<"$schema">>, <<"http://json-schema.org/draft-04/schema#">>}
+                      ,{<<"description">>, <<"AMQP API for ", KAPI/binary>>}
                       ,{<<"type">>, <<"object">>}
                       ]).
 
@@ -523,6 +535,8 @@ validator_properties({'function', 'has_cost_parameters', 1}) ->
                       ,{<<"properties">>, cost_parameters_schema()}
                       ]);
 validator_properties({'function', 'store_media_content_v', 1}) ->
+    kz_json:from_list([{<<"type">>, <<"string">>}]);
+validator_properties({'kz_api', 'event_name', 1}) ->
     kz_json:from_list([{<<"type">>, <<"string">>}]);
 validator_properties({'function', _F, _A}) ->
     ?DEBUG("  no properties for fun ~p/~p~n", [_F, _A]),

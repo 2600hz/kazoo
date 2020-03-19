@@ -38,12 +38,19 @@
 -type setter_fun() :: {fun((api(), Value) -> api()), Value}.
 -type setter_funs() :: [setter_fun()].
 
+-type event_name() :: kz_term:ne_binary() |
+                      kz_term:ne_binaries() |
+                      event_name_fun().
+
 -opaque api() :: #kapi_definition{}.
 -type apis() :: [api()].
 
 -export_type([api/0
              ,apis/0
              ,setter_funs/0
+             ,name/0
+             ,friendly_name/0
+             ,binding/0
              ]).
 
 %%%=============================================================================
@@ -54,10 +61,10 @@
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec name(api()) -> kz_term:ne_binary().
+-spec name(api()) -> name().
 name(#kapi_definition{name = Name}) -> Name.
 
--spec set_name(api(), kz_term:ne_binary()) -> api().
+-spec set_name(api(), name()) -> api().
 set_name(API, Name) -> API#kapi_definition{name = Name}.
 
 %%------------------------------------------------------------------------------
@@ -203,7 +210,7 @@ setters(Routines, Definition) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec event_type_headers(kz_term:ne_binary(), kz_term:ne_binary() | kz_term:ne_binaries()) -> kz_term:proplist().
+-spec event_type_headers(kz_term:ne_binary(), event_name()) -> kz_term:proplist().
 event_type_headers(Category, EventName) ->
     [{?KEY_EVENT_CATEGORY, Category}
     ,{?KEY_EVENT_NAME, EventName}
@@ -225,7 +232,10 @@ build_message(Prop, #kapi_definition{validate_fun = ValidateFun
         'true' ->
             kz_api:build_message(Prop, ReqHeaders, OptionalHeaders);
         'false' ->
-            Id = hd(lists:dropwhile(fun kz_term:is_empty/1, [Binding, FriendlyName, Name])),
+            F = fun(Term) -> kz_term:is_empty(Term)
+                                 orelse is_function(Term) %% Some Bindings and Names are actually callback functions
+                end,
+            Id = hd(lists:dropwhile(F, [Binding, FriendlyName, Name])),
             {'error', "Proplist failed validation for " ++ kz_term:to_list(Id)}
     end;
 build_message(JObj, Definition) ->

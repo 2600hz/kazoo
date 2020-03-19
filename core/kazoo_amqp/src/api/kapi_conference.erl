@@ -90,7 +90,6 @@
 
 -include_lib("kz_amqp_util.hrl").
 -include("kapi_dialplan.hrl").
--include("kapi_call.hrl").
 
 -type doc() :: kz_json:object().
 -type discovery_req() :: kz_json:object().

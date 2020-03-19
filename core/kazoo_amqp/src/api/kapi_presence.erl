@@ -91,7 +91,10 @@
 
 -include_lib("kazoo_amqp/src/kz_amqp_util.hrl").
 
--define(DIALOG_STATES, [<<"early">>, <<"confirmed">>, <<"terminated">>]).
+-define(DIALOG_STATES, [<<"confirmed">>
+                       ,<<"early">>
+                       ,<<"terminated">>
+                       ]).
 
 -ifdef(TEST).
 -export([search_req_routing_key/1

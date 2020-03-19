@@ -217,8 +217,10 @@ stats_resp_v(JObj) ->
 -define(AGENT_KEY, "acdc.agent.action."). % append queue ID
 
 -define(AGENT_HEADERS, [<<"Account-ID">>, <<"Agent-ID">>]).
--define(OPTIONAL_AGENT_HEADERS, [<<"Time-Limit">>, <<"Queue-ID">>
-                                ,<<"Presence-ID">>, <<"Presence-State">>
+-define(OPTIONAL_AGENT_HEADERS, [<<"Presence-ID">>
+                                ,<<"Presence-State">>
+                                ,<<"Queue-ID">>
+                                ,<<"Time-Limit">>
                                 ]).
 -define(AGENT_VALUES, [{<<"Event-Category">>, <<"agent">>}
                       ,{<<"Presence-State">>, kapi_presence:presence_states()}
