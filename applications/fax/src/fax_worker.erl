@@ -84,7 +84,6 @@
 -define(DEFAULT_RETRY_COUNT, kapps_config:get_integer(?CONFIG_CAT, <<"default_retry_count">>, 3)).
 -define(DEFAULT_COMPARE_FIELD, kapps_config:get_binary(?CONFIG_CAT, <<"default_compare_field">>, <<"result_cause">>)).
 
--define(CALLFLOW_LIST, <<"callflows/listing_by_number">>).
 -define(ENSURE_CID_KEY, <<"ensure_valid_caller_id">>).
 -define(DEFAULT_ENSURE_CID, kapps_config:get_is_true(?CONFIG_CAT, ?ENSURE_CID_KEY, 'true')).
 
@@ -833,8 +832,10 @@ send_fax(JobId, JObj, Q, ToDID) ->
 -spec get_hunt_account_id(kz_term:ne_binary()) -> kz_term:api_binary().
 get_hunt_account_id(AccountId) ->
     AccountDb = kzs_util:format_account_db(AccountId),
-    Options = [{'key', <<"no_match">>}, 'include_docs'],
-    case kz_datamgr:get_results(AccountDb, ?CALLFLOW_LIST, Options) of
+    Options = [{'key', [kzd_callflows:type(), 'by_number', <<"no_match">>]}
+              ,'include_docs'
+              ],
+    case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, Options) of
         {'ok', [JObj]} -> maybe_hunt_account_id(kz_json:get_value([<<"doc">>, <<"flow">>], JObj), AccountId);
         _ -> 'undefined'
     end.

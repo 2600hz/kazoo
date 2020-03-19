@@ -36,8 +36,6 @@
 
 -define(MSG_LIST_BY_NUMBER, <<"message/listing_by_number">>).
 -define(MSG_LIST_BY_PATTERN, <<"message/listing_by_pattern">>).
--define(CF_LIST_BY_NUMBER, <<"callflows/listing_by_number">>).
--define(CF_LIST_BY_PATTERN, <<"callflows/listing_by_pattern">>).
 -define(NO_MATCH_FLOW, <<"no_match">>).
 -define(MSG_FLOW_CACHE_KEY(Number, AccountId), {'msg_flow', Number, AccountId}).
 -define(MSG_PATTERN_CACHE_KEY(AccountId), {'msg_patterns', AccountId}).

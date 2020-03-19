@@ -32,9 +32,6 @@
 
 -define(SERVER, ?MODULE).
 
--define(CB_LIST_BY_NUMBER, <<"callflows/listing_by_number">>).
--define(CB_LIST_BY_PATTERN, <<"callflows/listing_by_pattern">>).
-
 %%%=============================================================================
 %%% API
 %%%=============================================================================
@@ -258,8 +255,8 @@ validate_unique_numbers(Context, CallflowId) ->
 -spec validate_unique_numbers(cb_context:context(), kz_term:api_binary(), kz_term:ne_binaries()) -> cb_context:context().
 validate_unique_numbers(Context, _CallflowId, []) -> Context;
 validate_unique_numbers(Context, CallflowId, Numbers) ->
-    Options = [{'keys', Numbers}],
-    case kz_datamgr:get_results(cb_context:db_name(Context), ?CB_LIST_BY_NUMBER, Options) of
+    Options = [{'keys', [[kzd_callflows:type(), <<"by_number">>, Number] || Number <- Numbers]}],
+    case kz_datamgr:get_results(cb_context:db_name(Context), ?KZ_VIEW_LIST_UNIFORM, Options) of
         {'error', Error} ->
             lager:debug("failed to load callflows from account: ~p", [Error]),
             cb_context:add_system_error(Error, Context);
@@ -296,8 +293,8 @@ validate_unique_patterns(Context, CallflowId) ->
 -spec validate_unique_patterns(cb_context:context(), kz_term:api_binary(), kz_term:ne_binaries()) -> cb_context:context().
 validate_unique_patterns(Context, _CallflowId, []) -> Context;
 validate_unique_patterns(Context, CallflowId, Patterns) ->
-    Options = [{'keys', Patterns}],
-    case kz_datamgr:get_results(cb_context:db_name(Context), ?CB_LIST_BY_PATTERN, Options) of
+    Options = [{'keys', [[kzd_callflows:type(), <<"by_pattern">>, P] || P <- Patterns]}],
+    case kz_datamgr:get_results(cb_context:db_name(Context), ?KZ_VIEW_LIST_UNIFORM, Options) of
         {'error', Error} ->
             lager:debug("failed to load callflows from account: ~p", [Error]),
             cb_context:add_system_error(Error, Context);

@@ -386,10 +386,10 @@ maybe_msisdn_from_callflows(#auth_user{account_db=AccountDB}=AuthUser
                            ,Type
                            ,Id
                            ) ->
-    ViewOptions = [{'startkey', [Type, Id]}
-                  ,{'endkey', [Type, Id, <<"9999999">>]}
+    ViewOptions = [{'startkey', [kzd_callflows:type(), <<"by_msisdn">>, Type, Id]}
+                  ,{'endkey', [kzd_callflows:type(), <<"by_msisdn">>, Type, Id, <<"9999999">>]}
                   ],
-    case kz_datamgr:get_results(AccountDB, <<"callflows/msisdn">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDB, ?KZ_VIEW_LIST_UNIFORM, ViewOptions) of
         {'error', _R} ->
             lager:warning("failed to look up msisdn  in ~s: ~p", [AccountDB, _R]),
             AuthUser;

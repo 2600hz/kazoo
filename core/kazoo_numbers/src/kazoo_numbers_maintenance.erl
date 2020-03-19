@@ -1537,7 +1537,7 @@ to_binary_data_error(SomethingElse) ->
 %%------------------------------------------------------------------------------
 -spec get_account_dids_apps(kz_term:ne_binary(), kz_term:ne_binaries()) -> map().
 get_account_dids_apps(Account, Ids) ->
-    ViewOpts= [{'keys', Ids}],
+    ViewOpts= [{'keys', [[kzd_callflows:type(), 'by_number', Id] || Id <- Ids]}],
     ?SUP_LOG_DEBUG("      getting app usage for ~b numbers in account ~s", [length(Ids), Account]),
     AccountDb = kzs_util:format_account_db(Account),
     case get_dids_for_app(AccountDb, <<"callflow">>, ViewOpts) of
@@ -1687,7 +1687,7 @@ migrate_unassigned_numbers(NumberDb, Offset) ->
 %%------------------------------------------------------------------------------
 -spec get_dids_for_app(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> kazoo_data:get_results_return().
 get_dids_for_app(AccountDb, <<"callflow">>, ViewOptions) ->
-    View = <<"callflows/listing_by_number">>,
+    View = ?KZ_VIEW_LIST_UNIFORM,
     ?SUP_LOG_DEBUG("         getting callflow numbers from ~s", [AccountDb]),
     kz_datamgr:get_result_keys(AccountDb, View, ViewOptions);
 get_dids_for_app(AccountDb, <<"trunkstore">>, ViewOptions) ->
@@ -1721,7 +1721,7 @@ get_DIDs_trunkstore_set(AccountDb, ViewOptions) ->
 
 -spec app_using(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_ne_binary().
 app_using(Num, AccountDb) ->
-    CallflowNums = get_DIDs_callflow_set(AccountDb, [{'key', Num}]),
+    CallflowNums = get_DIDs_callflow_set(AccountDb, [{'key', [kzd_callflows:type(), 'by_number', Num]}]),
     TrunkstoreNums = get_DIDs_trunkstore_set(AccountDb, [{'key', Num}]),
     app_using(Num, AccountDb, CallflowNums, TrunkstoreNums).
 

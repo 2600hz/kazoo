@@ -19,8 +19,6 @@
 
 -include("konami.hrl").
 
--define(LIST_BY_NUMBER, <<"callflows/listing_by_number">>).
-
 -spec handle(kz_json:object(), kapps_call:call()) ->
           {'stop', kapps_call:call()}.
 handle(Data, Call) ->
@@ -49,8 +47,10 @@ captured_callflow(_Call, 'undefined') -> 'undefined';
 captured_callflow(Call, [Number]) ->
     captured_callflow(Call, Number);
 captured_callflow(Call, Number) ->
-    Options = [{'key', Number}, 'include_docs'],
-    case kz_datamgr:get_results(kapps_call:account_db(Call), ?LIST_BY_NUMBER, Options) of
+    Options = [{'key', [kzd_callflows:type(), 'by_number', Number]}
+              ,'include_docs'
+              ],
+    case kz_datamgr:get_results(kapps_call:account_db(Call), ?KZ_VIEW_LIST_UNIFORM, Options) of
         {'ok', [JObj]} -> {'ok', kz_json:get_value(<<"doc">>, JObj)};
         E -> E
     end.

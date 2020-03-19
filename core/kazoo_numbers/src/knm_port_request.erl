@@ -56,7 +56,6 @@
 -define(ACTIVE_PORT_IN_NUMBERS, <<"port_requests/port_in_numbers">>).
 -define(PORT_NUM_LISTING, <<"port_requests/phone_numbers_listing">>).
 -define(PORT_LISTING_BY_STATE, <<"port_requests/listing_by_state">>).
--define(CALLFLOW_LIST, <<"callflows/listing_by_number">>).
 -define(TRUNKSTORE_LIST, <<"trunkstore/lookup_did">>).
 
 -type transition_response() :: {'ok', kz_json:object()} |
@@ -684,10 +683,19 @@ log_wrong_app_in_portin(PortInApp, App, Num) ->
 %%------------------------------------------------------------------------------
 -spec get_dids_for_app(kz_term:ne_binary(), kz_term:ne_binaries()) -> {kz_term:proplist(), kz_term:proplist()}.
 get_dids_for_app(AccountDb, Numbers) ->
-    CfDIDs = get_dids_for_app(AccountDb, Numbers, ?CALLFLOW_LIST),
+    CfDIDs = get_dids_for_app1(AccountDb, [{'keys', [{kzd_callflows:type(), <<"by_number">>, N} || N <- Numbers]}]),
     TsDIDs = get_dids_for_app(AccountDb, Numbers, ?TRUNKSTORE_LIST),
     NumApps = [{N, <<"callflow">>} || N <- CfDIDs] ++ [{N, <<"trunkstore">>} || N <- TsDIDs],
     {NumApps, [{<<"callflow">>, CfDIDs}, {<<"trunkstore">>, TsDIDs}]}.
+
+-spec get_dids_for_app1(kz_term:ne_binary(), kazoo_data:view_options()) ->
+          kz_term:ne_binaries().
+get_dids_for_app1(AccountDb, Options) ->
+    case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, Options) of
+        {'ok', JObjs} ->
+            [kz_json:get_ne_binary_value([<<"value">>, <<"number">>], JObj) || JObj <- JObjs];
+        {'error', _} -> []
+    end.
 
 -spec get_dids_for_app(kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary()) ->
           kz_term:ne_binaries().

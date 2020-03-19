@@ -34,9 +34,6 @@
 
 -define(DIALPLAN_MAP, [{<<"tone">>, <<"tones">>}]).
 
--define(LIST_BY_NUMBER, <<"callflows/listing_by_number">>).
--define(LIST_BY_PATTERN, <<"callflows/listing_by_pattern">>).
-
 -define(NO_MATCH_CF, <<"no_match">>).
 
 -define(DEFAULT_TIMEOUT_S, ?BRIDGE_DEFAULT_SYSTEM_TIMEOUT_S).

@@ -72,8 +72,10 @@ is_no_match_number(Number) -> Number =:= ?NO_MATCH_CF.
 -spec do_lookup(kz_term:ne_binary(), kz_term:ne_binary()) -> lookup_ret().
 do_lookup(Number, AccountId) ->
     lager:info("searching for callflow in ~s to satisfy '~s'", [AccountId, Number]),
-    Options = [{'key', Number}, 'include_docs'],
-    case kz_datamgr:get_results(AccountId, ?LIST_BY_NUMBER, Options) of
+    Options = [{'key', [kzd_callflows:type(), <<"by_number">>, Number]}
+              ,'include_docs'
+              ],
+    case kz_datamgr:get_results(AccountId, ?KZ_VIEW_LIST_UNIFORM, Options) of
         {'error', _}=E -> E;
         {'ok', []} when Number =/= ?NO_MATCH_CF ->
             lookup_patterns(Number, AccountId);
@@ -122,7 +124,11 @@ fetch_patterns(AccountId)->
 -spec load_patterns(kz_term:ne_binary()) -> {'ok', patterns()} | {'error', 'not_found'}.
 load_patterns(AccountId) ->
     Db = kzs_util:format_account_db(AccountId),
-    case kz_datamgr:get_results(Db, ?LIST_BY_PATTERN, ['include_docs']) of
+    ViewOptions = [{'startkey', [kzd_callflows:type(), <<"by_pattern">>]}
+                  ,{'endkey', [kzd_callflows:thype(), <<"by_pattern">>, kz_datamgr:view_highest_value()]}
+                  ,'include_docs'
+                  ],
+    case kz_datamgr:get_results(Db, ?KZ_VIEW_LIST_UNIFORM, ViewOptions) of
         {'ok', []} -> {'error', 'not_found'};
         {'ok', JObjs} -> compile_patterns(AccountId, JObjs);
         {'error', _}=_E ->

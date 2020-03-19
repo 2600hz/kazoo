@@ -474,7 +474,11 @@ update_feature_codes(Account)
     update_feature_codes(kz_term:to_binary(Account));
 update_feature_codes(Account) ->
     AccountDb = kzs_util:format_account_db(Account),
-    case kz_datamgr:get_results(AccountDb, ?LIST_BY_PATTERN, ['include_docs']) of
+    Options = [{'startkey', [kzd_callflows:type(), <<"by_pattern">>]}
+              ,{'endkey', [kzd_callflows:thype(), <<"by_pattern">>, kz_datamgr:view_highest_value()]}
+              ,'include_docs'
+              ],
+    case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, Options) of
         {'error', _Reason} ->
             io:format("error listing feature code patterns: ~p\n", [_Reason]);
         {'ok', Patterns} ->
