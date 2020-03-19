@@ -45,22 +45,16 @@ seq_kzoo_56() ->
 
     {'ok', MovedDoc} = kz_datamgr:move_doc(?FROM_DB, ?FROM_DOC_ID, ?TO_DB, ?TO_DOC_ID, []),
 
-    'true' = kz_json:are_equal(kz_doc:public_fields(SourceDoc)
-                              ,kz_doc:public_fields(MovedDoc)
-                              ),
-    lager:info("public fields are the same"),
-
-    'true' = kz_json:are_equal(kz_doc:attachments(SourceDoc)
-                              ,kz_doc:attachments(MovedDoc)
-                              ),
-    lager:info("attachments are the same"),
+    'true' = kz_doc:are_equal(SourceDoc, MovedDoc),
+    lager:info("docs are the same"),
 
     cleanup().
 
 -spec cleanup() -> 'ok'.
 cleanup() ->
     'true' = kz_datamgr:db_delete(?FROM_DB),
-    'true' = kz_datamgr:db_delete(?TO_DB).
+    'true' = kz_datamgr:db_delete(?TO_DB),
+    lager:info("CLEANUP FINISHED").
 
 save_mp3(DB, DocId, AttId, MP3) ->
     AttachmentName = <<"att-", (AttId+$0)>>,
