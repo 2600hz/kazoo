@@ -39,8 +39,6 @@
 -include("crossbar.hrl").
 -include_lib("nklib/include/nklib.hrl").
 
--define(CB_LIST_BY_NUMBER, <<"conference/listing_by_number">>).
-
 -define(PARTICIPANTS, <<"participants">>).
 -define(MUTE, <<"mute">>).
 -define(UNMUTE, <<"unmute">>).
@@ -320,8 +318,9 @@ validate_numbers(Id, Context) ->
     Member = kz_json:get_value([<<"member">>, <<"numbers">>], Doc, []),
     Moderator = kz_json:get_value([<<"moderator">>, <<"numbers">>], Doc, []),
     Keys = Conf ++ Member ++ Moderator,
+    Options = [{'keys', [[kzd_conference:type(), <<"by_number">>, Num] || Num <- Keys]}],
     AccountId = cb_context:account_id(Context),
-    case kz_datamgr:get_results(AccountId, ?CB_LIST_BY_NUMBER, [{'keys', Keys}]) of
+    case kz_datamgr:get_results(AccountId, ?KZ_VIEW_LIST_UNIFORM, Options) of
         {'error', _R} -> cb_context:add_system_error('datastore_fault', Context);
         {'ok', []} -> on_successful_validation(Id, Context);
         {'ok', JObjs} when Id =:= 'undefined' -> invalid_numbers(Context, JObjs);

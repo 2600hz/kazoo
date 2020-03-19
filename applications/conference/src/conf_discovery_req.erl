@@ -12,6 +12,7 @@
 -export([handle_req/2]).
 
 -include("conference.hrl").
+-include_lib("core/kazoo_stdlib/include/kz_databases.hrl").
 
 -spec handle_req(kapi_conference:discovery_req(), kz_term:proplist()) -> any().
 handle_req(DiscoveryReq, _Options) ->
@@ -144,10 +145,10 @@ validate_collected_conference_id(Srv, Conference, Loop, <<>>) ->
 validate_collected_conference_id(Srv, Conference, Loop, Digits) ->
     Call = kapps_conference:call(Conference),
     AccountDb = kapps_call:account_db(Call),
-    ViewOptions = [{'key', Digits}
+    ViewOptions = [{'key', [[kzd_conference:type(), <<"by_number">>, DID] || DID <- Digits]}
                   ,'include_docs'
                   ],
-    case kz_datamgr:get_results(AccountDb, <<"conference/listing_by_number">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, ViewOptions) of
         {'ok', [JObj]} ->
             lager:debug("caller has entered a valid conference id, building object"),
             Doc = kz_json:get_json_value(<<"doc">>, JObj),
