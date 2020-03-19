@@ -785,7 +785,7 @@ validate_patch(Context, BoxId)->
 -spec load_vmbox_summary(cb_context:context()) -> cb_context:context().
 load_vmbox_summary(Context) ->
     Context1 = crossbar_view:load(Context, ?CB_LIST, [{'mapper', crossbar_view:get_value_fun()}]),
-    load_vmbox_summary(Context, cb_context:resp_status(Context1)).
+    load_vmbox_summary(Context1, cb_context:resp_status(Context1)).
 
 -spec load_vmbox_summary(cb_context:cb_context(), crossbar_status()) -> cb_context:context().
 load_vmbox_summary(Context, 'success') ->
