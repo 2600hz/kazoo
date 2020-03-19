@@ -29,7 +29,7 @@ run_it(F) -> F().
 -spec seq_kzoo_56() -> 'ok'.
 seq_kzoo_56() ->
     Doc = kz_json:from_list([{<<"_id">>, ?FROM_DOC_ID}
-                             | [{kz_binary:rand_hex(4), kz_binary:rand_hex(5)} || _ <- lists:seq(1,10)]
+                            | [{kz_binary:rand_hex(4), kz_binary:rand_hex(5)} || _ <- lists:seq(1,10)]
                             ]),
 
     'true' = kz_datamgr:db_create(?FROM_DB),
@@ -51,7 +51,7 @@ seq_kzoo_56() ->
     lager:info("public fields are the same"),
 
     'true' = kz_json:are_equal(kz_doc:attachments(SourceDoc)
-                               ,kz_doc:attachments(MovedDoc)
+                              ,kz_doc:attachments(MovedDoc)
                               ),
     lager:info("attachments are the same"),
 
