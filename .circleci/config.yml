@@ -26,15 +26,7 @@ workflows:
       - release:
           requires:
             - build
-      - build_centos7:
-          requires:
-            - build
-            - eunit_tests
-            - checks
-            - docs
-            - analyze
-            - release
-
+    
 defaults: &defaults
   docker:
     - image: offical2600hz/circleci:21.3.8.12
@@ -240,7 +232,7 @@ jobs:
 
   build_centos7:
     docker:
-      - image: offical2600hz/kazoo-packager-19:1.0-centos-7
+      - image: offical2600hz/kazoo-packager-21:1.0-centos-7
         user: circleci
     shell: /bin/bash --login
     working_directory: /home/circleci/2600hz/kazoo
