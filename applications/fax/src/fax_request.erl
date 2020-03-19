@@ -560,6 +560,7 @@ create_fax_doc(JObj, #state{owner_id = OwnerId
               [{<<"name">>, Name}
               ,{<<"to_number">>, kapps_call:request_user(Call)}
               ,{<<"from_number">>, kapps_call:from_user(Call)}
+              ,{<<"from_name">>, kapps_call:caller_id_name(Call)}
               ,{<<"description">>, <<"fax document received">>}
               ,{<<"source_type">>, <<"incoming_fax">>}
               ,{<<"folder">>, <<"inbox">>}
