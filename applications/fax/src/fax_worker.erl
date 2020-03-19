@@ -150,7 +150,7 @@ handle_fax_event(JObj, Props) ->
 handle_job_status_query(JObj, Props) ->
     'true' = kapi_fax:query_status_v(JObj),
     Srv = props:get_value('server', Props),
-    JobId = kz_json:get_value(<<"Job-ID">>, JObj),
+    JobId = kapi_fax:job_id(JObj),
     Queue = kz_api:server_id(JObj),
     MsgId = kz_api:msg_id(JObj),
     gen_server:cast(Srv, {'query_status', JobId, Queue, MsgId, JObj}).
@@ -163,7 +163,7 @@ handle_job_status_query(JObj, Props) ->
 %% @doc Initializes the server.
 %% @end
 %%------------------------------------------------------------------------------
--spec init([kz_json:object() | kz_term:ne_binary()]) -> {'ok', state()}.
+-spec init([fax_job() | kz_term:ne_binary()]) -> {'ok', state()}.
 init([FaxJob, CallId]) ->
     CtrlQ = kapi_fax:control_queue(FaxJob),
     JobId = kapi_fax:job_id(FaxJob),
@@ -704,26 +704,39 @@ move_doc(JObj) ->
     case kazoo_modb:move_doc(FromDB, {<<"fax">>, FromId}, ToDB, ToId, Options) of
         {'ok', _}=OK -> OK;
         {'error', 'conflict'} ->
-            handle_move_conflict(FromDB, FromId, ToDB, ToId);
+            handle_move_conflict(JObj, FromDB, FromId, ToDB, ToId);
         {'error', _}=Error -> Error
     end.
 
--spec handle_move_conflict(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
+-spec handle_move_conflict(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
           {'ok', kz_json:object()} |
           kz_datamgr:data_error().
-handle_move_conflict(FromDB, FromId, ToDB, ToId) ->
+handle_move_conflict(SourceJObj, FromDB, FromId, ToDB, ToId) ->
     lager:info("moving ~s to ~s/~s conflicted", [FromId, ToDB, ToId]),
     case kz_datamgr:open_cache_doc(ToDB, ToId) of
         {'ok', MovedDoc} ->
-            lager:debug("moved doc: ~s", [kz_json:encode(MovedDoc)]),
-            _Deleted = kz_datamgr:del_doc(FromDB, FromId),
-            lager:debug("deleted from doc: ~p", [_Deleted]),
-            {'ok', MovedDoc};
+            handle_if_moved_successfully(SourceJObj, FromDB, FromId, ToDB, ToId, MovedDoc);
         {'error', _E}=Error ->
             lager:debug("failed to open moved doc: ~p", [_E]),
             Error
     end.
 
+-spec handle_if_moved_successfully(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
+          {'ok', kz_json:object()} |
+          kz_datamgr:data_error().
+handle_if_moved_successfully(SourceJObj, FromDB, FromId, ToDB, ToId, MovedDoc) ->
+    case kz_doc:are_equal(SourceJObj, MovedDoc) of
+        'true' ->
+            _Deleted = kz_datamgr:del_doc(FromDB, FromId),
+            lager:debug("deleted from doc: ~p", [_Deleted]),
+            {'ok', MovedDoc};
+        'false' ->
+            lager:info("docs don't match enough, removing destination and retrying"),
+            _ = kz_datamgr:del_doc(ToDB, ToId),
+            move_doc(SourceJObj)
+    end.
+
+-spec move_to_outbox(kz_json:object(), kz_json:object()) -> kz_json:object().
 move_to_outbox(_SourceJObj, DestJObj) ->
     kz_json:set_value(<<"folder">>, <<"outbox">>, DestJObj).
 

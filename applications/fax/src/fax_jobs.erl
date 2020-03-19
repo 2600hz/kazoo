@@ -96,7 +96,7 @@ start_link(AccountId) ->
 -spec init([kz_term:ne_binary()]) -> {'ok', state(), timeout()}.
 init([AccountId]) ->
     _ = kz_util:spawn(fun cleanup_jobs/1, [AccountId]),
-    State = #state{account_id=AccountId
+    State = #state{account_id = AccountId
                   ,limits = #{account => ?DEFAULT_LIMITS(AccountId) }
                   ,jobs = ?INIT_JOBS
                   },
@@ -207,7 +207,8 @@ distribute_jobs(#state{jobs=#{distribute := []
                              ,pending := #{}
                              ,running := #{}
                              }
-                      }=State) -> State;
+                      }=State) ->
+    State;
 distribute_jobs(#state{jobs=#{distribute := []
                              ,serialize := []
                              }
@@ -220,7 +221,8 @@ distribute_jobs(#state{jobs=#{distribute := []
     State#state{jobs=Jobs#{distribute => Serialize
                           ,serialize => []
                           }
-               ,stale=0};
+               ,stale=0
+               };
 distribute_jobs(#state{account_id=AccountId
                       ,limits= #{account := MaxAccount}
                       ,jobs=#{pending := Pending
