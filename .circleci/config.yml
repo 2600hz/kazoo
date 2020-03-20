@@ -247,5 +247,5 @@ jobs:
       APP_DIR: "/home/circleci/2600hz/kazoo"
     steps:
       - run: 
-          name: placeholder
-          cmd: echo ok 
+          name: dummy step
+          command: echo ok 
