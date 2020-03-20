@@ -36,6 +36,7 @@
 -export([build_bridge_channels/1, build_simple_channels/1]).
 -export([create_masquerade_event/2, create_masquerade_event/3]).
 -export([media_path/1, media_path/2, media_path/3, media_path/4
+        ,moh_media_path/4
         ,lookup_media/4
         ]).
 -export([unserialize_fs_array/1, unserialize_fs_props/1]).
@@ -73,6 +74,10 @@
 -define(FAILOVER_IF_ALL_UNREGED
        ,kapps_config:get_boolean(?APP_NAME, <<"failover_when_all_unreg">>, 'false')
        ).
+
+-define(KZ_MOH_KEY, <<"Hold-Media-Preserve-Position">>).
+-define(KZ_MOH_CONFIG_KEY, kz_json:normalize_key(?KZ_MOH_KEY)).
+-define(KZ_MOH_DEFAULT, kapps_config:get_boolean(?APP_NAME, ?KZ_MOH_CONFIG_KEY, 'false')).
 
 -type send_cmd_ret() :: fs_sendmsg_ret() | fs_api_ret().
 -export_type([send_cmd_ret/0]).
@@ -655,9 +660,8 @@ get_fs_kv(Key, Value) ->
 
 -spec get_fs_kv(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()) -> binary().
 get_fs_kv(<<"Hold-Media">>, Media, UUID) ->
-    list_to_binary(["hold_music="
-                   ,kz_term:to_list(media_path(Media, 'extant', UUID, kz_json:new()))
-                   ]);
+    MediaPath = moh_media_path(Media, 'extant', UUID, kz_json:new()),
+    list_to_binary(["hold_music=", MediaPath]);
 get_fs_kv(?CCV(Key), Val, UUID) ->
     get_fs_kv(Key, Val, UUID);
 get_fs_kv(Key, Val, _) ->
@@ -681,7 +685,8 @@ get_fs_key(Key) ->
           [{kz_term:ne_binary(), binary()}] |
           'skip'.
 get_fs_key_and_value(<<"Hold-Media">>=Key, Media, UUID) ->
-    {get_fs_key(Key), media_path(Media, 'extant', UUID, kz_json:new())};
+    MediaPath = moh_media_path(Media, 'extant', UUID, kz_json:new()),
+    {get_fs_key(Key), list_to_binary(["hold_music=", MediaPath])};
 get_fs_key_and_value(<<"Diversions">>=Key, Diversions, _UUID) ->
     K = get_fs_key(Key),
     lager:debug("setting diversions ~p on the channel", [Diversions]),
@@ -1592,4 +1597,18 @@ fix_contact([Contact | Options], Username, Realm) ->
         [#uri{}=Uri] ->
             list_to_binary([kzsip_uri:ruri(Uri)] ++ [<<";", Option/binary>> || Option <- Options]);
         _Else -> 'undefined'
+    end.
+
+-spec moh_media_path(kz_term:api_binary(), media_types(), kz_term:ne_binary(), kz_json:object()) -> kz_term:ne_binary().
+moh_media_path(Media, Types, UUID, JObj) ->
+    case media_path(Media, Types, UUID, JObj) of
+        <<"http_cache", _/binary>> = Media -> maybe_use_kz_moh(Media, JObj);
+        Media -> Media
+    end.
+
+-spec maybe_use_kz_moh(kz_term:ne_binary(), kz_json:object()) -> kz_term:ne_binary().
+maybe_use_kz_moh(Media, JObj) ->
+    case kz_json:is_true(?KZ_MOH_KEY, JObj, ?KZ_MOH_DEFAULT) of
+        'true' -> list_to_binary(["kz_moh::", Media]);
+        'false' -> Media
     end.
