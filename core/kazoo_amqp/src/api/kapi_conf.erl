@@ -47,6 +47,11 @@
 -include_lib("kz_amqp_util.hrl").
 -include_lib("kazoo_amqp/include/kapi_conf.hrl").
 
+-ifdef(TEST).
+-export([doc_type_update_routing_key/1
+        ]).
+-endif.
+
 %%------------------------------------------------------------------------------
 %% @doc Get all API definitions of this module.
 %% @end
@@ -130,6 +135,7 @@ doc_type_update_definition() ->
               ,{fun kapi_definition:set_build_fun/2, fun doc_type_update/1}
               ,{fun kapi_definition:set_validate_fun/2, fun doc_type_update_v/1}
               ,{fun kapi_definition:set_publish_fun/2, fun publish_doc_type_update/1}
+              ,{fun kapi_definition:set_binding/2, fun doc_type_update_routing_key/1}
               ,{fun kapi_definition:set_required_headers/2, [<<"Type">>]}
               ,{fun kapi_definition:set_optional_headers/2, [<<"Action">>
                                                             ,<<"Account-ID">>
@@ -231,7 +237,11 @@ publish_doc_type_update(API, ContentType) ->
                                                 ,kapi_definition:values(Definition)
                                                 ,kapi_definition:build_fun(Definition)
                                                 ),
-    kz_amqp_util:configuration_publish(doc_type_update_routing_key(API), Payload, ContentType, [{'mandatory', 'true'}]).
+    kz_amqp_util:configuration_publish((kapi_definition:binding(Definition))(API)
+                                      ,Payload
+                                      ,ContentType
+                                      ,[{'mandatory', 'true'}
+                                       ]).
 
 -spec bind_q(binary(), kz_term:proplist()) -> 'ok'.
 bind_q(Q, Props) ->
