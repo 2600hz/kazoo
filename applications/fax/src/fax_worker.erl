@@ -723,7 +723,7 @@ handle_move_conflict(SourceJObj, FromDB, FromId, ToDB, ToId) ->
 
 -spec handle_if_moved_successfully(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
           {'ok', kz_json:object()} |
-          kz_datamgr:data_error().
+          {'error', 'conflict'}.
 handle_if_moved_successfully(SourceJObj, FromDB, FromId, ToDB, ToId, MovedDoc) ->
     case kz_doc:are_equal(SourceJObj, MovedDoc) of
         'true' ->
@@ -733,7 +733,7 @@ handle_if_moved_successfully(SourceJObj, FromDB, FromId, ToDB, ToId, MovedDoc) -
         'false' ->
             lager:info("docs don't match enough, removing destination and retrying"),
             _ = kz_datamgr:del_doc(ToDB, ToId),
-            move_doc(SourceJObj)
+            {'error', 'conflict'}
     end.
 
 -spec move_to_outbox(kz_json:object(), kz_json:object()) -> kz_json:object().
