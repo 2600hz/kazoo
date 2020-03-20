@@ -477,7 +477,7 @@ release_failed_job('fax_result', Resp, JObj) ->
                ,{<<"result_code">>, kz_term:to_integer(Code)}
                ,{<<"result_cause">>, kz_json:get_value(<<"Hangup-Cause">>, Resp)}
                ,{<<"success">>, 'false'}
-                | fax_util:fax_properties(kz_json:get_value(<<"Application-Data">>, Resp, Resp))
+               | fax_util:fax_properties(kz_json:get_value(<<"Application-Data">>, Resp, Resp))
                ]),
     release_job(Result, JObj, Resp);
 release_failed_job('job_timeout', 'undefined', JObj) ->
@@ -508,7 +508,7 @@ release_successful_job(Resp, JObj) ->
                      'false' -> 'undefined'
                  end
                 }
-                | fax_util:fax_properties(kz_json:get_json_value(<<"Application-Data">>, Resp, Resp))
+               | fax_util:fax_properties(kz_json:get_json_value(<<"Application-Data">>, Resp, Resp))
                ]),
     release_job(Result, JObj, Resp).
 
@@ -621,7 +621,7 @@ maybe_notify(JObj, Resp, <<"completed">>) ->
 maybe_notify(JObj, Resp, <<"failed">>) ->
     Message = props:filter_undefined(
                 [{<<"Fax-Error">>, fax_error(kz_json:merge_jobjs(JObj, Resp))}
-                 | notify_fields(JObj, Resp)
+                | notify_fields(JObj, Resp)
                 ]),
     kapps_notify_publisher:cast(Message, fun kapi_notifications:publish_fax_outbound_error/1);
 maybe_notify(_JObj, _Resp, Status) ->
@@ -674,7 +674,7 @@ handle_move_conflict(SourceJObj, FromDB, FromId, ToDB, ToId) ->
 
 -spec handle_if_moved_successfully(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
           {'ok', kz_json:object()} |
-          kz_datamgr:data_error().
+          {'error', 'conflict'}.
 handle_if_moved_successfully(SourceJObj, FromDB, FromId, ToDB, ToId, MovedDoc) ->
     case kz_doc:are_equal(SourceJObj, MovedDoc) of
         'true' ->
@@ -684,7 +684,7 @@ handle_if_moved_successfully(SourceJObj, FromDB, FromId, ToDB, ToId, MovedDoc) -
         'false' ->
             lager:info("docs don't match enough, removing destination and retrying"),
             _ = kz_datamgr:del_doc(ToDB, ToId),
-            move_doc(SourceJObj)
+            {'error', 'conflict'}
     end.
 
 -spec move_to_outbox(kz_json:object(), kz_json:object()) -> kz_json:object().
@@ -715,7 +715,7 @@ notify_fields(JObj, Resp) ->
     HangupCause = kz_json:get_value(<<"Hangup-Cause">>, Resp),
     FaxFields = [{<<"Fax-Hangup-Code">>, kz_term:to_integer(HangupCode)}
                 ,{<<"Fax-Hangup-Cause">>, HangupCause}
-                 | fax_fields(kz_json:get_value(<<"Application-Data">>, Resp))
+                | fax_fields(kz_json:get_value(<<"Application-Data">>, Resp))
                 ],
 
     ToNumber = kz_term:to_binary(kz_json:get_value(<<"to_number">>, JObj)),
@@ -739,7 +739,7 @@ notify_fields(JObj, Resp) ->
       ,{<<"Call-ID">>, kz_json:get_value(<<"Call-ID">>, Resp)}
       ,{<<"Fax-Timestamp">>, kz_time:now_s()}
       ,{<<"Fax-Timezone">>, kz_json:get_value(<<"fax_timezone">>, JObj)}
-       | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).
 
 -spec fax_fields(kz_term:api_object()) -> kz_term:proplist().
@@ -825,7 +825,7 @@ send_fax(JobId, JObj, Q, ToDID) ->
                 ,{<<"Origination-Call-ID">>, CallId}
                 ,{<<"Bypass-E164">>, kz_json:is_true(<<"bypass_e164">>, JObj)}
                 ,{<<"Fax-T38-Enabled">>, 'false'}
-                 | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
+                | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
                 ]),
     lager:debug("sending fax originate request ~s with call-id ~s", [JobId, CallId]),
     kapi_offnet_resource:publish_req(Request).
@@ -902,7 +902,7 @@ send_status(#state{job=JObj
                 ,{<<"Fax-Info">>, FaxInfo}
                 ,{<<"Direction">>, ?FAX_OUTGOING}
                 ,{<<"Page">>, Page}
-                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                 ]),
     kapi_fax:publish_status(Payload).
 
@@ -914,6 +914,6 @@ send_reply_status(Q, MsgId, JobId, Status, AccountId, JObj) ->
                 ,{<<"Msg-ID">>, MsgId}
                 ,{<<"Account-ID">>, AccountId}
                 ,{<<"Fax-Info">>, JObj}
-                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                 ]),
     kapi_fax:publish_targeted_status(Q, Payload).
