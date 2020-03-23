@@ -27,7 +27,7 @@ Key | Description | Type | Default | Required | Support Level
 ```shell
 curl -v -X PUT \
     -H "Content-Type: application/json" \
-    -d '{"data":{"credentials":"{CREDENTIALS_HASH}", "account_name":"{ACCOUNT_NAME}", "method":[md5|sha]}}' \
+    -d '{"data":{"credentials":"{CREDENTIALS_HASH}", "account_name":"{ACCOUNT_NAME}", "method":"[md5|sha]"}}' \
     http://{SERVER}:8000/v2/user_auth
 ```
 
@@ -38,6 +38,13 @@ Where `{CREDENTIALS_HASH}` is MD5 or SHA1 hash of `{username}:{password}`.
 ```shell
 $ echo -n 'john@example.com:m32c6NfqYEt' | md5sum
 82a2dc91686ec828a67152d45a5c5ef7  -
+```
+
+#### Creating SHA1 User/Pass credentials hash
+
+```shell
+$ echo -n 'john@example.com:m32c6NfqYEt' | sha1sum
+055cf886cb9b5c5867083463867c527ace0f8ecc  -
 ```
 
 **Responses**
