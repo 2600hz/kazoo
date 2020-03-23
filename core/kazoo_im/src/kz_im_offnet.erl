@@ -33,12 +33,12 @@
                }).
 -type state() :: #state{}.
 
--define(BINDINGS(Ex), [{'sms', [{'exchange', Ex}
-                               ,{'restrict_to', ['inbound']}
-                               ]}
+-define(BINDINGS(Ex), [{'im', [{'exchange', Ex}
+                              ,{'restrict_to', ['inbound']}
+                              ]}
                       ]).
 -define(RESPONDERS, [{{?MODULE, 'handle_message'}
-                     ,[{<<"message">>, <<"inbound">>}]
+                     ,[{<<"*">>, <<"inbound">>}]
                      }
                     ]).
 
@@ -86,13 +86,14 @@ start_link(#amqp_listener_connection{broker=Broker
                             ,{'server_confirms', 'true'}
                             ]
                            ,[C]
+                           ,[]
                            ).
 
 -spec handle_message(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_message(JObj, Props) ->
     Srv = props:get_value('server', Props),
     Deliver = props:get_value('deliver', Props),
-    case kapi_sms:inbound_v(JObj) of
+    case kapi_im:inbound_v(JObj) of
         'true' ->
             handle_inbound(JObj, Srv, Deliver);
         'false' ->
@@ -132,7 +133,7 @@ handle_call({'route', Payload}, From, #state{connection = Connection, confirms =
     #amqp_listener_connection{exchange = Exchange} = Connection,
     Values = [{<<"Exchange-ID">>, Exchange}],
     JObj = kz_json:set_values(Values, Payload),
-    kapi_sms:publish_outbound(JObj, ?AMQP_PUBLISH_OPTIONS),
+    kapi_im:publish_outbound(JObj, ?AMQP_PUBLISH_OPTIONS),
     #{count := Count, pids := Pids} = Confirms,
     Info = #{payload => kz_json:delete_key(<<"Body">>, Payload), from => From},
     {'noreply', State#state{confirms = Confirms#{count => Count + 1, pids => Pids#{Count => Info}}}};
@@ -210,35 +211,37 @@ handle_inbound(JObj, Srv, Deliver) ->
 
 -spec maybe_relay_request(kz_json:object()) -> 'ack' | 'nack'.
 maybe_relay_request(JObj) ->
-    {Number, Inception} = doodle_util:get_inbound_destination(JObj),
+    Number = knm_converters:normalize(kz_im:to(JObj)),
+    IM = kapps_im:from_payload(JObj),
     Map = #{number => Number
-           ,inception => Inception
+           ,inception => <<"offnet">>
            ,request => JObj
-           ,route_id => kz_api_sms:route_id(JObj)
-           ,route_type => kz_api_sms:route_type(JObj)
+           ,route_id => kz_im:route_id(JObj)
+           ,route_type => kz_im:route_type(JObj)
+           ,im => IM
            },
     Routines = [fun lookup_number/1
-               ,fun number_has_sms_enabled/1
+               ,fun number_has_im_enabled/1
                ,fun account_from_number/1
                ,fun account_fetch/1
                ,fun reseller_fetch/1
                ,fun account_enabled/1
                ,fun reseller_enabled/1
-               ,fun account_has_sms/1
-               ,fun reseller_has_sms/1
+               ,fun account_has_im_enabled/1
+               ,fun reseller_has_im_enabled/1
                ,fun account_standing_is_acceptable/1
                ,fun reseller_standing_is_acceptable/1
                ,fun set_rate/1
                ],
     case kz_maps:exec(Routines, Map) of
         #{account_id := AccountId, error := Error} ->
-            lager:warning("external sms request for number ~s validation failed  in account ~s : ~p", [Number, AccountId, Error]),
+            lager:warning("external ~s request for number ~s validation failed  in account ~s : ~p", [kapps_im:type(IM), Number, AccountId, Error]),
             'nack';
         #{error := Error} ->
-            lager:warning("validation failed in external sms request for number ~s : ~p", [Number, Error]),
+            lager:warning("validation failed in external ~s request for number ~s : ~p", [kapps_im:type(IM), Number, Error]),
             'nack';
         #{account_id := AccountId, request := Payload, rate := Rate} ->
-            lager:info("accepted external sms request ~s for account ~s", [Number, AccountId]),
+            lager:info("accepted external ~s request ~s for account ~s", [kapps_im:type(IM), Number, AccountId]),
             Values = [{<<"Account-ID">>, AccountId}
                      ,{<<"Charges">>, Rate}
                      ],
@@ -256,29 +259,28 @@ maybe_relay_request(JObj) ->
 
 lookup_number(#{account_id := _AccountId} = Map) -> Map;
 lookup_number(#{number := Number} = Map) ->
-    case knm_number:get(Number) of
+    case knm_phone_number:fetch(Number) of
         {'error', _R} -> Map;
-        {'ok', KNumber} -> Map#{knm => KNumber
-                               ,phone_number => knm_number:phone_number(KNumber)
-                               }
+        {'ok', KNumber} -> Map#{phone_number => KNumber}
     end;
 lookup_number(Map) -> Map.
 
-number_has_sms_enabled(#{knm := PN} = Map) ->
-    case knm_im:enabled(PN, 'sms') of
+number_has_im_enabled(#{phone_number := PN, im := IM} = Map) ->
+    case knm_im:enabled(PN, kapps_im:type(IM)) of
         'true' -> Map;
         'false' -> maps:without([account_id, account, phone_number]
-                               ,Map#{error => <<"number does not have sms enabled">>}
+                               ,Map#{error => io_lib:format("number does not have ~s enabled", [kapps_im:type(IM)])}
                                )
     end;
-number_has_sms_enabled(Map) -> Map.
+number_has_im_enabled(Map) -> Map.
 
 account_from_number(#{account_id := _AccountId} = Map) -> Map;
-account_from_number(#{phone_number := PN} = Map) ->
+account_from_number(#{phone_number := PN, im := IM} = Map) ->
     case knm_phone_number:assigned_to(PN) of
         'undefined' -> Map;
         AccountId -> Map#{account_id => AccountId
                          ,reseller_id => kz_services_reseller:get_id(AccountId)
+                         ,im => kapps_im:set_account_id(AccountId, IM)
                          }
     end;
 account_from_number(Map) -> Map.
@@ -315,23 +317,23 @@ reseller_enabled(#{reseller := Reseller} = Map) ->
     end;
 reseller_enabled(Map) -> Map.
 
-account_has_sms(#{account_id := AccountId} = Map) ->
-    case kz_services_im:is_sms_enabled(AccountId) of
+account_has_im_enabled(#{account_id := AccountId, im := IM} = Map) ->
+    case kz_services_im:is_enabled(AccountId, kapps_im:type(IM)) of
         'true' -> Map;
         'false' -> maps:without([account_id, account]
-                               ,Map#{error => <<"account does not have sms enabled">>}
+                               ,Map#{error => io_lib:format("account does not have ~s enabled", [kapps_im:type(IM)])}
                                )
     end;
-account_has_sms(Map) -> Map.
+account_has_im_enabled(Map) -> Map.
 
-reseller_has_sms(#{reseller_id := ResellerId} = Map) ->
-    case kz_services_im:is_sms_enabled(ResellerId) of
+reseller_has_im_enabled(#{reseller_id := ResellerId, im := IM} = Map) ->
+    case kz_services_im:is_enabled(ResellerId, kapps_im:type(IM)) of
         'true' -> Map;
         'false' -> maps:without([account_id, account, reseller_id, reseller]
-                               ,Map#{error => <<"reseller does not have sms enabled">>}
+                               ,Map#{error => kz_term:to_binary(io_lib:format("reseller ~s does not have ~s enabled", [ResellerId, kapps_im:type(IM)]))}
                                )
     end;
-reseller_has_sms(Map) -> Map.
+reseller_has_im_enabled(Map) -> Map.
 
 account_standing_is_acceptable(#{account_id := AccountId} = Map) ->
     case kz_services_standing:acceptable(AccountId) of
@@ -352,8 +354,9 @@ reseller_standing_is_acceptable(#{reseller_id := ResellerId} = Map) ->
 reseller_standing_is_acceptable(Map) -> Map.
 
 set_rate(#{account_id := AccountId
+          ,im := IM
           } = Map) ->
-    Rate = kz_services_im:flat_rate(AccountId, 'sms', 'inbound'),
+    Rate = kz_services_im:flat_rate(AccountId, kapps_im:type(IM), kapps_im:direction(IM)),
     Map#{rate => Rate};
 set_rate(Map) -> Map.
 

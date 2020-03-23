@@ -94,10 +94,6 @@
                                                  ,{<<"is_loaded">>, 'false'}
                                                  ,{<<"capability">>, <<"skinny">>}
                                                  ])
-                              ,kz_json:from_list([{<<"module">>, <<"mod_sms">>}
-                                                 ,{<<"is_loaded">>, 'false'}
-                                                 ,{<<"capability">>, <<"sms">>}
-                                                 ])
                               ]).
 
 -record(state, {node               :: atom()

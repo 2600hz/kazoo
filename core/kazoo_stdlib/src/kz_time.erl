@@ -11,9 +11,13 @@
         ,to_gregorian_seconds/2
         ,pretty_print_datetime/1, pretty_print_datetime/2
         ,rfc1036/1, rfc1036/2
+        ,rfc2822/1, rfc2822/2
         ,iso8601/1, iso8601/2
         ,iso8601_time/1
         ,from_iso8601/1
+        ,is_iso8601/1
+        ,trim_iso8601_ms/1
+        ,maybe_add_iso8601_ms_suffix/1
         ,pretty_print_elapsed_s/1
         ,decr_timeout/2, decr_timeout/3
         ,microseconds_to_seconds/1
@@ -30,6 +34,8 @@
         ,unitfy_seconds/1
         ,adjust_utc_timestamp/2, adjust_utc_datetime/2
         ,tz_name/2
+
+        ,start_time/0
         ]).
 
 -ifdef(TEST).
@@ -53,12 +59,15 @@
 -type date() :: calendar:date(). %%{year(), month(), day()}.
 -type time() :: calendar:time(). %%{hour(), minute(), second()}.
 -type datetime() :: calendar:datetime(). %%{date(), time()}.
--type iso_week() :: calendar:yearweeknum(). %%{year(), weeknum()}.
+-type iso_week() :: {year(), weeknum()}.
 -type gregorian_seconds() :: pos_integer().
 -type unix_seconds() :: pos_integer().
 -type api_seconds() :: 'undefined' | gregorian_seconds().
 -type ordinal() :: kz_term:ne_binary(). % "every" | "first" | "second" | "third" | "fourth" | "fifth" | "last".
 -type kazoo_month() :: {year(), month()}.
+
+%% {'start_time', erlang:monotonic_time()}
+-type start_time() :: {'start_time', integer()}.
 
 -export_type([api_seconds/0
              ,date/0
@@ -74,6 +83,7 @@
              ,now/0
              ,ordinal/0
              ,second/0
+             ,start_time/0
              ,time/0
              ,unix_seconds/0
              ,weeknum/0
@@ -116,7 +126,7 @@ to_gregorian_seconds({{_,_,_},{_,_,_}}=Datetime, ?NE_BINARY=FromTimezone) ->
 pretty_print_datetime(Timestamp) when is_integer(Timestamp) ->
     pretty_print_datetime(calendar:gregorian_seconds_to_datetime(Timestamp));
 pretty_print_datetime({{Y,Mo,D},{H,Mi,S}}) ->
-    iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0w_~2..0w-~2..0w-~2..0w"
+    iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0w_~2..0w:~2..0w:~2..0w"
                                   ,[Y, Mo, D, H, Mi, S]
                                   )).
 
@@ -150,6 +160,37 @@ rfc1036({Date = {Y, Mo, D}, {H, Mi, S}}, TZ) ->
     >>;
 rfc1036(Timestamp, TZ) when is_integer(Timestamp) ->
     rfc1036(calendar:gregorian_seconds_to_datetime(Timestamp), TZ).
+
+-spec rfc2822(calendar:datetime() | gregorian_seconds()) -> kz_term:ne_binary().
+rfc2822(Timestamp) ->
+    rfc2822(Timestamp, <<"GMT">>).
+
+-spec rfc2822(calendar:datetime() | gregorian_seconds(), kz_term:ne_binary()) -> kz_term:ne_binary().
+rfc2822(Timestamp, TZ) when is_integer(Timestamp) ->
+    rfc2822(calendar:gregorian_seconds_to_datetime(Timestamp), TZ);
+rfc2822(Datetime = {Date={Y, Mo, D}, {H, Mi, S}}, TZ) ->
+    Wday = calendar:day_of_the_week(Date),
+    <<(weekday(Wday))/binary, ", ",
+      (kz_binary:pad_left(kz_term:to_binary(D), 2, <<"0">>))/binary, " ",
+      (month(Mo))/binary, " ",
+      (kz_term:to_binary(Y))/binary, " ",
+      (kz_binary:pad_left(kz_term:to_binary(H), 2, <<"0">>))/binary, ":",
+      (kz_binary:pad_left(kz_term:to_binary(Mi), 2, <<"0">>))/binary, ":",
+      (kz_binary:pad_left(kz_term:to_binary(S), 2, <<"0">>))/binary,
+      " ", (tz_offset(Datetime, TZ))/binary
+    >>.
+
+-spec tz_offset(calendar:datetime(), kz_term:ne_binary()) -> kz_term:ne_binary().
+tz_offset(Datetime, <<FromTz/binary>>) ->
+    case localtime:tz_shift(Datetime, kz_term:to_list(FromTz), "UTC") of
+        0 -> <<"+0000">>;
+        {'error', 'unknown_tz'} -> <<"+0000">>;
+        {Sign, H, M} ->
+            list_to_binary([kz_term:to_binary(Sign)
+                           ,kz_binary:pad_left(kz_term:to_binary(H), 2, <<"0">>)
+                           ,kz_binary:pad_left(kz_term:to_binary(M), 2, <<"0">>)
+                           ])
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc Format time part of ISO 8601.
@@ -361,6 +402,49 @@ from_iso8601(MaybeDate) ->
 from_iso8601(Date, {Time, Offset}) -> adjust_utc_datetime({Date, Time}, Offset).
 
 %%------------------------------------------------------------------------------
+%% @doc Return 'true' if the input is an ISO 8601 datetime binary.
+%% @end
+%%------------------------------------------------------------------------------
+-spec is_iso8601(any()) -> boolean().
+is_iso8601(MaybeISO8601) ->
+    try from_iso8601(trim_iso8601_ms(MaybeISO8601)) of
+        _ -> 'true'
+    catch
+        'throw':{'error', _} -> 'false'
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc Remove the milliseconds suffix from ISO8601 datetimes of the formats:
+%%
+%% `2019-10-09T18:36:13.000Z'
+%% `20191009T183613.000Z'
+%% @end
+%%------------------------------------------------------------------------------
+-spec trim_iso8601_ms(kz_term:ne_binary()) -> kz_term:ne_binary().
+trim_iso8601_ms(<<NonMS:15/binary, ".", _:3/binary, TzOffset/binary>>) ->
+    <<NonMS/binary, TzOffset/binary>>;
+trim_iso8601_ms(<<NonMS:19/binary, ".", _:3/binary, TzOffset/binary>>) ->
+    <<NonMS/binary, TzOffset/binary>>;
+trim_iso8601_ms(ISO8601) -> ISO8601.
+
+%%------------------------------------------------------------------------------
+%% @doc Add the milliseconds suffix to ISO8601 datetimes of the formats:
+%%
+%% `2019-10-09T18:36:13Z'
+%% `20191009T183613Z'
+%% @end
+%%------------------------------------------------------------------------------
+-spec maybe_add_iso8601_ms_suffix(kz_term:ne_binary()) -> kz_term:ne_binary().
+maybe_add_iso8601_ms_suffix(<<_:19/binary, ".", _:3/binary, _/binary>>=ISO8601) ->
+    ISO8601;
+maybe_add_iso8601_ms_suffix(<<_:15/binary, ".", _:3/binary, _/binary>>=ISO8601) ->
+    ISO8601;
+maybe_add_iso8601_ms_suffix(<<Date:10/binary, "T", Time:8/binary, TzOffset/binary>>) ->
+    <<Date/binary, "T", Time/binary, ".000", TzOffset/binary>>;
+maybe_add_iso8601_ms_suffix(<<Date:8/binary, "T", Time:6/binary, TzOffset/binary>>) ->
+    <<Date/binary, "T", Time/binary, ".000", TzOffset/binary>>.
+
+%%------------------------------------------------------------------------------
 %% @doc Apply the adjustment to the UTC Timestamp.
 %%
 %% To convert an UTC timezone to a local timezone by means of adding an offset
@@ -397,8 +481,8 @@ adjust_utc_timestamp(_Timestamp, <<"+", _/binary>>) ->
     throw({'error', 'invalid_offset'});
 adjust_utc_timestamp(_Timestamp, <<"-", _/binary>>) ->
     throw({'error', 'invalid_offset'});
-adjust_utc_timestamp(Timestamp, Timezone) ->
-    try localtime:utc_to_local(calendar:gregorian_seconds_to_datetime(Timestamp), Timezone) of
+adjust_utc_timestamp(Timestamp, <<Timezone/binary>>) when is_integer(Timestamp) ->
+    try localtime:utc_to_local(calendar:gregorian_seconds_to_datetime(Timestamp), kz_term:to_list(Timezone)) of
         {{_, _, _}, {_, _, _}} = Datetime ->
             calendar:datetime_to_gregorian_seconds(Datetime);
         [LocalDatetime, _LocalDstDatetime] ->
@@ -409,7 +493,6 @@ adjust_utc_timestamp(Timestamp, Timezone) ->
         _:_ ->
             throw({'error', 'unknown_tz'})
     end.
-
 
 %%------------------------------------------------------------------------------
 %% @doc Apply the adjustment to the Datetime.
@@ -482,7 +565,7 @@ month(12) -> <<"Dec">>.
 
 -spec pretty_print_elapsed_s(non_neg_integer()) -> kz_term:ne_binary().
 pretty_print_elapsed_s(0) -> <<"0s">>;
-pretty_print_elapsed_s(Seconds) ->
+pretty_print_elapsed_s(Seconds) when is_integer(Seconds), Seconds > 0 ->
     iolist_to_binary(unitfy_seconds(Seconds)).
 
 -spec unitfy_seconds(non_neg_integer()) -> iolist().
@@ -499,16 +582,18 @@ unitfy_seconds(Seconds) ->
     D = Seconds div ?SECONDS_IN_DAY,
     [kz_term:to_binary(D), "d", unitfy_seconds(Seconds - (D * ?SECONDS_IN_DAY))].
 
--spec decr_timeout(timeout(), now() | gregorian_seconds()) -> timeout().
+-spec decr_timeout(timeout(), now() | gregorian_seconds() | start_time()) -> timeout().
 decr_timeout('infinity', _) -> 'infinity';
 decr_timeout(Timeout, {_Mega, _S, _Micro}=Start) when is_integer(Timeout) ->
     decr_timeout(Timeout, Start, now());
 decr_timeout(Timeout, StartS) when is_integer(Timeout),
                                    is_integer(StartS),
                                    ?UNIX_EPOCH_IN_GREGORIAN < StartS ->
-    decr_timeout(Timeout, StartS, now_s()).
+    decr_timeout(Timeout, StartS, now_s());
+decr_timeout(Timeout, {'start_time', _}=StartTime) ->
+    decr_timeout(Timeout, StartTime, start_time()).
 
--spec decr_timeout(timeout(), now() | gregorian_seconds(), now() | gregorian_seconds()) -> timeout().
+-spec decr_timeout(timeout(), now() | gregorian_seconds() | start_time(), now() | gregorian_seconds() | start_time()) -> timeout().
 decr_timeout('infinity', _Start, _Future) -> 'infinity';
 decr_timeout(Timeout, Start, {_Mega, _S, _Micro}=Now) ->
     decr_timeout_elapsed(Timeout, elapsed_s(Start, Now));
@@ -517,7 +602,9 @@ decr_timeout(Timeout, StartS, Now) when is_integer(Timeout),
                                         ?UNIX_EPOCH_IN_GREGORIAN < StartS,
                                         is_integer(Now),
                                         ?UNIX_EPOCH_IN_GREGORIAN < Now ->
-    decr_timeout_elapsed(Timeout, elapsed_s(StartS, Now)).
+    decr_timeout_elapsed(Timeout, elapsed_s(StartS, Now));
+decr_timeout(Timeout, {'start_time', _}=Start, {'start_time', _}=End) ->
+    decr_timeout_elapsed(Timeout, elapsed_s(Start, End)).
 
 -spec decr_timeout_elapsed(non_neg_integer(), non_neg_integer()) -> non_neg_integer().
 decr_timeout_elapsed(Timeout, Elapsed) ->
@@ -533,19 +620,24 @@ microseconds_to_seconds(Microseconds) -> kz_term:to_integer(Microseconds) div ?M
 -spec milliseconds_to_seconds(float() | integer() | string() | binary()) -> non_neg_integer().
 milliseconds_to_seconds(Milliseconds) -> kz_term:to_integer(Milliseconds) div ?MILLISECONDS_IN_SECOND.
 
--spec elapsed_s(now() | pos_integer()) -> pos_integer().
+-spec elapsed_s(now() | pos_integer() | start_time()) -> non_neg_integer().
 elapsed_s({_,_,_}=Start) -> elapsed_s(Start, now());
-elapsed_s(Start) when is_integer(Start) -> elapsed_s(Start, now_s()).
+elapsed_s(Start) when is_integer(Start) -> elapsed_s(Start, now_s());
+elapsed_s({'start_time', _}=Start) -> elapsed_s(Start, start_time()).
 
--spec elapsed_ms(now() | pos_integer()) -> pos_integer().
+-spec elapsed_ms(now() | pos_integer() | start_time()) -> non_neg_integer().
 elapsed_ms({_,_,_}=Start) -> elapsed_ms(Start, now());
-elapsed_ms(Start) when is_integer(Start) -> elapsed_ms(Start, now_ms()).
+elapsed_ms(Start) when is_integer(Start) -> elapsed_ms(Start, now_ms());
+elapsed_ms({'start_time', _}=Start) -> elapsed_ms(Start, start_time()).
 
--spec elapsed_us(now() | pos_integer()) -> pos_integer().
+-spec elapsed_us(now() | pos_integer() | start_time()) -> non_neg_integer().
 elapsed_us({_,_,_}=Start) -> elapsed_us(Start, now());
-elapsed_us(Start) when is_integer(Start) -> elapsed_us(Start, now_us()).
+elapsed_us(Start) when is_integer(Start) -> elapsed_us(Start, now_us());
+elapsed_us({'start_time', _}=Start) -> elapsed_us(Start, start_time()).
 
--spec elapsed_s(now() | pos_integer(), now() | pos_integer()) -> pos_integer().
+-spec elapsed_s(now() | pos_integer() | start_time(), now() | pos_integer() | start_time()) -> non_neg_integer().
+elapsed_s({'start_time', Start}, {'start_time', End}) ->
+    erlang:convert_time_unit(End-Start, 'native', 'second');
 elapsed_s({_,_,_}=Start, {_,_,_}=Now) ->
     timer:now_diff(Now, Start) div ?MICROSECONDS_IN_SECOND;
 elapsed_s({_,_,_}=Start, Now) -> elapsed_s(now_s(Start), Now);
@@ -555,7 +647,9 @@ elapsed_s(Start, Now)
        is_integer(Now) ->
     Now - Start.
 
--spec elapsed_ms(now() | pos_integer(), now() | pos_integer()) -> pos_integer().
+-spec elapsed_ms(now() | pos_integer() | start_time(), now() | pos_integer() | start_time()) -> non_neg_integer().
+elapsed_ms({'start_time', Start}, {'start_time', End}) ->
+    erlang:convert_time_unit(End-Start, 'native', 'millisecond');
 elapsed_ms({_,_,_}=Start, {_,_,_}=Now) ->
     timer:now_diff(Now, Start) div ?MILLISECONDS_IN_SECOND;
 elapsed_ms({_,_,_}=Start, Now) -> elapsed_ms(now_ms(Start), Now);
@@ -571,7 +665,9 @@ elapsed_ms(Start, Now)
        is_integer(Now) ->
     (Now - Start) * ?MILLISECONDS_IN_SECOND.
 
--spec elapsed_us(now() | pos_integer(), now() | pos_integer()) -> pos_integer().
+-spec elapsed_us(now() | pos_integer() | start_time(), now() | pos_integer() | start_time()) -> non_neg_integer().
+elapsed_us({'start_time', Start}, {'start_time', End}) ->
+    erlang:convert_time_unit(End-Start, 'native', 'microsecond');
 elapsed_us({_,_,_}=Start, {_,_,_}=Now) ->
     timer:now_diff(Now, Start);
 elapsed_us({_,_,_}=Start, Now) -> elapsed_us(now_us(Start), Now);
@@ -589,7 +685,6 @@ elapsed_us(Start, Now)
 
 -spec now() -> now().
 now() -> os:timestamp().
-
 
 -spec now_s() -> gregorian_seconds().
 now_s() ->  erlang:system_time('seconds') + ?UNIX_EPOCH_IN_GREGORIAN.
@@ -614,7 +709,6 @@ now_s({_,_,_}=Now) ->
 
 unix_us_to_gregorian_us(UnixUS) ->
     UnixUS + (?UNIX_EPOCH_IN_GREGORIAN * ?MICROSECONDS_IN_SECOND).
-
 
 -spec format_date() -> binary().
 format_date() ->
@@ -641,3 +735,8 @@ format_datetime() ->
 -spec format_datetime(gregorian_seconds()) -> binary().
 format_datetime(Timestamp) when is_integer(Timestamp) ->
     list_to_binary([format_date(Timestamp), " ", format_time(Timestamp)]).
+
+-spec start_time() -> start_time().
+start_time() ->
+    {'start_time', erlang:monotonic_time()}.
+

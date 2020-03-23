@@ -2,6 +2,11 @@
 %%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc
 %%% @author Luis Azedo
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_flow).
@@ -29,7 +34,7 @@
 
 -spec lookup(kapps_im:im()) -> lookup_ret().
 lookup(Im) ->
-    lookup(kapps_im:request_user(Im), kapps_im:account_id(Im)).
+    lookup(kapps_im:to(Im), kapps_im:account_id(Im)).
 
 -spec lookup(kz_term:ne_binary(), kz_term:ne_binary()) -> lookup_ret().
 lookup(Number, AccountId) when not is_binary(Number) ->

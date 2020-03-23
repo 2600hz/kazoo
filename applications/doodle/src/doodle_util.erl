@@ -2,6 +2,11 @@
 %%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc
 %%% @author Luis Azedo
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(doodle_util).
@@ -14,7 +19,7 @@
 -define(SIP_ENDPOINT_KEY(Realm, User)
        ,{?MODULE, 'sip_endpoint', Realm, User}
        ).
--define(DEFAULT_INCEPTION, <<"off-net">>).
+-define(DEFAULT_INCEPTION, <<"offnet">>).
 -define(MDN_VIEW, <<"mobile/listing_by_mdn">>).
 -define(CONVERT_MDN, 'true').
 
@@ -32,8 +37,8 @@
 -spec get_inbound_field(kz_term:ne_binary()) -> kz_term:ne_binaries().
 get_inbound_field(Inception) ->
     case Inception of
-        <<"on-net">> -> [<<"Caller-ID-Number">>, <<"From">>];
-        <<"off-net">> -> [<<"Callee-ID-Number">>, <<"To">>];
+        <<"onnet">> -> [<<"Caller-ID-Number">>, <<"From">>];
+        <<"offnet">> -> [<<"Callee-ID-Number">>, <<"To">>];
         _ -> get_inbound_field(?DEFAULT_INCEPTION)
     end.
 
@@ -103,4 +108,3 @@ cache_key_mdn(Number) ->
 mdn_from_e164(<<"+1", Number/binary>>) -> Number;
 mdn_from_e164(<<"1", Number/binary>>) -> Number;
 mdn_from_e164(Number) -> Number.
-

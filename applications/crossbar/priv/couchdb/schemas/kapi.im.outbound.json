@@ -1,0 +1,86 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.im.outbound",
+    "description": "AMQP API for im.outbound",
+    "properties": {
+        "Account-ID": {
+            "type": "string"
+        },
+        "Application-ID": {
+            "type": "string"
+        },
+        "Body": {
+            "type": "string"
+        },
+        "Custom-Vars": {
+            "type": "object"
+        },
+        "Endpoints": {
+            "items": {
+                "$ref": "kapi.dialplan.bridge_endpoint",
+                "type": "string"
+            },
+            "type": "array"
+        },
+        "Event-Category": {
+            "enum": [
+                "sms",
+                "mms"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "outbound"
+            ],
+            "type": "string"
+        },
+        "From": {
+            "type": "string"
+        },
+        "Message-ID": {
+            "type": "string"
+        },
+        "Originator-Flags": {
+            "type": "string"
+        },
+        "Originator-Properties": {
+            "type": "string"
+        },
+        "Request": {
+            "type": "string"
+        },
+        "Route-ID": {
+            "type": "string"
+        },
+        "Route-Type": {
+            "enum": [
+                "onnet",
+                "offnet"
+            ],
+            "type": "string"
+        },
+        "System-ID": {
+            "type": "string"
+        },
+        "Target-Flags": {
+            "type": "string"
+        },
+        "Target-Properties": {
+            "type": "string"
+        },
+        "To": {
+            "type": "string"
+        },
+        "Transaction-ID": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Body",
+        "From",
+        "Message-ID",
+        "To"
+    ],
+    "type": "object"
+}

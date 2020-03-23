@@ -3,6 +3,7 @@
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 -include_lib("kazoo_stdlib/include/kz_log.hrl").
 -include_lib("kazoo_stdlib/include/kz_databases.hrl").
+-include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 -include_lib("kazoo/include/kz_api_literals.hrl").
 -include_lib("kazoo_amqp/include/kz_amqp.hrl").
 -include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
@@ -39,14 +40,13 @@
 -ifdef(OTP_RELEASE).
 %% >= OTP 21
 -define(CATCH(Type, Reason, Stacktrace), Type:Reason:Stacktrace).
--define(LOGSTACK(Stacktrace), kz_util:log_stacktrace(Stacktrace)).
+-define(LOGSTACK(Stacktrace), kz_log:log_stacktrace(Stacktrace)).
 -else.
 %% =< OTP 20
 -define(CATCH(Type, Reason, Stacktrace), Type:Reason).
--define(LOGSTACK(Stacktrace), kz_util:log_stacktrace()).
+-define(LOGSTACK(Stacktrace), kz_log:log_stacktrace()).
 -endif.
 
 
 -define(KAZOO_IM_HRL, 'true').
 -endif.
-

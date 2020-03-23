@@ -87,7 +87,8 @@ dep_fs_event = git https://github.com/jamhed/fs_event 783400da08c2b55c295dbec81d
 dep_fs_sync = git https://github.com/jamhed/fs_sync 2cf85cf5861221128f020c453604d509fd37cd53
 dep_inet_cidr = git https://github.com/icehess/inet_cidr.git
 ### PR opened upstream ###
-dep_erlang_localtime = git https://github.com/lazedo/erlang_localtime 0bb26016380cd7df5d30aa0ef284ae252b5bae31
+dep_erlang_localtime = git https://github.com/2600hz/erlang-localtime 2600hz
+
 
 ### need to update upstream ###
 dep_hep = git https://github.com/lazedo/hep 1.5.4
@@ -107,6 +108,6 @@ dep_syslog = git https://github.com/2600hz/erlang-syslog bbad537a1cb5e4f37e672d2
 
 dep_fcm = git https://github.com/softwarejoint/fcm-erlang.git b2f68a4c6f0f59475597a35e2dc9be13d9ba2910
 
-dep_gen_smtp = git https://github.com/2600hz/erlang-gen_smtp 3fe1abaed7adfbb2c13bfa95f2d12e57dfa157d5
+dep_gen_smtp = git https://github.com/2600hz/erlang-gen_smtp 973d3ea1867a6bb3565f67afb78b449253c3b76e
 ## pinning gen_smtp because upstream made some breaking changes (using maps in some options)
 ## adding check to not convert if the From/To encodings match

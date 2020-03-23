@@ -1,6 +1,9 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2014-2020, 2600Hz
-%%% @doc
+%%% @doc This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(doodle_maintenance).
@@ -14,6 +17,7 @@
 -spec flush() -> 'ok'.
 flush() ->
     kz_cache:flush_local(?CACHE_NAME).
+
 
 -define(DEFAULT_FROM,
         kapps_config:get_ne_binary(?CONFIG_CAT, <<"default_test_from_number">>, <<"15552220001">>)).
@@ -29,7 +33,6 @@ send_outbound_sms(To, From, Msg) ->
               ,{<<"From">>, From}
               ,{<<"To">>, kz_term:to_binary(To)}
               ,{<<"Body">>, Msg}
-               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+               | kz_api:default_headers(<<"sms">>, <<"outbound">>, ?APP_NAME, ?APP_VERSION)
               ],
-    kz_amqp_worker:cast(Payload, fun kapi_sms:publish_outbound/1).
-
+    kz_amqp_worker:cast(Payload, fun kapi_im:publish_outbound/1).

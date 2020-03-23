@@ -92,7 +92,7 @@ log_stacktrace(Fmt, Args) ->
     ST = erlang:get_stacktrace(),
     log_stacktrace(ST, Fmt, Args).
 
--spec log_stacktrace(string(), list(), list()) -> ok.
+-spec log_stacktrace(list(), string(), list()) -> ok.
 log_stacktrace(ST, Fmt, Args) ->
     ?LOG_ERROR("stacktrace: " ++ Fmt, Args),
     _ = [log_stacktrace_mfa(M, F, A, Info)

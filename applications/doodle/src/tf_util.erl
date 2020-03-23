@@ -107,8 +107,8 @@ create_im_endpoints(_, _Endpoint, _Properties, _Im) -> [].
 create_im_endpoint(Endpoint, _Properties, Im) ->
     kz_json:from_list(
       [{<<"To-Username">>, kzd_devices:sip_username(Endpoint)}
-      ,{<<"To-Realm">>, kzd_devices:sip_realm(Endpoint, kapps_im:to_realm(Im))}
-      ,{<<"To-DID">>, kapps_im:request_user(Im)}
+      ,{<<"To-Realm">>, kzd_devices:sip_realm(Endpoint, kapps_im:account_realm(Im))}
+      ,{<<"To-DID">>, kapps_im:to(Im)}
       ,{<<"Endpoint-ID">>, kzd_endpoint:id(Endpoint)}
       ,{<<"Invite-Format">>, kzd_devices:sip_invite_format(Endpoint)}
       ]).

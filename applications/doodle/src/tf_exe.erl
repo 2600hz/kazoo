@@ -72,7 +72,7 @@ continue(Key, Im) ->
 stop(Srv) ->
     stop(Srv, 'undefined').
 
--spec stop(kapps_im:im() | pid(), kz_term:api_ne_binary()) -> 'ok'.
+-spec stop(kapps_im:im() | pid(), any()) -> 'ok'.
 stop(Srv, Cause) when is_pid(Srv) ->
     gen_server:cast(Srv, {'stop', Cause});
 stop(Im, Cause) ->
@@ -374,7 +374,7 @@ tf_module_task(TFModule, Data, Im, AMQPConsumer, AMQPChannel) ->
 
 -spec log_call_information(kapps_im:im()) -> 'ok'.
 log_call_information(Im) ->
-    lager:info("~s request ~s => ~s", [kapps_im:inception_type(Im), kapps_im:from_user(Im), kapps_im:to_user(Im)]).
+    lager:info("~s request ~s => ~s", [kapps_im:inception_type(Im), kapps_im:from(Im), kapps_im:to(Im)]).
 
 -spec relay_message(kz_term:pids(), kz_json:object() | {'amqp_return', kz_json:object(), kz_json:object()}) -> 'ok'.
 relay_message(Notify, Message) ->

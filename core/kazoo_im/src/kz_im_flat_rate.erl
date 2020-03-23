@@ -63,9 +63,9 @@ create_ledger(_IM, _AccountId, _Rate) -> 'ok'.
 description(IM) ->
     list_to_binary([kz_term:to_binary(kapps_im:direction(IM))
                    ," from "
-                   ,kapps_im:from_user(IM)
+                   ,kapps_im:from(IM)
                    ," to "
-                   ,kapps_im:to_user(IM)
+                   ,kapps_im:to(IM)
                    ]).
 
 %%%------------------------------------------------------------------------------

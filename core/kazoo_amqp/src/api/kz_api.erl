@@ -76,15 +76,21 @@
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec server_id(kz_json:object()) -> kz_term:api_binary().
+-spec server_id(kz_term:api_terms()) -> kz_term:api_binary().
+server_id(Props) when is_list(Props) ->
+    props:get_value(?KEY_SERVER_ID, Props);
 server_id(JObj) ->
     kz_json:get_ne_binary_value(?KEY_SERVER_ID, JObj).
 
--spec queue_id(kz_json:object()) -> kz_term:api_binary().
+-spec queue_id(kz_term:api_terms()) -> kz_term:api_binary().
+queue_id(Props) when is_list(Props) ->
+    props:get_value(?KEY_QUEUE_ID, Props);
 queue_id(JObj) ->
     kz_json:get_ne_binary_value(?KEY_QUEUE_ID, JObj, server_id(JObj)).
 
--spec event_category(kz_json:object()) -> kz_term:api_binary().
+-spec event_category(kz_term:api_terms()) -> kz_term:api_binary().
+event_category(Props) when is_list(Props) ->
+    props:get_value(?KEY_EVENT_CATEGORY, Props);
 event_category(JObj) ->
     kz_json:get_value(?KEY_EVENT_CATEGORY, JObj).
 
@@ -94,15 +100,21 @@ event_name(Props) when is_list(Props) ->
 event_name(JObj) ->
     kz_json:get_value(?KEY_EVENT_NAME, JObj).
 
--spec app_name(kz_json:object()) -> kz_term:api_binary().
+-spec app_name(kz_term:api_terms()) -> kz_term:api_binary().
+app_name(Props) when is_list(Props) ->
+    props:get_value(?KEY_APP_NAME, Props);
 app_name(JObj) ->
     kz_json:get_value(?KEY_APP_NAME, JObj).
 
--spec app_version(kz_json:object()) -> kz_term:api_binary().
+-spec app_version(kz_term:api_terms()) -> kz_term:api_binary().
+app_version(Props) when is_list(Props) ->
+    props:get_value(?KEY_APP_VERSION, Props);
 app_version(JObj) ->
     kz_json:get_value(?KEY_APP_VERSION, JObj).
 
--spec node(kz_json:object()) -> kz_term:api_ne_binary().
+-spec node(kz_term:api_terms()) -> kz_term:api_ne_binary().
+node(Props) when is_list(Props) ->
+    props:get_value(?KEY_NODE, Props);
 node(JObj) ->
     kz_json:get_ne_binary_value(?KEY_NODE, JObj).
 

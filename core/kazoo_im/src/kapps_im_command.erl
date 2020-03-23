@@ -100,31 +100,12 @@ send_and_wait(API, Endpoint, Timeout) ->
     Payload = props:set_values( [{<<"Endpoints">>, [Endpoint]} | Options], API),
     MsgId = props:get_value(<<"Message-ID">>, Payload),
     lager:info("sending sms and waiting for response"),
-    _ = kapi_sms:publish_message(Payload),
+    _ = kapi_im:publish_outbound(Payload),
     wait_for_correlated_message(MsgId, <<"delivery">>, <<"message">>, Timeout).
 
 -spec create_sms(im()) -> kz_term:proplist().
 create_sms(Im) ->
-    AccountId = kapps_im:account_id(Im),
-    AccountRealm = kapps_im:to_realm(Im),
-    CCVUpdates = props:filter_undefined(
-                   [{<<"Account-ID">>, AccountId}
-                   ,{<<"Account-Realm">>, AccountRealm}
-                   ,{<<"From-User">>, kapps_im:from_user(Im)}
-                   ,{<<"From-Realm">>, kapps_im:from_realm(Im)}
-                   ,{<<"From-URI">>, kapps_im:from(Im)}
-                   ,{<<"Reseller-ID">>, kz_services_reseller:get_id(AccountId)}
-                   ]),
-    [{<<"Message-ID">>, kapps_im:message_id(Im)}
-    ,{<<"Call-ID">>, kapps_im:message_id(Im)}
-    ,{<<"Body">>, kapps_im:body(Im)}
-    ,{<<"From">>, kapps_im:from(Im)}
-    ,{<<"To">>, kapps_im:to(Im)}
-    ,{<<"Request">>, kapps_im:request(Im) }
-    ,{<<"Application-Name">>, <<"send">>}
-    ,{<<"Custom-Channel-Vars">>, kz_json:set_values(CCVUpdates, kz_json:new())}
-     | kz_api:default_headers(kapps_im:controller_queue(Im), ?APP_NAME, ?APP_VERSION)
-    ].
+    kapps_im:to_payload(kapps_im:set_direction(<<"outbound">>, Im)).
 
 -spec create_sms_endpoints(kz_json:objects(), kz_json:objects()) -> kz_json:objects().
 create_sms_endpoints([], Endpoints) -> Endpoints;
@@ -148,7 +129,8 @@ create_sms_endpoint(Endpoint) ->
         {'error', _E} -> 'undefined'
     end.
 
--spec lookup_reg(kz_term:ne_binary(), kz_term:ne_binary()) -> {'error', any()} |
+-spec lookup_reg(kz_term:ne_binary(), kz_term:ne_binary()) ->
+          {'error', any()} |
           {'ok', kz_term:ne_binary()}.
 lookup_reg('undefined', _Realm) -> {'error', 'invalid_user'};
 lookup_reg(_Username, 'undefined') -> {'error', 'invalid_realm'};
@@ -204,9 +186,8 @@ get_correlated_msg_type(Key, JObj) ->
 
 -spec wait_for_correlated_message(kz_term:ne_binary() | im(), kz_term:ne_binary(), kz_term:ne_binary(), timeout()) ->
           kapps_api_std_return().
-wait_for_correlated_message(MsgId, Event, Type, Timeout)
-  when is_binary(MsgId) ->
-    Start = os:timestamp(),
+wait_for_correlated_message(<<MsgId/binary>>, Event, Type, Timeout) ->
+    Start = kz_time:start_time(),
     case receive_event(Timeout) of
         {'error', 'timeout'}=E -> E;
         {'ok', JObj}=Ok ->
@@ -236,7 +217,7 @@ receive_event(Timeout) -> receive_event(Timeout, 'true').
           {'other', kz_json:object() | any()}.
 receive_event(T, _) when T =< 0 -> {'error', 'timeout'};
 receive_event(Timeout, IgnoreOthers) ->
-    Start = os:timestamp(),
+    Start = kz_time:start_time(),
     receive
         {'amqp_msg', JObj} -> {'ok', JObj};
         {'kapi',{ _, _, JObj}} -> {'ok', JObj};

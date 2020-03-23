@@ -6,19 +6,15 @@
 %%%
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(kz_api_sms).
+-module(kz_im).
 
 -export([new/0]).
 -export([body/1, body/2, set_body/2]).
+-export([type/1, set_type/2]).
+-export([direction/1, set_direction/2]).
 -export([from/1, from/2, set_from/2]).
--export([from_user/1, from_user/2]).
--export([from_realm/1, from_realm/2]).
--export([scheduled/1, scheduled/2, set_scheduled/2]).
+-export([subject/1, subject/2, set_subject/2]).
 -export([to/1, to/2, set_to/2]).
--export([to_user/1, to_user/2]).
--export([to_realm/1, to_realm/2]).
--export([caller_id_number/1, caller_id_number/2]).
--export([callee_id_number/1, callee_id_number/2]).
 -export([account_id/1, account_id/2, set_account_id/2]).
 -export([application_id/1, application_id/2]).
 -export([route_id/1, route_id/2, set_route_id/2]).
@@ -38,15 +34,13 @@
         ,remove_originator_flag/2
         ]).
 
--export([type/0, type/1]).
-
--include("kz_documents.hrl").
+-include("kazoo_im.hrl").
 
 -type payload() :: kz_json:object().
 -export_type([payload/0]).
 
--define(SCHEMA, <<"sms">>).
--define(TYPE, <<"sms">>).
+-define(SCHEMA, <<"im">>).
+-define(TYPE, <<"im">>).
 
 -spec new() -> payload().
 new() ->
@@ -60,7 +54,7 @@ body(Payload) ->
 body(Payload, Default) ->
     kz_json:get_ne_binary_value([<<"Body">>], Payload, Default).
 
--spec set_body(payload(), kz_term:ne_binary()) -> payload().
+-spec set_body(payload(), kz_term:ne_binary() | 'null') -> payload().
 set_body(Payload, Body) ->
     kz_json:set_value([<<"Body">>], Body, Payload).
 
@@ -76,18 +70,6 @@ from(Payload, Default) ->
 set_from(Payload, From) ->
     kz_json:set_value([<<"From">>], From, Payload).
 
--spec scheduled(payload()) -> kz_term:api_integer().
-scheduled(Payload) ->
-    scheduled(Payload, 'undefined').
-
--spec scheduled(payload(), Default) -> integer() | Default.
-scheduled(Payload, Default) ->
-    kz_json:get_integer_value([<<"Scheduled">>], Payload, Default).
-
--spec set_scheduled(payload(), integer()) -> payload().
-set_scheduled(Payload, Scheduled) ->
-    kz_json:set_value([<<"Scheduled">>], Scheduled, Payload).
-
 -spec to(payload()) -> kz_term:api_binary().
 to(Payload) ->
     to(Payload, 'undefined').
@@ -99,54 +81,6 @@ to(Payload, Default) ->
 -spec set_to(payload(), binary()) -> payload().
 set_to(Payload, To) ->
     kz_json:set_value([<<"To">>], To, Payload).
-
--spec from_user(payload()) -> kz_term:api_binary().
-from_user(Payload) ->
-    from_user(Payload, 'undefined').
-
--spec from_user(payload(), Default) -> binary() | Default.
-from_user(Payload, Default) ->
-    kz_json:get_binary_value([<<"From-User">>], Payload, Default).
-
--spec from_realm(payload()) -> kz_term:api_binary().
-from_realm(Payload) ->
-    from_realm(Payload, 'undefined').
-
--spec from_realm(payload(), Default) -> binary() | Default.
-from_realm(Payload, Default) ->
-    kz_json:get_binary_value([<<"From-Realm">>], Payload, Default).
-
--spec to_user(payload()) -> kz_term:api_binary().
-to_user(Payload) ->
-    to_user(Payload, 'undefined').
-
--spec to_user(payload(), Default) -> binary() | Default.
-to_user(Payload, Default) ->
-    kz_json:get_binary_value([<<"To-User">>], Payload, Default).
-
--spec to_realm(payload()) -> kz_term:api_binary().
-to_realm(Payload) ->
-    to_realm(Payload, 'undefined').
-
--spec to_realm(payload(), Default) -> binary() | Default.
-to_realm(Payload, Default) ->
-    kz_json:get_binary_value([<<"To-Realm">>], Payload, Default).
-
--spec caller_id_number(payload()) -> kz_term:api_binary().
-caller_id_number(Payload) ->
-    caller_id_number(Payload, 'undefined').
-
--spec caller_id_number(payload(), Default) -> binary() | Default.
-caller_id_number(Payload, Default) ->
-    kz_json:get_binary_value(<<"Caller-ID-Number">>, Payload, Default).
-
--spec callee_id_number(payload()) -> kz_term:api_binary().
-callee_id_number(Payload) ->
-    callee_id_number(Payload, 'undefined').
-
--spec callee_id_number(payload(), Default) -> binary() | Default.
-callee_id_number(Payload, Default) ->
-    kz_json:get_binary_value(<<"Callee-ID-Number">>, Payload, Default).
 
 -spec account_id(payload()) -> kz_term:api_binary().
 account_id(Payload) ->
@@ -191,13 +125,6 @@ route_type(Payload, Default) ->
 -spec set_route_type(payload(), kz_term:ne_binary()) -> payload().
 set_route_type(Payload, RouteType) ->
     kz_json:set_value(<<"Route-Type">>, RouteType, Payload).
-
--spec type() -> kz_term:ne_binary().
-type() -> ?TYPE.
-
--spec type(payload()) -> kz_term:ne_binary().
-type(Payload) ->
-    kz_doc:type(Payload, ?TYPE).
 
 -spec originator_properties(payload()) -> payload().
 originator_properties(Payload) ->
@@ -262,6 +189,34 @@ exchange_id(Payload, Default) ->
 -spec set_exchange_id(payload(), kz_term:ne_binary()) -> payload().
 set_exchange_id(Payload, ExhangeId) ->
     kz_json:set_value(<<"Exchange-ID">>, ExhangeId, Payload).
+
+-spec type(payload()) -> kz_term:api_binary().
+type(Payload) ->
+    kz_api:event_category(Payload).
+
+-spec set_type(payload(), kz_term:ne_binary()) -> payload().
+set_type(Payload, Type) ->
+    kz_json:set_value(?KEY_EVENT_CATEGORY, Type, Payload).
+
+-spec direction(payload()) -> kz_term:api_binary().
+direction(Payload) ->
+    kz_api:event_name(Payload).
+
+-spec set_direction(payload(), kz_term:ne_binary()) -> payload().
+set_direction(Payload, Direction) ->
+    kz_json:set_value(?KEY_EVENT_NAME, Direction, Payload).
+
+-spec subject(payload()) -> kz_term:api_binary().
+subject(Payload) ->
+    subject(Payload, 'undefined').
+
+-spec subject(payload(), Default) -> binary() | Default.
+subject(Payload, Default) ->
+    kz_json:get_binary_value(<<"Subject">>, Payload, Default).
+
+-spec set_subject(payload(), kz_term:ne_binary()) -> payload().
+set_subject(Payload, Subject) ->
+    kz_json:set_value(<<"Subject">>, Subject, Payload).
 
 -spec charges(payload()) -> kz_term:api_number().
 charges(Payload) ->

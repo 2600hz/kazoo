@@ -1,22 +1,27 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2010-2020, 2600Hz
-%%% @doc Accessors for `sms' document.
+%%% @doc This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(kzd_sms).
+-module(kzd_mms).
 
 -export([new/0]).
 -export([body/1, body/2, set_body/2]).
 -export([from/1, from/2, set_from/2]).
 -export([to/1, to/2, set_to/2]).
 
+-export([type/0]).
 
 -include("kz_documents.hrl").
 
 -type doc() :: kz_json:object().
 -export_type([doc/0]).
 
--define(SCHEMA, <<"sms">>).
+-define(SCHEMA, <<"mms">>).
+-define(TYPE, <<"mms">>).
 
 -spec new() -> doc().
 new() ->
@@ -57,3 +62,6 @@ to(Doc, Default) ->
 -spec set_to(doc(), binary()) -> doc().
 set_to(Doc, To) ->
     kz_json:set_value([<<"to">>], To, Doc).
+
+-spec type() -> kz_term:ne_binary().
+type() -> ?TYPE.

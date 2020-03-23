@@ -547,7 +547,7 @@ basic_publish(Exchange, RoutingKey, ?NE_BINARY = Payload, ContentType, Props)
                   ,cluster_id = ?P_GET('cluster_id', Props) % cluster
                   },
 
-    AM = #'amqp_msg'{payload = Payload
+    AM = #'amqp_msg'{payload = encode(MsgProps#'P_basic'.content_encoding, Payload)
                     ,props = MsgProps
                     },
 
@@ -555,6 +555,9 @@ basic_publish(Exchange, RoutingKey, ?NE_BINARY = Payload, ContentType, Props)
         'true' -> kz_amqp_channel:maybe_publish(BP, AM);
         'false' -> kz_amqp_channel:publish(BP, AM)
     end.
+
+encode(<<"gzip">>, Payload) -> zlib:gzip(Payload);
+encode(_ContentType, Payload) -> Payload.
 
 %%------------------------------------------------------------------------------
 %% @doc Create AMQP exchanges.

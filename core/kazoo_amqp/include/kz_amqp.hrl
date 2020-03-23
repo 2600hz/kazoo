@@ -155,7 +155,8 @@
                            #'basic.consume'{} | #'basic.cancel'{} |
                            #'basic.ack'{} | #'basic.nack'{} |
                            #'basic.qos'{} |
-                           #'exchange.declare'{} |
+                           #'exchange.declare'{} | #'exchange.delete'{} |
+                           #'exchange.bind'{} | #'exchange.unbind'{} |
                            #'confirm.select'{} |
                            #'channel.flow'{} | #'channel.flow_ok'{} |
                            basic_publish() |
@@ -165,13 +166,18 @@
 -type kz_amqp_exchange() :: #'exchange.declare'{}.
 -type kz_amqp_exchanges() :: [#'exchange.declare'{}].
 
+-type kz_amqp_exchange_binding() :: #'exchange.bind'{}.
+-type kz_amqp_exchange_bindings() :: [#'exchange.bind'{}].
+
 -type kz_amqp_queue() :: #'queue.declare'{}.
 -type kz_amqp_queues() :: [#'queue.declare'{}].
 
--type kz_command_ret_ok() :: #'basic.qos_ok'{} | #'queue.declare_ok'{} |
-                             #'exchange.declare_ok'{} | #'queue.delete_ok'{} |
-                             #'queue.declare_ok'{} | #'queue.unbind_ok'{} |
-                             #'queue.bind_ok'{} | #'basic.consume_ok'{} |
+-type kz_command_ret_ok() :: #'basic.qos_ok'{} |
+                             #'exchange.declare_ok'{} | #'exchange.delete_ok'{} |
+                             #'exchange.bind_ok'{} | #'exchange.unbind_ok'{} |
+                             #'queue.declare_ok'{} | #'queue.delete_ok'{} |
+                             #'queue.bind_ok'{} | #'queue.unbind_ok'{} |
+                             #'basic.consume_ok'{} |
                              #'confirm.select_ok'{} |
                              #'basic.cancel_ok'{}.
 -type command_ret() :: 'ok' |
@@ -182,7 +188,7 @@
 
 -type kz_amqp_type() :: 'sticky' | 'float'.
 
--record(kz_amqp_assignment, {timestamp = os:timestamp() :: kz_time:now() | '_'
+-record(kz_amqp_assignment, {timestamp = kz_time:start_time() :: kz_time:start_time() | '_'
                             ,consumer :: kz_term:api_pid() | '$2' | '_'
                             ,consumer_ref :: kz_term:api_reference() | '_'
                             ,application :: atom() | '_'
@@ -191,7 +197,7 @@
                             ,channel_ref :: kz_term:api_reference() | '_'
                             ,connection :: kz_term:api_pid() | '$1' | '_'
                             ,broker :: kz_term:api_binary() | '$1' | '_'
-                            ,assigned :: timeout() | 'undefined' | '_'
+                            ,assigned :: kz_time:start_time() | 'undefined' | '_'
                             ,reconnect = 'false' :: boolean() | '_'
                             ,watchers = sets:new() :: sets:set() | kz_term:pids() | '_'
                             }).
@@ -210,12 +216,12 @@
                             ,channel_ref :: kz_term:api_reference() | '$1' | '_'
                             ,reconnect_ref :: kz_term:api_reference() | '_'
                             ,available = 'false' :: boolean() | '_'
-                            ,exchanges_initialized = 'false' :: boolean() | '_'
                             ,prechannels_initialized = 'false' :: boolean() | '_'
-                            ,started = os:timestamp() :: kz_time:now() | '_'
+                            ,started = kz_time:start_time() :: kz_time:start_time() | '_'
                             ,tags = [] :: list() | '_'
                             ,hidden = 'false' :: boolean() | '_'
                             ,exchanges = #{} :: map() | '_'
+                            ,bindings = #{} :: map() | '_'
                             }).
 -type kz_amqp_connection() :: #kz_amqp_connection{}.
 
@@ -223,7 +229,7 @@
                              ,connection_ref :: kz_term:api_reference() | '_'
                              ,broker :: kz_term:ne_binary() | '$1' | '$2' | '_'
                              ,available='false' :: boolean() | '$1' | '$2' | '_'
-                             ,timestamp=os:timestamp() :: kz_time:now() | '_'
+                             ,timestamp = kz_time:start_time() :: kz_time:start_time() | '_'
                              ,zone='local' :: atom() | '$1' | '_'
                              ,manager=self() :: pid() | '_'
                              ,tags = [] :: list() | '_'
@@ -244,3 +250,4 @@
 
 -define(KZ_AMQP_HRL, 'true').
 -endif.
+

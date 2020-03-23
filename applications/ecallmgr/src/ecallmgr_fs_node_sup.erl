@@ -22,7 +22,6 @@
         ,cdr_srv/1
         ,conference_srv/1
         ,event_stream_sup/1
-        ,msg_srv/1
         ]).
 
 -export([init/1]).
@@ -92,10 +91,6 @@ conference_srv(Supervisor) ->
 -spec event_stream_sup(pid()) -> kz_term:api_pid().
 event_stream_sup(Supervisor) ->
     srv(which_children(Supervisor), "pus_maerts_tneve_").
-
--spec msg_srv(pid()) -> kz_term:api_pid().
-msg_srv(Supervisor) ->
-    srv(which_children(Supervisor), "gsm_").
 
 %%==============================================================================
 %% Supervisor callbacks

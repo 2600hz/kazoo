@@ -24,13 +24,11 @@
 -type knm_phone_number() :: knm_phone_number:knm_phone_number().
 -type im_number() :: knm_number() | knm_phone_number().
 
--export_type([im_type/0
-             ]).
+-export_type([im_type/0]).
 
 -include("knm.hrl").
 
 -define(KEY, kz_term:to_binary(Type)).
-
 
 %%------------------------------------------------------------------------------
 %% @doc This function is called each time a number is saved, and will
@@ -83,9 +81,10 @@ update_im(Type, Number) ->
     PN = knm_number:phone_number(Number),
     Feature = kz_json:get_ne_value(?KEY, knm_phone_number:doc(PN)),
     NotChanged = kz_json:are_equal(CurrentFeature, Feature),
+
     case kz_term:is_empty(Feature) of
         'true'
-          when CurrentFeature =/= undefined ->
+          when CurrentFeature =/= 'undefined' ->
             deactivate(Type, Number);
         'true' ->
             Number;
@@ -95,7 +94,7 @@ update_im(Type, Number) ->
         'false' ->
             case kz_json:is_true(?FEATURE_ENABLED, Feature) of
                 'false'
-                  when CurrentFeature =/= undefined ->
+                  when CurrentFeature =/= 'undefined' ->
                     deactivate(Type, Number);
                 'false' ->
                     Number;
@@ -116,7 +115,7 @@ feature(Type, Number) ->
     end.
 
 -spec feature_available(kz_term:api_ne_binary(), im_type(), kz_json:object()) -> boolean().
-feature_available(undefined, _Type, _Config) -> false;
+feature_available('undefined', _Type, _Config) -> 'false';
 feature_available(AccountId, Type, Config) ->
     Funs = [fun() -> carrier_has_feature_enabled(Type, Config) end
            ,fun() -> kz_services_im:is_enabled(AccountId, Type) end
@@ -142,8 +141,8 @@ available(Type, PN) ->
         andalso feature_available(AccountId, Type, Config).
 
 -spec available(im_type(), module(), kz_term:ne_binary(), kz_term:api_ne_binary()) -> boolean().
-available(_Type, _Module, _State, undefined) -> false;
-available(_Type, undefined, _State, _AccountId) -> false;
+available(_Type, _Module, _State, 'undefined') -> 'false';
+available(_Type, 'undefined', _State, _AccountId) -> 'false';
 available(Type, Module, State, AccountId) ->
     Config = knm_gen_carrier:configuration(Module),
     number_available(State, AccountId)
@@ -158,7 +157,7 @@ carrier_has_feature_enabled(Type, Config) ->
     kz_term:is_true(carrier_feature(Type, ?FEATURE_ENABLED, Config)).
 
 carrier_feature(Type, Key, Config) ->
-    carrier_feature(Type, Key, Config, undefined).
+    carrier_feature(Type, Key, Config, 'undefined').
 
 carrier_feature(Type, Key, Config, Default) ->
     K = [<<"features">>, ?KEY, Key],
@@ -174,16 +173,16 @@ carrier_settings(Type, Config) ->
 activate(Type, Number0, Feature) ->
     Number = knm_providers:activate_feature(Number0, {?KEY, Feature}),
     case knm_phone_number:dry_run(knm_number:phone_number(Number)) of
-        true -> Number;
-        false -> maybe_set_callback(Type, activate, Number)
+        'true' -> Number;
+        'false' -> maybe_set_callback(Type, 'activate', Number)
     end.
 
 -spec deactivate(im_type(), knm_number()) -> knm_number().
 deactivate(Type, Number0) ->
     Number = knm_providers:deactivate_feature(Number0, ?KEY),
     case knm_phone_number:dry_run(knm_number:phone_number(Number)) of
-        true -> Number;
-        false -> maybe_set_callback(Type, deactivate, Number)
+        'true' -> Number;
+        'false' -> maybe_set_callback(Type, 'deactivate', Number)
     end.
 
 -spec requires_manual_action(im_type(), knm_phone_number()) -> boolean().
@@ -196,14 +195,14 @@ requires_manual_action(Type, PN) ->
 maybe_set_callback(Type, Action, Number) ->
     PN = knm_number:phone_number(Number),
     case requires_manual_action(Type, PN) of
-        true ->
+        'true' ->
             PN1 = knm_phone_number:add_on_success(PN, {fun send_notify/3, [Type, Action]}),
             knm_number:set_phone_number(Number, PN1);
-        false ->
+        'false' ->
             Number
     end.
 
--spec send_notify(knm_phone_number(), im_type(), atom()) -> ok.
+-spec send_notify(knm_phone_number(), im_type(), atom()) -> 'ok'.
 send_notify(PN, Type, Action) ->
     Config = knm_gen_carrier:configuration(PN),
     To = carrier_feature(Type, ?FEATURE_ACTIVATION_NOTIFY_TO, Config),
@@ -219,5 +218,4 @@ send_notify(PN, Type, Action) ->
                                                  ])}
                     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
-    kz_amqp_worker:cast(Notification, fun kapi_notifications:publish_number_feature_manual_action/1),
-    ok.
+    kz_amqp_worker:cast(Notification, fun kapi_notifications:publish_number_feature_manual_action/1).

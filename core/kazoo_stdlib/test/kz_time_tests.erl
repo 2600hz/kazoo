@@ -54,7 +54,7 @@ to_x_test_() ->
 
 pretty_print_datetime_test_() ->
     TS = 63652662294,
-    [?_assertEqual(<<"2017-01-26_15-04-54">>, kz_time:pretty_print_datetime(TS))
+    [?_assertEqual(<<"2017-01-26_15:04:54">>, kz_time:pretty_print_datetime(TS))
     ].
 
 weekday_test_() ->
@@ -122,13 +122,21 @@ more_elapsed_test_() ->
     ,?_assertEqual(10 * ?MICROSECONDS_IN_SECOND, kz_time:elapsed_us(StartTS, kz_time:now_us(FutureTS)))
     ].
 
+elaspsed_start_time_test_() ->
+    Start = {'start_time',-576459648193378363},
+    End = {'start_time',-576459366410666959},
+    [?_assertEqual(281, kz_time:elapsed_s(Start, End))
+    ,?_assertEqual(281782, kz_time:elapsed_ms(Start, End))
+    ,?_assertEqual(281782711, kz_time:elapsed_us(Start, End))
+    ].
+
 unitfy_and_timeout_test_() ->
     {Mega, Sec, Micro} = Start = os:timestamp(),
     Future = {Mega, Sec + 10, Micro},
 
     [?_assertEqual("", kz_time:unitfy_seconds(0))
-    ,?_assertEqual(infinity, kz_time:decr_timeout(infinity, Start))
-    ,?_assertEqual(infinity, kz_time:decr_timeout(infinity, Start, Future))
+    ,?_assertEqual('infinity', kz_time:decr_timeout('infinity', Start))
+    ,?_assertEqual('infinity', kz_time:decr_timeout('infinity', Start, Future))
     ,?_assertEqual(0, kz_time:decr_timeout(10, Start, Future))
     ,?_assertEqual(0, kz_time:decr_timeout_elapsed(30, 42))
     ,?_assertEqual(12, kz_time:decr_timeout_elapsed(42, 30))
@@ -143,6 +151,23 @@ rfc1036_test_() ->
     [?_assertEqual(Expected, kz_time:rfc1036(Date))
      || {Date, Expected} <- Tests
     ].
+
+rfc2822_test_() ->
+    Tests = [{{{2015,4,7},{1,3,2}}, <<"Tue, 07 Apr 2015 01:03:02 +0000">>}
+            ,{{{2015,12,12},{12,13,12}}, <<"Sat, 12 Dec 2015 12:13:12 +0000">>}
+            ,{63595733389, <<"Wed, 08 Apr 2015 17:29:49 +0000">>}
+            ,{{{2018,10,23},{15,53,1}}, <<"PST">>, <<"Tue, 23 Oct 2018 15:53:01 +0700">>}
+            ,{{{2010,8,19},{18,13,42}}, <<"PDT">>, <<"GMT">>, <<"Fri, 20 Aug 2010 01:13:42 +0000">>}
+            ],
+    [rfc2822_assert(Test) || Test <- Tests].
+
+rfc2822_assert({Date, Expected}) ->
+    ?_assertEqual(Expected, kz_time:rfc2822(Date));
+rfc2822_assert({Date, TZ, Expected}) ->
+    ?_assertEqual(Expected, kz_time:rfc2822(Date, TZ));
+rfc2822_assert({Date, FromTZ, ToTZ, Expected}) ->
+    NewLocal = localtime:local_to_local(Date, kz_term:to_list(FromTZ), kz_term:to_list(ToTZ)),
+    ?_assertEqual(Expected, kz_time:rfc2822(NewLocal, ToTZ)).
 
 iso8601_test_() ->
     Tests = [{{2015,4,7}, <<"2015-04-07">>}
@@ -177,33 +202,33 @@ iso8601_offset_test_() ->
           || {Date, Offset, Expected} <- ThrowsTests
          ].
 
+-define(ISO8601_EXAMPLES, [{<<"2015-04-07T00:00:00">>, {{2015,4,7},{0,0,0}}}
+                          ,{<<"20150407T000000Z">>, {{2015,4,7},{0,0,0}}}
+                          ,{<<"2015-04-07T04:33:02+03:30">>, {{2015,4,7},{1,3,2}}}
+                          ,{<<"2015-04-07T04:33:02-05:00">>, {{2015,4,7},{9,33,2}}}
+                          ,{<<"2015-04-07T04:33:02-0500">>, {{2015,4,7},{9,33,2}}}
+                          ,{<<"20150407T043302-05">>, {{2015,4,7},{9,33,2}}}
+                          ]).
+-define(INVALID_ISO8601_EXAMPLES, [{<<"2015/04/07T00.00.00">>, 'invalid_date'}
+                                  ,{<<"2015-04-07T04.33.02-05:00">>, 'invalid_time'}
+                                  ,{<<"2015-04-07T04:33:02-5:0">>, 'invalid_offset'}
+                                  ,{<<"15-4-7T04:33:02-05:00">>, 'invalid_date'}
+                                  ,{<<"2015-04-07T04:3:2-5:00">>, 'invalid_time'}
+
+                                  ,{<<"201r-04-07T04:33:02-5:0">>, 'invalid_date'}
+                                  ,{<<"2015-04-0704:33:02-05:00">>, 'invalid_date'}
+                                  ,{<<"2015-04-07T0433:02-05:00">>, 'invalid_time'}
+                                  ]).
+
 from_iso8601_test_() ->
-    Tests = [{<<"2015-04-07T00:00:00">>, {{2015,4,7},{0,0,0}}}
-            ,{<<"20150407T000000Z">>, {{2015,4,7},{0,0,0}}}
-            ,{<<"2015-04-07T04:33:02+03:30">>, {{2015,4,7},{1,3,2}}}
-            ,{<<"2015-04-07T04:33:02-05:00">>, {{2015,4,7},{9,33,2}}}
-            ,{<<"2015-04-07T04:33:02-0500">>, {{2015,4,7},{9,33,2}}}
-            ,{<<"20150407T043302-05">>, {{2015,4,7},{9,33,2}}}
-            ],
-
-    ThrowsTests = [{<<"2015/04/07T00.00.00">>, 'invalid_date'}
-                  ,{<<"2015-04-07T04.33.02-05:00">>, 'invalid_time'}
-                  ,{<<"2015-04-07T04:33:02-5:0">>, 'invalid_offset'}
-                  ,{<<"15-4-7T04:33:02-05:00">>, 'invalid_date'}
-                  ,{<<"2015-04-07T04:3:2-5:00">>, 'invalid_time'}
-
-                  ,{<<"201r-04-07T04:33:02-5:0">>, 'invalid_date'}
-                  ,{<<"2015-04-0704:33:02-05:00">>, 'invalid_date'}
-                  ,{<<"2015-04-07T0433:02-05:00">>, 'invalid_time'}
-                  ],
     [{"parsing '" ++ kz_term:to_list(Date) ++ "'"
      ,[?_assertEqual(Expected, kz_time:from_iso8601(Date))]
      }
-     || {Date, Expected} <- Tests
+     || {Date, Expected} <- ?ISO8601_EXAMPLES
     ] ++ [{"parser should throws '" ++ kz_term:to_list(Expected) ++ "' for '" ++ kz_term:to_list(Date) ++ "'"
           ,[?_assertThrow({'error', Expected}, kz_time:from_iso8601(Date))]
           }
-          || {Date, Expected} <- ThrowsTests
+          || {Date, Expected} <- ?INVALID_ISO8601_EXAMPLES
          ].
 
 iso8601_time_test_() ->
@@ -215,6 +240,32 @@ iso8601_time_test_() ->
     [?_assertEqual(Expected, kz_time:iso8601_time(Date))
      || {Date, Expected} <- Tests
     ].
+
+is_iso8601_test_() ->
+    [?_assert(kz_time:is_iso8601(Date)) || {Date, _} <- ?ISO8601_EXAMPLES]
+        ++ [?_assertNot(kz_time:is_iso8601(Date)) || {Date, _} <- ?INVALID_ISO8601_EXAMPLES].
+
+-define(ISO8601_MS_EXAMPLES, [{<<"2019-10-09T18:36:13.000Z">>, <<"2019-10-09T18:36:13Z">>}
+                             ,{<<"2019-10-09T18:36:13.000-05:00">>, <<"2019-10-09T18:36:13-05:00">>}
+                             ,{<<"20191009T183613.000Z">>, <<"20191009T183613Z">>}
+                             ,{<<"20191009T183613.000-05">>, <<"20191009T183613-05">>}
+                             ]).
+
+trim_iso8601_ms_test_() ->
+    [?_assertEqual(kz_time:trim_iso8601_ms(ISO8601WithMS), ISO8601WithoutMS)
+     || {ISO8601WithMS, ISO8601WithoutMS} <- ?ISO8601_MS_EXAMPLES
+    ] ++ [?_assertEqual(kz_time:trim_iso8601_ms(<<"anything else">>), <<"anything else">>)].
+
+maybe_add_iso8601_ms_suffix_test_() ->
+    lists:foldl(fun({ISO8601WithMS, ISO8601WithoutMS}, Tests) ->
+                        [?_assertEqual(kz_time:maybe_add_iso8601_ms_suffix(ISO8601WithoutMS), ISO8601WithMS)
+                        ,?_assertEqual(kz_time:maybe_add_iso8601_ms_suffix(ISO8601WithMS), ISO8601WithMS)
+                         | Tests
+                        ]
+                end
+               ,[]
+               ,?ISO8601_MS_EXAMPLES
+               ).
 
 to_gregorian_seconds_test_() ->
     Datetime = {{2017,04,01}, {12,0,0}},
@@ -258,3 +309,4 @@ horse_os_timestamp() ->
     horse:repeat(?REPEAT, os:timestamp()).
 
 -endif.
+

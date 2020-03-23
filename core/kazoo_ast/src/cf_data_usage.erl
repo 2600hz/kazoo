@@ -797,6 +797,11 @@ data_index(DataName, [_|As], Index) ->
 
 -spec is_action_module(atom()) -> boolean().
 is_action_module(Module) ->
+    is_action_module(Module, code:which(Module)).
+
+is_action_module(_Module, 'non_existing') -> 'false';
+is_action_module(_Module, 'preloaded') -> 'false';
+is_action_module(Module, _Beam) ->
     Attributes = Module:module_info('attributes'),
     Behaviours = props:get_value('behaviour', Attributes, []),
     lists:member('gen_cf_action', Behaviours).

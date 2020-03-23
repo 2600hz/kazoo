@@ -591,7 +591,7 @@ calculate_presence_id_from_owner(Doc, DevicePresenceId, OwnerId) ->
             DevicePresenceId
     end.
 
--spec calculate_presence_id_from_hotdesk(doc(), Default, kz_term:ne_binary()) -> kz_term:ne_binary() | Default.
+-spec calculate_presence_id_from_hotdesk(doc(), Default, kz_term:ne_binaries()) -> kz_term:ne_binary() | Default.
 calculate_presence_id_from_hotdesk(_Doc, DevicePresenceId, []) -> DevicePresenceId;
 calculate_presence_id_from_hotdesk(Doc, DevicePresenceId, [HotdeskId|HotdeskIds]) ->
     case calculate_presence_id_from_owner(Doc, DevicePresenceId, HotdeskId) of

@@ -1,6 +1,9 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2010-2020, 2600Hz
-%%% @doc
+%%% @doc This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(doodle_listener).
@@ -26,8 +29,13 @@
 -define(SERVER, ?MODULE).
 
 -type state() :: map().
+-type context() :: map().
 
--define(BINDINGS, [{'sms', [{'restrict_to', ['inbound']}]}]).
+-define(BINDINGS, [{'im', [{'restrict_to', ['inbound']}
+                          ,{'im_types', ['sms']}
+                          ]
+                   }
+                  ]).
 
 -define(QUEUE_NAME, <<"doodle">>).
 
@@ -42,7 +50,7 @@
                          ,{'no_ack', 'false'}
                          ]).
 
--define(RESPONDERS, [{{?MODULE, 'handle_message'}, [{<<"message">>, <<"inbound">>}]}]).
+-define(RESPONDERS, [{{?MODULE, 'handle_message'}, [{<<"sms">>, <<"inbound">>}]}]).
 
 -define(AMQP_PUBLISH_OPTIONS, [{'mandatory', 'true'}
                               ,{'delivery_mode', 2}
@@ -154,17 +162,17 @@ code_change(_OldVsn, State, _Extra) ->
 handle_message(JObj, Props) ->
     Srv = props:get_value('server', Props),
     Deliver = props:get_value('deliver', Props),
-    case kapi_sms:inbound_v(JObj) of
+    case kapi_im:inbound_v(JObj) of
         'true' ->
             Context = inbound_context(JObj, Props),
-            kz_util:put_callid(kz_api_sms:message_id(JObj)),
+            kz_util:put_callid(kz_im:message_id(JObj)),
             handle_inbound(Context);
         'false' ->
             lager:debug("error validating inbound message : ~p", [JObj]),
             gen_listener:nack(Srv, Deliver)
     end.
 
--spec inbound_context(kz_json:object(), kz_term:proplist()) -> map().
+-spec inbound_context(kz_json:object(), kz_term:proplist()) -> context().
 inbound_context(JObj, Props) ->
     Srv = props:get_value('server', Props),
     Deliver = props:get_value('deliver', Props),
@@ -173,14 +181,14 @@ inbound_context(JObj, Props) ->
     #{number => Number
      ,inception => Inception
      ,request => JObj
-     ,route_id => kz_api_sms:route_id(JObj)
-     ,route_type => kz_api_sms:route_type(JObj)
+     ,route_id => kz_im:route_id(JObj)
+     ,route_type => kz_im:route_type(JObj)
      ,basic => Basic
      ,deliver => Deliver
      ,server => Srv
      }.
 
--spec handle_inbound(map()) -> 'ok'.
+-spec handle_inbound(context()) -> 'ok'.
 handle_inbound(#{number := Number} = Context0) ->
     Routines = [fun custom_vars/1
                ,fun custom_header_token/1
@@ -188,9 +196,6 @@ handle_inbound(#{number := Number} = Context0) ->
                ,fun account_from_number/1
                ,fun set_inception/1
                ,fun lookup_mdn/1
-               ,fun set_default_headers/1
-               ,fun set_account_id/1
-               ,fun set_caller_id/1
                ,fun create_im/1
                ],
     case kz_maps:exec(Routines, Context0) of
@@ -215,7 +220,7 @@ ack(#{server := Server
 custom_vars(#{authorizing_id := _} = Map) -> Map;
 custom_vars(#{request := JObj} = Map) ->
     CCVsFilter = [<<"Account-ID">>, <<"Authorizing-ID">>],
-    CCVs = kz_json:get_json_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()),
+    CCVs = kz_json:get_json_value(<<"Custom-Vars">>, JObj, kz_json:new()),
     Filtered = [{CCV, V} || CCV <- CCVsFilter, (V = kz_json:get_value(CCV, CCVs)) =/= 'undefined'],
     lists:foldl(fun custom_var/2, Map, Filtered).
 
@@ -237,11 +242,11 @@ custom_header_token(Map, JObj, Token) ->
             AccountDb = kz_util:format_account_db(AccountId),
             case kz_datamgr:open_cache_doc(AccountDb, AuthorizingId) of
                 {'ok', Doc} ->
-                    Props = props:filter_undefined([{?CCV(<<"Authorizing-Type">>), kz_doc:type(Doc)}
-                                                   ,{?CCV(<<"Authorizing-ID">>), AuthorizingId}
-                                                   ,{?CCV(<<"Owner-ID">>), kzd_devices:owner_id(Doc)}
-                                                   ,{?CCV(<<"Account-ID">>), AccountId}
-                                                   ,{?CCV(<<"Account-Realm">>), AccountRealm}
+                    Props = props:filter_undefined([{?CV(<<"Authorizing-Type">>), kz_doc:type(Doc)}
+                                                   ,{?CV(<<"Authorizing-ID">>), AuthorizingId}
+                                                   ,{?CV(<<"Owner-ID">>), kzd_devices:owner_id(Doc)}
+                                                   ,{?CV(<<"Account-ID">>), AccountId}
+                                                   ,{?CV(<<"Realm">>), AccountRealm}
                                                    ]),
                     Map#{authorizing_id => AuthorizingId
                         ,account_id => AccountId
@@ -273,11 +278,9 @@ account_from_number(#{phone_number := KNumber, request := JObj} = Map) ->
     case knm_phone_number:assigned_to(KNumber) of
         'undefined' -> Map;
         AccountId ->
-            AccountRealm = kzd_accounts:fetch_realm(AccountId),
             Props = [{<<"Account-ID">>, AccountId}
-                    ,{?CCV(<<"Account-ID">>), AccountId}
-                    ,{?CCV(<<"Account-Realm">>), AccountRealm}
-                    ,{?CCV(<<"Authorizing-Type">>), <<"resource">>}
+                    ,{?CV(<<"Account-ID">>), AccountId}
+                    ,{?CV(<<"Authorizing-Type">>), <<"resource">>}
                     ],
             Map#{account_id => AccountId
                 ,request => kz_json:set_values(Props, JObj)
@@ -286,65 +289,55 @@ account_from_number(#{phone_number := KNumber, request := JObj} = Map) ->
 account_from_number(Map) ->
     Map.
 
--spec set_inception(map()) -> map().
+-spec set_inception(context()) -> context().
 set_inception(#{inception := <<"offnet">>, request := JObj} = Map) ->
     Request = kz_json:get_value(<<"From">>, JObj),
-    Map#{request => kz_json:set_value(?CCV(<<"Inception">>), Request, JObj)};
+    Map#{request => kz_json:set_value(?CV(<<"Inception">>), Request, JObj)};
 set_inception(#{request := JObj} = Map) ->
-    Map#{request => kz_json:delete_keys([<<"Inception">>, ?CCV(<<"Inception">>)], JObj)}.
+    Map#{request => kz_json:delete_keys([<<"Inception">>, ?CV(<<"Inception">>)], JObj)}.
 
--spec lookup_mdn(map()) -> map().
+-spec lookup_mdn(context()) -> context().
 lookup_mdn(#{authorizing_id := _AuthorizingId} = Map) -> Map;
 lookup_mdn(#{phone_number := KNumber, request := JObj} = Map) ->
     Number = knm_phone_number:number(KNumber),
     case doodle_util:lookup_mdn(Number) of
         {'ok', Id, OwnerId} ->
-            Props = props:filter_undefined([{?CCV(<<"Authorizing-Type">>), <<"device">>}
-                                           ,{?CCV(<<"Authorizing-ID">>), Id}
-                                           ,{?CCV(<<"Owner-ID">>), OwnerId}
+            Props = props:filter_undefined([{?CV(<<"Authorizing-Type">>), <<"device">>}
+                                           ,{?CV(<<"Authorizing-ID">>), Id}
+                                           ,{?CV(<<"Owner-ID">>), OwnerId}
                                            ]),
-            JObj1 = kz_json:delete_keys([?CCV(<<"Authorizing-Type">>)
-                                        ,?CCV(<<"Authorizing-ID">>)
+            JObj1 = kz_json:delete_keys([?CV(<<"Authorizing-Type">>)
+                                        ,?CV(<<"Authorizing-ID">>)
                                         ], JObj),
             Map#{request => kz_json:set_values(Props, JObj1)};
         {'error', _} -> Map
     end;
 lookup_mdn(Map) -> Map.
 
--spec set_default_headers(map()) -> map().
-set_default_headers(#{request:= SmsReq, account_id := _AccountId} = Map) ->
-    Map#{request => kz_json:set_values(kz_api:default_headers(?APP_NAME, ?APP_VERSION), SmsReq)};
-set_default_headers(Map) -> Map.
-
--spec set_account_id(map()) -> map().
-set_account_id(#{request:= SmsReq, account_id := AccountId} = Map) ->
-    Map#{request => kz_api_sms:set_account_id(SmsReq, AccountId)};
-set_account_id(Map) -> Map.
-
--spec set_caller_id(map()) -> map().
-set_caller_id(#{request:= SmsReq
-               ,account_id := AccountId
-               ,authorizing_id := AuthorizingId
-               } = Map) ->
-    case kz_endpoint:get(AuthorizingId, AccountId) of
-        {'error', Error} ->
-            lager:warning("unable to get endpoint ~s/~s : ~p", [AuthorizingId, AccountId, Error]),
-            Map;
-        {'ok', EP} ->
-            CID = kzd_devices:caller_id(EP, kz_json:new()),
-            From = kzd_caller_id:internal_number(CID, kz_api_sms:from(SmsReq)),
-            Map#{request => kz_api_sms:set_from(SmsReq, From)}
-    end;
-set_caller_id(Map) -> Map.
-
--spec create_im(map()) -> map().
-create_im(#{request:= SmsReq, account_id := _AccountId} = Map) ->
-    IM = kapps_im:from_payload(SmsReq),
+-spec create_im(context()) -> context().
+create_im(#{request:= SmsReq, account_id := AccountId} = Map) ->
+    Funs = [{fun kapps_im:set_application_name/2, ?APP_NAME}
+           ,{fun kapps_im:set_application_version/2, ?APP_VERSION}
+           ,{fun kapps_im:set_account_id/2, AccountId}
+           ,fun maybe_update_sender/1
+           ],
+    IM = kapps_im:exec(Funs, kapps_im:from_payload(SmsReq)),
     Map#{fetch_id => kapps_im:message_id(IM)
         ,message_id => kapps_im:message_id(IM)
         ,im => IM
         };
 create_im(Map) -> Map.
+
+-spec maybe_update_sender(kapps_im:im()) -> kapps_im:im().
+maybe_update_sender(Im) ->
+    EP = kapps_im:endpoint(Im),
+    case kz_json:is_empty(EP) of
+        'true' -> Im;
+        'false' ->
+            CID = kzd_devices:caller_id(EP, kz_json:new()),
+            From = kzd_caller_id:internal_number(CID, kapps_im:from(Im)),
+            kapps_im:set_from(From, Im)
+    end.
 
 %%%=============================================================================
 %%% Route Message
@@ -354,12 +347,12 @@ create_im(Map) -> Map.
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec route_message(kapps_im:call()) -> 'ok'.
+-spec route_message(context()) -> 'ok'.
 route_message(#{im := Im} = Context) ->
     AllowNoMatch = allow_no_match(Im),
     case kz_flow:lookup(Im) of
-        %% if NoMatch is false then allow the callflow or if it is true and we are able allowed
-        %% to use it for this call
+        %% if NoMatch is false then allow the textflow or if it is true and we are able allowed
+        %% to use it for this message
         {'ok', Flow, NoMatch} when (not NoMatch)
                                    orelse AllowNoMatch ->
             route_message(Context, Flow, NoMatch);
@@ -384,7 +377,7 @@ allow_no_match_type(Im) ->
         _ -> 'true'
     end.
 
--spec route_message(map(), kz_json:object(), boolean()) -> 'ok'.
+-spec route_message(context(), kz_json:object(), boolean()) -> 'ok'.
 route_message(#{im := Im} = Context, Flow, NoMatch) ->
     lager:info("flow ~s in ~s satisfies request"
               ,[kz_doc:id(Flow), kapps_im:account_id(Im)]),

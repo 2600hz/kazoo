@@ -77,7 +77,6 @@ declare_exchanges() ->
     _ = kapi_resource:declare_exchanges(),
     _ = kapi_route:declare_exchanges(),
     _ = kapi_sysconf:declare_exchanges(),
-    _ = kapi_sms:declare_exchanges(),
     _ = kapi_switch:declare_exchanges(),
     _ = kapi_presence:declare_exchanges(),
     kapi_self:declare_exchanges().
