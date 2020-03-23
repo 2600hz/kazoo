@@ -196,7 +196,7 @@ send_notify(PN, Type, Action) ->
                    ,{<<"To">>, kz_json:from_list([{<<"type">>,<<"original">>}
                                                  ,{<<"email_addresses">>, To}
                                                  ])}
-                   | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
     _ = kz_amqp_worker:cast(Notification, fun kapi_notifications:publish_number_feature_manual_action/1),
     'ok'.
