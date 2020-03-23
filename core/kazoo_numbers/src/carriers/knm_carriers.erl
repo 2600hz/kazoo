@@ -168,6 +168,17 @@ all_modules() ->
     ,<<"knm_vitelity">>
     ,<<"knm_voip_innovations">>
     ,<<"knm_voxbone">>
+    ,<<"knm_didww">>
+    ,<<"knm_flowroute">>
+    ,<<"knm_inteliquent">>
+    ,<<"knm_it_vocal">>
+    ,<<"knm_level3">>
+    ,<<"knm_o1">>
+    ,<<"knm_peerless">>
+    ,<<"knm_thinq">>
+    ,<<"knm_verizon">>
+    ,<<"knm_windstream">>
+    ,<<"knm_ziron">>
     ].
 
 %%------------------------------------------------------------------------------
