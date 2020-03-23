@@ -51,27 +51,27 @@ check_numbers(_Numbers) -> {error, not_implemented}.
 %% @end
 %%------------------------------------------------------------------------------
 -spec find_numbers(kz_term:ne_binary(), pos_integer(), knm_carriers:options()) ->
-          {'ok', knm_number:knm_numbers()}.
+          {'error', 'not_available'}.
 find_numbers(_Prefix, _Quantity, _Options) ->
-    {ok, []}.
+    {'error', 'not_available'}.
 
 %%------------------------------------------------------------------------------
 %% @doc Acquire a given number from Simwood.
 %% @end
 %%------------------------------------------------------------------------------
--spec acquire_number(knm_number:knm_number()) ->
-          knm_number:knm_number().
+-spec acquire_number(knm_phone_number:record()) ->
+          knm_phone_number:record().
 acquire_number(Number) ->
-    knm_errors:by_carrier(?MODULE, not_implemented, knm_number:phone_number(Number)).
+    knm_errors:by_carrier(?MODULE, not_implemented, knm_phone_number:number(Number)).
 
 %%------------------------------------------------------------------------------
 %% @doc Return number back to Simwood.
 %% @end
 %%------------------------------------------------------------------------------
--spec disconnect_number(knm_number:knm_number()) ->
-          knm_number:knm_number().
+-spec disconnect_number(knm_phone_number:record()) ->
+          knm_phone_number:record().
 disconnect_number(Number) ->
-    knm_errors:by_carrier(?MODULE, not_implemented, knm_number:phone_number(Number)).
+    knm_errors:by_carrier(?MODULE, not_implemented, knm_phone_number:number(Number)).
 
 %%------------------------------------------------------------------------------
 %% @doc
