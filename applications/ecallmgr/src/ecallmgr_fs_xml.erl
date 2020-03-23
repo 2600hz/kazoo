@@ -656,9 +656,8 @@ kazoo_var_to_fs_var({<<"origination_uuid">> = K, UUID}, Vars) ->
     [ <<K/binary, "=", UUID/binary>> | Vars];
 
 kazoo_var_to_fs_var({<<"Hold-Media">>, Media}, Vars) ->
-    [list_to_binary(["hold_music="
-                    ,kz_term:to_list(ecallmgr_util:media_path(Media, 'extant', get('callid'), kz_json:new()))
-                    ])
+    MediaPath = ecallmgr_util:moh_media_path(Media, 'extant', get('callid'), kz_json:new()),
+    [list_to_binary(["hold_music=", MediaPath])
      | Vars];
 
 kazoo_var_to_fs_var({<<"Codecs">>, []}, Vars) ->
