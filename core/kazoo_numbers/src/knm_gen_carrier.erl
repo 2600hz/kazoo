@@ -17,10 +17,10 @@
     knm_search:mod_response().
 
 -callback acquire_number(knm_phone_number:record()) ->
-    knm_phone_number:record().
+    knm_phone_number:record() | no_return().
 
 -callback disconnect_number(knm_phone_number:record()) ->
-    knm_phone_number:record().
+    knm_phone_number:record() | no_return().
 
 -callback should_lookup_cnam() ->
     boolean().
@@ -47,12 +47,12 @@
 
 -spec configuration(carrier()) -> kz_json:object().
 configuration(Carrier) ->
-    try carrier_callback(Carrier, configuration, []) of
-        no_callback -> default_config(Carrier);
+    try carrier_callback(Carrier, 'configuration', []) of
+        'no_callback' -> default_config(Carrier);
         Value ->
             case kz_json:is_json_object(Value) of
-                true -> Value;
-                false -> default_config(Carrier)
+                'true' -> Value;
+                'false' -> default_config(Carrier)
             end
     catch
         _ -> kz_json:new()
@@ -61,7 +61,7 @@ configuration(Carrier) ->
 default_config(Carrier) ->
     Category = list_to_binary([?KNM_CONFIG_CAT, ".", carrier_config(Carrier)]),
     case kapps_config:get_category(Category) of
-        {ok, JObj} ->
+        {'ok', JObj} ->
             Default = kz_json:get_json_value(<<"default">>, JObj, kz_json:new()),
             kz_json:get_json_value(kz_term:to_binary(node()), JObj, Default);
         _ -> kz_json:new()

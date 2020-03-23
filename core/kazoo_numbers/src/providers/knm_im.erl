@@ -176,13 +176,13 @@ requires_manual_action(Type, PN) ->
 -spec maybe_set_callback(im_type(), atom(), knm_phone_number:record()) -> knm_phone_number:record().
 maybe_set_callback(Type, Action, PN) ->
     case requires_manual_action(Type, PN) of
-        true ->
+        'true' ->
             knm_phone_number:add_on_success(PN, {fun send_notify/3, [Type, Action]});
-        false ->
+        'false' ->
             PN
     end.
 
--spec send_notify(knm_phone_number:record(), im_type(), atom()) -> ok.
+-spec send_notify(knm_phone_number:record(), im_type(), atom()) -> 'ok'.
 send_notify(PN, Type, Action) ->
     Config = knm_gen_carrier:configuration(PN),
     To = carrier_feature(Type, ?FEATURE_ACTIVATION_NOTIFY_TO, Config),
@@ -196,7 +196,7 @@ send_notify(PN, Type, Action) ->
                    ,{<<"To">>, kz_json:from_list([{<<"type">>,<<"original">>}
                                                  ,{<<"email_addresses">>, To}
                                                  ])}
-                    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                   | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
-    kz_amqp_worker:cast(Notification, fun kapi_notifications:publish_number_feature_manual_action/1),
-    ok.
+    _ = kz_amqp_worker:cast(Notification, fun kapi_notifications:publish_number_feature_manual_action/1),
+    'ok'.
