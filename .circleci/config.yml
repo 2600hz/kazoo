@@ -26,7 +26,7 @@ workflows:
       - release:
           requires:
             - build
-
+    
 defaults: &defaults
   docker:
     - image: offical2600hz/circleci:21.3.8.12
@@ -229,3 +229,23 @@ jobs:
             else
               printf ":: no errors are found in release\n\n"
             fi
+
+  build_centos7:
+    docker:
+      - image: offical2600hz/kazoo-packager-21:1.0-centos-7
+        user: circleci
+    shell: /bin/bash --login
+    working_directory: /home/circleci/2600hz/kazoo
+    environment:
+      CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
+      CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
+      BASH_ENV: "/home/circleci/2600hz/.bashrc"
+      BUILD_ROOT: "/home/circleci/2600hz/packager"
+      KAZOO_ROOT: "/home/circleci/2600hz/kazoo"
+      BUILD_SOURCES: "/home/circleci/2600hz/packager/SOURCES"
+      BUILD_RPMS: "/home/circleci/2600hz/packager/RPMS"
+      APP_DIR: "/home/circleci/2600hz/kazoo"
+    steps:
+      - run: 
+          name: dummy step
+          command: echo ok 
