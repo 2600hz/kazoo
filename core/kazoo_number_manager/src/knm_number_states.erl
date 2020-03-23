@@ -190,7 +190,7 @@ authorize(T) ->
 not_assigning_to_self(T0=#{todo := Ns}) ->
     F = fun (N, T) ->
                 case knm_number:attempt(fun not_assigning_to_self/1, [N]) of
-                    {ok, NewN} -> knm_numbers:ok(NewN, T);
+                    {'ok', NewN} -> knm_numbers:ok(NewN, T);
                     {error, R} -> knm_numbers:ko(N, R, T)
                 end
         end,

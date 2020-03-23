@@ -43,9 +43,9 @@ is_local() -> 'true'.
 %% @doc Check with carrier if these numbers are registered with it.
 %% @end
 %%------------------------------------------------------------------------------
--spec check_numbers(kz_term:ne_binaries()) -> {ok, kz_json:object()} |
-          {error, any()}.
-check_numbers(_Numbers) -> {error, not_implemented}.
+-spec check_numbers(kz_term:ne_binaries()) -> {'ok', kz_json:object()} |
+          {'error', 'not_implemented'}.
+check_numbers(_Numbers) -> {'error', 'not_implemented'}.
 
 %%------------------------------------------------------------------------------
 %% @doc Query the local system for a quantity of available numbers

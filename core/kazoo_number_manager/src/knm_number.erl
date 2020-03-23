@@ -110,7 +110,7 @@ is_number(_) -> 'false'.
 %% <div class="notice">Number parameter has to be normalized.</div>
 %%
 %% <div class="notice">{@link get/1}, {@link get/2} should not throw,
-%% instead they should return: `{ok,_} | {error,_} | ...'.</div>
+%% instead they should return: `{'ok',_} | {error,_} | ...'.</div>
 %% @end
 %%------------------------------------------------------------------------------
 

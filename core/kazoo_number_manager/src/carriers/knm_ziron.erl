@@ -1,10 +1,9 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2016-2020, 2600Hz
-%%% @doc Handle tower-of-power MDN phone numbers.
-%%% @author Pierre Fenoll
+%%% @copyright (C) 2015-2020, 2600Hz
+%%% @doc Handle client requests for phone number
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(knm_mdn).
+-module(knm_ziron).
 -behaviour(knm_gen_carrier).
 
 -export([info/0]).
@@ -18,13 +17,16 @@
 
 -include("knm.hrl").
 
+-define(KNM_CARRIER_NAME, "ziron").
+-define(KNM_CARRIER_CONFIG_CAT, <<(?KNM_CONFIG_CAT)/binary, ".", ?KNM_CARRIER_NAME>>).
+
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
 -spec info() -> map().
 info() ->
-    #{?CARRIER_INFO_MAX_PREFIX => 0
+    #{?CARRIER_INFO_MAX_PREFIX => 3
      }.
 
 %%------------------------------------------------------------------------------
@@ -45,36 +47,38 @@ is_local() -> 'false'.
 check_numbers(_Numbers) -> {'error', 'not_implemented'}.
 
 %%------------------------------------------------------------------------------
-%% @doc Query the local system for a quantity of available numbers
-%% in a rate center
+%% @doc Query carrier for available numbers.
 %% @end
 %%------------------------------------------------------------------------------
 -spec find_numbers(kz_term:ne_binary(), pos_integer(), knm_carriers:options()) ->
-          {'ok', knm_number:knm_numbers()} |
-          {'error', any()}.
+          {'ok', knm_number:knm_numbers()}.
 find_numbers(_Prefix, _Quantity, _Options) ->
-    {'error', 'not_available'}.
+    {'ok', []}.
+
+%%------------------------------------------------------------------------------
+%% @doc Acquire a given number from carrier.
+%% @end
+%%------------------------------------------------------------------------------
+-spec acquire_number(knm_number:knm_number()) ->
+          no_return().
+acquire_number(Number) ->
+    knm_errors:by_carrier(?MODULE, 'not_implemented', Number).
+
+%%------------------------------------------------------------------------------
+%% @doc Return number back to carrier.
+%% @end
+%%------------------------------------------------------------------------------
+-spec disconnect_number(knm_number:knm_number()) ->
+          no_return().
+disconnect_number(Number) ->
+    knm_errors:by_carrier(?MODULE, 'not_implemented', Number).
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
 -spec is_number_billable(knm_phone_number:knm_phone_number()) -> boolean().
-is_number_billable(_Number) -> 'false'.
-
-%%------------------------------------------------------------------------------
-%% @doc Acquire a given number from the carrier
-%% @end
-%%------------------------------------------------------------------------------
--spec acquire_number(knm_number:knm_number()) -> knm_number:knm_number().
-acquire_number(Number) -> Number.
-
-%%------------------------------------------------------------------------------
-%% @doc Release a number from the routing table
-%% @end
-%%------------------------------------------------------------------------------
--spec disconnect_number(knm_number:knm_number()) -> knm_number:knm_number().
-disconnect_number(Number) -> Number.
+is_number_billable(_Number) -> 'true'.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -82,3 +86,7 @@ disconnect_number(Number) -> Number.
 %%------------------------------------------------------------------------------
 -spec should_lookup_cnam() -> boolean().
 should_lookup_cnam() -> 'true'.
+
+%%%=============================================================================
+%%% Internal functions
+%%%=============================================================================

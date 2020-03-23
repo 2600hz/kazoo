@@ -259,7 +259,7 @@ search_carrier(Carrier, Options) ->
 wait_for_search(0) -> 'ok';
 wait_for_search(N) ->
     receive
-        {_Carrier, {ok, []}} ->
+        {_Carrier, {'ok', []}} ->
             lager:debug("~s found no numbers", [_Carrier]),
             wait_for_search(N - 1);
         {_Carrier, {'ok', Numbers}} ->
