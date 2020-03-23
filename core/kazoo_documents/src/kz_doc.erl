@@ -109,6 +109,8 @@
         ,setters/2
         ]).
 
+-export([are_equal/2]).
+
 -ifdef(TEST).
 -export([remove_pvt/1]).
 -endif.
@@ -866,3 +868,30 @@ setters(JObj, Routines) ->
                ,JObj
                ,Routines
                ).
+
+%%------------------------------------------------------------------------------
+%% @doc Compare documents for equality
+%%
+%% Two documents are considered equal if their public fields match and
+%% their attachments metadata match
+%% @end
+%%------------------------------------------------------------------------------
+-spec are_equal(doc(), doc()) -> boolean().
+are_equal(FirstDoc, SecondDoc) ->
+    lists:all(fun(F) -> F(FirstDoc, SecondDoc) end
+             ,[fun are_equal_public/2
+              ,fun are_equal_attachments/2
+              ]
+             ).
+
+-spec are_equal_public(doc(), doc()) -> boolean().
+are_equal_public(FirstDoc, SecondDoc) ->
+    FirstPublic = public_fields(FirstDoc),
+    SecondPublic = public_fields(SecondDoc),
+    kz_json:are_equal(FirstPublic, SecondPublic).
+
+-spec are_equal_attachments(doc(), doc()) -> boolean().
+are_equal_attachments(FirstDoc, SecondDoc) ->
+    FirstAtts = attachments(FirstDoc),
+    SecondAtts = attachments(SecondDoc),
+    kz_json:are_equal(FirstAtts, SecondAtts).
