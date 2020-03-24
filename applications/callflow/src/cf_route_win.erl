@@ -15,19 +15,19 @@
 
 -include("callflow.hrl").
 
--define(JSON(L), kz_json:from_list(L)).
+-define(TO_JSON(L), kz_json:from_list(L)).
 
 -define(DEFAULT_SERVICES
-       ,?JSON([{<<"audio">>, ?JSON([{<<"enabled">>, 'true'}])}
-              ,{<<"video">>, ?JSON([{<<"enabled">>, 'true'}])}
-              ,{<<"sms">>, ?JSON([{<<"enabled">>, 'true'}])}
-              ]
-             )
+       ,?TO_JSON([{<<"audio">>, ?TO_JSON([{<<"enabled">>, 'true'}])}
+                 ,{<<"video">>, ?TO_JSON([{<<"enabled">>, 'true'}])}
+                 ,{<<"sms">>, ?TO_JSON([{<<"enabled">>, 'true'}])}
+                 ]
+                )
        ).
 
--spec execute_callflow(kz_json:object(), kapps_call:call()) ->
+-spec execute_callflow(kapi_route:win(), kapps_call:call()) ->
           {'ok' | 'restricted', kapps_call:call()}.
-execute_callflow(JObj, Call) ->
+execute_callflow(RouteWin, Call) ->
     case should_restrict_call(Call) of
         'true' ->
             lager:debug("endpoint is restricted from making this call, terminate", []),
@@ -37,7 +37,7 @@ execute_callflow(JObj, Call) ->
             {'restricted', Call};
         'false' ->
             lager:info("setting initial information about the call"),
-            {'ok', bootstrap_callflow_executer(JObj, Call)}
+            {'ok', bootstrap_callflow_executer(RouteWin, Call)}
     end.
 
 -spec should_restrict_call(kapps_call:call()) -> boolean().
@@ -202,8 +202,8 @@ get_callee_extension_info(Call) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec bootstrap_callflow_executer(kz_json:object(), kapps_call:call()) -> kapps_call:call().
-bootstrap_callflow_executer(_JObj, Call) ->
+-spec bootstrap_callflow_executer(kapi_route:win(), kapps_call:call()) -> kapps_call:call().
+bootstrap_callflow_executer(_RouteWin, Call) ->
     Routines = [fun store_owner_id/1
                ,fun set_language/1
                ,fun include_denied_call_restrictions/1

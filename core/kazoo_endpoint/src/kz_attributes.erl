@@ -488,25 +488,8 @@ presence_id(Endpoint, Call) ->
     presence_id(Endpoint, Call, Username).
 
 -spec presence_id(kz_json:object(), kapps_call:call(), Default) -> kz_term:ne_binary() | Default.
-presence_id(Endpoint, Call, Default) ->
-    PresenceId = kzd_devices:presence_id(Endpoint, Default),
-    case kz_term:is_empty(PresenceId) of
-        'true' -> maybe_fix_presence_id_realm(Default, Endpoint, Call);
-        'false' -> maybe_fix_presence_id_realm(PresenceId, Endpoint, Call)
-    end.
-
--spec maybe_fix_presence_id_realm(kz_term:ne_binary(), kz_json:object(), kapps_call:call()) -> kz_term:api_ne_binary().
-maybe_fix_presence_id_realm('undefined', _Endpoint, _Call) -> 'undefined';
-maybe_fix_presence_id_realm(PresenceId, Endpoint, Call) ->
-    case binary:match(PresenceId, <<"@">>) of
-        'nomatch' ->
-            Realm = kz_endpoint:get_sip_realm(Endpoint
-                                             ,kapps_call:account_id(Call)
-                                             ,kapps_call:request_realm(Call)
-                                             ),
-            <<PresenceId/binary, $@, Realm/binary>>;
-        _Else -> PresenceId
-    end.
+presence_id(Endpoint, _Call, Default) ->
+    kzd_devices:calculate_presence_id(Endpoint, Default).
 
 %%------------------------------------------------------------------------------
 %% @doc

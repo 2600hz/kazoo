@@ -160,8 +160,10 @@ callflow_should_respond(Call) ->
     end.
 
 -spec ccvs(kz_json:object(), kapi_route:req(), kapps_call:call()) -> kz_term:api_object().
-ccvs(Flow, _RouteReq, _Call) ->
-    kz_json:from_list([{<<"CallFlow-ID">>, kz_doc:id(Flow)}]).
+ccvs(Flow, _RouteReq, Call) ->
+    kz_json:set_values([{<<"CallFlow-ID">>, kz_doc:id(Flow)}]
+                      ,response_ccvs(Call)
+                      ).
 
 -spec cavs(kz_json:object(), kapi_route:req(), kapps_call:call()) -> kz_term:api_object().
 cavs(_Flow, _RouteReq, _Call) -> 'undefined'.
@@ -178,6 +180,7 @@ send_route_response(Flow, RouteReq, Call) ->
     CallId = kapps_call:call_id(Call),
     ControllerQ = kapps_call:controller_queue(Call),
     FetchId =  kz_api:msg_id(RouteReq),
+
     Resp = props:filter_undefined(
              [{?KEY_MSG_ID, FetchId}
              ,{?KEY_API_ACCOUNT_ID, AccountId}
@@ -196,6 +199,26 @@ send_route_response(Flow, RouteReq, Call) ->
     ServerId = kz_api:server_id(RouteReq),
     kapi_route:publish_resp(ServerId, Resp),
     wait_for_route_win(Call, FetchId).
+
+response_ccvs(Call) ->
+    response_ccvs(Call, kapps_call:authorizing_id(Call), kapps_call:authorizing_type(Call)).
+
+response_ccvs(Call, DeviceId, <<"device">>) ->
+    response_ccvs_from_device(Call, kzd_devices:fetch(kapps_call:account_db(Call), DeviceId));
+response_ccvs(Call, _Id, _Type) ->
+    lager:debug("ignoring authz type: ~s id: ~s", [_Type, _Id]),
+    default_response_ccvs(Call).
+
+response_ccvs_from_device(Call, {'ok', DeviceJObj}) ->
+    kz_json:set_values([{<<"Presence-ID">>, kzd_devices:calculate_presence_id(DeviceJObj)}]
+                      ,default_response_ccvs(Call)
+                      );
+response_ccvs_from_device(Call, _E) ->
+    default_response_ccvs(Call).
+
+default_response_ccvs(Call) ->
+    kapps_call:custom_channel_vars(Call).
+
 
 wait_for_route_win(Call, FetchId) ->
     receive
