@@ -12,7 +12,7 @@
 -export([handle_req/2]).
 
 -include("conference.hrl").
--include_lib("core/kazoo_stdlib/include/kz_databases.hrl").
+-include_lib("kazoo_stdlib/include/kz_databases.hrl").
 
 -spec handle_req(kapi_conference:discovery_req(), kz_term:proplist()) -> any().
 handle_req(DiscoveryReq, _Options) ->
