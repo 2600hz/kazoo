@@ -70,6 +70,6 @@ core_or_app(KazooRoot, AppL) ->
 
 core_or_app(KazooRoot, AppL, []) ->
     io:format('user', "failed to determine if ~s is core or dep in ~s~n", [AppL, KazooRoot]),
-    throw({'error', 'not_found'});
+    throw({'error', {'app_not_found', KazooRoot, AppL}});
 core_or_app(_KazooRoot, _AppL, [Path]) ->
     filename:basename(filename:dirname(Path)).
