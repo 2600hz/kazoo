@@ -1503,8 +1503,8 @@ fix_contact([Contact | Options], Username, Realm) ->
 -spec moh_media_path(kz_term:api_binary(), media_types(), kz_term:ne_binary(), kz_json:object()) -> kz_term:ne_binary().
 moh_media_path(Media, Types, UUID, JObj) ->
     case media_path(Media, Types, UUID, JObj) of
-        <<"http_cache", _/binary>> = Media -> maybe_use_kz_moh(Media, JObj);
-        Media -> Media
+        <<"http_cache", _/binary>> = HttpMedia -> maybe_use_kz_moh(HttpMedia, JObj);
+        Else -> Else
     end.
 
 -spec maybe_use_kz_moh(kz_term:ne_binary(), kz_json:object()) -> kz_term:ne_binary().
