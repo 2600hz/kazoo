@@ -227,7 +227,7 @@ print_invalid_cli_args() ->
 -spec parse_args(string()) -> {'ok', kz_term:proplist(), list()}.
 parse_args(CommandLineArgs) ->
     case getopt:parse(option_spec_list(), CommandLineArgs) of
-        {'ok', {Options, Args}} when is_list(Options) ->
+        {'ok', {Options, Args}} ->
             {'ok', Options, Args};
         {'error', {_, _}} ->
             print_help()
