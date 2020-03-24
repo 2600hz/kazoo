@@ -10,15 +10,16 @@
 -include("ecallmgr.hrl").
 
 -export([start_link/2
-        ,add_child/2
         ]).
 -export([init/1]).
 
--define(EVENTS, application:get_env(?APP, 'event_stream', ?FS_EVENTS)).
--define(CUSTOM_EVENTS, application:get_env(?APP, 'event_stream_custom', ?FS_CUSTOM_EVENTS)).
+-define(PACKET_SIZE, kapps_config:get_integer(?APP_NAME, <<"tcp_packet_type">>, 2)).
 
--define(CHILDREN, [event_child(Node, Event) || Event <- ?EVENTS]
-        ++ [custom_child(Node, Subclass) || Subclass <- ?CUSTOM_EVENTS]).
+-define(FREESWITCH_EVENTS, application:get_env(?APP, 'event_stream', ?FS_EVENTS)).
+-define(CUSTOM_EVENTS, application:get_env(?APP, 'event_stream_custom', ?FS_CUSTOM_EVENTS)).
+-define(EVENTS, ?FREESWITCH_EVENTS ++ ?CUSTOM_EVENTS).
+
+-define(CHILDREN(PacketSize), [event_child(Node, Event, PacketSize) || Event <- ?EVENTS]).
 
 %%==============================================================================
 %% API functions
@@ -39,12 +40,6 @@ sup_name(Node) ->
                             ]),
     kz_term:to_atom(Name, 'true').
 
--spec add_child(atom(), {'CUSTOM', atom()} | atom()) -> kz_types:sup_startchild_ret().
-add_child(Node, {'CUSTOM', Subclass}) ->
-    supervisor:start_child(sup_name(Node), custom_child(Node, Subclass));
-add_child(Node, Event) ->
-    supervisor:start_child(sup_name(Node), event_child(Node, Event)).
-
 %%==============================================================================
 %% Supervisor callbacks
 %%==============================================================================
@@ -63,14 +58,12 @@ init([Node, _Props]) ->
     MaxSecondsBetweenRestarts = 6,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
+    PacketSize = ?PACKET_SIZE,
+    _ = freeswitch:event_stream_framing(Node, PacketSize),
 
-    {'ok', {SupFlags, ?CHILDREN}}.
+    {'ok', {SupFlags, ?CHILDREN(PacketSize)}}.
 
-
--spec event_child(atom(), atom()) -> kz_types:sup_child_spec().
-event_child(Node, Event) ->
-    ?WORKER_NAME_ARGS_TYPE(Event, 'ecallmgr_fs_event_stream', [Node, Event, 'undefined'], 'transient').
-
--spec custom_child(atom(), atom()) -> kz_types:sup_child_spec().
-custom_child(Node, Subclass) ->
-    ?WORKER_NAME_ARGS_TYPE(Subclass, 'ecallmgr_fs_event_stream', [Node, 'CUSTOM', Subclass], 'transient').
+-spec event_child(atom(), ecallmgr_fs_event_stream:profile(), ecallmgr_fs_event_stream:event_packet_type()) ->
+          kz_types:sup_child_spec().
+event_child(Node, Event, Packet) ->
+    ?WORKER_NAME_ARGS_TYPE(Event, 'ecallmgr_fs_event_stream', [Node, Event, Packet], 'transient').
