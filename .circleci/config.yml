@@ -92,14 +92,6 @@ workflows:
               ignore: /.*/
           requires:
             - build
-      - release:
-          filters:
-            tags:
-              only: /^\d+\.\d+\.\d+$/
-            branches:
-              ignore: /.*/
-          requires:
-                - build
       - build_centos7:
           filters:
             tags:
@@ -112,7 +104,6 @@ workflows:
             - checks
             - docs
             - analyze
-            - release
 
 defaults: &defaults
   docker:
