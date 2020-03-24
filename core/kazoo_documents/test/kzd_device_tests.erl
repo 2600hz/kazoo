@@ -267,9 +267,9 @@ test_calculating_presence_id() ->
                                       ,<<"call_forward">>
                                       ,<<"call_recording">>
                                       ,<<"call_restriction">>
-                                           ,<<"caller_id">>
-                                           ,<<"dial_plan">>
-                                           ,<<"media">>, <<"metaflows">>, <<"ringtones">>
+                                      ,<<"caller_id">>
+                                      ,<<"dial_plan">>
+                                      ,<<"media">>, <<"metaflows">>, <<"ringtones">>
                                       ]
                                      , Device),
     JustUsername = kzd_devices:set_sip_username(BlankDevice, SIPUsername),
