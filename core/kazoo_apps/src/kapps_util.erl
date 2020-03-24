@@ -523,9 +523,17 @@ get_view_json(App, File) ->
 -spec get_view_json(kz_term:text()) -> kz_datamgr:view_listing().
 get_view_json(Path) ->
     lager:debug("fetching view from ~s", [Path]),
-    {'ok', Bin} = file:read_file(Path),
+    get_view_json_from_file(Path, file:read_file(Path)).
+
+get_view_json_from_file(_Path, {'ok', Bin}) ->
     JObj = kz_json:decode(Bin),
-    {kz_doc:id(JObj), JObj}.
+    {kz_doc:id(JObj), JObj};
+get_view_json_from_file(_Path, {'error', 'enoent'}=E) ->
+    lager:error("error loading ~s: no file found", [_Path]),
+    throw(E);
+get_view_json_from_file(_Path, {'error', _E}=E) ->
+    lager:error("error loading ~s: ~p", [_Path, _E]),
+    throw(E).
 
 %%------------------------------------------------------------------------------
 %% @doc
