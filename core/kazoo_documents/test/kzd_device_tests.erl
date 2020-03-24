@@ -8,8 +8,8 @@
 
 -include_lib("eunit/include/eunit.hrl").
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
+-include_lib("kazoo_stdlib/include/kazoo_dbg.hrl").
 -include_lib("kazoo_fixturedb/include/kz_fixturedb.hrl").
-
 
 -define(DEVICE_1_ID, <<"device00000000000000000000000001">>).
 -define(DEVICE_2_ID, <<"device00000000000000000000000002">>).
@@ -31,6 +31,7 @@ kz_device_test_() ->
              ,test_outbound_flags_static()
              ,test_outbound_dynamic_flags()
              ,test_device_param_setting()
+             ,test_calculating_presence_id()
              ]
      end
     }.
@@ -252,6 +253,44 @@ test_device_param_setting() ->
             ],
 
     [?_assertEqual(Value, Get(Set(Device, Value))) || {Value, Set, Get} <- Setup].
+
+test_calculating_presence_id() ->
+    {'ok', Device} = kzd_devices:fetch(?FIXTURE_MASTER_ACCOUNT_ID, ?DEVICE_1_ID),
+    OwnerId = kzd_devices:owner_id(Device),
+    {'ok', User} = kzd_users:fetch(?FIXTURE_MASTER_ACCOUNT_ID, OwnerId),
+
+    SIPUsername = kz_binary:rand_hex(5),
+    AccountRealm = <<"4a6863.sip.2600hz.local">>,
+
+    BlankDevice = kz_json:delete_keys([<<"presence_id">>
+                                      ,<<"owner_id">>
+                                      ,<<"call_forward">>
+                                      ,<<"call_recording">>
+                                      ,<<"call_restriction">>
+                                           ,<<"caller_id">>
+                                           ,<<"dial_plan">>
+                                           ,<<"media">>, <<"metaflows">>, <<"ringtones">>
+                                      ]
+                                     , Device),
+    JustUsername = kzd_devices:set_sip_username(BlankDevice, SIPUsername),
+
+    DevicePresenceId = kz_binary:rand_hex(5),
+    WithDevicePresenceId = kzd_devices:set_presence_id(JustUsername, DevicePresenceId),
+
+    OwnerPresenceId = kzd_users:presence_id(User),
+
+    HotdeskedDevice = kzd_devices:set_hotdesk(JustUsername, kz_json:from_list([{<<"users">>, kz_json:from_list([{OwnerId, kz_binary:rand_hex(16)}])}])),
+    HotdeskedAndOwnedDevice = kzd_devices:set_owner_id(HotdeskedDevice, OwnerId),
+
+    Tests = [{"SIP username", <<SIPUsername/binary, "@", AccountRealm/binary>>, JustUsername}
+            ,{"Device presence_id", <<DevicePresenceId/binary, "@", AccountRealm/binary>>, WithDevicePresenceId}
+            ,{"Owner presence_id", OwnerPresenceId, Device}
+            ,{"Hotdesked presence_id", OwnerPresenceId, HotdeskedDevice}
+            ,{"Hotdesked and owned presence_id", OwnerPresenceId, HotdeskedAndOwnedDevice}
+            ],
+    [{Label, ?_assertEqual(PresenceId, kzd_devices:calculate_presence_id(DeviceJObj))}
+     || {Label, PresenceId, DeviceJObj} <- Tests
+    ].
 
 validate(Schema, Device) ->
     kz_json_schema:validate(Schema

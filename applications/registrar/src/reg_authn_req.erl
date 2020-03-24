@@ -110,11 +110,10 @@ create_ccvs(#auth_user{doc=JObj}=AuthUser) ->
 -spec maybe_get_presence_id(auth_user()) -> kz_term:api_binary().
 maybe_get_presence_id(#auth_user{account_db=AccountDb
                                 ,authorizing_id=DeviceId
-                                ,owner_id=OwnerId
                                 ,account_realm=AccountRealm
                                 }
                      ) ->
-    case get_presence_id(AccountDb, DeviceId, OwnerId) of
+    case get_presence_id(AccountDb, DeviceId) of
         'undefined' -> 'undefined';
         PresenceId ->
             case binary:match(PresenceId, <<"@">>) of
@@ -123,31 +122,18 @@ maybe_get_presence_id(#auth_user{account_db=AccountDb
             end
     end.
 
--spec get_presence_id(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()) -> kz_term:api_binary().
-get_presence_id('undefined', _, _) -> 'undefined';
-get_presence_id(_, 'undefined', 'undefined') -> 'undefined';
-get_presence_id(AccountDb, DeviceId, 'undefined') ->
-    get_device_presence_id(AccountDb, DeviceId);
-get_presence_id(AccountDb, DeviceId, OwnerId) ->
-    maybe_get_owner_presence_id(AccountDb, DeviceId, OwnerId).
+-spec get_presence_id(kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> kz_term:api_ne_binary().
+get_presence_id('undefined', _) -> 'undefined';
+get_presence_id(_, 'undefined') -> 'undefined';
+get_presence_id(AccountDb, DeviceId) ->
+    get_device_presence_id(AccountDb, DeviceId).
 
--spec maybe_get_owner_presence_id(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_binary().
-maybe_get_owner_presence_id(AccountDb, DeviceId, OwnerId) ->
-    case kz_datamgr:open_cache_doc(AccountDb, OwnerId) of
-        {'error', _} -> 'undefined';
-        {'ok', UserJObj} ->
-            case kzd_user:presence_id(UserJObj) of
-                'undefined' -> get_device_presence_id(AccountDb, DeviceId);
-                PresenceId -> PresenceId
-            end
-    end.
-
--spec get_device_presence_id(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_binary().
+-spec get_device_presence_id(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_ne_binary().
 get_device_presence_id(AccountDb, DeviceId) ->
     case kz_datamgr:open_cache_doc(AccountDb, DeviceId) of
         {'error', _} -> 'undefined';
-        {'ok', JObj} ->
-            case kzd_devices:presence_id(JObj) of
+        {'ok', DeviceJObj} ->
+            case kzd_devices:calculate_presence_id(DeviceJObj) of
                 'undefined' -> 'undefined';
                 PresenceId -> PresenceId
             end

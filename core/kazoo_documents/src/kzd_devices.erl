@@ -40,7 +40,9 @@
 -export([name/1, name/2, set_name/2]).
 -export([outbound_flags/1, outbound_flags/2, set_outbound_flags/2]).
 -export([owner_id/1, owner_id/2, set_owner_id/2]).
--export([presence_id/1, presence_id/2, set_presence_id/2]).
+-export([presence_id/1, presence_id/2, set_presence_id/2
+        ,calculate_presence_id/1, calculate_presence_id/2
+        ]).
 -export([provision/1, provision/2, set_provision/2]).
 -export([provision_combo_keys/1, provision_combo_keys/2, set_provision_combo_keys/2]).
 -export([provision_combo_key/2, provision_combo_key/3, set_provision_combo_key/3]).
@@ -549,6 +551,55 @@ presence_id(Doc, Default) ->
 -spec set_presence_id(doc(), binary()) -> doc().
 set_presence_id(Doc, PresenceId) ->
     kz_json:set_value([<<"presence_id">>], PresenceId, Doc).
+
+-spec calculate_presence_id(doc()) -> kz_term:api_ne_binary().
+calculate_presence_id(Doc) ->
+    calculate_presence_id(Doc, sip_username(Doc)).
+
+-spec calculate_presence_id(doc(), Default) -> kz_term:ne_binary() | Default.
+calculate_presence_id(Doc, Default) ->
+    DevicePresenceId = presence_id(Doc, Default),
+    case calculate_presence_id(Doc, DevicePresenceId, owner_id(Doc)) of
+        'undefined' -> 'undefined';
+        PresenceId -> maybe_fix_presence_id(Doc, PresenceId)
+    end.
+
+-spec maybe_fix_presence_id(doc(), kz_term:ne_binary()) -> kz_term:ne_binary().
+maybe_fix_presence_id(Doc, PresenceId) ->
+    case binary:match(PresenceId, <<"@">>) of
+        'nomatch' -> fix_presence_id(Doc, PresenceId);
+        _Match -> PresenceId
+    end.
+
+-spec fix_presence_id(doc(), kz_term:ne_binary()) -> kz_term:ne_binary().
+fix_presence_id(Doc, PresenceId) ->
+    AccountRealm = kzd_accounts:fetch_realm(kz_doc:account_id(Doc)),
+    <<PresenceId/binary, "@", AccountRealm/binary>>.
+
+-spec calculate_presence_id(doc(), Default, kz_term:api_ne_binary()) -> kz_term:ne_binary() | Default.
+calculate_presence_id(Doc, DevicePresenceId, 'undefined') ->
+    calculate_presence_id_from_hotdesk(Doc, DevicePresenceId, hotdesk_ids(Doc, []));
+calculate_presence_id(Doc, DevicePresenceId, OwnerId) ->
+    calculate_presence_id_from_owner(Doc, DevicePresenceId, OwnerId).
+
+-spec calculate_presence_id_from_owner(doc(), Default, kz_term:ne_binary()) -> kz_term:ne_binary() | Default.
+calculate_presence_id_from_owner(Doc, DevicePresenceId, OwnerId) ->
+    case kzd_users:fetch(kz_doc:account_db(Doc), OwnerId) of
+        {'ok', Owner} ->
+            kzd_users:presence_id(Owner, DevicePresenceId);
+        {'error', _} ->
+            DevicePresenceId
+    end.
+
+-spec calculate_presence_id_from_hotdesk(doc(), Default, kz_term:ne_binary()) -> kz_term:ne_binary() | Default.
+calculate_presence_id_from_hotdesk(_Doc, DevicePresenceId, []) -> DevicePresenceId;
+calculate_presence_id_from_hotdesk(Doc, DevicePresenceId, [HotdeskId|HotdeskIds]) ->
+    case calculate_presence_id_from_owner(Doc, DevicePresenceId, HotdeskId) of
+        DevicePresenceId -> calculate_presence_id_from_hotdesk(Doc, DevicePresenceId, HotdeskIds);
+        HotdeskPresenceId ->
+            lager:debug("using hotdesk presence id ~s from ~s", [HotdeskPresenceId, HotdeskId]),
+            HotdeskPresenceId
+    end.
 
 -spec provision(doc()) -> kz_term:api_object().
 provision(Doc) ->

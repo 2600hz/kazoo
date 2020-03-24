@@ -547,7 +547,7 @@ channel_vars_set_overwrite({Props, Results}) ->
 channel_vars_handle_asserted_identity({Props, Results}=Acc) ->
     Name = props:get_ne_binary_value(<<"Asserted-Identity-Name">>, Props),
     Number = props:get_ne_binary_value(<<"Asserted-Identity-Number">>, Props),
-    CCVs = props:get_value(<<"Custom-Channel-Vars">>, Props, kz_json:new()),
+    CCVs = props:get_json_value(<<"Custom-Channel-Vars">>, Props, kz_json:new()),
     DefaultRealm = kz_json:get_ne_binary_value(<<"Realm">>, CCVs),
     Realm = props:get_ne_binary_value(<<"Asserted-Identity-Realm">>, Props, DefaultRealm),
     case create_asserted_identity_header(Name, Number, Realm) of
@@ -731,7 +731,8 @@ kazoo_var_to_fs_var_fold(K, V, Acc) ->
     case lists:keyfind(K, 1, ?SPECIAL_CHANNEL_VARS) of
         'false' ->
             [list_to_binary([?CHANNEL_VAR_PREFIX, kz_term:to_list(K)
-                            ,"='", kz_term:to_list(V), "'"])
+                            ,"='", kz_term:to_list(V), "'"
+                            ])
              | Acc];
         {_, <<"group_confirm_file">>} ->
             [list_to_binary(["group_confirm_file='"

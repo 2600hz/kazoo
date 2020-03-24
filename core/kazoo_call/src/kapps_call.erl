@@ -1321,7 +1321,10 @@ handle_ccvs_update(CCVs, #kapps_call{}=Call) ->
                             'undefined' -> C;
                             Value -> setelement(Index, C, Value)
                         end
-                end, Call#kapps_call{ccvs=CCVs}, ?SPECIAL_VARS).
+                end
+               ,Call#kapps_call{ccvs=CCVs}
+               ,?SPECIAL_VARS
+               ).
 
 -spec set_custom_publish_function(kapps_custom_publish(), call()) -> call().
 set_custom_publish_function(Fun, #kapps_call{}=Call) when is_function(Fun, 2) ->
