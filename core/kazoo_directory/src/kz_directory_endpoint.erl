@@ -86,32 +86,16 @@ endpoint_id(Endpoint, CCVs) ->
                               )
     end.
 
-
--spec maybe_fix_presence_id_realm(kz_term:api_ne_binary(), kz_json:object(), kz_json:object()) -> kz_json:object().
-maybe_fix_presence_id_realm('undefined', _Endpoint, CCVs) -> CCVs;
-maybe_fix_presence_id_realm(PresenceId, Endpoint, CCVs) ->
-    case binary:match(PresenceId, <<"@">>) of
-        'nomatch' ->
-            Realm = get_realm(Endpoint),
-            kz_json:set_value(<<"Presence-ID">>, <<PresenceId/binary, $@, Realm/binary>>, CCVs);
-        _Else -> kz_json:set_value(<<"Presence-ID">>, PresenceId, CCVs)
+-spec owner_id(kz_json:object(), kz_json:object()) -> kz_json:object().
+owner_id(Endpoint, CCVs) ->
+    case kzd_devices:owner_id(Endpoint) of
+        'undefined' -> CCVs;
+        OwnerId -> kz_json:set_value(<<"Owner-ID">>, OwnerId, CCVs)
     end.
 
 -spec presence_id(kz_json:object(), kz_json:object()) -> kz_json:object().
 presence_id(Endpoint, CCVs) ->
-    Default = kzd_devices:sip_username(Endpoint),
-    PresenceId = kzd_devices:presence_id(Endpoint, Default),
-    case kz_term:is_empty(PresenceId) of
-        'true' -> maybe_fix_presence_id_realm(Default, Endpoint, CCVs);
-        'false' -> maybe_fix_presence_id_realm(PresenceId, Endpoint, CCVs)
-    end.
-
--spec owner_id(kz_json:object(), kz_json:object()) -> kz_json:object().
-owner_id(Endpoint, CCVs) ->
-    case kz_json:get_ne_binary_value(<<"owner_id">>, Endpoint) of
-        'undefined' -> CCVs;
-        OwnerId -> kz_json:set_value(<<"Owner-ID">>, OwnerId, CCVs)
-    end.
+    kz_json:set_value(<<"Presence-ID">>, kzd_devices:calculate_presence_id(Endpoint), CCVs).
 
 -spec hold_music(kz_json:object(), kz_json:object()) -> kz_json:object().
 hold_music(Endpoint, CCVs) ->
@@ -262,7 +246,7 @@ profile(EndpointId, AccountId, Options) ->
 
 -spec generate_ccvs(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 generate_ccvs(_EndpointId, AccountId, Endpoint) ->
-    Realm = kzd_devices:sip_realm(Endpoint,  kz_json:get_value(<<"realm">>, Endpoint)),
+    Realm = kzd_devices:sip_realm(Endpoint, kz_json:get_value(<<"realm">>, Endpoint)),
     Props = [{<<"Account-ID">>, AccountId}
             ,{<<"Reseller-ID">>, kz_services_reseller:get_id(AccountId)}
             ,{<<"Realm">>, Realm}
