@@ -221,7 +221,7 @@ resp_definition() ->
                                      ,<<"a1-hash">>, <<"error">>
                                      ,<<"gsm">>, <<"nonce">>, <<"a3a8">>
                                      ]}
-                 | kapi_definition:event_type_headers(Category, EventName)
+                | kapi_definition:event_type_headers(Category, EventName)
                 ]
                }
               ,{fun kapi_definition:set_types/2
@@ -455,10 +455,10 @@ unbind_q(Q, Props) ->
     unbind_q(Q, Realm, RestrictTo).
 
 unbind_q(Q, Realm, ['authn_req' | RestrictTo]) ->
-    kz_amqp_util:unbind_q_from_callmgr(Q, get_authn_req_routing(Realm)),
+    _ = kz_amqp_util:unbind_q_from_callmgr(Q, get_authn_req_routing(Realm)),
     unbind_q(Q, Realm, RestrictTo);
 unbind_q(Q, Realm, ['token_req' | RestrictTo]) ->
-    kz_amqp_util:unbind_q_from_callmgr(Q, get_authn_token_req_routing(Realm)),
+    _ = kz_amqp_util:unbind_q_from_callmgr(Q, get_authn_token_req_routing(Realm)),
     unbind_q(Q, Realm, RestrictTo);
 unbind_q(_Q, _Realm, []) -> 'ok'.
 
