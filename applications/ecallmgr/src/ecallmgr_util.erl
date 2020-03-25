@@ -547,7 +547,6 @@ get_fs_kv(<<"Hold-Media">>, Media, UUID) ->
 get_fs_kv(?CCV(Key), Val, UUID) ->
     get_fs_kv(Key, Val, UUID);
 get_fs_kv(Key, Val, _) ->
-    lager:debug("get_fs_kv ~p ~p", [Key, Val]),
     list_to_binary([get_fs_key(Key), "=", maybe_sanitize_fs_value(Key, Val)]).
 
 -spec get_fs_key(kz_term:ne_binary()) -> binary().
@@ -623,7 +622,9 @@ maybe_sanitize_fs_value(<<"Export-Bridge-Variables">>, Val) ->
     kz_binary:join(Val, <<",">>);
 maybe_sanitize_fs_value(<<"Export-Variables">>, Val) ->
     kz_binary:join(Val, <<",">>);
-maybe_sanitize_fs_value(<<"Require-Fail-On-Single-Reject">>, Val) ->
+maybe_sanitize_fs_value(<<"Require-Fail-On-Single-Reject">>, <<Val/binary>>) ->
+    Val;
+maybe_sanitize_fs_value(<<"Require-Fail-On-Single-Reject">>, Val) when is_list(Val) ->
     kz_binary:join(Val, <<",">>);
 maybe_sanitize_fs_value(Key, Val) when not is_binary(Key) ->
     maybe_sanitize_fs_value(kz_term:to_binary(Key), Val);

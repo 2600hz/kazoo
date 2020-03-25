@@ -455,7 +455,6 @@ route_resp_cavs(JObj) ->
 
 -spec route_ccvs_list(kz_term:proplist()) -> kz_term:ne_binary().
 route_ccvs_list(CCVs) ->
-    lager:debug("route ccvs: ~p", [CCVs]),
     L = [kz_term:to_list(ecallmgr_util:get_fs_kv(K, V))
          || {K, V} <- CCVs
         ],
