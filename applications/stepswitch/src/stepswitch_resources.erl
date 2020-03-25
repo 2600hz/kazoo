@@ -553,12 +553,14 @@ maybe_resource_to_endpoints(#resrc{id=Id
                                    'false' -> <<"no_classifier">>
                                end,
             lager:debug("building resource ~s endpoints (classifier ~s)", [Id, _MaybeClassifier]),
-            CCVUpdates = [{<<"Global-Resource">>, Global}
-                         ,{<<"Resource-ID">>, Id}
-                         ,{<<"E164-Destination">>, Number}
-                         ,{<<"DID-Classifier">>, knm_converters:classify(Number)}
-                         ,{<<"Original-Number">>, kapi_offnet_resource:to_did(OffnetJObj)}
-                         ],
+            CCVUpdates = props:filter_empty(
+                           [{<<"Global-Resource">>, Global}
+                           ,{<<"Resource-ID">>, Id}
+                           ,{<<"E164-Destination">>, Number}
+                           ,{<<"E164-Origination">>, stepswitch_util:convert_to_e164_format(CallerIdNumber, 'undefined')}
+                           ,{<<"DID-Classifier">>, knm_converters:classify(Number)}
+                           ,{<<"Original-Number">>, kapi_offnet_resource:to_did(OffnetJObj)}
+                           ]),
             Updates = [{<<"Name">>, Name}
                       ,{<<"Weight">>, Weight}
                       ],
