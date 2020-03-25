@@ -164,6 +164,7 @@ callflow_should_respond(Call) ->
 send_route_response(Flow, RouteReq, Call) ->
     lager:info("callflows knows how to route the call! sending park response"),
     AccountId = kapps_call:account_id(Call),
+    CCVs = response_ccvs(Call),
     Resp = props:filter_undefined(
              [{?KEY_MSG_ID, kz_api:msg_id(RouteReq)}
              ,{?KEY_MSG_REPLY_ID, kapps_call:call_id_direct(Call)}
@@ -173,7 +174,7 @@ send_route_response(Flow, RouteReq, Call) ->
              ,{<<"Ringback-Media">>, get_ringback_media(Flow, RouteReq)}
              ,{<<"Pre-Park">>, pre_park_action(Call)}
              ,{<<"From-Realm">>, kzd_accounts:fetch_realm(AccountId)}
-             ,{<<"Custom-Channel-Vars">>, kapps_call:custom_channel_vars(Call)}
+             ,{<<"Custom-Channel-Vars">>, CCVs}
              ,{<<"Custom-Application-Vars">>, kapps_call:custom_application_vars(Call)}
              ,{<<"Context">>, kapps_call:context(Call)}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -193,6 +194,26 @@ send_route_response(Flow, RouteReq, Call) ->
         {'error', _E} ->
             lager:info("callflow didn't received a route win, exiting : ~p", [_E])
     end.
+
+response_ccvs(Call) ->
+    response_ccvs(Call, kapps_call:authorizing_id(Call), kapps_call:authorizing_type(Call)).
+
+response_ccvs(Call, DeviceId, <<"device">>) ->
+    response_ccvs_from_device(Call, kzd_devices:fetch(kapps_call:account_db(Call), DeviceId));
+response_ccvs(Call, _Id, _Type) ->
+    lager:debug("ignoring authz type: ~s id: ~s", [_Type, _Id]),
+    default_response_ccvs(Call).
+
+response_ccvs_from_device(Call, {'ok', DeviceJObj}) ->
+    kz_json:set_values([{<<"Presence-ID">>, kzd_devices:calculate_presence_id(DeviceJObj)}]
+                      ,default_response_ccvs(Call)
+                      );
+response_ccvs_from_device(Call, _E) ->
+    default_response_ccvs(Call).
+
+default_response_ccvs(Call) ->
+    kapps_call:custom_channel_vars(Call).
+
 
 -spec wait_for_running(kapps_call:call(), 0..5) -> 'ok'.
 wait_for_running(_Call, 5) ->

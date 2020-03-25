@@ -114,8 +114,15 @@
                              'system' |
                              'undefined'.
 
--type db_create_options() :: [{'q',integer()} | {'n',integer()} | 'ensure_other_dbs'].
--type db_delete_options() :: ['ensure_other_dbs'].
+-type db_create_option() :: {'q', non_neg_integer()} |
+                            {'n', non_neg_integer()} |
+                            'ensure_other_dbs' |
+                            {'ensure_other_dbs', boolean()}.
+-type db_create_options() :: [db_create_option()].
+
+-type db_delete_option() :: 'ensure_other_dbs' |
+                            {'ensure_other_dbs', boolean()} .
+-type db_delete_options() :: [db_delete_options()].
 
 -type ddoc() :: kz_term:ne_binary() | 'all_docs' | 'design_docs'.
 

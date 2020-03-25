@@ -24,12 +24,13 @@ run_it(F) -> F().
 
 -spec seq_kzoo_56() -> 'ok'.
 seq_kzoo_56() ->
+    kz_datamgr:suppress_change_notice(),
     Doc = kz_json:from_list([{<<"_id">>, ?FROM_DOC_ID}
                              | [{kz_binary:rand_hex(4), kz_binary:rand_hex(5)} || _ <- lists:seq(1,10)]
                             ]),
 
-    'true' = kz_datamgr:db_create(?FROM_DB),
-    'true' = kz_datamgr:db_create(?TO_DB),
+    'true' = kz_datamgr:db_create(?FROM_DB, [{'publish_db', 'false'}]),
+    'true' = kz_datamgr:db_create(?TO_DB, [{'publish_db', 'false'}]),
 
     {'ok', _SavedDoc} = kz_datamgr:save_doc(?FROM_DB, Doc),
 
@@ -50,6 +51,7 @@ seq_kzoo_56() ->
 cleanup() ->
     'true' = kz_datamgr:db_delete(?FROM_DB),
     'true' = kz_datamgr:db_delete(?TO_DB),
+    kz_datamgr:enable_change_notice(),
     lager:info("CLEANUP FINISHED").
 
 save_mp3(DB, DocId, AttId, MP3) ->

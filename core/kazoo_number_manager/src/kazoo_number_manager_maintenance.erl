@@ -278,7 +278,7 @@ update_number_services_view(?MATCH_ACCOUNT_ENCODED(_)=AccountDb) ->
                {'ok', JObj} -> JObj;
                {'error', _R} ->
                    lager:debug("reading account view ~s from disk (~p)", [ViewName, _R]),
-                   {ViewName,JObj} = kapps_util:get_view_json('crossbar', <<"account/numbers.json">>),
+                   {ViewName,JObj} = kapps_util:get_view_json('kazoo_apps', <<"account/numbers.json">>),
                    JObj
            end,
     PathMap = [<<"views">>, <<"reconcile_services">>, <<"map">>],
