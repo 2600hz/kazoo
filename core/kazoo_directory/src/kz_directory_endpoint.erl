@@ -99,7 +99,7 @@ presence_id(Endpoint, CCVs) ->
 
 -spec hold_music(kz_json:object(), kz_json:object()) -> kz_json:object().
 hold_music(Endpoint, CCVs) ->
-    case kz_json:get_value([<<"music_on_hold">>, <<"media_id">>], Endpoint) of
+    case kz_json:get_ne_binary_value([<<"music_on_hold">>, <<"media_id">>], Endpoint) of
         'undefined' -> CCVs;
         MediaId ->
             MOH = kz_media_util:media_path(MediaId, kz_doc:account_id(Endpoint)),
@@ -226,8 +226,8 @@ add_alert_info(Endpoint, CCVs) ->
 
 -spec get_codecs(kz_json:object()) -> 'undefined' | kz_term:ne_binaries().
 get_codecs(JObj) ->
-    case kz_json:get_value([<<"media">>, <<"audio">>, <<"codecs">>], JObj, [])
-        ++ kz_json:get_value([<<"media">>, <<"video">>, <<"codecs">>], JObj, [])
+    case kz_json:get_list_value([<<"media">>, <<"audio">>, <<"codecs">>], JObj, [])
+        ++ kz_json:get_list_value([<<"media">>, <<"video">>, <<"codecs">>], JObj, [])
     of
         [] -> 'undefined';
         Codecs -> Codecs
@@ -246,7 +246,7 @@ profile(EndpointId, AccountId, Options) ->
 
 -spec generate_ccvs(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 generate_ccvs(_EndpointId, AccountId, Endpoint) ->
-    Realm = kzd_devices:sip_realm(Endpoint, kz_json:get_value(<<"realm">>, Endpoint)),
+    Realm = kzd_devices:sip_realm(Endpoint, kz_json:get_ne_binary_value(<<"realm">>, Endpoint)),
     Props = [{<<"Account-ID">>, AccountId}
             ,{<<"Reseller-ID">>, kz_services_reseller:get_id(AccountId)}
             ,{<<"Realm">>, Realm}
@@ -255,32 +255,31 @@ generate_ccvs(_EndpointId, AccountId, Endpoint) ->
             ],
     CCVs = kz_json:from_list(Props),
 
-    CCVFuns = [fun endpoint_id/2
-              ,fun owner_id/2
-              ,fun rtcp_mux/2
-              ,fun webrtc/2
-              ,fun enable_fax/2
-              ,fun enforce_security/2
-              ,fun encryption_flags/2
-              ,fun presence_id/2
-              ,fun add_alert_info/2
-              ,fun hold_music/2
-              ,fun invite_uri/2
-              ,fun call_waiting/2
-              ,fun progress_timeout/2
-              ,fun ignore_early_media/2
-              ,fun bypass_media/2
-              ,fun ignore_completed_elsewhere/2
+    CCVFuns = [{fun endpoint_id/2, Endpoint}
+              ,{fun owner_id/2, Endpoint}
+              ,{fun rtcp_mux/2, Endpoint}
+              ,{fun webrtc/2, Endpoint}
+              ,{fun enable_fax/2, Endpoint}
+              ,{fun enforce_security/2, Endpoint}
+              ,{fun encryption_flags/2, Endpoint}
+              ,{fun presence_id/2, Endpoint}
+              ,{fun add_alert_info/2, Endpoint}
+              ,{fun hold_music/2, Endpoint}
+              ,{fun invite_uri/2, Endpoint}
+              ,{fun call_waiting/2, Endpoint}
+              ,{fun progress_timeout/2, Endpoint}
+              ,{fun ignore_early_media/2, Endpoint}
+              ,{fun bypass_media/2, Endpoint}
+              ,{fun ignore_completed_elsewhere/2, Endpoint}
               ],
-    lists:foldl(fun(Fun, Acc) -> Fun(Endpoint, Acc) end, CCVs, CCVFuns).
+    kz_json:exec(CCVFuns, CCVs).
 
 -spec generate_sip_headers(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 generate_sip_headers(_EndpointId, _AccountId, Endpoint) ->
-    Headers = kz_json:new(),
-    HeaderFuns = [fun add_sip_headers/2
-                 ,fun maybe_add_aor/2
+    HeaderFuns = [{fun add_sip_headers/2, Endpoint}
+                 ,{fun maybe_add_aor/2, Endpoint}
                  ],
-    lists:foldl(fun(Fun, Acc) -> Fun(Endpoint, Acc) end, Headers, HeaderFuns).
+    kz_json:exec(HeaderFuns, kz_json:new()).
 
 -spec add_sip_headers(kz_json:object(), kz_json:object()) -> kz_json:object().
 add_sip_headers(Endpoint, Headers) ->
@@ -297,7 +296,7 @@ maybe_add_aor(Endpoint, Headers) ->
 -spec maybe_add_aor(kz_term:api_binary(), kz_json:object(), kz_json:object()) -> kz_json:object().
 maybe_add_aor('undefined', _Endpoint, Headers) -> Headers;
 maybe_add_aor(Username, Endpoint, Headers) ->
-    Realm = kzd_devices:sip_realm(Endpoint,  kz_json:get_value(<<"realm">>, Endpoint)),
+    Realm = kzd_devices:sip_realm(Endpoint,  kz_json:get_ne_binary_value(<<"realm">>, Endpoint)),
     Format = kzd_devices:sip_invite_format(Endpoint),
     AOR = [{<<"X-KAZOO-AOR">>, <<"sip:", Username/binary, "@", Realm/binary>>}
           ,{<<"X-KAZOO-INVITE-FORMAT">>, Format}
@@ -431,4 +430,4 @@ call_forward_maybe_retain_cid(_EndpointId, _AccountId, Endpoint) ->
 
 -spec get_realm(kz_json:object()) -> kz_term:ne_binary().
 get_realm(Endpoint) ->
-    kz_json:get_value(<<"realm">>, Endpoint, <<"norealm">>).
+    kz_json:get_ne_binary_value(<<"realm">>, Endpoint, <<"norealm">>).
