@@ -221,7 +221,7 @@ resp_definition() ->
                                      ,<<"a1-hash">>, <<"error">>
                                      ,<<"gsm">>, <<"nonce">>, <<"a3a8">>
                                      ]}
-                | kapi_definition:event_type_headers(Category, EventName)
+                 | kapi_definition:event_type_headers(Category, EventName)
                 ]
                }
               ,{fun kapi_definition:set_types/2
