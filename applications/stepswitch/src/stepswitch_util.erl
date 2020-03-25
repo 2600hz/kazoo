@@ -58,7 +58,8 @@ get_inbound_destination(JObj) ->
     convert_to_e164_format(Number, ?SS_CONFIG_CAT, <<"assume_inbound_e164">>).
 
 %%------------------------------------------------------------------------------
-%% @doc Convert Number to e164 format if the number is reconcilable else return Default
+%% @doc Convert Number to e164 format if the number is reconcilable else return
+%% the value Default
 %% @end
 %%------------------------------------------------------------------------------
 -spec convert_to_e164_format(kz_term:ne_binary(), Default) -> kz_term:ne_binary() | Default.
