@@ -6877,9 +6877,9 @@
                 },
                 "Presence-State": {
                     "enum": [
-                        "trying",
-                        "online",
                         "offline",
+                        "online",
+                        "trying",
                         "early",
                         "confirmed",
                         "terminated"
@@ -6925,9 +6925,9 @@
                 },
                 "Presence-State": {
                     "enum": [
-                        "trying",
-                        "online",
                         "offline",
+                        "online",
+                        "trying",
                         "early",
                         "confirmed",
                         "terminated"
@@ -6973,9 +6973,9 @@
                 },
                 "Presence-State": {
                     "enum": [
-                        "trying",
-                        "online",
                         "offline",
+                        "online",
+                        "trying",
                         "early",
                         "confirmed",
                         "terminated"
@@ -7049,9 +7049,9 @@
                 },
                 "Presence-State": {
                     "enum": [
-                        "trying",
-                        "online",
                         "offline",
+                        "online",
+                        "trying",
                         "early",
                         "confirmed",
                         "terminated"
@@ -22970,6 +22970,102 @@
             ],
             "type": "object"
         },
+        "kapi.presence.dialog_update": {
+            "description": "AMQP API for presence.dialog_update",
+            "properties": {
+                "Call-Cookie": {
+                    "type": "string"
+                },
+                "Call-ID": {
+                    "type": "string"
+                },
+                "Direction": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "presence"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "dialog_update"
+                    ],
+                    "type": "string"
+                },
+                "Event-Package": {
+                    "type": "string"
+                },
+                "Expires": {
+                    "type": "string"
+                },
+                "Flush-Level": {
+                    "type": "string"
+                },
+                "From": {
+                    "type": "string"
+                },
+                "From-Realm": {
+                    "type": "string"
+                },
+                "From-Tag": {
+                    "type": "string"
+                },
+                "From-URI": {
+                    "type": "string"
+                },
+                "From-User": {
+                    "type": "string"
+                },
+                "Presence-ID": {
+                    "type": "string"
+                },
+                "Presentity": {
+                    "type": "string"
+                },
+                "Presentity-Realm": {
+                    "type": "string"
+                },
+                "Presentity-User": {
+                    "type": "string"
+                },
+                "State": {
+                    "enum": [
+                        "early",
+                        "confirmed",
+                        "terminated"
+                    ],
+                    "type": "string"
+                },
+                "Switch-URI": {
+                    "type": "string"
+                },
+                "Target-Call-ID": {
+                    "type": "string"
+                },
+                "To": {
+                    "type": "string"
+                },
+                "To-Realm": {
+                    "type": "string"
+                },
+                "To-Tag": {
+                    "type": "string"
+                },
+                "To-URI": {
+                    "type": "string"
+                },
+                "To-User": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "From",
+                "To"
+            ],
+            "type": "object"
+        },
         "kapi.presence.flush": {
             "description": "AMQP API for presence.flush",
             "properties": {
@@ -23370,6 +23466,55 @@
         },
         "kapi.presence.subscribe": {
             "description": "AMQP API for presence.subscribe",
+            "properties": {
+                "Call-ID": {
+                    "type": "string"
+                },
+                "Contact": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "presence"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "subscription"
+                    ],
+                    "type": "string"
+                },
+                "Event-Package": {
+                    "type": "string"
+                },
+                "Expires": {
+                    "type": "string"
+                },
+                "From": {
+                    "type": "string"
+                },
+                "From-Tag": {
+                    "type": "string"
+                },
+                "Queue": {
+                    "type": "string"
+                },
+                "To-Tag": {
+                    "type": "string"
+                },
+                "User": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Expires",
+                "User"
+            ],
+            "type": "object"
+        },
+        "kapi.presence.subscription": {
+            "description": "AMQP API for presence.subscription",
             "properties": {
                 "Call-ID": {
                     "type": "string"

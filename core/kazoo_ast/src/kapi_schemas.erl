@@ -18,7 +18,6 @@
 -include_lib("kazoo_stdlib/include/kz_log.hrl").
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 -include_lib("kazoo_ast/include/kz_ast.hrl").
--include_lib("kazoo_amqp/src/api/kapi_presence.hrl").
 -include_lib("kazoo_amqp/src/api/kapi_route.hrl"). %% ?ROUTE_REQ_COST_PARAMS
 -include_lib("kazoo_amqp/include/kapi_definition.hrl").
 
@@ -572,7 +571,7 @@ ast_to_value(Fun) when is_function(Fun) ->
 ast_to_value(<<Bin/binary>>) -> Bin;
 ast_to_value(Bins) when is_list(Bins) -> Bins;
 ast_to_value(?MOD_FUN_ARGS('kapi_presence', 'presence_states', [])) ->
-    ?PRESENCE_STATES;
+    kapi_presence:presence_states();
 ast_to_value(?BINARY(_)=Bin) ->
     kz_ast_util:binary_match_to_binary(Bin);
 ast_to_value(?FA(F, A)) ->
