@@ -97,10 +97,10 @@ request_channel(Consumer, Broker) ->
 -spec request_channel(pid(), kz_term:api_binary(), kz_term:api_pid()) -> 'ok'.
 request_channel(Consumer, 'undefined', Watcher) when is_pid(Consumer) ->
     Broker = kz_amqp_connections:primary_broker(),
-    Application = kapps_util:get_application(),
+    Application = kz_process:get_application(),
     gen_server:cast(?SERVER, {'request_float', Consumer, Broker, Application, Watcher});
 request_channel(Consumer, Broker, Watcher) when is_pid(Consumer) ->
-    Application = kapps_util:get_application(),
+    Application = kz_process:get_application(),
     gen_server:cast(?SERVER, {'request_sticky', Consumer, Broker, Application, Watcher}).
 
 -spec add_channel(kz_term:ne_binary(), pid(), pid()) -> 'ok'.

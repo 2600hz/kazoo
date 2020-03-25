@@ -203,7 +203,7 @@ decode_data(Data) ->
             'error'
     end.
 
--spec handle_DATA_exception(kz_term:proplist(), kz_term:ne_binary(), binary()) -> 'ok'.
+-spec handle_DATA_exception(kz_term:proplist(), list(), binary()) -> 'ok'.
 handle_DATA_exception(Options, Reference, Data) ->
     case props:get_is_true('dump', Options, 'false') of
         'false' -> 'ok';

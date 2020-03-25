@@ -649,22 +649,11 @@ from_magic_hash(Bin) ->
 
 -spec get_application() -> atom().
 get_application() ->
-    case get('application') of
-        'undefined' -> find_application();
-        Application -> Application
-    end.
-
--spec find_application() -> atom().
-find_application() ->
-    case application:get_application() of
-        {'ok', Application} ->
-            Application;
-        _Else -> 'undefined'
-    end.
+    kz_process:get_application().
 
 -spec put_application(atom()) -> atom().
 put_application(Application) ->
-    put('application', Application).
+    kz_process:put_application(Application).
 
 -spec epmd_enabled() -> boolean().
 epmd_enabled() ->

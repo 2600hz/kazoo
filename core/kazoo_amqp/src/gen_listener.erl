@@ -441,8 +441,8 @@ init_state([Module, Params, ModuleState]) ->
 init([Module, Params, InitArgs]) ->
     process_flag('trap_exit', 'true'),
     put('callid', Module),
-    Application = kapps_util:get_application(),
-    kapps_util:put_application(Application),
+    Application = kz_process:get_application(),
+    kz_process:put_application(Application),
     lager:debug("starting new gen_listener proc : ~s ~s"
                ,[Application, Module]
                ),
