@@ -547,6 +547,7 @@ get_fs_kv(<<"Hold-Media">>, Media, UUID) ->
 get_fs_kv(?CCV(Key), Val, UUID) ->
     get_fs_kv(Key, Val, UUID);
 get_fs_kv(Key, Val, _) ->
+    lager:debug("get_fs_kv ~p ~p", [Key, Val]),
     list_to_binary([get_fs_key(Key), "=", maybe_sanitize_fs_value(Key, Val)]).
 
 -spec get_fs_key(kz_term:ne_binary()) -> binary().
