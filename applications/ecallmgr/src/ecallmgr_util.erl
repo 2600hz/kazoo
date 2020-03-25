@@ -686,7 +686,7 @@ get_fs_key(Key) ->
           'skip'.
 get_fs_key_and_value(<<"Hold-Media">>=Key, Media, UUID) ->
     MediaPath = moh_media_path(Media, 'extant', UUID, kz_json:new()),
-    {get_fs_key(Key), list_to_binary(["hold_music=", MediaPath])};
+    {get_fs_key(Key), MediaPath};
 get_fs_key_and_value(<<"Diversions">>=Key, Diversions, _UUID) ->
     K = get_fs_key(Key),
     lager:debug("setting diversions ~p on the channel", [Diversions]),
