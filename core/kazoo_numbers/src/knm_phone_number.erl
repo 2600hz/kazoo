@@ -695,8 +695,8 @@ setters_collection(T0=#{'todo' := PNs}, Routines) ->
 -type set_function() :: fun((record()) -> setter_acc()) |
                         fun((record(), V) -> setter_acc()) |
                         {fun((record(), V) -> setter_acc()), V} |
-                         {fun((record(), K, V) -> setter_acc()), [K | V,...]} |
-                          {fun((record(), K, V) -> setter_acc()), K, V}.
+                        {fun((record(), K, V) -> setter_acc()), [K | V,...]} |
+                        {fun((record(), K, V) -> setter_acc()), K, V}.
 -type set_functions() :: [set_function()].
 
 -type setter_acc() :: record().
@@ -875,7 +875,7 @@ feature(PN, Feature) ->
     kz_json:get_ne_value(Feature, features(PN)).
 
 -spec set_feature(record(), kz_term:ne_binary(), kz_json:api_json_term()) ->
-                         record().
+          record().
 set_feature(PN0, Feature=?NE_BINARY, Data) ->
     Features = case PN0#knm_phone_number.features of
                    'undefined' -> ?DEFAULT_FEATURES;
@@ -1032,8 +1032,8 @@ push_reserve_history(T=#{'todo' := PNs, 'options' := Options}) ->
     knm_pipe:set_succeeded(T, NewPNs).
 
 -spec unwind_reserve_history(knm_pipe:collection() | record()) ->
-                                    record() |
-                                    knm_pipe:collection().
+          record() |
+          knm_pipe:collection().
 %% FIXME: opaque
 unwind_reserve_history(T=#{'todo' := PNs}) ->
     NewPNs = [unwind_reserve_history(PN) || PN <- PNs],
@@ -1469,8 +1469,8 @@ sanitize_public_fields(JObj) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec is_authorized(record() | knm_pipe:collection()) ->
-                           knm_pipe:collection() |
-                           boolean().
+          knm_pipe:collection() |
+          boolean().
 is_authorized(T) when is_map(T) -> is_authorized_collection(T);
 is_authorized(#knm_phone_number{auth_by = ?KNM_DEFAULT_AUTH_BY}) -> 'true';
 is_authorized(#knm_phone_number{auth_by = 'undefined'}) -> 'false';
@@ -1491,8 +1491,8 @@ is_authorized(#knm_phone_number{assigned_to = AssignedTo
     is_admin_or_in_account_hierarchy(AuthBy, AssignedTo).
 
 -spec is_reserved_from_parent(record() | knm_pipe:collection()) ->
-                                     knm_pipe:collection() |
-                                     boolean().
+          knm_pipe:collection() |
+          boolean().
 is_reserved_from_parent(T) when is_map(T) -> is_reserved_from_parent_collection(T);
 is_reserved_from_parent(#knm_phone_number{assigned_to = ?MATCH_ACCOUNT_RAW(AssignedTo)
                                          ,auth_by = AuthBy
@@ -1696,7 +1696,7 @@ handle_bulk_change_fold(JObj, T, Db, PNsMap, ErrorF) ->
     end.
 
 -spec retry_save(kz_term:ne_binary(), grouped_phone_number(), bulk_change_error_fun(), kz_term:ne_binary(), knm_pipe:collection()) ->
-                        knm_pipe:collection().
+          knm_pipe:collection().
 retry_save(Db, PNsMap, ErrorF, Num, T) ->
     PN = maps:get(Num, PNsMap),
     Update = kz_json:to_proplist(kz_doc:delete_revision(to_json(PN))),
@@ -1709,7 +1709,7 @@ retry_save(Db, PNsMap, ErrorF, Num, T) ->
     end.
 
 -spec retry_delete(kz_term:ne_binary(), grouped_phone_number(), bulk_change_error_fun(), kz_term:ne_binary(), knm_pipe:collection()) ->
-                          knm_pipe:collection().
+          knm_pipe:collection().
 retry_delete(Db, PNsMap, ErrorF, Num, T) ->
     case kz_datamgr:del_doc(Db, Num) of
         {'ok', _Deleted} -> knm_pipe:set_succeeded(T, maps:get(Num, PNsMap));
@@ -1717,7 +1717,7 @@ retry_delete(Db, PNsMap, ErrorF, Num, T) ->
     end.
 
 -spec retry_conflicts(knm_pipe:collection(), kz_term:ne_binary(), grouped_phone_number(), bulk_change_retry_fun()) ->
-                             knm_pipe:collection().
+          knm_pipe:collection().
 retry_conflicts(T0, Db, PNsMap, RetryF) ->
     {Conflicts, BaseT} = take_conflits(T0),
     fold_retry(RetryF, Db, PNsMap, Conflicts, BaseT).
@@ -1732,7 +1732,7 @@ take_conflits(T=#{'failed' := Failed}) ->
     {Nums, knm_pipe:set_failed(T, maps:from_list(NewFailed))}.
 
 -spec fold_retry(bulk_change_retry_fun(), kz_term:ne_binary(), grouped_phone_number(), kz_term:ne_binaries(), knm_pipe:collection()) ->
-                        knm_pipe:collection().
+          knm_pipe:collection().
 fold_retry(_, _, _, [], T) -> T;
 fold_retry(RetryF, Db, PNsMap, [Conflict|Conflicts], T0) ->
     ?LOG_WARNING("~s conflicted, retrying", [Conflict]),
@@ -1750,20 +1750,20 @@ database_error(NumOrNums, E, T) ->
     knm_pipe:set_failed(T, NumOrNums, Reason).
 
 -spec delete_docs(kz_term:ne_binary(), kz_term:ne_binaries()) ->
-                         {'ok', kz_json:objects()} |
-                         {'error', kz_data:data_errors()}.
+          {'ok', kz_json:objects()} |
+          {'error', kz_data:data_errors()}.
 delete_docs(Db, Ids) ->
     %% Note: deleting nonexistent docs returns ok.
     kz_datamgr:del_docs(Db, Ids).
 
 -spec save_docs(kz_term:ne_binary(), kz_json:objects()) ->
-                       {'ok', kz_json:objects()} |
-                       {'error', kz_data:data_errors()}.
+          {'ok', kz_json:objects()} |
+          {'error', kz_data:data_errors()}.
 save_docs(Db, Docs) ->
     kz_datamgr:save_docs(Db, prepare_docs(Db, Docs, [])).
 
 -spec prepare_docs(kz_term:ne_binary(), kz_json:objects(), kz_json:objects()) ->
-                          kz_json:objects().
+          kz_json:objects().
 prepare_docs(_Db, [], Updated) ->
     Updated;
 prepare_docs(Db, [Doc|Docs], Updated) ->
@@ -1807,7 +1807,7 @@ group_number_by_db(Number, MapAcc) ->
     MapAcc#{Key => [Number | maps:get(Key, MapAcc, [])]}.
 
 -spec group_phone_number_by_number(record(), grouped_phone_number()) ->
-                                          grouped_phone_number().
+          grouped_phone_number().
 group_phone_number_by_number(PN, MapAcc) ->
     MapAcc#{number(PN) => PN}.
 
@@ -1834,8 +1834,8 @@ group_phone_number_by_prev_assigned_to(PN, MapAcc) ->
           of
               'true' when PrevIsCurrent ->
                   ?LOG_DEBUG("~s prev_assigned_to is same as assigned_to,"
-                              " not unassign-ing from prev", [number(PN)]
-                             ),
+                             " not unassign-ing from prev", [number(PN)]
+                            ),
                   'undefined';
               'true' ->
                   ?LOG_DEBUG("prev_assigned_to is empty for ~s, ignoring", [number(PN)]),

@@ -148,9 +148,16 @@ assign_to_app(Nums, App, Options) when is_list(Nums) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec lookup_account(kz_term:api_ne_binary()) -> lookup_return().
+-ifdef(TEST).
 lookup_account('undefined') ->
     {'error', 'not_reconcilable'};
-lookup_account(Num) ->
+lookup_account(<<Num/binary>>) ->
+    NormalizedNum = knm_converters:normalize(Num),
+    fetch_account_from_number(NormalizedNum).
+-else.
+lookup_account('undefined') ->
+    {'error', 'not_reconcilable'};
+lookup_account(<<Num/binary>>) ->
     NormalizedNum = knm_converters:normalize(Num),
     Key = {'account_lookup', NormalizedNum},
     case kz_cache:peek_local(?CACHE_NAME, Key) of
@@ -165,6 +172,7 @@ lookup_account(Num) ->
                 Else -> Else
             end
     end.
+-endif.
 
 %%------------------------------------------------------------------------------
 %% @doc
