@@ -38,6 +38,7 @@ compile-test: compile-also
 compile-also:
 	$(MAKE) compile-test -C $(ROOT)/core/kazoo_config/
 	$(MAKE) compile-test -C $(ROOT)/core/kazoo_apps/
+	$(MAKE) compile-test -C $(ROOT)/core/kazoo_data/
 
 include $(ROOT)/make/kz.mk
 

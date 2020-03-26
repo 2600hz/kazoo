@@ -469,7 +469,10 @@ test_fetch(?TEST_PORT_IN3_NUM) -> {'ok', ?PORT_IN3_NUMBER};
 test_fetch(<<DID/binary>>) ->
     NormalizedNum = knm_converters:normalize(DID),
     NumberDb = knm_converters:to_db(NormalizedNum),
-    kz_datamgr:open_cache_doc(NumberDb, NormalizedNum).
+    try kz_datamgr:open_cache_doc(NumberDb, NormalizedNum)
+    catch _:_ -> {'error', 'not_found'}
+    end.
+
 -else.
 
 -spec fetch(kz_term:ne_binary(), knm_number_options:options()) -> knm_phone_number_return().
