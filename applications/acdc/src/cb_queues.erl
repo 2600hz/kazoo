@@ -547,7 +547,8 @@ load_queue_agents(Id, Context) ->
     end.
 
 load_agent_roster(Id, Context) ->
-    Options = [{'key', Id}
+    Options = [{'startkey', [Id]}
+              ,{'endkey', [Id, kz_json:new()]}
               ,{'mapper', crossbar_view:get_id_fun()}
               ,{'reduce', 'false'}
               ],

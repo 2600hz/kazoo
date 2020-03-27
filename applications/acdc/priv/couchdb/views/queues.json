@@ -14,7 +14,7 @@
                 "function(doc) {",
                 "  if (doc.pvt_type !== 'user' || doc.pvt_deleted || typeof doc.queues !== 'object') return;",
                 "  for (i in doc.queues) {",
-                "    emit(doc.queues[i], doc._id);",
+                "    emit([doc.queues[i], doc._id], doc._id);",
                 "  }",
                 "}"
             ],
