@@ -637,7 +637,10 @@ handle_info(?HOOK_EVT(_, <<"CHANNEL_DISCONNECTED">>, JObj), State) ->
     %% for this event
     handle_channel_destroy(kz_api:call_id(JObj)),
     {'noreply', State};
-handle_info(?HOOK_EVT(_, <<"CHANNEL_CONNECTED">>, _JObj), State) ->
+handle_info(?HOOK_EVT(_, Event, _JObj), State) when Event =:= <<"CHANNEL_CONNECTED">>
+                                                    orelse Event =:= <<"CHANNEL_HOLD">>
+                                                    orelse Event =:= <<"CHANNEL_UNHOLD">>
+                                                    orelse Event =:= <<"DTMF">> ->
     {'noreply', State};
 handle_info('cleanup', State) ->
     _P = kz_process:spawn(fun delete_destroyed_channels/0),
