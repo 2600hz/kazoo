@@ -21,6 +21,7 @@
         ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
         ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
         ,validate/1, validate/2, validate/3, validate/4
+        ,validate_resource/2
         ,post/2
         ,put/1, put/2, put/3, put/4
         ,patch/2
@@ -63,6 +64,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.conferences">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.conferences">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.validate.conferences">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"*.validate_resource.conferences">>, ?MODULE, 'validate_resource'),
     _ = crossbar_bindings:bind(<<"*.execute.put.conferences">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.conferences">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.patch.conferences">>, ?MODULE, 'patch'),
@@ -100,6 +102,10 @@ resource_exists(_, _) -> 'true'.
 
 -spec resource_exists(path_token(), path_token(), path_token()) -> 'true'.
 resource_exists(_, _, _) -> 'true'.
+
+-spec validate_resource(cb_context:context(), path_token()) -> cb_context:context().
+validate_resource(Context, ConferenceId) ->
+    validate_resource_conference(cb_context:req_verb(Context), Context, ConferenceId).
 
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
@@ -139,12 +145,28 @@ validate_conferences(?HTTP_GET, Context) ->
 validate_conferences(?HTTP_PUT, Context) ->
     create_conference(Context).
 
--spec validate_conference(http_method(), cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
-validate_conference(?HTTP_GET, Context0, ConferenceId) ->
-    Context1 = maybe_load_conference(ConferenceId, Context0),
+-spec validate_resource_conference(http_method(), cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
+validate_resource_conference(?HTTP_GET, Context, ConferenceId) ->
+    Context1 = maybe_load_conference(ConferenceId, Context),
     case cb_context:resp_status(Context1) of
-        'success' -> enrich_conference(ConferenceId, Context1);
-        _Else -> Context1
+        'success' ->
+            Data = enrich_conference(ConferenceId, Context1),
+            cb_context:store(Context1, 'conference_data', Data);
+        _Else ->
+            Context1
+    end;
+validate_resource_conference(_, Context, _ConferenceId) ->
+    Context.
+
+-spec validate_conference(http_method(), cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
+validate_conference(?HTTP_GET, Context, ConferenceId) ->
+    Context1 = maybe_load_conference(ConferenceId, Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            Data = enrich_conference(ConferenceId, Context1),
+            cb_context:set_resp_data(Context1, Data);
+        _Else ->
+            Context1
     end;
 validate_conference(?HTTP_POST, Context, ConferenceId) ->
     update_conference(ConferenceId, Context);
@@ -860,24 +882,28 @@ enrich_participants(ConferenceId, Context) ->
     Normalized = [kz_json:normalize_jobj(JObj) || JObj <- Participants],
     cb_context:set_resp_data(Context, Normalized).
 
--spec enrich_conference(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
+-spec enrich_conference(kz_term:ne_binary(), cb_context:context()) -> kz_json:object().
 enrich_conference(ConferenceId, Context) ->
     RealtimeData = conference_realtime_data(ConferenceId),
-    Response = kz_json:set_value(<<"_read_only">>, RealtimeData, cb_context:resp_data(Context)),
-    cb_context:set_resp_data(Context, Response).
+    kz_json:set_value(<<"_read_only">>, RealtimeData, cb_context:resp_data(Context)).
 
 -spec conference_realtime_data(kz_term:ne_binary()) -> kz_json:object().
 conference_realtime_data(ConferenceId) ->
     ConferenceDetails = request_conference_details(ConferenceId),
     Participants = extract_participants(ConferenceDetails),
     {Moderators, Members} = partition_participants_count(Participants),
-    kz_json:from_list(
-      [{<<"members">>, Members}
-      ,{<<"moderators">>, Moderators}
-      ,{<<"duration">>, run_time(ConferenceDetails)}
-      ,{<<"is_locked">>, kz_json:get_value(<<"Locked">>, ConferenceDetails, 'false')}
-      ,{<<"participants">>, [kz_json:normalize_jobj(Participant) || Participant <- Participants]}
-      ]).
+    C2 = kz_json:from_list(
+           [{<<"members">>, Members}
+           ,{<<"moderators">>, Moderators}
+           ,{<<"duration">>, run_time(ConferenceDetails)}
+           ,{<<"is_locked">>, kz_json:get_value(<<"Locked">>, ConferenceDetails, 'false')}
+           ,{<<"participants">>, [kz_json:normalize_jobj(Participant) || Participant <- Participants]}
+           ]),
+    Routines = [{fun kz_json:delete_key/2, <<"Participants">>}
+               ,fun kz_api:remove_defaults/1
+               ,fun kz_json:normalize/1
+               ],
+    kz_json:merge(kz_json:exec(Routines, ConferenceDetails), C2).
 
 -spec request_conference_details(kz_term:ne_binary()) -> kz_json:object().
 request_conference_details(ConferenceId) ->
