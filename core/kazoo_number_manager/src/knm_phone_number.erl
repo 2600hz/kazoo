@@ -205,7 +205,7 @@ from_number_with_options(DID, Options) ->
 -spec fetch(kz_term:ne_binary() | knm_numbers:collection()) ->
           knm_phone_number_return() |
           knm_numbers:collection().
-fetch(?NE_BINARY=Num) ->
+fetch(<<Num/binary>>) ->
     fetch(Num, knm_number_options:default());
 fetch(T0=#{todo := Nums, options := Options}) ->
     Pairs = group_by_db(lists:usort(knm_converters:normalize(Nums))),
@@ -466,8 +466,13 @@ test_fetch(?TEST_PORT_IN_NUM) ->
 test_fetch(?TEST_PORT_IN2_NUM) ->
     {'ok', ?PORT_IN2_NUMBER};
 test_fetch(?TEST_PORT_IN3_NUM) -> {'ok', ?PORT_IN3_NUMBER};
-test_fetch(_DID=?NE_BINARY) ->
-    {'error', 'not_found'}.
+test_fetch(<<DID/binary>>) ->
+    NormalizedNum = knm_converters:normalize(DID),
+    NumberDb = knm_converters:to_db(NormalizedNum),
+    try kz_datamgr:open_cache_doc(NumberDb, NormalizedNum)
+    catch _:_ -> {'error', 'not_found'}
+    end.
+
 -else.
 
 -spec fetch(kz_term:ne_binary(), knm_number_options:options()) -> knm_phone_number_return().

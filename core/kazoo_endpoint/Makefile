@@ -14,5 +14,8 @@ kze-test:
 	$(MAKE) compile-test -C $(ROOT)/core/kazoo_sip/
 	$(MAKE) compile-test -C $(ROOT)/core/kazoo_stdlib/
 	$(MAKE) compile-test -C $(ROOT)/core/kazoo_schemas/
+	$(MAKE) compile-test -C $(ROOT)/core/kazoo_call/
+	$(MAKE) compile-test -C $(ROOT)/core/kazoo_data/
+	$(MAKE) compile-test -C $(ROOT)/core/kazoo_fixturedb/
 
 include $(ROOT)/make/kz.mk

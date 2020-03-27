@@ -385,8 +385,10 @@ lookup_account(Num) ->
 
 fetch_account_from_number(Num) ->
     case knm_phone_number:fetch(Num) of
-        {'ok', PN} -> check_number(PN);
-        {'error', _}=Error -> maybe_fetch_account_from_ports(Num, Error)
+        {'ok', PN} ->
+            check_number(PN);
+        {'error', _}=Error ->
+            maybe_fetch_account_from_ports(Num, Error)
     end.
 
 check_number(PN) ->
