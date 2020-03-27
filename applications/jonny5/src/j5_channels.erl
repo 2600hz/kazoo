@@ -846,19 +846,21 @@ billing_jobj(BillingSeconds, Channel) ->
 
 -spec to_did_lookup(kz_json:object()) -> kz_term:ne_binary() | 'undefined'.
 to_did_lookup(JObj) ->
-    case kz_json:get_first_defined(
-           [<<"To">>
-           ,<<"To-Uri">>
-           ,<<"Request">>
-           ,[<<"Custom-Channel-Vars">>,<<"To">>]
-           ]
-          ,JObj
-          )
-    of
-        'undefined' -> 'undefined';
-        ToUri ->
-            [H|_] = binary:split(ToUri, <<"@">>),
-            knm_converters:normalize(H)
+    Paths = [<<"To">>
+            ,<<"To-Uri">>
+            ,<<"Request">>
+            ,[<<"Custom-Channel-Vars">>, <<"To">>]
+            ],
+    to_did_lookup(Paths, JObj).
+
+to_did_lookup([Path|Paths], JObj) ->
+    ToUri = kz_json:get_binary_value(Path, JObj, <<>>),
+    case binary:split(ToUri, <<"@">>) of
+        [<<>>|_] ->
+            %% Username component was empty, user/device may have erroneously
+            %% set empty presence_id
+            to_did_lookup(Paths, JObj);
+        [ToUser|_] -> knm_converters:normalize(ToUser)
     end.
 
 -spec synchronize() -> 'ok'.
