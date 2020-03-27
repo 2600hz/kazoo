@@ -28,7 +28,7 @@ handle(Data, Call) ->
     Command =
         props:filter_undefined(
           [{<<"Call">>, kapps_call:to_json(Call)}
-          ,{<<"Conference-ID">>, kz_json:get_ne_binary_value(<<"id">>, Data)}
+          ,{<<"Conference-ID">>, kz_doc:id(Data)}
           ,{<<"Moderator">>, kz_json:get_binary_boolean(<<"moderator">>, Data)}
           ,{<<"Play-Welcome">>, kz_json:is_true([<<"welcome_prompt">>, <<"play">>], Data, 'true')}
           ,{<<"Play-Welcome-Media">>, kz_json:get_ne_value([<<"welcome_prompt">>, <<"media_id">>], Data)}

@@ -352,9 +352,7 @@ check_stacktrace:
 ## Adding this format couchdb view target to circleci steps for every app is painful
 ## also this formatting is better to be done before validate-js ci step to make sure
 ## the view is still in correct shape
-apis:
-	@ERL_LIBS=deps:core:applications $(ROOT)/scripts/generate-schemas.escript
-	@$(ROOT)/scripts/format-json.py $(shell find applications core -wholename '*/schemas/*.json')
+apis: schemas
 	@ERL_LIBS=deps:core:applications $(ROOT)/scripts/generate-api-endpoints.escript
 	@$(ROOT)/scripts/generate-doc-schemas.py `egrep -rl '(#+) Schema' core/ applications/ | grep -v '.[h|e]rl'`
 	@$(ROOT)/scripts/format-json.py applications/crossbar/priv/api/swagger.json
@@ -364,8 +362,10 @@ apis:
 	@$(ROOT)/scripts/format-couchdb-views.py $(shell find core/kazoo_apps/priv/couchdb/account -name '*.json')
 	@$(ROOT)/scripts/format-couchdb-views.py $(shell find applications core -wholename '*/couchdb/views/*.json')
 
+.PHONY: schemas
 schemas:
-	@ERL_LIBS=deps:core:applications $(ROOT)/scripts/generate-schemas.escript
+	@ERL_LIBS=deps:core:applications $(ROOT)/scripts/generate-schemas.escript $(CHANGED_ERL)
+	@$(ROOT)/scripts/format-json.py $(shell find applications core -wholename '*/schemas/*.json')
 
 DOCS_ROOT=$(ROOT)/doc/mkdocs
 docs: docs-validate docs-report docs-setup docs-build

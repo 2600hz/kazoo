@@ -207,7 +207,9 @@ pages:
       - 'Media/URL': 'applications/callflow/doc/play.md'
       - 'Audio Macros': 'applications/callflow/doc/audio_macro.md'
       - 'Text-to-speech (TTS)': 'applications/callflow/doc/tts.md'
-    - 'Conference': 'applications/callflow/doc/conference.md'
+    - 'Conference':
+      - 'Action': 'applications/callflow/doc/conference.md'
+      - 'Feature Code': 'applications/callflow/doc/conference_feature.md'
     - 'Temporal Routes (Time of Day)': 'applications/callflow/doc/temporal_route.md'
     - 'EDR Event': 'applications/callflow/doc/edr.md'
     - 'Branch on object setting': 'applications/callflow/doc/cf_branch_variable.md'
