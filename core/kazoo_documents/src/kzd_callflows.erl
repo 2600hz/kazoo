@@ -16,14 +16,22 @@
 -export([flags/1, flags/2, set_flags/2]).
 -export([flow/1, flow/2, set_flow/2]).
 -export([metaflow/1, metaflow/2, set_metaflow/2]).
+-export([name/1, name/2, set_name/2]).
 -export([numbers/1, numbers/2, set_numbers/2]).
 -export([patterns/1, patterns/2, set_patterns/2]).
+-export([ringback/1, ringback/2, set_ringback/2]).
+-export([ringback_early/1, ringback_early/2, set_ringback_early/2]).
+-export([ringback_transfer/1, ringback_transfer/2, set_ringback_transfer/2]).
 
 -export([type/0
         ,is_feature_code/1
         ,validate/1
         ,validate_flow/1
         ,prepend_preflow/2
+
+         %% Dynamically added per-call
+        ,capture_group/1, capture_group/2, set_capture_group/2
+        ,capture_groups/1, capture_groups/2, set_capture_groups/2
         ]).
 
 -include("kz_documents.hrl").
@@ -119,6 +127,18 @@ metaflow(Doc, Default) ->
 set_metaflow(Doc, Metaflow) ->
     kz_json:set_value([<<"metaflow">>], Metaflow, Doc).
 
+-spec name(doc()) -> kz_term:api_binary().
+name(Doc) ->
+    name(Doc, 'undefined').
+
+-spec name(doc(), Default) -> binary() | Default.
+name(Doc, Default) ->
+    kz_json:get_binary_value([<<"name">>], Doc, Default).
+
+-spec set_name(doc(), binary()) -> doc().
+set_name(Doc, Name) ->
+    kz_json:set_value([<<"name">>], Name, Doc).
+
 -spec numbers(doc()) -> kz_term:ne_binaries().
 numbers(Doc) ->
     numbers(Doc, []).
@@ -191,3 +211,63 @@ prepend_preflow(Callflow, PreflowId) ->
                           ,{<<"children">>, kz_json:from_list([{<<"_">>, flow(Callflow)}])}
                           ]),
     set_flow(Callflow, AmendedFlow).
+
+-spec ringback(doc()) -> kz_term:api_object().
+ringback(Doc) ->
+    ringback(Doc, 'undefined').
+
+-spec ringback(doc(), Default) -> kz_json:object() | Default.
+ringback(Doc, Default) ->
+    kz_json:get_json_value([<<"ringback">>], Doc, Default).
+
+-spec set_ringback(doc(), kz_json:object()) -> doc().
+set_ringback(Doc, Ringback) ->
+    kz_json:set_value([<<"ringback">>], Ringback, Doc).
+
+-spec ringback_early(doc()) -> kz_term:api_binary().
+ringback_early(Doc) ->
+    ringback_early(Doc, 'undefined').
+
+-spec ringback_early(doc(), Default) -> binary() | Default.
+ringback_early(Doc, Default) ->
+    kz_json:get_binary_value([<<"ringback">>, <<"early">>], Doc, Default).
+
+-spec set_ringback_early(doc(), binary()) -> doc().
+set_ringback_early(Doc, RingbackEarly) ->
+    kz_json:set_value([<<"ringback">>, <<"early">>], RingbackEarly, Doc).
+
+-spec ringback_transfer(doc()) -> kz_term:api_binary().
+ringback_transfer(Doc) ->
+    ringback_transfer(Doc, 'undefined').
+
+-spec ringback_transfer(doc(), Default) -> binary() | Default.
+ringback_transfer(Doc, Default) ->
+    kz_json:get_binary_value([<<"ringback">>, <<"transfer">>], Doc, Default).
+
+-spec set_ringback_transfer(doc(), binary()) -> doc().
+set_ringback_transfer(Doc, RingbackTransfer) ->
+    kz_json:set_value([<<"ringback">>, <<"transfer">>], RingbackTransfer, Doc).
+
+-spec capture_group(doc()) -> kz_term:api_ne_binary().
+capture_group(Doc) ->
+    capture_group(Doc, 'undefined').
+
+-spec capture_group(doc(), Default) -> kz_term:ne_binary() | Default.
+capture_group(Doc, Default) ->
+    kz_json:get_ne_binary_value([<<"capture_group">>], Doc, Default).
+
+-spec set_capture_group(doc(), kz_term:ne_binary()) -> doc().
+set_capture_group(Doc, CaptureGroup) ->
+    kz_json:set_value([<<"capture_group">>], CaptureGroup, Doc).
+
+-spec capture_groups(doc()) -> kz_term:api_object().
+capture_groups(Doc) ->
+    capture_groups(Doc, 'undefined').
+
+-spec capture_groups(doc(), Default) -> kz_json:object() | Default.
+capture_groups(Doc, Default) ->
+    kz_json:get_json_value([<<"capture_groups">>], Doc, Default).
+
+-spec set_capture_groups(doc(), kz_json:object()) -> doc().
+set_capture_groups(Doc, CaptureGroups) ->
+    kz_json:set_value([<<"capture_groups">>], CaptureGroups, Doc).

@@ -80,7 +80,7 @@ maybe_prepend_preflow(RouteReq, Props, Call, Callflow, NoMatch) ->
     end.
 
 -spec maybe_reply_to_req(kapi_route:req(), kz_term:proplist()
-                        ,kapps_call:call(), kz_json:object(), boolean()) -> 'ok'.
+                        ,kapps_call:call(), kzd_callflows:doc(), boolean()) -> 'ok'.
 maybe_reply_to_req(RouteReq, Props, Call, Flow, NoMatch) ->
     lager:info("callflow ~s in ~s satisfies request for ~s", [kz_doc:id(Flow)
                                                              ,kapps_call:account_id(Call)
@@ -171,13 +171,14 @@ cavs(_Flow, _RouteReq, _Call) -> 'undefined'.
 %% process.
 %% @end
 %%------------------------------------------------------------------------------
--spec send_route_response(kz_json:object(), kapi_route:req(), kapps_call:call()) -> 'ok'.
+-spec send_route_response(kzd_callflows:doc(), kapi_route:req(), kapps_call:call()) -> 'ok'.
 send_route_response(Flow, RouteReq, Call) ->
     lager:info("callflows knows how to route the call! sending park response"),
     AccountId = kapps_call:account_id(Call),
     CallId = kapps_call:call_id(Call),
     ControllerQ = kapps_call:controller_queue(Call),
     FetchId =  kz_api:msg_id(RouteReq),
+
     Resp = props:filter_undefined(
              [{?KEY_MSG_ID, FetchId}
              ,{?KEY_API_ACCOUNT_ID, AccountId}
@@ -211,17 +212,17 @@ wait_for_route_win(Call, FetchId) ->
             lager:warning("callflow didn't received a route win, exiting")
     end.
 
--spec get_transfer_media(kz_json:object(), kapi_route:req()) -> kz_term:api_binary().
+-spec get_transfer_media(kzd_callflows:doc(), kapi_route:req()) -> kz_term:api_ne_binary().
 get_transfer_media(Flow, RouteReq) ->
-    case kz_json:get_value([<<"ringback">>, <<"transfer">>], Flow) of
+    case kzd_callflows:ringback_transfer(Flow) of
         'undefined' ->
             kz_json:get_ne_binary_value(<<"Transfer-Media">>, RouteReq);
         MediaId -> MediaId
     end.
 
--spec get_ringback_media(kz_json:object(), kapi_route:req()) -> kz_term:api_binary().
+-spec get_ringback_media(kzd_callflows:doc(), kapi_route:req()) -> kz_term:api_ne_binary().
 get_ringback_media(Flow, RouteReq) ->
-    case kz_json:get_value([<<"ringback">>, <<"early">>], Flow) of
+    case kzd_callflows:ringback_early(Flow) of
         'undefined' ->
             kz_json:get_ne_binary_value(<<"Ringback-Media">>, RouteReq);
         MediaId -> MediaId
@@ -244,16 +245,15 @@ pre_park_action(Call) ->
 %% @doc process
 %% @end
 %%------------------------------------------------------------------------------
--spec update_call(kz_json:object(), boolean(), kz_term:ne_binary(), kapps_call:call()) ->
+-spec update_call(kzd_callflows:doc(), boolean(), kz_term:ne_binary(), kapps_call:call()) ->
           kapps_call:call().
 update_call(Flow, NoMatch, ControllerQ, Call) ->
     Props = [{'cf_flow_id', kz_doc:id(Flow)}
-            ,{'cf_flow_name', kz_json:get_ne_binary_value(<<"name">>, Flow, kapps_call:request_user(Call))}
-            ,{'cf_flow', kz_json:get_value(<<"flow">>, Flow)}
-            ,{'cf_capture_group', kz_json:get_ne_value(<<"capture_group">>, Flow)}
-            ,{'cf_capture_groups', kz_json:get_value(<<"capture_groups">>, Flow, kz_json:new())}
+            ,{'cf_flow_name', kzd_callflows:name(Flow, kapps_call:request_user(Call))}
+            ,{'cf_flow', kzd_callflows:flow(Flow)}
+            ,{'cf_capture_group', kzd_callflows:capture_group(Flow)}
+            ,{'cf_capture_groups', kzd_callflows:capture_groups(Flow, kz_json:new())}
             ,{'cf_no_match', NoMatch}
-            ,{'cf_metaflow', kz_json:get_value(<<"metaflows">>, Flow, ?DEFAULT_METAFLOWS(kapps_call:account_id(Call)))}
             ],
 
     Updaters = [{fun kapps_call:kvs_store_proplist/2, Props}

@@ -17,42 +17,6 @@
 
 -include("kazoo_directory.hrl").
 
-
--spec maybe_fix_presence_id_realm(kz_term:api_ne_binary(), kz_json:object(), kz_json:object()) -> kz_json:object().
-maybe_fix_presence_id_realm('undefined', _Endpoint, CCVs) -> CCVs;
-maybe_fix_presence_id_realm(PresenceId, Endpoint, CCVs) ->
-    case binary:match(PresenceId, <<"@">>) of
-        'nomatch' ->
-            Realm = kz_json:get_ne_binary_value(<<"realm">>, Endpoint),
-            kz_json:set_value(<<"Presence-ID">>, <<PresenceId/binary, $@, Realm/binary>>, CCVs);
-        _Else -> kz_json:set_value(<<"Presence-ID">>, PresenceId, CCVs)
-    end.
-
--spec presence_id(kz_json:object(), kz_json:object()) -> kz_json:object().
-presence_id(Endpoint, CCVs) ->
-    Default = kzd_devices:sip_username(Endpoint),
-    PresenceId = kzd_devices:presence_id(Endpoint, Default),
-    case kz_term:is_empty(PresenceId) of
-        'true' -> maybe_fix_presence_id_realm(Default, Endpoint, CCVs);
-        'false' -> maybe_fix_presence_id_realm(PresenceId, Endpoint, CCVs)
-    end.
-
--spec owner_id(kz_json:object(), kz_json:object()) -> kz_json:object().
-owner_id(Endpoint, CCVs) ->
-    case kz_json:get_ne_binary_value(<<"owner_id">>, Endpoint) of
-        'undefined' -> CCVs;
-        OwnerId -> kz_json:set_value(<<"Owner-ID">>, OwnerId, CCVs)
-    end.
-
--spec hold_music(kz_json:object(), kz_json:object()) -> kz_json:object().
-hold_music(Endpoint, CCVs) ->
-    case kz_json:get_value([<<"music_on_hold">>, <<"media_id">>], Endpoint) of
-        'undefined' -> CCVs;
-        MediaId ->
-            MOH = kz_media_util:media_path(MediaId, kz_doc:account_id(Endpoint)),
-            kz_json:set_value(<<"Hold-Media">>, MOH, CCVs)
-    end.
-
 -spec profile(kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
 profile(EndpointId, AccountId) ->
     profile(EndpointId, AccountId, []).
@@ -76,18 +40,38 @@ generate_ccvs(_EndpointId, AccountId, Endpoint) ->
             ],
     CCVs = kz_json:from_list(Props),
 
-    CCVFuns = [fun owner_id/2
-              ,fun presence_id/2
-              ,fun hold_music/2
+    CCVFuns = [{fun owner_id/2, Endpoint}
+              ,{fun presence_id/2, Endpoint}
+              ,{fun hold_music/2, Endpoint}
               ],
-    lists:foldl(fun(Fun, Acc) -> Fun(Endpoint, Acc) end, CCVs, CCVFuns).
+    kz_json:exec(CCVFuns, CCVs).
+
+-spec presence_id(kz_json:object(), kz_json:object()) -> kz_json:object().
+presence_id(Endpoint, CCVs) ->
+    PresenceId = kzd_devices:presence_id(Endpoint),
+    kz_json:set_value(<<"Presence-ID">>, PresenceId, CCVs).
+
+-spec owner_id(kz_json:object(), kz_json:object()) -> kz_json:object().
+owner_id(Endpoint, CCVs) ->
+    case kz_json:get_ne_binary_value(<<"owner_id">>, Endpoint) of
+        'undefined' -> CCVs;
+        OwnerId -> kz_json:set_value(<<"Owner-ID">>, OwnerId, CCVs)
+    end.
+
+-spec hold_music(kz_json:object(), kz_json:object()) -> kz_json:object().
+hold_music(Endpoint, CCVs) ->
+    case kz_json:get_ne_binary_value([<<"music_on_hold">>, <<"media_id">>], Endpoint) of
+        'undefined' -> CCVs;
+        MediaId ->
+            MOH = kz_media_util:media_path(MediaId, kz_doc:account_id(Endpoint)),
+            kz_json:set_value(<<"Hold-Media">>, MOH, CCVs)
+    end.
 
 -spec generate_sip_headers(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 generate_sip_headers(_EndpointId, _AccountId, Endpoint) ->
     Headers = kz_json:new(),
-    HeaderFuns = [fun add_sip_headers/2
-                 ],
-    lists:foldl(fun(Fun, Acc) -> Fun(Endpoint, Acc) end, Headers, HeaderFuns).
+    HeaderFuns = [{fun add_sip_headers/2, Endpoint}],
+    kz_json:exec(HeaderFuns, Headers).
 
 -spec add_sip_headers(kz_json:object(), kz_json:object()) -> kz_json:object().
 add_sip_headers(Endpoint, Headers) ->
@@ -153,7 +137,7 @@ owned_by_query(OwnerId, AccountId) ->
     ViewOptions = [{'key', [OwnerId, <<"device">>]}],
     AccountDb = kzs_util:format_account_db(AccountId),
     case kz_datamgr:get_results(AccountDb, <<"attributes/owned">>, ViewOptions) of
-        {'ok', JObjs} -> [kz_json:get_value(<<"id">>, JObj) || JObj <- JObjs];
+        {'ok', JObjs} -> [kz_doc:id(JObj) || JObj <- JObjs];
         {'error', _R} -> []
     end.
 
@@ -217,13 +201,14 @@ call_forward_confirm_properties(_EndpointId, AccountId, Endpoint) ->
     Lang = kz_media_util:prompt_language(AccountId),
     case kzd_devices:call_forward_require_keypress(Endpoint) of
         'false' -> [];
-        'true' -> [{<<"Confirm-Key">>, <<"1">>}
-                  ,{<<"Confirm-Cancel-Timeout">>, 'true'}
-                  ,{<<"Confirm-Read-Timeout">>, 3 * ?MILLISECONDS_IN_SECOND}
-                  ,{<<"Confirm-File">>, kz_media_util:get_prompt(<<"ivr-group_confirm">>, Lang, AccountId)}
-                  ,{<<"Require-Ignore-Early-Media">>, 'true'}
-                  ,{<<"Require-Fail-On-Single-Reject">>, cfw_single_reject()}
-                  ]
+        'true' ->
+            [{<<"Confirm-Key">>, <<"1">>}
+            ,{<<"Confirm-Cancel-Timeout">>, 'true'}
+            ,{<<"Confirm-Read-Timeout">>, 3 * ?MILLISECONDS_IN_SECOND}
+            ,{<<"Confirm-File">>, kz_media_util:get_prompt(<<"ivr-group_confirm">>, Lang, AccountId)}
+            ,{<<"Require-Ignore-Early-Media">>, 'true'}
+            ,{<<"Require-Fail-On-Single-Reject">>, cfw_single_reject()}
+            ]
     end.
 
 call_forward_maybe_retain_cid(_EndpointId, _AccountId, Endpoint) ->
@@ -234,4 +219,4 @@ call_forward_maybe_retain_cid(_EndpointId, _AccountId, Endpoint) ->
 
 -spec get_realm(kz_json:object()) -> kz_term:ne_binary().
 get_realm(Endpoint) ->
-    kz_json:get_value(<<"realm">>, Endpoint, <<"norealm">>).
+    kz_json:get_ne_binary_value(<<"realm">>, Endpoint, <<"norealm">>).

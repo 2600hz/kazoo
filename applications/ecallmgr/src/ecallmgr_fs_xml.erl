@@ -792,7 +792,8 @@ kazoo_var_to_fs_var_fold(K, V, Acc) ->
                             ,kz_term:to_list(ecallmgr_util:media_path(V, 'extant', get('callid'), kz_json:new()))
                             ,"'"
                             ])
-             | Acc];
+             | Acc
+            ];
         {_, Prefix} ->
             Val = ecallmgr_util:maybe_sanitize_fs_value(K, V),
             [encode_fs_val(Prefix, Val) | Acc]

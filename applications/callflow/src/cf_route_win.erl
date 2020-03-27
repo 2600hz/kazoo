@@ -15,19 +15,19 @@
 
 -include("callflow.hrl").
 
--define(JSON(L), kz_json:from_list(L)).
+-define(TO_JSON(L), kz_json:from_list(L)).
 
 -define(DEFAULT_SERVICES
-       ,?JSON([{<<"audio">>, ?JSON([{<<"enabled">>, 'true'}])}
-              ,{<<"video">>, ?JSON([{<<"enabled">>, 'true'}])}
-              ,{<<"sms">>, ?JSON([{<<"enabled">>, 'true'}])}
-              ]
-             )
+       ,?TO_JSON([{<<"audio">>, ?TO_JSON([{<<"enabled">>, 'true'}])}
+                 ,{<<"video">>, ?TO_JSON([{<<"enabled">>, 'true'}])}
+                 ,{<<"sms">>, ?TO_JSON([{<<"enabled">>, 'true'}])}
+                 ]
+                )
        ).
 
--spec execute_callflow(kz_json:object(), kapps_call:call()) ->
+-spec execute_callflow(kapi_route:win(), kapps_call:call()) ->
           {'ok' | 'restricted', kapps_call:call()}.
-execute_callflow(JObj, Call) ->
+execute_callflow(RouteWin, Call) ->
     case should_restrict_call(Call) of
         'true' ->
             lager:debug("endpoint is restricted from making this call, terminate", []),
@@ -37,7 +37,7 @@ execute_callflow(JObj, Call) ->
             {'restricted', Call};
         'false' ->
             lager:info("setting initial information about the call"),
-            {'ok', bootstrap_callflow_executer(JObj, Call)}
+            {'ok', bootstrap_callflow_executer(RouteWin, Call)}
     end.
 
 -spec should_restrict_call(kapps_call:call()) -> boolean().
@@ -49,36 +49,36 @@ should_restrict_call('undefined', _Call) -> 'false';
 should_restrict_call(EndpointId, Call) ->
     case kz_endpoint:get(EndpointId, Call) of
         {'error', _R} -> 'false';
-        {'ok', JObj} -> maybe_service_unavailable(JObj, Call)
+        {'ok', EndpointJObj} -> maybe_service_unavailable(EndpointJObj, Call)
     end.
 
 -spec maybe_service_unavailable(kz_json:object(), kapps_call:call()) -> boolean().
-maybe_service_unavailable(JObj, Call) ->
-    Id = kz_doc:id(JObj),
-    Services = get_services(JObj),
+maybe_service_unavailable(EndpointJObj, Call) ->
+    Id = kz_doc:id(EndpointJObj),
+    Services = get_services(EndpointJObj),
     case kz_json:is_true([<<"audio">>,<<"enabled">>], Services, 'true') of
         'true' ->
-            maybe_account_service_unavailable(JObj, Call);
+            maybe_account_service_unavailable(EndpointJObj, Call);
         'false' ->
             lager:debug("device ~s does not have audio service enabled", [Id]),
             'true'
     end.
 
 -spec get_services(kz_json:object()) -> kz_json:object().
-get_services(JObj) ->
-    kz_json:merge(kz_json:get_json_value(<<"services">>, JObj, ?DEFAULT_SERVICES)
-                 ,kz_json:get_json_value(<<"pvt_services">>, JObj, kz_json:new())
+get_services(EndpointJObj) ->
+    kz_json:merge(kz_json:get_json_value(<<"services">>, EndpointJObj, ?DEFAULT_SERVICES)
+                 ,kz_json:get_json_value(<<"pvt_services">>, EndpointJObj, kz_json:new())
                  ).
 
 -spec maybe_account_service_unavailable(kz_json:object(), kapps_call:call()) -> boolean().
-maybe_account_service_unavailable(JObj, Call) ->
+maybe_account_service_unavailable(EndpointJObj, Call) ->
     AccountId = kapps_call:account_id(Call),
-    {'ok', Doc} = kzd_accounts:fetch(AccountId),
-    Services = get_services(Doc),
+    {'ok', AccountDoc} = kzd_accounts:fetch(AccountId),
+    Services = get_services(AccountDoc),
 
     case kz_json:is_true([<<"audio">>,<<"enabled">>], Services, 'true') of
         'true' ->
-            maybe_closed_group_restriction(JObj, Call);
+            maybe_closed_group_restriction(EndpointJObj, Call);
         'false' ->
             lager:debug("account ~s does not have audio service enabled", [AccountId]),
             'true'
@@ -86,24 +86,24 @@ maybe_account_service_unavailable(JObj, Call) ->
 
 -spec maybe_closed_group_restriction(kz_json:object(), kapps_call:call()) ->
           boolean().
-maybe_closed_group_restriction(JObj, Call) ->
-    case kz_json:get_value([<<"call_restriction">>, <<"closed_groups">>, <<"action">>], JObj) of
-        <<"deny">> -> enforce_closed_groups(JObj, Call);
-        _Else -> maybe_classification_restriction(JObj, Call)
+maybe_closed_group_restriction(EndpointJObj, Call) ->
+    case kz_json:get_value([<<"call_restriction">>, <<"closed_groups">>, <<"action">>], EndpointJObj) of
+        <<"deny">> -> enforce_closed_groups(EndpointJObj, Call);
+        _Else -> maybe_classification_restriction(EndpointJObj, Call)
     end.
 
 -spec maybe_classification_restriction(kz_json:object(), kapps_call:call()) ->
           boolean().
-maybe_classification_restriction(JObj, Call) ->
+maybe_classification_restriction(EndpointJObj, Call) ->
     Request = find_request(Call),
     AccountId = kapps_call:account_id(Call),
-    DialPlan = kz_json:get_json_value(<<"dial_plan">>, JObj, kz_json:new()),
+    DialPlan = kz_json:get_json_value(<<"dial_plan">>, EndpointJObj, kz_json:new()),
     Number = knm_converters:normalize(Request, AccountId, DialPlan),
     Classification = knm_converters:classify(Number),
     lager:debug("classified number ~s as ~s, testing for call restrictions"
                ,[Number, Classification]
                ),
-    kz_json:get_value([<<"call_restriction">>, Classification, <<"action">>], JObj) =:= <<"deny">>.
+    kz_json:get_value([<<"call_restriction">>, Classification, <<"action">>], EndpointJObj) =:= <<"deny">>.
 
 -spec find_request(kapps_call:call()) -> kz_term:ne_binary().
 find_request(Call) ->
@@ -118,29 +118,29 @@ find_request(Call) ->
     end.
 
 -spec enforce_closed_groups(kz_json:object(), kapps_call:call()) -> boolean().
-enforce_closed_groups(JObj, Call) ->
+enforce_closed_groups(EndpointJObj, Call) ->
     case get_callee_extension_info(Call) of
         'undefined' ->
             lager:info("dialed number is not an extension, using classification restrictions", []),
-            maybe_classification_restriction(JObj, Call);
+            maybe_classification_restriction(EndpointJObj, Call);
         {<<"user">>, CalleeId} ->
             lager:info("dialed number is user ~s extension, checking groups", [CalleeId]),
             Groups = kz_attributes:groups(Call),
-            CallerGroups = get_caller_groups(Groups, JObj, Call),
+            CallerGroups = get_caller_groups(Groups, EndpointJObj, Call),
             CalleeGroups = get_group_associations(CalleeId, Groups),
             sets:size(sets:intersection(CallerGroups, CalleeGroups)) =:= 0;
         {<<"device">>, CalleeId} ->
             lager:info("dialed number is device ~s extension, checking groups", [CalleeId]),
             Groups = kz_attributes:groups(Call),
-            CallerGroups = get_caller_groups(Groups, JObj, Call),
+            CallerGroups = get_caller_groups(Groups, EndpointJObj, Call),
             maybe_device_groups_intersect(CalleeId, CallerGroups, Groups, Call)
     end.
 
 -spec get_caller_groups(kz_json:objects(), kz_json:object(), kapps_call:call()) -> sets:set().
-get_caller_groups(Groups, JObj, Call) ->
+get_caller_groups(Groups, EndpointJObj, Call) ->
     Ids = [kapps_call:authorizing_id(Call)
-          ,kz_json:get_ne_binary_value(<<"owner_id">>, JObj)
-           | kz_json:get_keys([<<"hotdesk">>, <<"users">>], JObj)
+          ,kz_json:get_ne_binary_value(<<"owner_id">>, EndpointJObj)
+           | kz_json:get_keys([<<"hotdesk">>, <<"users">>], EndpointJObj)
           ],
     lists:foldl(fun('undefined', Set) -> Set;
                    (Id, Set) -> get_group_associations(Id, Groups, Set)
@@ -202,8 +202,8 @@ get_callee_extension_info(Call) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec bootstrap_callflow_executer(kz_json:object(), kapps_call:call()) -> kapps_call:call().
-bootstrap_callflow_executer(_JObj, Call) ->
+-spec bootstrap_callflow_executer(kapi_route:win(), kapps_call:call()) -> kapps_call:call().
+bootstrap_callflow_executer(_RouteWin, Call) ->
     Routines = [fun store_owner_id/1
                ,fun set_language/1
                ,fun include_denied_call_restrictions/1

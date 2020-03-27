@@ -49,7 +49,7 @@ start_link() ->
 %%
 %% @end
 %%------------------------------------------------------------------------------
--spec init(list()) -> {'ok', state(), pos_integer()}.
+-spec init(list()) -> {'ok', state(), ?MILLISECONDS_IN_SECOND}.
 init([]) ->
     lager:info("starting discovery"),
     {'ok', kz_time:start_time(), ?MILLISECONDS_IN_SECOND}.
@@ -61,7 +61,7 @@ init([]) ->
 %%------------------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Request, _From, Startup) ->
-    {'reply', {'error', 'not_implemented'}, next_timeout(kz_time:elapsed_s(Startup))}.
+    {'reply', {'error', 'not_implemented'}, Startup, next_timeout(kz_time:elapsed_s(Startup))}.
 
 %%------------------------------------------------------------------------------
 %% @doc Handling cast messages
