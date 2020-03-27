@@ -105,7 +105,7 @@ authn_resp_xml(<<"gsm">>, JObj) ->
     {'ok', [VariablesEl, ParamsEl, HeadersEl]};
 authn_resp_xml(<<"password">>, JObj) ->
     PassEl = param_el(<<"password">>, kz_json:get_value(<<"Auth-Password">>, JObj)),
-    ParamsEl = params_el([PassEl]),
+    ParamsEl = params_el([PassEl | authn_resp_params(JObj)]),
 
     VariableEls = [variable_el(K, V) || {K, V} <- get_channel_params(JObj)],
     VariablesEl = variables_el(VariableEls),
@@ -124,6 +124,19 @@ authn_resp_xml(<<"ip">>, _JObj) ->
 authn_resp_xml(_Method, _JObj) ->
     lager:debug("unknown method ~s", [_Method]),
     empty_response().
+
+-spec authn_resp_params(kz_json:object()) -> list().
+authn_resp_params(JObj) ->
+    Action = kz_json:get_value(<<"Auth-Action">>, JObj),
+    authn_resp_params(Action, JObj).
+
+-spec authn_resp_params(kz_term:ne_binary(), kz_json:object()) -> list().
+authn_resp_params(<<"jsonrpc-authenticate">>, _JObj) ->
+    [param_el(<<"jsonrpc-allowed-methods">>, <<"verto">>)
+    ,param_el(<<"jsonrpc-allowed-event-channels">>, <<"conference">>)
+    ];
+authn_resp_params(_, _JObj) ->
+    [].
 
 -spec reverse_authn_resp_xml(kz_term:api_terms()) -> {'ok', iolist()}.
 reverse_authn_resp_xml([_|_]=RespProp) ->

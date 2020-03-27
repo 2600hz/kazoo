@@ -165,6 +165,7 @@ handle_directory_lookup(Id, Props, Node) ->
     case props:get_value(<<"action">>, Props, <<"sip_auth">>) of
         <<"reverse-auth-lookup">> -> lookup_user(Node, Id, <<"reverse-lookup">>, Props);
         <<"sip_auth">> -> maybe_sip_auth_response(Id, Props, Node);
+        <<"jsonrpc-authenticate">> -> maybe_sip_auth_response(Id, Props, Node);
         _Other -> directory_not_found(Node, Id)
     end.
 
@@ -191,9 +192,11 @@ kamailio_association(Id, Props, Node) ->
     Password = kz_binary:rand_hex(12),
     Realm = props:get_value(<<"domain">>, Props),
     Username = props:get_value(<<"user">>, Props, props:get_value(<<"Auth-User">>, Props)),
+    Action = props:get_value(<<"action">>, Props, <<"sip_auth">>),
     CCVs = [{Key, Value} || {<<"X-ecallmgr_", Key/binary>>, Value} <- Props],
     JObj = kz_json:from_list_recursive([{<<"Auth-Method">>, <<"password">>}
                                        ,{<<"Auth-Password">>, Password}
+                                       ,{<<"Auth-Action">>, Action}
                                        ,{<<"Domain-Name">>, Realm}
                                        ,{<<"User-ID">>, Username}
                                        ,{<<"Custom-Channel-Vars">>, CCVs}
