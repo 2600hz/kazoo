@@ -31,8 +31,8 @@ voicemail_to_email(?NE_BINARY=AccountId) ->
 -spec find_vmboxes(kz_term:ne_binary()) -> kz_json:objects().
 find_vmboxes(?NE_BINARY=AccountId) ->
     AccountDb = kzs_util:format_account_db(AccountId),
-    Options = [{'startkey', [kzd_voicemail_box:type()]}
-              ,{'endkey', [kzd_voicemail_box:type(), kz_datamgr:view_highest_value()]}
+    Options = [{'startkey', [kzd_voicemail_box:type(), <<"by_name">>]}
+              ,{'endkey', [kzd_voicemail_box:type(), <<"by_name">>, kz_datamgr:view_highest_value()]}
               ,'include_docs'
               ],
     case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, Options) of
@@ -94,8 +94,8 @@ voicemail_to_email(AccountId, VMBox,  [Message|_]) ->
 -spec skel(kz_term:ne_binary()) -> ok.
 skel(AccountId) ->
     AccountDb = kzs_util:format_account_db(AccountId),
-    Options = [{'startkey', [kzd_users:type()]}
-              ,{'endkey', [kzd_users:type(), kz_datamgr:view_highest_value()]}
+    Options = [{'startkey', [kzd_users:type(), <<"by_id">>]}
+              ,{'endkey', [kzd_users:type(), <<"by_id">>, kz_datamgr:view_highest_value()]}
               ,'include_docs'
               ],
     case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, Options) of
@@ -158,8 +158,8 @@ voicemail_full(AccountId, Box) ->
 -spec fax_inbound_to_email(kz_term:ne_binary()) -> ok.
 fax_inbound_to_email(AccountId) ->
     AccountDb = kzs_util:format_account_db(AccountId),
-    Options = [{'startkey', [kzd_fax_box:type()]}
-              ,{'endkey', [kzd_fax_box:type(), kz_datamgr:view_highest_value()]}
+    Options = [{'startkey', [kzd_fax_box:type(), <<"by_id">>]}
+              ,{'endkey', [kzd_fax_box:type(), <<"by_id">>, kz_datamgr:view_highest_value()]}
               ],
     case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, Options) of
         {'ok', Faxes} -> find_fax_with_attachment(AccountId, [kz_doc:id(J) || J <- Faxes]);

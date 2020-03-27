@@ -445,8 +445,8 @@ send_email(Context) ->
 %%------------------------------------------------------------------------------
 -spec load_users_summary(cb_context:context()) -> cb_context:context().
 load_users_summary(Context) ->
-    Options = [{'startkey', [kzd_users:type()]}
-              ,{'endkey', [kzd_users:type(), kz_datamgr:view_highest_value()]}
+    Options = [{'startkey', [kzd_users:type(), <<"by_id">>]}
+              ,{'endkey', [kzd_users:type(), <<"by_id">>, kz_datamgr:view_highest_value()]}
               ,{'mapper', crossbar_view:get_value_fun()}
               ],
     crossbar_view:load(Context, ?KZ_VIEW_LIST_UNIFORM, Options).

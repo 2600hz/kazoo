@@ -659,8 +659,8 @@ ensure_aggregate_faxboxes([Account|Accounts], Total) ->
 -spec ensure_aggregate_faxbox(kz_term:ne_binary()) -> 'ok'.
 ensure_aggregate_faxbox(Account) ->
     AccountDb = kzs_util:format_account_db(Account),
-    Options = [{'startkey', [kzd_fax_box:type()]}
-              ,{'endkey', [kzd_fax_box:type(), kz_datamgr:view_highest_value()]}
+    Options = [{'startkey', [kzd_fax_box:type(), <<"by_id">>]}
+              ,{'endkey', [kzd_fax_box:type(), <<"by_id">>, kz_datamgr:view_highest_value()]}
               ,'include_docs'
               ],
     case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, Options) of
@@ -757,8 +757,8 @@ ensure_aggregate_devices([Account|Accounts], Total) ->
 -spec ensure_aggregate_device(kz_term:ne_binary()) -> 'ok'.
 ensure_aggregate_device(Account) ->
     AccountDb = kzs_util:format_account_db(Account),
-    Options = [{'startkey', [kzd_devices:type()]}
-              ,{'endkey', [kzd_devices:type(), kz_datamgr:view_highest_value()]}
+    Options = [{'startkey', [kzd_devices:type(), <<"by_id">>]}
+              ,{'endkey', [kzd_devices:type(), <<"by_id">>, kz_datamgr:view_highest_value()]}
               ,'include_docs'
               ],
     case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, Options) of
@@ -1344,8 +1344,8 @@ cleanup_orphan_modbs() ->
 -spec get_messages(kz_term:ne_binary()) -> kz_term:ne_binaries().
 get_messages(Account) ->
     AccountDb = kzs_util:format_account_db(Account),
-    Options = [{'startkey', [kzd_voicemail_box:type()]}
-              ,{'endkey', [kzd_voicemail_box:type(), kz_datamgr:view_highest_value()]}
+    Options = [{'startkey', [kzd_voicemail_box:type(), <<"by_name">>]}
+              ,{'endkey', [kzd_voicemail_box:type(), <<"by_name">>, kz_datamgr:view_highest_value()]}
               ,'include_docs'
               ],
     case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, Options) of
@@ -1429,8 +1429,8 @@ migrate_limits(Account) ->
 -spec clean_trunkstore_docs(kz_term:ne_binary(), integer(), integer()) ->
           {integer(), integer()}.
 clean_trunkstore_docs(AccountDb, TwowayTrunks, InboundTrunks) ->
-    ViewOptions = [{'startkey', [<<"sys_info">>]}
-                  ,{'endkey', [<<"sys_info">>, kz_datamgr:view_highest_value()]}
+    ViewOptions = [{'startkey', [<<"sys_info">>, <<"by_id">>]}
+                  ,{'endkey', [<<"sys_info">>, <<"by_id">>, kz_datamgr:view_highest_value()]}
                   ,'include_docs'
                   ],
     case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, ViewOptions) of

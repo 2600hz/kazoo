@@ -129,8 +129,8 @@ validate(Context, ConferenceId, ?PARTICIPANTS, ParticipantId) ->
 %%------------------------------------------------------------------------------
 -spec validate_conferences(http_method(), cb_context:context()) -> cb_context:context().
 validate_conferences(?HTTP_GET, Context) ->
-    Options = [{'startkey', [kzd_conference:type()]}
-              ,{'endkey', [kzd_conference:type(), kz_datamgr:view_highest_value()]}
+    Options = [{'startkey', [kzd_conference:type(), <<"by_id">>]}
+              ,{'endkey', [kzd_conference:type(), <<"by_id">>, kz_datamgr:view_highest_value()]}
               ,{'mapper', crossbar_view:get_value_fun()}
               ],
     LoadedContext = crossbar_view:load(Context, ?KZ_VIEW_LIST_UNIFORM, Options),

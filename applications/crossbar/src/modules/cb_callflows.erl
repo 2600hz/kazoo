@@ -152,8 +152,8 @@ delete(Context, _CallflowId) ->
 %%------------------------------------------------------------------------------
 -spec load_callflow_summary(cb_context:context()) -> cb_context:context().
 load_callflow_summary(Context) ->
-    Options = [{'startkey', [kzd_callflows:type()]}
-              ,{'endkey', [kzd_callflows:type(), kz_datamgr:view_highest_value()]}
+    Options = [{'startkey', [kzd_callflows:type(), <<"by_id">>]}
+              ,{'endkey', [kzd_callflows:type(), <<"by_id">>, kz_datamgr:view_highest_value()]}
               ,{'mapper', crossbar_view:get_value_fun()}
               ],
     crossbar_view:load(Context, ?KZ_VIEW_LIST_UNIFORM, Options).

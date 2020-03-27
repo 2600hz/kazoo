@@ -793,8 +793,8 @@ validate_patch(Context, BoxId)->
 %%------------------------------------------------------------------------------
 -spec load_vmbox_summary(cb_context:context()) -> cb_context:context().
 load_vmbox_summary(Context) ->
-    Options = [{'startkey', [kzd_voicemail_box:type()]}
-              ,{'endkey', [kzd_voicemail_box:type(), kz_datamgr:view_highest_value()]}
+    Options = [{'startkey', [kzd_voicemail_box:type(), <<"by_name">>]}
+              ,{'endkey', [kzd_voicemail_box:type(), <<"by_name">>, kz_datamgr:view_highest_value()]}
               ,{'mapper', crossbar_view:get_value_fun()}
               ],
     Context1 = crossbar_view:load(Context, ?KZ_VIEW_LIST_UNIFORM, Options),
@@ -1282,8 +1282,8 @@ maybe_migrate_vm_box(Box) ->
 -spec migrate(kz_term:ne_binary()) -> 'ok'.
 migrate(Account) ->
     AccountDb = kzs_util:format_account_db(Account),
-    Options = [{'startkey', [kzd_voicemail_box:type()]}
-              ,{'endkey', [kzd_voicemail_box:type(), kz_datamgr:view_highest_value()]}
+    Options = [{'startkey', [kzd_voicemail_box:type(), <<"by_name">>]}
+              ,{'endkey', [kzd_voicemail_box:type(), <<"by_name">>, kz_datamgr:view_highest_value()]}
               ,'include_docs'
               ],
     case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, Options) of

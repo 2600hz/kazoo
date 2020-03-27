@@ -92,8 +92,8 @@ validate_hotdesks(Context, ?HTTP_GET, _) ->
 %%------------------------------------------------------------------------------
 -spec fetch_all_hotdesks(cb_context:context()) -> cb_context:context().
 fetch_all_hotdesks(Context) ->
-    Options = [{'startkey', [<<"hotdesk">>]}
-              ,{'endkey', [<<"hotdesk">>, kz_datamgr:view_highest_value()]}
+    Options = [{'startkey', [<<"hotdesk">>, <<"by_user">>]}
+              ,{'endkey', [<<"hotdesk">>, <<"by_user">>, kz_datamgr:view_highest_value()]}
               ,{'mapper', crossbar_view:get_value_fun()}
               ],
     crossbar_view:load(Context, ?KZ_VIEW_LIST_UNIFORM, Options).
@@ -111,14 +111,14 @@ fetch_user_hotdesks(DeviceId, Context) ->
 
 -spec fetch_users(kz_term:ne_binaries(), cb_context:context()) -> cb_context:context().
 fetch_users(UserIds, Context) ->
-    ViewOptions = [{'keys', [[kzd_users:type(), UserId] || UserId <- UserIds]}
+    ViewOptions = [{'keys', [[kzd_users:type(), <<"by_id">>, UserId] || UserId <- UserIds]}
                   ,{'mapper', crossbar_view:get_value_fun()}
                   ],
     crossbar_view:load(Context, ?KZ_VIEW_LIST_UNIFORM, ViewOptions).
 
 -spec fetch_device_hotdesks(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 fetch_device_hotdesks(UserId, Context) ->
-    Options = [{'key', [<<"hotdesk">>, UserId]}
+    Options = [{'key', [<<"hotdesk">>, <<"by_user">>, UserId]}
               ,{'mapper', crossbar_view:get_value_fun()}
               ],
     crossbar_view:load(Context, ?KZ_VIEW_LIST_UNIFORM, Options).

@@ -191,8 +191,8 @@ summary(Context) ->
           {kz_term:ne_binary(), crossbar_view:options()}.
 get_view_and_options('undefined') ->
     {?KZ_VIEW_LIST_UNIFORM
-    ,[{'startkey', [<<"group">>]}
-     ,{'endkey', [<<"group">>, kz_datamgr:view_highest_value()]}
+    ,[{'startkey', [<<"group">>, <<"by_id">>]}
+     ,{'endkey', [<<"group">>, <<"by_id">>, kz_datamgr:view_highest_value()]}
      ,{'mapper', crossbar_view:get_value_fun()}
      ]
     };

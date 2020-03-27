@@ -310,8 +310,8 @@ generate_email_address(Context) ->
 %%------------------------------------------------------------------------------
 -spec faxbox_listing(cb_context:context()) -> cb_context:context().
 faxbox_listing(Context) ->
-    Options = [{'startkey', [kzd_fax_box:type()]}
-              ,{'endkey', [kzd_fax_box:type(), kz_datamgr:view_highest_value()]}
+    Options = [{'startkey', [kzd_fax_box:type(), <<"by_id">>]}
+              ,{'endkey', [kzd_fax_box:type(), <<"by_id">>, kz_datamgr:view_highest_value()]}
               ,{'mapper', fun normalize_view_results/2}
               ,'include_docs'
               ],

@@ -265,8 +265,8 @@ on_successful_validation(Id, Context) ->
 %%------------------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    Options = [{'startkey', [<<"sys_info">>]}
-              ,{'endkey', [<<"sys_info">>, kz_datamgr:view_highest_value()]}
+    Options = [{'startkey', [<<"sys_info">>, <<"by_id">>]}
+              ,{'endkey', [<<"sys_info">>, <<"by_id">>, kz_datamgr:view_highest_value()]}
               ,{'mapper', crossbar_view:get_id_fun()}
               ],
     crossbar_view:load(Context, ?KZ_VIEW_LIST_UNIFORM, Options).

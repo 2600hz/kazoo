@@ -358,8 +358,8 @@ on_successful_validation(DocId, Context) ->
 %%------------------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    Options = [{'startkey', [<<"directory">>]}
-              ,{'endkey', [<<"directory">>, kz_datamgr:view_highest_value()]}
+    Options = [{'startkey', [<<"directory">>, <<"by_id">>]}
+              ,{'endkey', [<<"directory">>, <<"by_id">>, kz_datamgr:view_highest_value()]}
               ,{'mapper', crossbar_view:get_value_fun()}
               ],
     crossbar_view:load(Context, ?KZ_VIEW_LIST_UNIFORM, Options).

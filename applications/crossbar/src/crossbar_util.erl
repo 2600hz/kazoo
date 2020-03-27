@@ -1153,8 +1153,8 @@ get_devices_by_owner(AccountDb, OwnerId) ->
 get_account_devices('undefined') -> [];
 get_account_devices(Account) ->
     AccountDb = kzs_util:format_account_db(Account),
-    Options = [{'startkey', [kzd_devices:type()]}
-              ,{'endkey', [kzd_devices:type(), kz_datamgr:view_highest_value()]}
+    Options = [{'startkey', [kzd_devices:type(), <<"by_id">>]}
+              ,{'endkey', [kzd_devices:type(), <<"by_id">>, kz_datamgr:view_highest_value()]}
               ],
     case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, Options) of
         {'ok', JObjs} -> [kz_json:get_value(<<"value">>, JObj) || JObj <- JObjs];

@@ -140,8 +140,8 @@ admin_user_properties(DataJObj) ->
 
 -spec account_admin_user_properties(kz_term:ne_binary()) -> kz_term:proplist().
 account_admin_user_properties(AccountId) ->
-    Options = [{'startkey', [kzd_users:type()]}
-              ,{'endkey', [kzd_users:type(), kz_datamgr:view_highest_value()]}
+    Options = [{'startkey', [kzd_users:type(), <<"by_id">>]}
+              ,{'endkey', [kzd_users:type(), <<"by_id">>, kz_datamgr:view_highest_value()]}
               ,'include_docs'
               ],
     case kz_datamgr:get_results(AccountId, ?KZ_VIEW_LIST_UNIFORM, Options) of

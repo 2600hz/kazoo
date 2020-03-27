@@ -164,8 +164,8 @@ validate_patch(Id, Context) ->
 %%------------------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    Options = [{'startkey', [<<"temporal_rule">>]}
-              ,{'endkey', [<<"temporal_rule">>, kz_datamgr:view_highest_value()]}
+    Options = [{'startkey', [<<"temporal_rule">>, <<"by_id">>]}
+              ,{'endkey', [<<"temporal_rule">>, <<"by_id">>, kz_datamgr:view_highest_value()]}
               ,{'mapper', crossbar_view:get_value_fun()}
               ],
     crossbar_view:load(Context, ?KZ_VIEW_LIST_UNIFORM, Options).

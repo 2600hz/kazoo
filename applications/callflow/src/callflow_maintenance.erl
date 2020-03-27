@@ -141,8 +141,8 @@ migrate_recorded_names([Account|Accounts]) ->
 migrate_recorded_name(Db) ->
     lager:info("migrating all name recordings from vmboxes w/ owner_id in ~s", [Db]),
 
-    Options = [{'startkey', [kzd_voicemail_box:type()]}
-              ,{'endkey', [kzd_voicemail_box:type(), kz_datamgr:view_highest_value()]}
+    Options = [{'startkey', [kzd_voicemail_box:type(), <<"by_name">>]}
+              ,{'endkey', [kzd_voicemail_box:type(), <<"by_name">>, kz_datamgr:view_highest_value()]}
               ,'include_docs'
               ],
     case kz_datamgr:get_results(Db, ?KZ_VIEW_LIST_UNIFORM, Options) of
@@ -195,8 +195,8 @@ migrate_menus() ->
 migrate_menus(Account) ->
     Db = kzs_util:format_account_db(Account),
     lager:info("migrating all menus in ~s", [Db]),
-    Options = [{'startkey', [kzd_menus:type()]}
-              ,{'endkey', [kzd_menus:type(), kz_datamgr:view_highest_value()]}
+    Options = [{'startkey', [kzd_menus:type(), <<"by_id">>]}
+              ,{'endkey', [kzd_menus:type(), <<"by_id">>, kz_datamgr:view_highest_value()]}
               ,'include_docs'
               ],
     case kz_datamgr:get_results(Db, ?KZ_VIEW_LIST_UNIFORM, Options) of
@@ -411,8 +411,8 @@ print_call_restrictions(DbName, DocId) ->
 
 -spec print_users_level_call_restrictions(kz_term:ne_binary()) -> 'ok'.
 print_users_level_call_restrictions(DbName) ->
-    Options = [{'startkey', [kzd_users:type()]}
-              ,{'endkey', [kzd_users:type(), kz_datamgr:view_highest_value()]}
+    Options = [{'startkey', [kzd_users:type(), <<"by_id">>]}
+              ,{'endkey', [kzd_users:type(), <<"by_id">>, kz_datamgr:view_highest_value()]}
               ],
     case kz_datamgr:get_results(DbName, ?KZ_VIEW_LIST_UNIFORM, Options) of
         {'ok', JObj} ->
@@ -428,8 +428,8 @@ print_users_level_call_restrictions(DbName) ->
 
 -spec print_devices_level_call_restrictions(kz_term:ne_binary()) -> 'ok'.
 print_devices_level_call_restrictions(DbName) ->
-    Options = [{'startkey', [kzd_devices:type()]}
-              ,{'endkey', [kzd_devices:type(), kz_datamgr:view_highest_value()]}
+    Options = [{'startkey', [kzd_devices:type(), <<"by_id">>]}
+              ,{'endkey', [kzd_devices:type(), <<"by_id">>, kz_datamgr:view_highest_value()]}
               ],
     case kz_datamgr:get_results(DbName, ?KZ_VIEW_LIST_UNIFORM, Options) of
         {'ok', JObjs} ->

@@ -110,8 +110,8 @@ process_account(AccountId, DataJObj) ->
             [send_update_to_user(UserJObj, DataJObj)];
         _ ->
             AccountDb = kzs_util:format_account_db(AccountId),
-            Options = [{'startkey', [kzd_users:type()]}
-                      ,{'endkey', [kzd_users:type(), kz_datamgr:view_highest_value()]}
+            Options = [{'startkey', [kzd_users:type(), <<"by_id">>]}
+                      ,{'endkey', [kzd_users:type(), <<"by_id">>, kz_datamgr:view_highest_value()]}
                       ],
             {'ok', Users} = kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, Options),
             lists:flatten(select_users_to_update([kz_json:get_value(<<"value">>, User) || User <- Users], DataJObj))

@@ -111,8 +111,8 @@ get_voicemail_number(AccountDb, Mailbox) ->
 
 -spec get_callflows(kz_term:ne_binary()) -> kz_json:objects().
 get_callflows(AccountDb) ->
-    Options = [{'startkey', [kzd_callflows:type()]}
-              ,{'endkey', [kzd_callflows:type(), kz_datamgr:view_highest_value()]}
+    Options = [{'startkey', [kzd_callflows:type(), <<"by_id">>]}
+              ,{'endkey', [kzd_callflows:type(), <<"by_id">>, kz_datamgr:view_highest_value()]}
               ,'include_docs'
               ],
     case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, Options) of

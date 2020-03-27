@@ -260,8 +260,8 @@ load_device_summary(Context, [{<<"devices">>, []}, {<<"users">>, [UserId]} | _])
                   ],
     crossbar_view:load(Context, ?OWNER_LIST, ViewOptions);
 load_device_summary(Context, _ReqNouns) ->
-    Options = [{'startkey', [kzd_devices:type()]}
-              ,{'endkey', [kzd_devices:type(), kz_datamgr:view_highest_value()]}
+    Options = [{'startkey', [kzd_devices:type(), <<"by_id">>]}
+              ,{'endkey', [kzd_devices:type(), <<"by_id">>, kz_datamgr:view_highest_value()]}
               ,{'mapper', crossbar_view:get_value_fun()}
               ],
     crossbar_view:load(Context, ?KZ_VIEW_LIST_UNIFORM, Options).

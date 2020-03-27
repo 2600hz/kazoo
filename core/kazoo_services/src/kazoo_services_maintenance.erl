@@ -704,7 +704,7 @@ maybe_open_app(VendorId, Id, PlanApp) ->
 -spec maybe_find_app(kz_term:ne_binary(), kz_term:api_binary()) -> kz_term:proplist().
 maybe_find_app(_VendorId, 'undefined') -> [];
 maybe_find_app(?NE_BINARY = VendorId, Name) ->
-    ViewOptions = [{'key', [<<"app">>, Name]}],
+    ViewOptions = [{'key', [<<"app">>, <<"by_name">>, Name]}],
     VendorDb = kzs_util:format_account_db(VendorId),
     case kz_datamgr:get_results(VendorDb, ?KZ_VIEW_LIST_UNIFORM, ViewOptions) of
         {'ok', [App|_]} ->

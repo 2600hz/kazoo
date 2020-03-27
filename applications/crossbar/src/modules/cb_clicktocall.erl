@@ -225,8 +225,8 @@ delete(Context, _) ->
 %%------------------------------------------------------------------------------
 -spec load_c2c_summary(cb_context:context()) -> cb_context:context().
 load_c2c_summary(Context) ->
-    Options = [{'startkey', [kzd_clicktocall:type()]}
-              ,{'endkey', [kzd_clicktocall:type(), kz_datamgr:view_highest_value()]}
+    Options = [{'startkey', [kzd_clicktocall:type(), <<"by_id">>]}
+              ,{'endkey', [kzd_clicktocall:type(), <<"by_id">>, kz_datamgr:view_highest_value()]}
               ,{'mapper', crossbar_view:get_value_fun()}
               ],
     crossbar_view:load(Context, ?KZ_VIEW_LIST_UNIFORM, Options).
@@ -269,8 +269,8 @@ maybe_migrate_history(Account) ->
     AccountId = kzs_util:format_account_id(Account),
     AccountDb = kzs_util:format_account_db(Account),
 
-    Options = [{'startkey', [kzd_clicktocall:type()]}
-              ,{'endkey', [kzd_clicktocall:type(), kz_datamgr:view_highest_value()]}
+    Options = [{'startkey', [kzd_clicktocall:type(), <<"by_id">>]}
+              ,{'endkey', [kzd_clicktocall:type(), <<"by_id">>, kz_datamgr:view_highest_value()]}
               ,'include_docs'
               ],
     case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, Options) of

@@ -47,7 +47,7 @@ captured_callflow(_Call, 'undefined') -> 'undefined';
 captured_callflow(Call, [Number]) ->
     captured_callflow(Call, Number);
 captured_callflow(Call, Number) ->
-    Options = [{'key', [kzd_callflows:type(), 'by_number', Number]}
+    Options = [{'key', [kzd_callflows:type(), <<"by_number">>, Number]}
               ,'include_docs'
               ],
     case kz_datamgr:get_results(kapps_call:account_db(Call), ?KZ_VIEW_LIST_UNIFORM, Options) of

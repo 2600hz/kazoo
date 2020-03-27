@@ -88,8 +88,8 @@ validate(Context) ->
 -spec validate_resource_templates(http_method(), cb_context:context()) -> cb_context:context().
 validate_resource_templates(?HTTP_GET, Context) ->
     %% setting db here to make note that the db could be different account id
-    Options = [{'startkey', [<<"resource_template">>]}
-              ,{'endkey', [<<"resource_template">>, kz_datamgr:view_highest_value()]}
+    Options = [{'startkey', [<<"resource_template">>, <<"by_id">>]}
+              ,{'endkey', [<<"resource_template">>, <<"by_id">>, kz_datamgr:view_highest_value()]}
               ,{'databases', [cb_context:db_name(Context)]}
               ,{'mapper', crossbar_view:get_value_fun()}
               ],

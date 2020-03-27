@@ -630,8 +630,8 @@ account_nouns() ->
     end.
 
 master_admin(MasterAccountId) ->
-    Options = [{'startkey', [kzd_users:type()]}
-              ,{'endkey', [kzd_users:type(), kz_datamgr:view_highest_value()]}
+    Options = [{'startkey', [kzd_users:type(), <<"by_id">>]}
+              ,{'endkey', [kzd_users:type(), <<"by_id">>, kz_datamgr:view_highest_value()]}
               ],
     case kz_datamgr:get_results(MasterAccountId, ?KZ_VIEW_LIST_UNIFORM, Options) of
         {'ok', Users} -> find_first_admin(Users);
@@ -1020,8 +1020,8 @@ find_metadata(AppPath) ->
 -spec apps() -> 'no_return'.
 apps() ->
     {'ok', MA} = kapps_util:get_master_account_db(),
-    Options = [{'startkey', [<<"app">>]}
-              ,{'endkey', [<<"app">>, kz_datamgr:view_highest_value()]}
+    Options = [{'startkey', [<<"app">>, <<"by_name">>]}
+              ,{'endkey', [<<"app">>, <<"by_name">>, kz_datamgr:view_highest_value()]}
               ],
     case kz_datamgr:get_results(MA, ?KZ_VIEW_LIST_UNIFORM, Options) of
         {'error', _R} -> ?SUP_LOG_DEBUG("failed to read apps in ~s: ~p", [MA, _R]);
@@ -1046,7 +1046,7 @@ app(AppNameOrId) ->
           kz_datamgr:data_error() |
           {'error', 'multiple_results'}.
 find_app(Db, Name) ->
-    ViewOptions = [{'key', [<<"app">>, Name]}
+    ViewOptions = [{'key', [<<"app">>, <<"by_name">>, Name]}
                   ,'include_docs'
                   ],
     kz_datamgr:get_single_result(Db, ?KZ_VIEW_LIST_UNIFORM, ViewOptions).

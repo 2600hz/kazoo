@@ -264,8 +264,8 @@ validate_patch(Id, Context) ->
 %%------------------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    Options = [{'startkey', [<<"provider">>, <<"multi_factor">>]}
-              ,{'endkey', [<<"provider">>, <<"multi_factor">>, kz_datamgr:view_highest_value()]}
+    Options = [{'startkey', [<<"provider">>, <<"by_type">>, <<"multi_factor">>]}
+              ,{'endkey', [<<"provider">>, <<"by_type">>, <<"multi_factor">>, kz_datamgr:view_highest_value()]}
               ,{'unchunkable', 'true'}
               ,{'mapper', crossbar_view:get_value_fun()}
               ],
