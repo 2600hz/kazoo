@@ -80,7 +80,7 @@ maybe_prepend_preflow(RouteReq, Props, Call, Callflow, NoMatch) ->
     end.
 
 -spec maybe_reply_to_req(kapi_route:req(), kz_term:proplist()
-                        ,kapps_call:call(), kz_json:object(), boolean()) -> 'ok'.
+                        ,kapps_call:call(), kzd_callflows:doc(), boolean()) -> 'ok'.
 maybe_reply_to_req(RouteReq, Props, Call, Flow, NoMatch) ->
     lager:info("callflow ~s in ~s satisfies request for ~s", [kz_doc:id(Flow)
                                                              ,kapps_call:account_id(Call)
@@ -160,10 +160,8 @@ callflow_should_respond(Call) ->
     end.
 
 -spec ccvs(kz_json:object(), kapi_route:req(), kapps_call:call()) -> kz_term:api_object().
-ccvs(Flow, _RouteReq, Call) ->
-    kz_json:set_values([{<<"CallFlow-ID">>, kz_doc:id(Flow)}]
-                      ,response_ccvs(Call)
-                      ).
+ccvs(Flow, _RouteReq, _Call) ->
+    kz_json:from_list([{<<"CallFlow-ID">>, kz_doc:id(Flow)}]).
 
 -spec cavs(kz_json:object(), kapi_route:req(), kapps_call:call()) -> kz_term:api_object().
 cavs(_Flow, _RouteReq, _Call) -> 'undefined'.
@@ -173,7 +171,7 @@ cavs(_Flow, _RouteReq, _Call) -> 'undefined'.
 %% process.
 %% @end
 %%------------------------------------------------------------------------------
--spec send_route_response(kz_json:object(), kapi_route:req(), kapps_call:call()) -> 'ok'.
+-spec send_route_response(kzd_callflows:doc(), kapi_route:req(), kapps_call:call()) -> 'ok'.
 send_route_response(Flow, RouteReq, Call) ->
     lager:info("callflows knows how to route the call! sending park response"),
     AccountId = kapps_call:account_id(Call),
@@ -194,31 +192,11 @@ send_route_response(Flow, RouteReq, Call) ->
              ,{<<"Custom-Channel-Vars">>, ccvs(Flow, RouteReq, Call)}
              ,{<<"Custom-Application-Vars">>, cavs(Flow, RouteReq, Call)}
              ,{<<"Context">>, kapps_call:context(Call)}
-              | kz_api:default_headers(ControllerQ, ?APP_NAME, ?APP_VERSION)
+             | kz_api:default_headers(ControllerQ, ?APP_NAME, ?APP_VERSION)
              ]),
     ServerId = kz_api:server_id(RouteReq),
     kapi_route:publish_resp(ServerId, Resp),
     wait_for_route_win(Call, FetchId).
-
-response_ccvs(Call) ->
-    response_ccvs(Call, kapps_call:authorizing_id(Call), kapps_call:authorizing_type(Call)).
-
-response_ccvs(Call, DeviceId, <<"device">>) ->
-    response_ccvs_from_device(Call, kzd_devices:fetch(kapps_call:account_db(Call), DeviceId));
-response_ccvs(Call, _Id, _Type) ->
-    lager:debug("ignoring authz type: ~s id: ~s", [_Type, _Id]),
-    default_response_ccvs(Call).
-
-response_ccvs_from_device(Call, {'ok', DeviceJObj}) ->
-    kz_json:set_values([{<<"Presence-ID">>, kzd_devices:calculate_presence_id(DeviceJObj)}]
-                      ,default_response_ccvs(Call)
-                      );
-response_ccvs_from_device(Call, _E) ->
-    default_response_ccvs(Call).
-
-default_response_ccvs(Call) ->
-    kapps_call:custom_channel_vars(Call).
-
 
 wait_for_route_win(Call, FetchId) ->
     receive
@@ -234,17 +212,17 @@ wait_for_route_win(Call, FetchId) ->
             lager:warning("callflow didn't received a route win, exiting")
     end.
 
--spec get_transfer_media(kz_json:object(), kapi_route:req()) -> kz_term:api_binary().
+-spec get_transfer_media(kzd_callflows:doc(), kapi_route:req()) -> kz_term:api_ne_binary().
 get_transfer_media(Flow, RouteReq) ->
-    case kz_json:get_value([<<"ringback">>, <<"transfer">>], Flow) of
+    case kzd_callflows:ringback_transfer(Flow) of
         'undefined' ->
             kz_json:get_ne_binary_value(<<"Transfer-Media">>, RouteReq);
         MediaId -> MediaId
     end.
 
--spec get_ringback_media(kz_json:object(), kapi_route:req()) -> kz_term:api_binary().
+-spec get_ringback_media(kzd_callflows:doc(), kapi_route:req()) -> kz_term:api_ne_binary().
 get_ringback_media(Flow, RouteReq) ->
-    case kz_json:get_value([<<"ringback">>, <<"early">>], Flow) of
+    case kzd_callflows:ringback_early(Flow) of
         'undefined' ->
             kz_json:get_ne_binary_value(<<"Ringback-Media">>, RouteReq);
         MediaId -> MediaId
@@ -267,16 +245,15 @@ pre_park_action(Call) ->
 %% @doc process
 %% @end
 %%------------------------------------------------------------------------------
--spec update_call(kz_json:object(), boolean(), kz_term:ne_binary(), kapps_call:call()) ->
+-spec update_call(kzd_callflows:doc(), boolean(), kz_term:ne_binary(), kapps_call:call()) ->
           kapps_call:call().
 update_call(Flow, NoMatch, ControllerQ, Call) ->
     Props = [{'cf_flow_id', kz_doc:id(Flow)}
-            ,{'cf_flow_name', kz_json:get_ne_binary_value(<<"name">>, Flow, kapps_call:request_user(Call))}
-            ,{'cf_flow', kz_json:get_value(<<"flow">>, Flow)}
-            ,{'cf_capture_group', kz_json:get_ne_value(<<"capture_group">>, Flow)}
-            ,{'cf_capture_groups', kz_json:get_value(<<"capture_groups">>, Flow, kz_json:new())}
+            ,{'cf_flow_name', kzd_callflows:name(Flow, kapps_call:request_user(Call))}
+            ,{'cf_flow', kzd_callflows:flow(Flow)}
+            ,{'cf_capture_group', kzd_callflows:capture_group(Flow)}
+            ,{'cf_capture_groups', kzd_callflows:capture_groups(Flow, kz_json:new())}
             ,{'cf_no_match', NoMatch}
-            ,{'cf_metaflow', kz_json:get_value(<<"metaflows">>, Flow, ?DEFAULT_METAFLOWS(kapps_call:account_id(Call)))}
             ],
 
     Updaters = [{fun kapps_call:kvs_store_proplist/2, Props}

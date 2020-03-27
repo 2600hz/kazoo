@@ -35,6 +35,10 @@
             "$ref": "metaflows",
             "description": "Actions applied to a call outside of the normal callflow, initiated by the caller(s)"
         },
+        "name": {
+            "description": "Friendly name of the callflow",
+            "type": "string"
+        },
         "numbers": {
             "default": [],
             "description": "A list of static numbers that the callflow should execute for",
@@ -54,6 +58,20 @@
                 "type": "string"
             },
             "type": "array"
+        },
+        "ringback": {
+            "description": "Ringback settings for early media and transfers",
+            "properties": {
+                "early": {
+                    "description": "Media ID for the early ringback media",
+                    "type": "string"
+                },
+                "transfer": {
+                    "description": "Media ID for transfer ringback media",
+                    "type": "string"
+                }
+            },
+            "type": "object"
         }
     },
     "type": "object"

@@ -51,7 +51,6 @@ get(Call) -> ?MOD:get(Call).
 -spec get(kz_term:api_binary(), kz_term:ne_binary() | kapps_call:call()) -> std_return().
 get(EndpointId, _Call) -> ?MOD:get(EndpointId, _Call).
 
-
 -ifdef(TEST).
 attributes_keys() -> ?MOD:attributes_keys().
 
