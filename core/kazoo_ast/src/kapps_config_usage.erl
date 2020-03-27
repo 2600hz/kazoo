@@ -40,7 +40,9 @@
 to_schema_docs() ->
     kz_json:foreach(fun update_schema/1, process_project()).
 
--spec to_schema_docs(atom()) -> 'ok'.
+-spec to_schema_docs(atom() | [atom()]) -> 'ok'.
+to_schema_docs(Modules) when is_list(Modules) ->
+    kz_json:foreach(fun update_schema/1, process_modules(Modules));
 to_schema_docs(App) ->
     kz_json:foreach(fun update_schema/1, process_app(App)).
 
@@ -148,6 +150,19 @@ process_app(App) ->
               ,{'after_application', fun add_schemas_to_bucket/2}
               ],
     #{'project_schemas' := Usage} = kazoo_ast:walk_app(App, Options),
+    Usage.
+
+-spec process_modules([atom()]) -> kz_json:object().
+process_modules(Modules) when is_list(Modules) ->
+    io:format("processing kapps_config/kapps_account_config usage: "),
+    Options = [{'expression', fun expression_to_schema/2}
+              ,{'module', fun print_dot/2}
+              ,{'accumulator', new_acc()}
+              ,{'application', fun add_app_config/2}
+              ,{'after_application', fun add_schemas_to_bucket/2}
+              ],
+    #{'project_schemas' := Usage} = kazoo_ast:walk_modules(Modules, Options),
+    io:format(" done~n"),
     Usage.
 
 print_dot('pqc_cb_system_configs', Acc) ->

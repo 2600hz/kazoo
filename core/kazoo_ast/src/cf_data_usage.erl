@@ -11,7 +11,7 @@
 -module(cf_data_usage).
 
 -export([process/0, process/1
-        ,to_schema_docs/0, to_schema_doc/1
+        ,to_schema_docs/0, to_schema_docs/1, to_schema_doc/1
         ]).
 
 -include_lib("kazoo_ast/include/kz_ast.hrl").
@@ -29,8 +29,15 @@
 
 -spec to_schema_docs() -> 'ok'.
 to_schema_docs() ->
+    io:format("processing callflow data usage: "),
     _ = [to_schema_doc(M, Usage) || {M, Usage} <- process()],
-    'ok'.
+    io:format(" done~n").
+
+-spec to_schema_docs([module()]) -> 'ok'.
+to_schema_docs(Ms) ->
+    io:format("processing callflow data usage: "),
+    _ = [to_schema_doc(M) || M <- Ms, is_action_module(M)],
+    io:format(" done~n").
 
 -spec to_schema_doc(module()) -> 'ok'.
 to_schema_doc(M) ->
@@ -202,12 +209,10 @@ guess_type(_F, _D) ->
 
 -spec process() -> [{module(), list()}].
 process() ->
-    io:format("processing callflow data usage: "),
     Usages = [{Module, Usages} ||
                  Module <- kz_ast_util:app_modules('callflow'),
                  (Usages = process(Module)) =/= 'undefined'
              ],
-    io:format(" done~n"),
     Usages.
 
 -spec process(module()) -> list().
@@ -499,6 +504,17 @@ arg_list_has_data_var(DataName, Aliases, [?MOD_FUN_ARGS('kz_json'
         'undefined' -> arg_list_has_data_var(DataName, Aliases, T);
         {Alias, _} -> ?LOG_DEBUG("  sublist had alias ~p~n", [Alias]), {Alias, T}
     end;
+arg_list_has_data_var(DataName, Aliases, [?MOD_FUN_ARGS('kz_doc'
+                                                       ,'set_id'
+                                                       ,Args
+                                                       )
+                                          | T
+                                         ]) ->
+    case arg_list_has_data_var(DataName, Aliases, Args) of
+        {DataName, _} -> ?LOG_DEBUG("  sublist had ~p~n", [DataName]), {DataName, T};
+        'undefined' -> arg_list_has_data_var(DataName, Aliases, T);
+        {Alias, _} -> ?LOG_DEBUG("  sublist had alias ~p~n", [Alias]), {Alias, T}
+    end;
 arg_list_has_data_var(DataName, Aliases, [?MOD_FUN_ARGS(_M, _F, Args)|T]=As) ->
     case arg_list_has_data_var(DataName, Aliases, Args) of
         {DataName, _} -> ?LOG_DEBUG("  sub-fun had ~p~n", [DataName]), {DataName, As};
@@ -631,6 +647,7 @@ process_mfa_clauses(#usage{visited=Vs
                           }=Acc
                    ,M, F, As, Clauses
                    ) ->
+    ?LOG_DEBUG("process clauses for ~p:~p/~p: ~p", [M, F, length(As), As]),
     #usage{usages=ModuleUsages
           ,functions=NewFs
           ,visited=ModuleVisited
@@ -731,6 +748,7 @@ process_mfa_clause(#usage{data_var_name=DataName}=Acc
     ?LOG_DEBUG("  guessed data index of ~p as ~p~n", [DataName, DataIndex]),
     process_mfa_clause(Acc, Clause, DataIndex);
 process_mfa_clause(Acc, _Clause, 'undefined') ->
+    ?LOG_DEBUG("no data index"),
     Acc;
 process_mfa_clause(#usage{data_var_name=DataName
                          ,data_var_aliases=Aliases
@@ -799,6 +817,18 @@ data_index(DataName, [?EMPTY_LIST|As], Index) ->
 data_index(DataName, [?VAR(DataName)|_As], Index) -> Index;
 data_index(DataName
           ,[?MOD_FUN_ARGS('kz_json', 'set_value'
+                         ,Args
+                         )
+            | As
+           ]
+          ,Index
+          ) ->
+    case arg_list_has_data_var(DataName, [], Args) of
+        {DataName, _} -> Index;
+        'undefined' -> data_index(DataName, As, Index+1)
+    end;
+data_index(DataName
+          ,[?MOD_FUN_ARGS('kz_doc', 'set_id'
                          ,Args
                          )
             | As
