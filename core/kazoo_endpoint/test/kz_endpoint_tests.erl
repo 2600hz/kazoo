@@ -140,7 +140,6 @@ device_undefined_user_undefined_account_on() ->
     DeviceDoc = kzd_devices:new(),
 
     Merged = kz_endpoint:merge_attribute(<<"call_recording">>, AccountDoc, DeviceDoc, UserDoc),
-    ?debugFmt("merged: ~p~n", [Merged]),
 
     check_expectations(?FUNCTION_NAME, Merged, Expectations).
 

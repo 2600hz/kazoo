@@ -220,8 +220,8 @@ create_schema(Path) ->
 
 -spec project_apps() -> [atom()].
 project_apps() ->
-    Core = siblings_of('kazoo'),
-    Apps = siblings_of('sysconf'),
+    Core = siblings_of('kazoo_apps'),
+    Apps = siblings_of('crossbar'),
     Core ++ Apps.
 
 siblings_of(App) ->
