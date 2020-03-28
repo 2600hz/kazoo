@@ -131,7 +131,7 @@ take_row_test_() ->
     ,?_assertEqual({[<<"a">>, ?ZILCH], <<>>}, kz_csv:take_row(<<"a,\n">>))
     ,?_assertEqual({[?ZILCH, <<"a">>], <<>>}, kz_csv:take_row(<<",a\n">>))
     ,?_assertEqual({[<<"a">>, ?ZILCH], <<"\n">>}, kz_csv:take_row(<<"a,\n\n">>))
-    ,?_assertEqual({[?ZILCH, ?ZILCH], <<>>}, kz_csv:take_row(<<",\"\"\n">>))
+    ,?_assertEqual({[?ZILCH, <<>>], <<>>}, kz_csv:take_row(<<",\"\"\n">>))
     ,?_assertEqual({[?ZILCH, <<"bla">>], <<>>}, kz_csv:take_row(<<",\"bla\"\n">>))
     ,?_assertEqual({[?ZILCH,?ZILCH,?ZILCH,?ZILCH], <<>>}, kz_csv:take_row(<<",,,">>))
     ,?_assertEqual({[<<"'a'">>,?ZILCH], <<>>}, kz_csv:take_row(<<"'a',">>))
@@ -190,14 +190,19 @@ count_rows_test_() ->
     ].
 
 row_to_iolist_test_() ->
+    JSONRaw = <<"{\"data\": { \"id\": \"xxxxxxxxx\", \"int\": 20 \"bool\": false }, \"children\": {}}">>,
+    JSONCSV = <<"\"{\"\"data\"\": { \"\"id\"\": \"\"xxxxxxxxx\"\", \"\"int\"\": 20 \"\"bool\"\": false }, \"\"children\"\": {}}\"">>,
     [?_assertException('error', 'function_clause', kz_csv:row_to_iolist([]))
     ]
         ++ [?_assertEqual(Expected, iolist_to_binary(kz_csv:row_to_iolist(Input)))
-            || {Expected, Input} <- [{<<"\"a\",\"b\"\n">>, [<<"a">>, <<"b">>]}
-                                    ,{<<"\"a\",,\"b\"\n">>, [<<"a">>, ?ZILCH, <<"b">>]}
-                                    ,{<<",,\"b\"\n">>, [?ZILCH, ?ZILCH, <<"b">>]}
-                                    ,{<<"\"a\",\"b\",\n">>, [<<"a">>, <<"b">>, ?ZILCH]}
-                                    ,{<<"\"a\",\"b\",,,\"c\"\n">>, [<<"a">>, <<"b">>, ?ZILCH, ?ZILCH, <<"c">>]}
+            || {Expected, Input} <- [{<<"a,b">>, [<<"a">>, <<"b">>]}
+                                    ,{<<"a,,b">>, [<<"a">>, ?ZILCH, <<"b">>]}
+                                    ,{<<",,b">>, [?ZILCH, ?ZILCH, <<"b">>]}
+                                    ,{<<"a,b,">>, [<<"a">>, <<"b">>, ?ZILCH]}
+                                    ,{<<"a,b,,,c">>, [<<"a">>, <<"b">>, ?ZILCH, ?ZILCH, <<"c">>]}
+                                    ,{<<"a,\"comma, test\"">>, [<<"a">>, <<"comma, test">>]}
+                                    ,{<<"a,\"double quote \"\"test\"\"\"">>, [<<"a">>, <<"double quote \"test\"">>]}
+                                    ,{<<"a,", JSONCSV/binary>>, [<<"a">>, JSONRaw]}
                                     ]
            ].
 
@@ -268,7 +273,7 @@ parse_test_() ->
     ,?_assertEqual([<<"test">>,?ZILCH,?ZILCH], kz_csv:parse_row(<<"test,,">>))
     ,?_assertEqual([<<"test">>,?ZILCH,<<"foo bar">>], kz_csv:parse_row(<<"test,,foo bar">>))
     ,?_assertEqual([?ZILCH,<<"test">>,<<"''">>,<<"foo bar">>], kz_csv:parse_row(<<",test,'',foo bar">>))
-    ,?_assertEqual([?ZILCH,<<"test">>,?ZILCH,<<"foo bar">>], kz_csv:parse_row(<<",test,\"\",foo bar">>))
+    ,?_assertEqual([?ZILCH,<<"test">>,<<>>,<<"foo bar">>], kz_csv:parse_row(<<",test,\"\",foo bar">>))
     ].
 
 files_test_() ->

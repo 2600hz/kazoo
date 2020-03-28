@@ -355,67 +355,74 @@ take_line(CSV) ->
 %% If a value contains a comma, a newline character or a double quote, then the
 %% value must be enclosed in double quotes.
 %% A double quote in a value must be escaped with another double quote.
+%%
+%% Note that empty cells <<",">> will be converted to [?ZILCH, ?ZILCH]
+%% but <<"\"\",">> will be converted to [<<>>, ?ZILCH]
 %% @end
 %%------------------------------------------------------------------------------
 -spec parse_row(kz_term:ne_binary()) -> row().
+parse_row(<<>>) -> [?ZILCH];
 parse_row(Line) ->
-    case binary:match(Line, <<$">>) of
-        'nomatch' ->
-            %% Simple line, no escaped characters, Just split on `,`
-            binary:split(Line, <<$,>>, [global]);
-        _Match ->
-            %% Complex line with escaped characters
-            parse_complex_row(Line)
-    end.
+    parse_row(kz_term:to_list(Line), [], [], 'normal').
 
-%%------------------------------------------------------------------------------
-%% @doc Parse a CSV line character by character, keeping track of state and escaped
-%% characters
-%% @end
-%%------------------------------------------------------------------------------
--spec parse_complex_row(kz_term:ne_binary()) -> row().
-parse_complex_row(Line) ->
-    parse_complex_row(kz_term:to_list(Line), [], [], 'false').
-
--spec parse_complex_row(list(), list(), list(), boolean()) -> row().
+-spec parse_row(list(), list(), list(), atom()) -> row().
 %% The end of the Line
 %% Add the last CellAcc to RowAcc and return the reverse
-parse_complex_row([], CellAcc, RowAcc, _) ->
-    Cell = kz_term:to_binary(lists:reverse(CellAcc)),
+parse_row([], CellAcc, RowAcc, State) ->
+    Cell = cell_acc_to_cell(CellAcc, State),
     lists:reverse([Cell|RowAcc]);
 
 %% 1 double quote when not in escaped state,
 %% Enter double quote escaped state and drop the double quote
-parse_complex_row([$"|T], CellAcc, RowAcc, 'false') ->
-    parse_complex_row(T, CellAcc, RowAcc, 'true');
+%% Discard any CellAcc to this point
+parse_row([$"|T], _CellAcc, RowAcc, 'normal') ->
+    parse_row(T, [], RowAcc, 'escaped');
 
 %% 2 double quotes when in escaped state,
 %% Drop the escaping leading double quote
-parse_complex_row([$",$"=H|T], CellAcc, RowAcc, 'true') ->
-    parse_complex_row(T, [H|CellAcc], RowAcc, 'true');
+parse_row([$",$"=H|T], CellAcc, RowAcc, 'escaped') ->
+    parse_row(T, [H|CellAcc], RowAcc, 'escaped');
 
 %% 1 double quote when in escaped state,
 %% Exit double quote escaped state and drop the double quote
-parse_complex_row([$"|T], CellAcc, RowAcc, 'true') ->
-    parse_complex_row(T, CellAcc, RowAcc, 'false');
+parse_row([$"|T], CellAcc, RowAcc, 'escaped') ->
+    parse_row(T, CellAcc, RowAcc, 'was_escaped');
 
 %% Comma when in escaped state,
 %% Do not split, Its escaped!, Add it to the cell
-parse_complex_row([$,=H|T], CellAcc, RowAcc, 'true') ->
-    parse_complex_row(T, [H|CellAcc], RowAcc, 'true');
+parse_row([$,=H|T], CellAcc, RowAcc, 'escaped') ->
+    parse_row(T, [H|CellAcc], RowAcc, 'escaped');
 
 %% Comma when not in escaped state,
 %% Split the line here and drop the comma
-%% Add the binary reverse for the CellAcc to the RowAcc
-parse_complex_row([$,|T], CellAcc, RowAcc, 'false') ->
-    Cell = kz_term:to_binary(lists:reverse(CellAcc)),
-    parse_complex_row(T, [], [Cell|RowAcc], 'false');
+%% Add the binary reverse of the CellAcc to the RowAcc
+parse_row([$,|T], CellAcc, RowAcc, State) ->
+    Cell = cell_acc_to_cell(CellAcc, State),
+    parse_row(T, [], [Cell|RowAcc], 'normal');
+
+%% All other characters received before the comma but after an escaped cell
+%% Discard them
+parse_row([_|T], CellAcc, RowAcc, 'was_escaped') ->
+    parse_row(T, CellAcc, RowAcc, 'was_escaped');
 
 %% All other characters in both escaped and not escaped state,
 %% Add them to the CellAcc list
-parse_complex_row([H|T], CellAcc, RowAcc, EscapedState) ->
-    parse_complex_row(T, [H|CellAcc], RowAcc, EscapedState).
+parse_row([H|T], CellAcc, RowAcc, State) when State =:= 'normal'; State =:= 'escaped' ->
+    parse_row(T, [H|CellAcc], RowAcc, State).
 
+
+%%------------------------------------------------------------------------------
+%% @doc Convert the CellAcc from the function parse_row/4 to a binary
+%% string.
+%% Handles edge cases where a empty cell should be ?ZILCH but a empty
+%% cell with double quotes should be <<>>
+%% @end
+%%------------------------------------------------------------------------------
+-spec cell_acc_to_cell(list(), 'normal' | 'was_escaped') -> kz_term:binary() | 'undefined'.
+cell_acc_to_cell([], 'normal') -> ?ZILCH;
+cell_acc_to_cell([], 'was_escaped') -> <<>>;
+cell_acc_to_cell(CellAcc, State) when State =:= 'normal'; State =:= 'was_escaped' ->
+    kz_term:to_binary(lists:reverse(CellAcc)).
 
 -spec find_position(kz_term:ne_binary(), kz_term:ne_binaries()) -> pos_integer().
 find_position(Item, Items) ->
@@ -438,13 +445,13 @@ map_io_indices(Header, CSVHeader) ->
     lists:foldl(MapF, #{}, IndexToCSVHeader).
 
 %%------------------------------------------------------------------------------
-%% @doc Convert cell data to binary representation of a cell, escaping double
-%% quotation marks and commas
+%% @doc Convert cell data to binary representation of a cell for writing to CSV
+%% file, escaping double quotation marks and commas.
 %% @end
 %%------------------------------------------------------------------------------
 -spec cell_to_binary(cell()) -> binary().
-cell_to_binary('undefined') -> <<>>;
 cell_to_binary(?ZILCH) -> <<>>;
+cell_to_binary(<<>>) -> <<"\"\"">>;
 cell_to_binary(Cell=?NE_BINARY) ->
     EscapedCell = binary:replace(Cell, <<"\"">>, <<"\"\"">>, ['global']),
     case Cell =/= EscapedCell
