@@ -27,20 +27,16 @@ handle_req(JObj, _Props) ->
 
 -spec create_conference(kz_json:object()) -> kapps_conference:conference().
 create_conference(JObj) ->
-    Conference = kapps_conference:from_json(JObj),
-    ProfileName = kz_json:get_ne_binary_value(<<"Profile">>, JObj),
-    case binary:split(ProfileName, <<"_">>) of
-        [ConferenceId, AccountId] ->
-            lager:debug("creating conference config for ~s in account ~s", [ConferenceId, AccountId]),
-            Routines = [{fun kapps_conference:set_account_id/2, AccountId}
-                       ,{fun kapps_conference:set_id/2, ConferenceId}
-                       ],
-            kapps_conference:update(Routines, Conference);
-        _Else ->
-            lager:debug("profile name ~s not split: ~p", [ProfileName, _Else]),
-            Routines = [{fun kapps_conference:set_profile_name/2, ProfileName}],
-            kapps_conference:update(Routines, Conference)
-    end.
+    Conference = kapps_conference:new(),
+    Profile = kz_json:get_ne_binary_value(<<"Profile">>, JObj),
+    AccountId = kz_json:get_ne_binary_value(<<"Account-ID">>, JObj),
+    ConferenceId = kz_json:get_ne_binary_value(<<"Conference-ID">>, JObj),
+    lager:debug("creating conference config for ~s in account ~s", [ConferenceId, AccountId]),
+    Routines = [{fun kapps_conference:set_account_id/2, AccountId}
+               ,{fun kapps_conference:set_id/2, ConferenceId}
+               ,{fun kapps_conference:set_profile_name/2, Profile}
+               ],
+    kapps_conference:update(Routines, Conference).
 
 -spec handle_request(kz_term:ne_binary(), kz_json:object(), kapps_conference:conference()) -> 'ok'.
 handle_request(<<"Conference">>, JObj, Conference) ->

@@ -10,6 +10,7 @@
 
 -export([id/1]).
 -export([type/1]).
+-export([account_id/1]).
 
 -type endpoint() :: kz_json:object().
 -export_type([endpoint/0]).
@@ -21,3 +22,8 @@ id(Endpoint) ->
 -spec type(endpoint()) -> kz_term:ne_binary().
 type(Endpoint) ->
     kz_json:get_ne_binary_value(<<"Endpoint-Type">>, Endpoint).
+
+-spec account_id(endpoint()) -> kz_term:api_ne_binary().
+account_id(Endpoint) ->
+    kz_json:get_ne_binary_value(<<"Endpoint-Account-ID">>, Endpoint).
+

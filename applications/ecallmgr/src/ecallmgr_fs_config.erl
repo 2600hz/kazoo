@@ -366,8 +366,6 @@ fix_conference_profile(Name, Profile, FSNode) ->
     Routines = [fun(J) -> maybe_fix_profile_tts(J, FSNode) end
                ,fun conference_sounds/1
                ,fun set_verbose_events/1
-               ,{fun kz_json:set_value/3, <<"caller-controls">>, <<"caller-controls?profile=", Name/binary>>}
-               ,{fun kz_json:set_value/3, <<"moderator-controls">>, <<"moderator-controls?profile=", Name/binary>>}
                ],
     {Name, kz_json:exec(Routines, Profile)}.
 
@@ -433,20 +431,17 @@ fetch_conference_config(Node, FetchId, <<"REQUEST_PARAMS">>, Data) ->
     fetch_conference_params(Node, FetchId, Action, ConfName, Data).
 
 -spec fetch_conference_params(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> fs_sendmsg_ret().
-fetch_conference_params(Node, FetchId, <<"request-controls">>, _ConfName, Data) ->
-    FSName = props:get_value(<<"Controls">>, Data),
-
-    {KZName, Profile} = case binary:split(FSName, <<"?profile=">>) of
-                            [N, P] -> {N, P};
-                            [N] -> {N, props:get_value(<<"profile_name">>, Data)}
-                        end,
-    lager:debug("request controls:~s for profile: ~s", [KZName, Profile]),
+fetch_conference_params(Node, FetchId, <<"request-controls">>, ConferenceId, Data) ->
+    Controls = props:get_value(<<"Controls">>, Data),
+    Profile = props:get_value(<<"Conf-Profile">>, Data),
+    lager:debug("request controls:~s for profile: ~s", [Controls, Profile]),
 
     Cmd = [{<<"Request">>, <<"Controls">>}
           ,{<<"Profile">>, Profile}
-          ,{<<"Controls">>, KZName}
-          ,{<<"Conference-ID">>, conference_id(Data, Profile)}
+          ,{<<"Controls">>, Controls}
+          ,{<<"Conference-ID">>, ConferenceId}
           ,{<<"Call-ID">>, kzd_freeswitch:call_id(Data)}
+          ,{<<"Account-ID">>, kzd_freeswitch:account_id(Data)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     Resp = kz_amqp_worker:call(Cmd
@@ -454,26 +449,12 @@ fetch_conference_params(Node, FetchId, <<"request-controls">>, _ConfName, Data) 
                               ,fun kapi_conference:config_resp_v/1
                               ,ecallmgr_fs_node:fetch_timeout(Node)
                               ),
-    FixedResp = maybe_fix_conference_controls(Resp, KZName, FSName),
-    {'ok', Xml} = handle_conference_params_response(FixedResp),
+    {'ok', Xml} = handle_conference_params_response(Resp),
     send_conference_profile_xml(Node, FetchId, Xml);
 fetch_conference_params(Node, FetchId, Action, ConfName, _Data) ->
     lager:debug("undefined request_params action:~p conference:~p", [Action, ConfName]),
     {'ok', XmlResp} = ecallmgr_fs_xml:not_found(),
     send_conference_profile_xml(Node, FetchId, XmlResp).
-
--spec maybe_fix_conference_controls(kz_amqp_worker:request_return(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_amqp_worker:request_return().
-maybe_fix_conference_controls({'ok', JObj}, KZName, FSName) ->
-    {'ok', fix_conference_controls(JObj, KZName, FSName)};
-maybe_fix_conference_controls(Resp, _, _) -> Resp.
-
--spec fix_conference_controls(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:object().
-fix_conference_controls(JObj, KZName, FSName) ->
-    case kz_json:get_value([<<"Caller-Controls">>, KZName], JObj) of
-        'undefined' -> JObj;
-        Controls ->
-            kz_json:set_value([<<"Caller-Controls">>, FSName], Controls, JObj)
-    end.
 
 -spec handle_conference_params_response(kz_amqp_worker:request_return()) -> {'ok', iolist()}.
 handle_conference_params_response({'ok', Resp}) ->
@@ -492,9 +473,12 @@ maybe_fetch_conference_profile(Node, FetchId, _Data, 'undefined') ->
     {'ok', XmlResp} = ecallmgr_fs_xml:not_found(),
     send_conference_profile_xml(Node, FetchId, XmlResp);
 maybe_fetch_conference_profile(Node, FetchId, Data, Profile) ->
+    Conference = props:get_value(<<"conference_name">>, Data),
+    AccountId = kzd_freeswitch:account_id(Data),
     Cmd = [{<<"Request">>, <<"Conference">>}
           ,{<<"Profile">>, Profile}
-          ,{<<"Conference-ID">>, conference_id(Data, Profile)}
+          ,{<<"Conference-ID">>, Conference}
+          ,{<<"Account-ID">>, AccountId}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("fetching profile '~s'", [Profile]),
@@ -520,19 +504,6 @@ maybe_fetch_conference_profile(Node, FetchId, Data, Profile) ->
                       Resp
               end,
     send_conference_profile_xml(Node, FetchId, XmlResp).
-
--spec conference_id(kzd_freeswitch:doc(), kz_term:ne_binary()) -> kz_term:api_ne_binary().
-conference_id(Data, Profile) ->
-    case props:get_first_defined([<<"Conf-Name">>, <<"conference_name">>], Data) of
-        'undefined' -> conference_id_from_profile(Profile);
-        Id -> Id
-    end.
-
-conference_id_from_profile(Profile) ->
-    case binary:split(Profile, <<"_">>) of
-        [ConferenceId, _AccountId] -> ConferenceId;
-        _ -> 'undefined'
-    end.
 
 -spec send_conference_profile_xml(atom(), kz_term:ne_binary(), iolist()) -> fs_sendmsg_ret().
 send_conference_profile_xml(Node, FetchId, XmlResp) ->

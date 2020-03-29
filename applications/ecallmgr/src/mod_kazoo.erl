@@ -28,6 +28,11 @@
         ,bgapi/5
         ,bgapi/6
         ]).
+-export([json_api/2
+        ,json_api/3
+        ,json_api/4
+        ,json_api/5
+        ]).
 -export([event/2
         ,event/3
         ]).
@@ -174,6 +179,56 @@ api(Node, Cmd, Args, Timeout) when is_atom(Node) ->
         _E:_R ->
             lager:info("failed to execute api command ~s on ~s: ~p ~p", [Cmd, Node, _E, _R]),
             {'error', 'exception'}
+    end.
+
+
+-spec json_api(atom(), kz_term:ne_binary() | {kz_term:ne_binary(), kz_term:api_object()}) ->
+          freeswitch:fs_json_api_return().
+json_api(Node, {Cmd, Args}) ->
+    json_api(Node, 'undefined', Cmd, Args, ?TIMEOUT);
+json_api(Node, Cmd) ->
+    json_api(Node, 'undefined', Cmd, 'undefined', ?TIMEOUT).
+
+-spec json_api(atom(), kz_term:api_ne_binary(), kz_term:text()) ->
+          freeswitch:fs_json_api_return().
+json_api(Node, UUID, Cmd) ->
+    json_api(Node, UUID, Cmd, 'undefined', ?TIMEOUT).
+
+-spec json_api(atom(), kz_term:api_ne_binary(), kz_term:ne_binary(), kz_term:api_object()) ->
+          freeswitch:fs_json_api_return().
+json_api(Node, UUID, Cmd, Args) ->
+    json_api(Node, UUID, Cmd, Args, ?TIMEOUT).
+
+-spec json_api(atom(), kz_term:api_ne_binary(), kz_term:ne_binary(), kz_term:api_object() | binary(), timeout()) ->
+          freeswitch:fs_json_api_return().
+json_api(Node, UUID, Cmd, 'undefined', Timeout) ->
+    json_api(Node, UUID, Cmd, <<>>, Timeout);
+json_api(Node, UUID, Cmd, Data, Timeout) when is_atom(Node) ->
+    Params = [{<<"command">>, Cmd}
+             ,{<<"uuid">>, UUID}
+             ,{<<"data">>, Data}
+             ],
+    JObj = kz_json:from_list(Params),
+    try gen_server:call({'mod_kazoo', Node}, {'json_api', kz_json:encode(JObj)}, Timeout) of
+        'timeout' -> {'error', 'timeout'};
+        {'error', {'parse_error', _Where}} = Err -> Err;
+        {'ok', Result} -> json_api_result('ok', Result);
+        {'error', Result} -> json_api_result('error', Result)
+    catch
+        _E:_R ->
+            lager:info("failed to execute api command ~s on ~s: ~p ~p", [Cmd, Node, _E, _R]),
+            {'error', 'exception'}
+    end.
+
+json_api_result(Result, 'undefined') -> Result;
+json_api_result('error', Bin) ->
+    JObj = kz_json:decode(Bin),
+    {'error', kz_json:get_first_defined([<<"error">>, <<"message">>], JObj)};
+json_api_result('ok', Bin) ->
+    JObj = kz_json:decode(Bin),
+    case kz_json:get_atom_value(<<"status">>, JObj) of
+        'success' -> {'ok', kz_json:get_json_value(<<"response">>, JObj)};
+        'error' -> {'error', kz_json:get_first_defined([<<"error">>, <<"message">>], JObj)}
     end.
 
 %%------------------------------------------------------------------------------

@@ -33,6 +33,7 @@
         ,<<"Channel-Presence-ID">>
         ,<<"Channel-State">>
         ,<<"Conf-Name">>
+        ,<<"Conf-Profile">>
         ,<<"Conference-Name">>
         ,<<"Conference-Profile-Name">>
         ,<<"Conference-Unique-ID">>
@@ -72,6 +73,7 @@
         ,<<"Unique-ID">>
         ,<<"X-AUTH-IP">>
         ,<<"X-AUTH-PORT">>
+        ,<<"X-Auth-Token">>
         ,<<"action">>
         ,<<"att_xfer_replaced_by">>
         ,<<"conference_name">>

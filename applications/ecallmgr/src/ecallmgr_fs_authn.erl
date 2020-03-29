@@ -95,14 +95,18 @@ handle_cast(_Msg, State) ->
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'fetch', 'directory', <<"domain">>, <<"name">>, _Value, Id, ['undefined' | Props]}
-           ,#state{node=Node}=State) ->
+           ,#state{node=Node}=State
+           ) ->
     _ = kz_util:spawn(fun handle_directory_lookup/3, [Id, Props, Node]),
     {'noreply', State};
 handle_info({'fetch', 'directory', <<"domain">>, <<"name">>, _Value, Id, [?NE_BINARY | Props]}
-           ,#state{node=Node}=State) ->
+           ,#state{node=Node}=State
+           ) ->
     _ = kz_util:spawn(fun handle_directory_lookup/3, [Id, Props, Node]),
     {'noreply', State};
-handle_info({'fetch', _Section, _Something, _Key, _Value, Id, ['undefined' | _Props]}, #state{node=Node}=State) ->
+handle_info({'fetch', _Section, _Something, _Key, _Value, Id, ['undefined' | _Props]}
+           ,#state{node=Node}=State
+           ) ->
     kz_util:spawn(
       fun() ->
               lager:debug("sending empty reply for request (~s) for ~s ~s from ~s"
@@ -112,7 +116,9 @@ handle_info({'fetch', _Section, _Something, _Key, _Value, Id, ['undefined' | _Pr
               freeswitch:fetch_reply(Node, Id, 'directory', Resp)
       end),
     {'noreply', State};
-handle_info({'fetch', _Section, _Something, _Key, _Value, Id, [?NE_BINARY | _Props]}, #state{node=Node}=State) ->
+handle_info({'fetch', _Section, _Something, _Key, _Value, Id, [?NE_BINARY | _Props]}
+           ,#state{node=Node}=State
+           ) ->
     kz_util:spawn(
       fun() ->
               lager:debug("sending empty reply for request (~s) for ~s ~s from ~s"
@@ -123,9 +129,9 @@ handle_info({'fetch', _Section, _Something, _Key, _Value, Id, [?NE_BINARY | _Pro
       end),
     {'noreply', State};
 handle_info({'EXIT', _, 'noconnection'}, State) ->
-    {stop, {'shutdown', 'noconnection'}, State};
+    {'stop', {'shutdown', 'noconnection'}, State};
 handle_info({'EXIT', _, Reason}, State) ->
-    {stop, Reason, State};
+    {'stop', Reason, State};
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
     {'noreply', State}.
@@ -165,7 +171,7 @@ handle_directory_lookup(Id, Props, Node) ->
     case props:get_value(<<"action">>, Props, <<"sip_auth">>) of
         <<"reverse-auth-lookup">> -> lookup_user(Node, Id, <<"reverse-lookup">>, Props);
         <<"sip_auth">> -> maybe_sip_auth_response(Id, Props, Node);
-        <<"jsonrpc-authenticate">> -> maybe_sip_auth_response(Id, Props, Node);
+        <<"jsonrpc-authenticate">> -> validate_token(Id, Props, Node);
         _Other -> directory_not_found(Node, Id)
     end.
 
@@ -214,7 +220,7 @@ directory_not_found(Node, Id) ->
     freeswitch:fetch_reply(Node, Id, 'directory', iolist_to_binary(Xml)).
 
 -spec lookup_user(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> fs_handlecall_ret().
-lookup_user(Node, Id, Method,  Props) ->
+lookup_user(Node, Id, Method, Props) ->
     Domain = props:get_value(<<"domain">>, Props),
     {'ok', Xml} =
         case get_auth_realm(Props) of
@@ -235,7 +241,9 @@ lookup_user(Node, Id, Method,  Props) ->
 get_auth_realm(Props) ->
     case props:get_first_defined([<<"sip_auth_realm">>
                                  ,<<"domain">>
-                                 ], Props)
+                                 ]
+                                ,Props
+                                )
     of
         'undefined' -> get_auth_uri_realm(Props);
         Realm ->
@@ -256,7 +264,9 @@ get_auth_uri_realm(Props) ->
             props:get_first_defined([<<"Auth-Realm">>
                                     ,<<"sip_request_host">>
                                     ,<<"sip_to_host">>
-                                    ], Props)
+                                    ]
+                                   ,Props
+                                   )
     end.
 
 -spec handle_lookup_resp(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()
@@ -344,3 +354,77 @@ maybe_defered_error(Realm, Username, JObj) ->
             kz_cache:store_local(?ECALLMGR_AUTH_CACHE, ?CREDS_KEY(Realm, Username), JObj, CacheProps),
             {'ok', JObj}
     end.
+
+-spec validate_token(kz_term:ne_binary(), kz_term:proplist(), atom()) -> fs_handlecall_ret().
+validate_token(Id, Props, Node) ->
+    case props:get_ne_binary_value(<<"X-Auth-Token">>, Props) of
+        'undefined' -> directory_not_found(Node, Id);
+        Token -> validate_token(Id, Props, Node, kz_auth:validate_token(Token))
+    end.
+
+-type validate_token_result() :: {'ok', kz_json:object()} | {'error', any()}.
+
+-spec validate_token(kz_term:ne_binary(), kz_term:proplist(), atom(), validate_token_result()) -> fs_handlecall_ret().
+validate_token(Id, _Props, Node, {'error', Error}) ->
+    lager:warning("invalid token : ~s", [Error]),
+    directory_not_found(Node, Id);
+validate_token(Id, Props, Node, {'ok', Claims}) ->
+    AccountId = kz_json:get_ne_binary_value(<<"account_id">>, Claims),
+    OwnerId = kz_json:get_ne_binary_value(<<"owner_id">>, Claims),
+    token_authentication_reply(Id, Props, Node, OwnerId, AccountId).
+
+-spec token_authentication_reply(kz_term:ne_binary(), kz_term:proplist(), atom(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> fs_handlecall_ret().
+token_authentication_reply(Id, _Props, Node, 'undefined', _AccountId) ->
+    directory_not_found(Node, Id);
+token_authentication_reply(Id, _Props, Node, _EndpointId, 'undefined') ->
+    directory_not_found(Node, Id);
+token_authentication_reply(Id, Props, Node, EndpointId, AccountId) ->
+    case kz_endpoint:get(EndpointId, AccountId) of
+        {'ok', JObj} ->
+            token_authentication_reply(Id, Props, Node, JObj);
+        {'error', Error} ->
+            lager:warning("invalid endpoint : ~s / ~s => ~p", [EndpointId, AccountId, Error]),
+            directory_not_found(Node, Id)
+    end.
+
+-spec token_authentication_reply(kz_term:ne_binary(), kz_term:proplist(), atom(), kz_json:object()) -> fs_handlecall_ret().
+token_authentication_reply(Id, Props, Node, Endpoint) ->
+    Password = kz_binary:rand_hex(12),
+    Realm = props:get_value(<<"domain">>, Props),
+    Username = props:get_value(<<"user">>, Props, props:get_value(<<"Auth-User">>, Props)),
+    Action = props:get_value(<<"action">>, Props, <<"sip_auth">>),
+    AccountId = kzd_endpoint:account_id(Endpoint),
+    PresenceId = presence_id(AccountId, Endpoint),
+    CCVs = [{<<"Account-ID">>, AccountId}
+           ,{<<"Authorization-ID">>, kzd_endpoint:id(Endpoint)}
+           ,{<<"Authorization-Type">>, kzd_endpoint:type(Endpoint)}
+           ,{<<"Owner-ID">>, kzd_endpoint:id(Endpoint)}
+           ,{<<"Realm">>, kzd_accounts:fetch_realm(AccountId)}
+           ,{<<"Presence-ID">>, PresenceId}
+           ],
+    JObj = kz_json:from_list([{<<"Auth-Method">>, <<"password">>}
+                             ,{<<"Auth-Password">>, Password}
+                             ,{<<"Auth-Action">>, Action}
+                             ,{<<"Domain-Name">>, Realm}
+                             ,{<<"User-ID">>, Username}
+                             ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
+                             ,{<<"Expires">>, 0}
+                             ]),
+    lager:debug("building authn resp for ~s@~s from token headers", [Username, Realm]),
+    {'ok', Xml} = ecallmgr_fs_xml:authn_resp_xml(JObj),
+    lager:debug("sending authn XML to ~w: ~s", [Node, Xml]),
+    freeswitch:fetch_reply(Node, Id, 'directory', iolist_to_binary(Xml)).
+
+presence_id(AccountId, Endpoint) ->
+    PresenceId = kzd_users:presence_id(Endpoint, kzd_users:email(Endpoint)),
+    maybe_fix_presence_id(AccountId, PresenceId).
+
+maybe_fix_presence_id(AccountId, PresenceId) ->
+    case binary:match(PresenceId, <<"@">>) of
+        'nomatch' -> fix_presence_id(AccountId, PresenceId);
+        _Match -> PresenceId
+    end.
+
+fix_presence_id(AccountId, PresenceId) ->
+    AccountRealm = kzd_accounts:fetch_realm(AccountId),
+    <<PresenceId/binary, "@", AccountRealm/binary>>.

@@ -179,6 +179,7 @@ is_endpoint_enabled(JObj, _) ->
 cache_store_endpoint(JObj, EndpointId, AccountDb, EndpointType) ->
     Values = [{<<"Endpoint-ID">>, EndpointId}
              ,{<<"Endpoint-Type">>, EndpointType}
+             ,{<<"Endpoint-Account-ID">>, kz_util:format_account_id(AccountDb)}
              ],
     Endpoint = kz_json:set_values(Values, merge_attributes(JObj, EndpointType)),
     CacheProps = [{'origin', cache_origin(JObj, EndpointId, AccountDb)}],

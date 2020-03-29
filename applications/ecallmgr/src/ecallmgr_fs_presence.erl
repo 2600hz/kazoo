@@ -181,6 +181,7 @@ realm(Props) ->
                             ,<<"variable_sip_invite_domain">>
                             ,<<"variable_sip_auth_realm">>
                             ,<<"variable_sip_to_host">>
+                            ,<<"variable_domain_name">>
                             ], Props, ?DEFAULT_REALM).
 
 -spec get_user_realm(kz_term:proplist()) -> {kz_term:ne_binary(), kz_term:ne_binary()}.
@@ -204,11 +205,11 @@ to_user(Props) ->
 to_user(<<"initiator">>, Props) ->
     props:get_first_defined([<<"Caller-Destination-Number">>
                             ,<<"variable_sip_to_user">>
-                            ], Props);
+                            ], Props, <<"unknown">>);
 to_user(<<"recipient">>, Props) ->
     props:get_first_defined([<<"Caller-Caller-ID-Number">>
                             ,<<"variable_sip_from_user">>
-                            ], Props).
+                            ], Props, <<"unknown">>).
 
 -spec expires(kz_term:ne_binary()) -> integer().
 expires(<<"early">>) -> 0;

@@ -91,7 +91,7 @@ handle_cast('connect', #state{ip=IP, port=Port, packet=Packet, idle_alert=Timeou
                        ,[IP, Port, get_event_bindings(State)]),
             {'noreply', State#state{socket=Socket}, Timeout};
         {'error', Reason} ->
-            {'stop', Reason, State}
+            {'stop', {'shutdown', Reason}, State}
     end;
 handle_cast(_Msg, #state{socket='undefined'}=State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
@@ -105,10 +105,12 @@ handle_cast(_Msg, #state{idle_alert=Timeout}=State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
-handle_info({'tcp', Socket, Data}, #state{socket=Socket
-                                         ,node=Node
-                                         ,switch_info='false'
-                                         }=State) ->
+handle_info({'tcp', Socket, Data}
+           ,#state{socket=Socket
+                  ,node=Node
+                  ,switch_info='false'
+                  }=State
+           ) ->
     try ecallmgr_fs_node:sip_url(Node) of
         'undefined' ->
             lager:debug("no sip url available yet for ~s", [Node]),
@@ -125,12 +127,14 @@ handle_info({'tcp', Socket, Data}, #state{socket=Socket
             lager:warning("failed to include switch_url/uri for node ~s : ~p : ~p", [Node, _E, _R]),
             {'noreply', State, 'hibernate'}
     end;
-handle_info({'tcp', Socket, Data}, #state{socket=Socket
-                                         ,node=Node
-                                         ,idle_alert=Timeout
-                                         ,switch_uri=SwitchURI
-                                         ,switch_url=SwitchURL
-                                         }=State) ->
+handle_info({'tcp', Socket, Data}
+           ,#state{socket=Socket
+                  ,node=Node
+                  ,idle_alert=Timeout
+                  ,switch_uri=SwitchURI
+                  ,switch_url=SwitchURL
+                  }=State
+           ) ->
     try binary_to_term(Data) of
         {'event', [UUID | Props]} when is_binary(UUID)
                                        orelse UUID =:= 'undefined' ->
@@ -142,29 +146,34 @@ handle_info({'tcp', Socket, Data}, #state{socket=Socket
     catch
         'error':'badarg' ->
             lager:warning("failed to decode packet from ~s (~p b) for ~p: ~p"
-                         ,[Node, byte_size(Data), get_event_bindings(State), Data]),
-            {'stop', 'decode_error', State}
+                         ,[Node, byte_size(Data), get_event_bindings(State), Data]
+                         ),
+            {'stop', {'shutdown', 'decode_error'}, State}
     end;
-handle_info({'tcp_closed', Socket}, #state{socket=Socket, node=Node}=State) ->
+handle_info({'tcp_closed', Socket}
+           ,#state{socket=Socket, node=Node}=State
+           ) ->
     lager:info("event stream for ~p on node ~p closed"
               ,[get_event_bindings(State), Node]
               ),
-    timer:sleep(3 * ?MILLISECONDS_IN_SECOND),
-    {'stop', 'tcp_close', State#state{socket='undefined'}};
+    %% timer:sleep(3 * ?MILLISECONDS_IN_SECOND),
+    {'stop', {'shutdown', 'tcp_close'}, State#state{socket='undefined'}};
 handle_info({'tcp_error', Socket, _Reason}, #state{socket=Socket}=State) ->
     lager:warning("event stream tcp error: ~p", [_Reason]),
     gen_tcp:close(Socket),
-    timer:sleep(3 * ?MILLISECONDS_IN_SECOND),
-    {'stop', 'tcp_error', State#state{socket='undefined'}};
-handle_info('timeout', #state{node=Node, idle_alert=Timeout}=State) ->
-    lager:warning("event stream for ~p on node ~p is unexpectedly idle",
-                  [get_event_bindings(State), Node]
+    %% timer:sleep(3 * ?MILLISECONDS_IN_SECOND),
+    {'stop', {'shutdown', 'tcp_error'}, State#state{socket='undefined'}};
+handle_info('timeout'
+           ,#state{node=Node, idle_alert=Timeout}=State
+           ) ->
+    lager:warning("event stream for ~p on node ~p is unexpectedly idle"
+                 ,[get_event_bindings(State), Node]
                  ),
     {'noreply', State, Timeout};
 handle_info({'EXIT', _, 'noconnection'}, State) ->
-    {stop, {'shutdown', 'noconnection'}, State};
+    {'stop', {'shutdown', 'noconnection'}, State};
 handle_info({'EXIT', _, Reason}, State) ->
-    {stop, Reason, State};
+    {'stop', {'shutdown', Reason}, State};
 handle_info(_Msg, #state{socket='undefined'}=State) ->
     lager:debug("unhandled message: ~p", [_Msg]),
     {'noreply', State};
@@ -226,10 +235,13 @@ request_event_stream(#state{node=Node}=State) ->
         {'ok', {IP, Port}} ->
             {'ok', IPAddress} = inet_parse:address(IP),
             gen_server:cast(self(), 'connect'),
-            kz_util:put_callid(list_to_binary([kz_term:to_binary(Node)
-                                              ,$-, kz_term:to_binary(IP)
-                                              ,$:, kz_term:to_binary(Port)
-                                              ])),
+            kz_util:put_callid(
+              list_to_binary([kz_term:to_binary(Node)
+                             ,$-, kz_term:to_binary(IP)
+                             ,$:, kz_term:to_binary(Port)
+                             ]
+                            )
+             ),
             {'ok', State#state{ip=IPAddress, port=kz_term:to_integer(Port)}};
         {'EXIT', ExitReason} ->
             {'stop', {'shutdown', ExitReason}};

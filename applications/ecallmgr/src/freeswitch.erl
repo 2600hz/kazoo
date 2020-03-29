@@ -28,6 +28,11 @@
         ,bgapi/5
         ,bgapi/6
         ]).
+-export([json_api/2
+        ,json_api/3
+        ,json_api/4
+        ,json_api/5
+        ]).
 -export([event/2
         ,event/3
         ]).
@@ -52,12 +57,16 @@
 -define(TIMEOUT, 5 * ?MILLISECONDS_IN_SECOND).
 -define(FS_MODULE, mod_kazoo).
 
+-type fs_json_api_ok() :: {'ok', kz_json:object()}.
 -type fs_api_ok() :: mod_kazoo:fs_api_ok().
 -type fs_api_error():: mod_kazoo:fs_api_error().
 -type fs_api_return() :: mod_kazoo:fs_api_return().
+-type fs_json_api_return() :: fs_json_api_ok() | fs_api_error().
 -export_type([fs_api_ok/0
              ,fs_api_error/0
              ,fs_api_return/0
+             ,fs_json_api_ok/0
+             ,fs_json_api_return/0
              ]).
 
 -spec version(atom()) -> fs_api_return().
@@ -99,6 +108,18 @@ api(Node, Cmd, Args) -> ?FS_MODULE:api(Node, Cmd, Args).
 
 -spec api(atom(), kz_term:text(), kz_term:text(), timeout()) -> fs_api_return().
 api(Node, Cmd, Args, Timeout) -> ?FS_MODULE:api(Node, Cmd, Args, Timeout).
+
+-spec json_api(atom(), kz_term:text()) -> fs_json_api_return().
+json_api(Node, Cmd) -> ?FS_MODULE:json_api(Node, Cmd).
+
+-spec json_api(atom(), kz_term:text(), kz_term:api_object()) -> fs_json_api_return().
+json_api(Node, Cmd, Args) -> ?FS_MODULE:json_api(Node, Cmd, Args).
+
+-spec json_api(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_object()) -> fs_json_api_return().
+json_api(Node, UUID, Cmd, Args) -> ?FS_MODULE:json_api(Node, UUID, Cmd, Args).
+
+-spec json_api(atom(), kz_term:api_ne_binary(), kz_term:text(), kz_term:api_object(), timeout()) -> fs_json_api_return().
+json_api(Node, UUID, Cmd, Args, Timeout) -> ?FS_MODULE:json_api(Node, UUID, Cmd, Args, Timeout).
 
 %%------------------------------------------------------------------------------
 %% @doc Make a background API call to FreeSWITCH. The asynchronous reply is
