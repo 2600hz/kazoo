@@ -1,6 +1,6 @@
 # Whitelabeling
 
-Whitelabling is one of the core functionality of the Kazoo which allows to make your own brand.
+Whitelabeling is one of the core functionality of the Kazoo which allows to make your own brand.
 
 #### Schema
 
@@ -32,7 +32,36 @@ Key | Description | Type | Default | Required | Support Level
 
 
 
-## Fetch
+## Create a Whitelabel for an Account
+
+> PUT /v2/accounts/{ACCOUNT_ID}/whitelabel
+
+```shell
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data": {"company_name":"My VoIP Reseller Company", "domain":"mydomain.com"} }' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel
+```
+
+You may fetch the whitelabel with GET:
+
+> GET /v2/accounts/{ACCOUNT_ID}/whitelabel
+
+Delete it:
+
+> DELETE /v2/accounts/{ACCOUNT_ID}/whitelabel
+
+Or modify it:
+
+> POST /v2/accounts/{ACCOUNT_ID}/whitelabel
+```shell
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data": {"company_name":"My VoIP Reseller Company", "domain":"mydomain.com"} }' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel
+```
+
+## Fetch Domains
 
 > GET /v2/accounts/{ACCOUNT_ID}/whitelabel/domains
 
@@ -295,3 +324,68 @@ If you receive a 400 when POSTing with a response like:
 ```
 
 You will need to run `sup kapps_maintenance refresh system_schemas` to ensure the `domains` schema is available.
+
+## Uploading a Custom Logo
+
+> POST /v2/accounts/{ACCOUNT_ID}/whitelabel/logo
+
+```shell
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H 'Content-Type: image/png' \
+    --data-binary "@/local/path/to/logo.png" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/logo
+```
+To tie the logo to a specific domain, rather than the account, use:
+
+> POST /v2/accounts/{ACCOUNT_ID}/whitelabel/{domain}/logo
+
+```shell
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H 'Content-Type: image/png' \
+    --data-binary "@/local/path/to/logo.png" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/mydomain.com/logo
+```
+
+## Fetch Custom Logo
+
+This returns the logo image file data.
+
+> GET /v2/accounts/{ACCOUNT_ID}/whitelabel/logo
+
+Or domain specific:
+
+> GET /v2/accounts/{ACCOUNT_ID}/whitelabel/{domain}/logo
+
+## Uploading a Custom Icon
+
+> POST /v2/accounts/{ACCOUNT_ID}/whitelabel/icon
+
+```shell
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H 'Content-Type: image/png' \
+    --data-binary "@/local/path/to/icon.png" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/icon
+```
+To tie the icon to a specific domain, rather than the account, use:
+
+> POST /v2/accounts/{ACCOUNT_ID}/whitelabel/{domain}/icon
+
+```shell
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H 'Content-Type: image/png' \
+    --data-binary "@/local/path/to/icon.png" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/mydomain.com/icon
+```
+
+## Fetch Custom Icon
+This returns the icon image file.
+
+> GET /v2/accounts/{ACCOUNT_ID}/whitelabel/icon
+
+Or domain specific:
+
+> GET /v2/accounts/{ACCOUNT_ID}/whitelabel/{domain}/icon
