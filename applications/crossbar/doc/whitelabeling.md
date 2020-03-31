@@ -48,11 +48,11 @@ You may fetch the whitelabel with GET:
 
 Delete it:
 
-DELETE /v2/accounts/{ACCOUNT_ID}/whitelabel
+> DELETE /v2/accounts/{ACCOUNT_ID}/whitelabel
 
 Or modify it:
 
-POST /v2/accounts/{ACCOUNT_ID}/whitelabel
+> POST /v2/accounts/{ACCOUNT_ID}/whitelabel
 
 ## Fetch Domains
 
