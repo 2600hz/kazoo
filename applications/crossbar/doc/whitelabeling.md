@@ -375,7 +375,7 @@ curl -v -X POST \
 ```
 
 ## Fetch Custom Icon
-(This returns the icon image file.)
+This returns the icon image file.
 
 > GET /v2/accounts/{ACCOUNT_ID}/whitelabel/icon
 
