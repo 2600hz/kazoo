@@ -49,6 +49,7 @@ curl -v -X GET \
 ```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data": {"company_name":"My VoIP Reseller Company", "domain":"mydomain.com"} }' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel
 ```
 
@@ -59,6 +60,7 @@ curl -v -X PUT \
 ```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data": {"company_name":"Phone Company Inc.", "domain":"mydomain.com"} }' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel
 ```
 
@@ -139,6 +141,8 @@ curl -v -X GET \
 ```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H 'Content-Type: image/png' \
+    --data-binary "@/local/path/to/icon.png" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/icon
 ```
 
@@ -159,7 +163,9 @@ curl -v -X GET \
 ```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/logo
+    -H 'Content-Type: image/png' \
+    --data-binary "@/local/path/to/logo.png" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/logo   
 ```
 
 ## Fetch
