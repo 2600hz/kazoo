@@ -196,7 +196,8 @@ seq() ->
     _ = enable_and_delete_topup(),
     _ = enable_and_disable_account_using_patch(),
     seq_44832(),
-    seq_kzoo_54().
+    seq_kzoo_54(),
+    seq_kzoo_61().
 
 -spec seq_44832() -> 'ok'.
 seq_44832() ->
@@ -316,6 +317,44 @@ enable_and_disable_account_using_patch() ->
 
     _ = cleanup(API),
     ?INFO("FINISHED ENABLE_AND_DISABLE_ACCOUNT_USING_PATCH TEST").
+
+seq_kzoo_61() ->
+    API = pqc_cb_api:init_api(['crossbar'], ['cb_accounts']),
+
+    AccountReq = kz_json:from_list([{<<"name">>, <<?MODULE_STRING>>}
+                                   ,{<<"realm">>, <<?MODULE_STRING>>}
+                                   ]
+                                  ),
+    AccountResp = create_account(API, AccountReq),
+
+    lager:info("created account ~s", [AccountResp]),
+    AccountJObj = kz_json:get_json_value(<<"data">>, kz_json:decode(AccountResp)),
+
+    {'ok', AccountSchema} = kz_json_schema:load(<<"accounts">>),
+    Required = kz_json:get_list_value(<<"required">>, AccountSchema, []),
+
+    Fields = [<<"billing_mode">>
+             ,{<<"created">>, fun erlang:is_integer/1}
+             ,{<<"enabled">>, 'true'}
+             ,{<<"is_reseller">>, fun kz_term:is_boolean/1}
+             ,{<<"realm">>, <<?MODULE_STRING>>}
+             ,{<<"reseller_id">>, pqc_cb_api:auth_account_id(API)}
+             ,{<<"superduper_admin">>, 'false'}
+             ,{<<"wnm_allow_additions">>, fun kz_term:is_boolean/1}
+              | Required
+             ],
+    'true' = lists:all(fun(Field) -> response_has_field(Field, AccountJObj) end
+                      ,Fields
+                      ),
+    _ = cleanup(API),
+    lager:info("FINISHED EXPECTED FIELDS").
+
+response_has_field({Field, Predicate}, AccountJObj) when is_function(Predicate, 1) ->
+    Predicate(kz_json:get_value(Field, AccountJObj));
+response_has_field({Field, Value}, AccountJObj) ->
+    Value =:= kz_json:get_value(Field, AccountJObj);
+response_has_field(Field, AccountJObj) ->
+    kz_json:is_defined(Field, AccountJObj).
 
 -spec cleanup(pqc_cb_api:state()) -> any().
 cleanup(API) ->
