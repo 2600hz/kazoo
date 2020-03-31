@@ -284,7 +284,7 @@ seq_kzoo_61() ->
               | Required
              ],
     'true' = lists:all(fun(Field) -> response_has_field(Field, AccountJObj) end
-                       ,Fields
+                      ,Fields
                       ),
     _ = cleanup(API),
     lager:info("FINISHED EXPECTED FIELDS").
