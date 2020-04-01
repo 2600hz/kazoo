@@ -7,6 +7,7 @@
 -module(kapps_conference).
 
 -export([new/0]).
+-export([reload/1]).
 -export([from_conference_doc/1, from_conference_doc/2]).
 -export([to_json/1, from_json/1, from_json/2]).
 -export([to_proplist/1]).
@@ -287,6 +288,28 @@ to_proplist(#kapps_conference{}=Conference) ->
 is_conference(#kapps_conference{}) -> 'true';
 is_conference(_) -> 'false'.
 
+-spec reload(conference()) -> conference().
+reload(#kapps_conference{account_id=undefined}=Conference) -> Conference;
+reload(#kapps_conference{id=undefined}=Conference) -> Conference;
+reload(#kapps_conference{account_id=AccountId
+                        ,id=ConferenceId
+                        }=Conference) ->
+    AccountDB = kz_util:format_account_db(AccountId),
+
+    case kz_datamgr:open_cache_doc(AccountDB, ConferenceId) of
+        {ok, Doc} ->
+            lager:debug("reloading conference from document ~s/~s", [AccountId, ConferenceId]),
+            from_conference_doc(Doc, Conference);
+        {error, Error} ->
+            lager:debug("conference document ~s/~s not found => ~p"
+                       ,[AccountId
+                        ,ConferenceId
+                        ,Error
+                        ]
+                       ),
+            Conference
+    end.
+
 -spec from_conference_doc(kzd_conferences:doc()) -> conference().
 from_conference_doc(JObj) ->
     from_conference_doc(JObj, #kapps_conference{}).
@@ -375,7 +398,10 @@ account_id(#kapps_conference{account_id=AccountId}) ->
     AccountId.
 
 -spec controls(conference(), kz_term:ne_binary()) -> kz_json:objects().
-controls(#kapps_conference{controls=Controls}, _) when Controls =/= 'undefined' -> Controls;
+controls(#kapps_conference{controls=Controls}=Conference, ControlsName)
+  when Controls =/= 'undefined' ->
+    Default = controls(Conference#kapps_conference{controls=undefined}, ControlsName),
+    kz_json:get_list_value(ControlsName, Controls, Default);
 controls(#kapps_conference{account_id='undefined'}, ?DEFAULT_PROFILE_NAME) ->
     kapps_config:get(?CONFERENCE_CONFIG_CAT, [<<"controls">>, ?DEFAULT_PROFILE_NAME], ?DEFAULT_CONTROLS);
 controls(#kapps_conference{account_id=AccountId}=Conference, ?DEFAULT_PROFILE_NAME) ->
@@ -937,3 +963,4 @@ get_tone(Thing) ->
                        'false' -> 'true'
                    end
     end.
+
