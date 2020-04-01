@@ -60,9 +60,11 @@ handle_request(<<"Controls">>, JObj, Conference) ->
 handle_profile_request(JObj, Conference) ->
     ProfileName = requested_profile_name(JObj),
     Profile = lookup_profile(ProfileName, Conference),
+    Controls = conference_controls(Conference),
 
     ServerId = kz_api:server_id(JObj),
     Resp = [{<<"Profiles">>, kz_json:from_list([{ProfileName, Profile}])}
+           ,{<<"Caller-Controls">>, Controls}
            ,{<<"Advertise">>, advertise(ProfileName)}
            ,{<<"Chat-Permissions">>, chat_permissions(ProfileName)}
            ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
@@ -251,4 +253,10 @@ requested_controls_name(JObj) ->
 -spec controls(kz_term:ne_binary(), kz_json:objects()) -> kz_json:object().
 controls(ControlsName, Controls) ->
     kz_json:from_list([{ControlsName, Controls}]).
+
+conference_controls(Conference) ->
+    ControlNames = lists:usort([kapps_conference:caller_controls(Conference)
+                               ,kapps_conference:moderator_controls(Conference)
+                               ]),
+    kz_json:from_list([{Name, kapps_conference:controls(Conference, Name)} || Name <- ControlNames]).
 
