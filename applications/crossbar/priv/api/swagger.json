@@ -6943,11 +6943,11 @@
                 },
                 "Presence-State": {
                     "enum": [
-                        "trying",
-                        "online",
                         "offline",
-                        "early",
+                        "online",
+                        "trying",
                         "confirmed",
+                        "early",
                         "terminated"
                     ],
                     "type": "string"
@@ -6991,11 +6991,11 @@
                 },
                 "Presence-State": {
                     "enum": [
-                        "trying",
-                        "online",
                         "offline",
-                        "early",
+                        "online",
+                        "trying",
                         "confirmed",
+                        "early",
                         "terminated"
                     ],
                     "type": "string"
@@ -7067,11 +7067,11 @@
                 },
                 "Presence-State": {
                     "enum": [
-                        "trying",
-                        "online",
                         "offline",
-                        "early",
+                        "online",
+                        "trying",
                         "confirmed",
+                        "early",
                         "terminated"
                     ],
                     "type": "string"
@@ -7115,11 +7115,11 @@
                 },
                 "Presence-State": {
                     "enum": [
-                        "trying",
-                        "online",
                         "offline",
-                        "early",
+                        "online",
+                        "trying",
                         "confirmed",
+                        "early",
                         "terminated"
                     ],
                     "type": "string"

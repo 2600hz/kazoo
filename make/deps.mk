@@ -68,7 +68,7 @@ dep_eflame = git https://github.com/slfritchie/eflame 7b0bb1a7e8c8482a59421a3a50
 dep_eiconv = git https://github.com/zotonic/eiconv 1.0.0
 # used by gen_smtp
 
-dep_erlang_localtime = git https://github.com/2600hz/erlang-localtime
+dep_erlang_localtime = git https://github.com/2600hz/erlang-localtime 2600hz
 # used by kazoo_documents, teletype, notify, crossbar, callflow
 
 dep_erlazure = git https://github.com/2600hz/erlang-erlazure.git 88e0417251983ab4d8a2a2606c732906eecd5007

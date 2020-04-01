@@ -485,8 +485,8 @@ adjust_utc_timestamp(_Timestamp, <<"+", _/binary>>) ->
     throw({'error', 'invalid_offset'});
 adjust_utc_timestamp(_Timestamp, <<"-", _/binary>>) ->
     throw({'error', 'invalid_offset'});
-adjust_utc_timestamp(Timestamp, <<Timezone/binary>>) when is_integer(Timestamp) ->
-    try localtime:utc_to_local(calendar:gregorian_seconds_to_datetime(Timestamp), kz_term:to_list(Timezone)) of
+adjust_utc_timestamp(Timestamp, Timezone) when is_integer(Timestamp) ->
+    try localtime:utc_to_local(calendar:gregorian_seconds_to_datetime(Timestamp), Timezone) of
         {{_, _, _}, {_, _, _}} = Datetime ->
             calendar:datetime_to_gregorian_seconds(Datetime);
         [LocalDatetime, _LocalDstDatetime] ->
