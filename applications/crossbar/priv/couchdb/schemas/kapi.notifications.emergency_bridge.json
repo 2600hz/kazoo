@@ -39,6 +39,12 @@
         "Emergency-Address-City": {
             "type": "string"
         },
+        "Emergency-Address-Latitude": {
+            "type": "string"
+        },
+        "Emergency-Address-Longitude": {
+            "type": "string"
+        },
         "Emergency-Address-Postal-Code": {
             "type": "string"
         },
