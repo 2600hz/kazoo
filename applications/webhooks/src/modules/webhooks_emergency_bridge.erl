@@ -80,7 +80,7 @@ bindings() ->
     [{'notifications', [{'restrict_to', ['emergency_bridge']}]}].
 
 maybe_send_event(AccountId, JObj) ->
-  case webhooks_util:find_webhooks(?HOOK_NAME, AccountId) of
-    [] -> lager:debug("no hooks to handle for ~s", [AccountId]);
-    Hooks -> webhooks_util:fire_hooks(JObj, Hooks)
-  end.
+    case webhooks_util:find_webhooks(?HOOK_NAME, AccountId) of
+        [] -> lager:debug("no hooks to handle for ~s", [AccountId]);
+        Hooks -> webhooks_util:fire_hooks(JObj, Hooks)
+    end.
