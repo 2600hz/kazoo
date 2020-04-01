@@ -135,6 +135,11 @@
         ,publish_denied_emergency_bridge/1
         ,publish_denied_emergency_bridge/2
         ]).
+-export([emergency_bridge/1
+        ,emergency_bridge_v/1
+        ,publish_emergency_bridge/1
+        ,publish_emergency_bridge/2
+        ]).
 %% SIP notifications
 -export([deregister/1
         ,deregister_v/1
@@ -1077,6 +1082,50 @@ denied_emergency_bridge_definition() ->
               ],
     kapi_definition:setters(Setters).
 
+-spec emergency_bridge_definition() -> kapi_definition:api().
+emergency_bridge_definition() ->
+    EventName = <<"emergency_bridge">>,
+    Category = <<"registration">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Emergency Call Placed">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"This event is triggered when a call to an number classified as emergency is placed">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun emergency_bridge/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun emergency_bridge_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_emergency_bridge/1}
+              ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"emergency_bridge">>)}
+              ,{fun kapi_definition:set_restrict_to/2, 'emergency_bridge'}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Account-ID">>
+                                                            ,<<"Call-ID">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Account-Name">>
+                                                            ,<<"Authorizing-ID">>
+                                                            ,<<"Device-Name">>
+                                                            ,<<"Emergency-To-DID">>
+                                                            ,<<"Emergency-Test-Call">>
+                                                            ,<<"Emergency-Caller-ID-Name">>
+                                                            ,<<"Emergency-Caller-ID-Number">>
+                                                            ,<<"Emergency-Address-Street-1">>
+                                                            ,<<"Emergency-Address-Street-2">>
+                                                            ,<<"Emergency-Address-City">>
+                                                            ,<<"Emergency-Address-Region">>
+                                                            ,<<"Emergency-Address-Postal-Code">>
+                                                            ,<<"Emergency-Notfication-Contact-Emails">>
+                                                            ,<<"Outbound-Caller-ID-Name">>
+                                                            ,<<"Outbound-Caller-ID-Number">>
+                                                            ,<<"Owner-ID">>
+                                                            ,<<"User-First-Name">>
+                                                            ,<<"User-Last-Name">>
+                                                            ,<<"User-Email">>
+                                                                 | ?DEFAULT_OPTIONAL_HEADERS
+                                                            ]}
+              ,{fun kapi_definition:set_values/2, ?NOTIFY_VALUES(EventName)}
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
+
 %%%=============================================================================
 %%% SIP Notifications Definitions
 %%%=============================================================================
@@ -1710,6 +1759,7 @@ api_definitions() ->
     ,port_unconfirmed_definition()
     ,ported_definition()
     ,denied_emergency_bridge_definition()
+    ,emergency_bridge_definition()
     ,deregister_definition()
     ,first_occurrence_definition()
     ,missed_call_definition()
@@ -1783,6 +1833,8 @@ api_definition(<<"ported">>) ->
     ported_definition();
 api_definition(<<"denied_emergency_bridge">>) ->
     denied_emergency_bridge_definition();
+api_definition(<<"emergency_bridge">>) ->
+    emergency_bridge_definition();
 api_definition(<<"deregister">>) ->
     deregister_definition();
 api_definition(<<"first_occurrence">>) ->
@@ -2609,6 +2661,31 @@ publish_denied_emergency_bridge(JObj) ->
 -spec publish_denied_emergency_bridge(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_denied_emergency_bridge(API, ContentType) ->
     Definition = denied_emergency_bridge_definition(),
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:notifications_publish(kapi_definition:binding(Definition), Payload, ContentType).
+
+%%------------------------------------------------------------------------------
+%% @doc Takes proplist, creates JSON string and publish it on AMQP.
+%% @end
+%%------------------------------------------------------------------------------
+-spec emergency_bridge(kz_term:api_terms()) -> api_formatter_return().
+emergency_bridge(Prop) ->
+    kapi_definition:build_message(Prop, emergency_bridge_definition()).
+
+-spec emergency_bridge_v(kz_term:api_terms()) -> boolean().
+emergency_bridge_v(Prop) ->
+    kapi_definition:validate(Prop, emergency_bridge_definition()).
+
+-spec publish_emergency_bridge(kz_term:api_terms()) -> 'ok'.
+publish_emergency_bridge(JObj) ->
+    publish_emergency_bridge(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_emergency_bridge(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
+publish_emergency_bridge(API, ContentType) ->
+    Definition = emergency_bridge_definition(),
     {'ok', Payload} = kz_api:prepare_api_payload(API
                                                 ,kapi_definition:values(Definition)
                                                 ,kapi_definition:build_fun(Definition)
