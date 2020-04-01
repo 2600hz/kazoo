@@ -1112,6 +1112,8 @@ emergency_bridge_definition() ->
                                                             ,<<"Emergency-Address-City">>
                                                             ,<<"Emergency-Address-Region">>
                                                             ,<<"Emergency-Address-Postal-Code">>
+                                                            ,<<"Emergency-Address-Latitude">>
+                                                            ,<<"Emergency-Address-Longitude">>
                                                             ,<<"Emergency-Notfication-Contact-Emails">>
                                                             ,<<"Outbound-Caller-ID-Name">>
                                                             ,<<"Outbound-Caller-ID-Number">>
