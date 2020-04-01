@@ -821,12 +821,12 @@ is_custom_sip_header(_) -> 'false'.
 -spec arrange_acl_node({kz_term:ne_binary(), kz_json:object()}, orddict:orddict()) -> orddict:orddict().
 arrange_acl_node({_, JObj}, Dict) ->
     AclList = kz_json:get_value(<<"network-list-name">>, JObj),
-
-    NodeEl = acl_node_el(kz_json:get_value(<<"type">>, JObj), kz_json:get_value(<<"cidr">>, JObj)),
-
+    Type = kz_json:get_value(<<"type">>, JObj),
+    CIDR = kz_json:get_value(<<"cidr">>, JObj),
+    Ports = kz_json:get_value(<<"ports">>, JObj),
+    NodeEl = acl_node_el(Type, CIDR, Ports),
     case orddict:find(AclList, Dict) of
         {'ok', ListEl} ->
-            lager:debug("found existing list ~s", [AclList]),
             orddict:store(AclList, prepend_child(ListEl, NodeEl), Dict);
         'error' ->
             lager:debug("creating new list xml for ~s", [AclList]),
@@ -848,13 +848,21 @@ context(JObj, Props) ->
 %%%-----------------------------------------------------------------------------
 %% XML record creators and helpers
 %%%-----------------------------------------------------------------------------
--spec acl_node_el(kz_types:xml_attrib_value(), kz_types:xml_attrib_value()) -> kz_types:xml_el() | kz_types:xml_els().
-acl_node_el(Type, CIDRs) when is_list(CIDRs) ->
-    [acl_node_el(Type, CIDR) || CIDR <- CIDRs];
-acl_node_el(Type, CIDR) ->
+-spec acl_node_el(kz_types:xml_attrib_value(), kz_types:xml_attrib_value(), kz_term:api_integers()) -> kz_types:xml_el() | kz_types:xml_els().
+acl_node_el(Type, CIDRs, Ports) when is_list(CIDRs) ->
+    [acl_node_el(Type, CIDR, Ports) || CIDR <- CIDRs];
+acl_node_el(Type, CIDR, 'undefined') ->
     #xmlElement{name='node'
                ,attributes=[xml_attrib('type', Type)
                            ,xml_attrib('cidr', CIDR)
+                           ]
+               };
+acl_node_el(Type, CIDR, Ports) ->
+    BinPorts = kz_binary:join([kz_term:to_binary(P) || P <- Ports], <<",">>),
+    #xmlElement{name='node'
+               ,attributes=[xml_attrib('type', Type)
+                           ,xml_attrib('cidr', CIDR)
+                           ,xml_attrib('ports', BinPorts)
                            ]
                }.
 
