@@ -264,7 +264,8 @@ maybe_match_test_number([Rule | Rules], Number) ->
     case re:run(Number, Rule) of
         {'match', _Captured} -> 'true';
         'nomatch' -> maybe_match_test_number(Rules, Number)
-    end.
+    end;
+maybe_match_test_number(_, _) -> 'false'.
 
 -spec maybe_get_endpoints(kz_term:ne_binary(), kapi_offnet_resource:req()) -> endpoints().
 maybe_get_endpoints(Number, OffnetJObj) ->
