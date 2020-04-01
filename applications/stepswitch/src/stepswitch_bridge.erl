@@ -317,7 +317,9 @@ maybe_bridge(#state{endpoints=Endpoints
                    ,control_queue=ControlQ
                    }=State) ->
     case contains_emergency_endpoints(Endpoints) of
-        'true' -> maybe_bridge_emergency(State);
+        'true' ->
+            _ = send_emergency_bridge_notification(State),
+            maybe_bridge_emergency(State);
         'false' ->
             Name = bridge_outbound_cid_name(OffnetReq),
             Number = bridge_outbound_cid_number(OffnetReq),
@@ -693,6 +695,113 @@ send_deny_emergency_response(OffnetReq, ControlQ) ->
                                       ,<<"prompt://system_media/stepswitch-emergency_not_configured/">>
                                       ),
     kz_call_response:send(CallId, ControlQ, Code, Cause, Media).
+
+-spec send_emergency_bridge_notification(state()) -> 'ok'.
+send_emergency_bridge_notification(#state{resource_req=OffnetReq}=State) ->
+    Setters = [{fun set_emergency_call_meta/2, State}
+              ,{fun set_emergency_device_meta/2, OffnetReq}
+              ,{fun set_emergency_address_meta/2, OffnetReq}
+              ,{fun set_emergency_user_meta/2, OffnetReq}
+              ,{fun set_default_headers/2, OffnetReq}
+              ],
+
+    Props = lists:foldl(fun({F, O}, A) -> F(O, A) end, [], Setters),
+    kapps_notify_publisher:cast(Props, fun kapi_notifications:publish_emergency_bridge/1).
+
+-spec set_default_headers(kapi_offnet_resource:req(), kz_term:proplist()) -> kz_term:proplist().
+set_default_headers(_OffnetReq, Props) ->
+    Props ++ kz_api:default_headers(?APP_NAME, ?APP_VERSION).
+
+-spec set_emergency_call_meta(state(), kz_term:proplist()) -> kz_term:proplist().
+set_emergency_call_meta(#state{resource_req=OffnetReq}=State, Props) ->
+    [{<<"Call-ID">>, kapi_offnet_resource:call_id(OffnetReq)}
+    ,{<<"Account-ID">>, kapi_offnet_resource:account_id(OffnetReq)}
+    ,{?KEY_E_CALLER_ID_NUMBER, kapi_offnet_resource:emergency_caller_id_number(OffnetReq)}
+    ,{?KEY_E_CALLER_ID_NAME, kapi_offnet_resource:emergency_caller_id_name(OffnetReq)}
+    ,{?KEY_OUTBOUND_CALLER_ID_NUMBER, kapi_offnet_resource:outbound_caller_id_number(OffnetReq)}
+    ,{?KEY_OUTBOUND_CALLER_ID_NAME, kapi_offnet_resource:outbound_caller_id_name(OffnetReq)}
+    ,{<<"Emergency-Test-Call">>, maybe_emergency_test_call(State)}
+    ,{<<"Emergency-To-DID">>, kapi_offnet_resource:to_did(OffnetReq)}
+     | Props
+    ].
+
+
+-spec set_emergency_device_meta(kapi_offnet_resource:req(), kz_term:proplist()) -> kz_term:proplist().
+set_emergency_device_meta(OffnetReq, Props) ->
+    AccountID = kapi_offnet_resource:account_id(OffnetReq),
+    DeviceID = kz_json:get_ne_value(<<"Authorizing-ID">>, kapi_offnet_resource:requestor_custom_channel_vars(OffnetReq), 'undefined'),
+    OwnerID =kz_json:get_ne_value(<<"Owner-ID">>, kapi_offnet_resource:requestor_custom_channel_vars(OffnetReq), 'undefined'),
+    {'ok', DeviceJObj} = kzd_devices:fetch(AccountID, DeviceID),
+    [{<<"Authorizing-ID">>, DeviceID}
+    ,{<<"Owner-ID">>, OwnerID}
+    ,{<<"Device-Name">>, kzd_devices:name(DeviceJObj)}
+     | Props
+    ].
+
+-spec set_emergency_address_meta(kapi_offnet_resource:req(), kz_term:proplist()) -> kz_term:proplist().
+set_emergency_address_meta(OffnetReq, Props) ->
+    AccountDB = kzs_util:format_account_db(kapi_offnet_resource:account_id(OffnetReq)),
+    case kz_datamgr:open_doc(AccountDB, kapi_offnet_resource:emergency_caller_id_number(OffnetReq)) of
+        {'ok', Doc} ->
+            [{<<"Emergency-Address-Street-1">>, extract_e911_street_address_field(Doc, <<"street_address">>)}
+            ,{<<"Emergency-Address-Street-2">>,  extract_e911_street_address_field(Doc, <<"street_address_extended">>)}
+            ,{<<"Emergency-Address-City">>,  kzd_phone_numbers:e911_locality(Doc)}
+            ,{<<"Emergency-Address-Latitude">>, kzd_phone_numbers:e911_latitude(Doc)}
+            ,{<<"Emergency-Address-Longitude">>, kzd_phone_numbers:e911_latitude(Doc)}
+            ,{<<"Emergency-Address-Region">>,  kzd_phone_numbers:e911_region(Doc)}
+            ,{<<"Emergency-Address-Postal-Code">>,  kzd_phone_numbers:e911_postal_code(Doc)}
+            ,{<<"Emergency-Notfication-Contact-Emails">>, kzd_phone_numbers:e911_notification_contact_emails(Doc)}
+             | Props
+            ];
+        {'error', _} -> Props
+    end.
+
+-spec maybe_emergency_test_call(state()) -> boolean().
+maybe_emergency_test_call(#state{endpoints=Endpoints
+                                ,resource_req=OffnetReq
+                                }=_State) ->
+    is_resource_test_rule(Endpoints, kapi_offnet_resource:to_did(OffnetReq)).
+
+-spec is_resource_test_rule(stepswitch_resources:endpoints(), kz_term:ne_binary()) -> boolean().
+is_resource_test_rule(Endpoints, To) ->
+    is_resource_test_rule(Endpoints, To, 'false').
+
+-spec is_resource_test_rule(stepswitch_resources:endpoints(), kz_term:ne_binary(), boolean()) -> boolean().
+is_resource_test_rule([], _To, Acc) -> Acc;
+is_resource_test_rule([E | Rest], To, Acc) ->
+    ResourceId = kz_json:get_ne_value([<<"Custom-Channel-Vars">>, <<"Resource-ID">>], E),
+    Match = stepswitch_resources:is_test_number(To, ResourceId),
+    is_resource_test_rule(Rest, To, Match or Acc).
+
+-spec extract_e911_street_address_field(kz_doc:doc(), kz_term:ne_binary()) -> kz_term:ne_binary() | 'undefined'.
+extract_e911_street_address_field(Doc, Key) ->
+    JObj = kzd_phone_numbers:e911(Doc),
+    case kz_json:get_ne_value(Key, JObj) of
+        'undefined' -> maybe_use_e911_legacy_value(Doc, Key);
+        Value -> Value
+    end.
+
+-spec maybe_use_e911_legacy_value(kz_doc:doc(), kz_term:ne_binary()) -> kz_term:ne_binary() | 'undefined'.
+maybe_use_e911_legacy_value(Doc, <<"street_address">>) ->
+    <<(kzd_phone_numbers:e911_legacy_data_house_number(Doc))/binary
+     ," "
+     ,(kzd_phone_numbers:e911_legacy_data_streetname(Doc))/binary>>;
+maybe_use_e911_legacy_value(Doc, <<"street_address_extended">>) ->
+    kzd_phone_numbers:e911_legacy_data_suite(Doc).
+
+-spec set_emergency_user_meta(kapi_offnet_resource:req(), kz_term:proplist()) -> kz_term:proplist().
+set_emergency_user_meta(OffnetReq, Props) ->
+    AccountID = kapi_offnet_resource:account_id(OffnetReq),
+    OwnerID =kz_json:get_ne_value(<<"Owner-ID">>, kapi_offnet_resource:requestor_custom_channel_vars(OffnetReq), 'undefined'),
+    case kzd_users:fetch(AccountID, OwnerID) of
+        {'ok', UserJObj} ->
+            [{<<"User-First-Name">>, kzd_users:first_name(UserJObj)}
+            ,{<<"User-Last-Name">>, kzd_users:last_name(UserJObj)}
+            ,{<<"User-Email">>, kzd_users:email(UserJObj)}
+             | Props
+            ];
+        {'error', _} -> Props
+    end.
 
 -spec get_event_type(kz_call_event:doc()) ->
           {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}.

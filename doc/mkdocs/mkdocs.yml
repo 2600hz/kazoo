@@ -364,6 +364,7 @@ nav:
       - 'applications/stepswitch/doc/resource_selectors.md'
       - 'applications/stepswitch/doc/rules.md'
       - 'applications/stepswitch/doc/maintenance.md'
+      - 'applications/stepswitch/doc/emergency.md'
     - 'Sysconf':
       - 'applications/sysconf/doc/README.md'
     - 'Tasks':

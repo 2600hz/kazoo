@@ -23,13 +23,14 @@ render_test_() ->
     ,fun setup/0
     ,fun cleanup/1
     ,fun(_ReturnOfSetup) ->
-             [?_assertEqual(38, length(?DEFAULT_MODULES))
+             [?_assertEqual(39, length(?DEFAULT_MODULES))
               %% ,test_rendering(teletype_account_zone_change)
              ,test_rendering(teletype_bill_reminder)
               %% ,test_rendering(teletype_cnam_request)
               %% ,test_rendering(teletype_customer_update)
               %% ,test_rendering(teletype_denied_emergency_bridge)
              ,test_rendering(teletype_deregister)
+              %% ,test_rendering(teletype_emergency_bridge)
               %% ,test_rendering(teletype_fax_inbound_error_to_email)
               %% ,test_rendering(teletype_fax_inbound_to_email)
               %% ,test_rendering(teletype_fax_outbound_error_to_email)

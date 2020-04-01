@@ -93,6 +93,8 @@ Key | Description | Type | Default | Required | Support Level
 `require_flags` | When set to true this resource is ignored if the request does not specify outbound flags | `boolean()` |   | `false` |  
 `rules.[]` |   | `string()` |   | `false` |  
 `rules` | A list of regular expressions of which one must match for the rule to be eligible, they can optionally contain capture groups | `array(string())` | `[]` | `false` |  
+`rules_test.[]` |   | `string()` |   | `false` |  
+`rules_test` | A list of regular expressions of which if matched denotes a test rule | `array(string())` | `[]` | `false` |  
 `weight_cost` | A value between 0 and 100 that determines the order of resources when multiple can be used | `integer()` | `50` | `false` |  
 
 ### custom_sip_headers
@@ -190,6 +192,22 @@ Some upstream carriers require the From address' realm to be formatted. There ar
 1. Set `"from_uri_realm":"{CUSTOM_REALM}"` where `{CUSTOM_REALM}` is the static realm you'd like on the From
 2. Set `"from_account_realm":true` to use the calling account's realm
 3. Set `"realm":"{CUSTOM_REALM}"` on a per-gateway basis (not on the top-level resource)
+
+
+## rules_test.[]
+
+The `rules_test` object defines an array of regular expressions for test patterns of the given resource.
+
+For example, if the resource handles emergency routes in North America:
+
+```
+  "rules_test": [
+      "^\\+{0,1}(933)$"
+  ],
+```
+
+defining `933` as a test route, will inform teletype this emergency call is a test and will be reflected as such in the notification.
+
 
 ## Fetch
 

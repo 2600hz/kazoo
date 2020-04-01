@@ -567,7 +567,7 @@ request_filter(Props) ->
     props:filter(fun request_proplist_filter/1, Props).
 
 -spec request_proplist_filter({kz_term:proplist_key(), kz_term:proplist_value()}) -> boolean().
-request_proplist_filter({<<"Server-ID">>, Value}) ->
+request_proplist_filter({?KEY_SERVER_ID, Value}) ->
     not kz_term:is_empty(Value);
 request_proplist_filter({_, 'undefined'}) -> 'false';
 request_proplist_filter(_) -> 'true'.
@@ -1034,7 +1034,7 @@ maybe_convert_to_proplist(Req) ->
 maybe_set_msg_id(Props) ->
     case kz_api:msg_id(Props) of
         'undefined' ->
-            props:set_value(<<"Msg-ID">>, kz_binary:rand_hex(8), Props);
+            props:set_value(?KEY_MSG_ID, kz_binary:rand_hex(8), Props);
         _MsgId ->
             Props
     end.

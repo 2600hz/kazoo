@@ -94,7 +94,7 @@ insert_values(KVs, Props) ->
     lists:foldl(fun insert_value/2, Props, KVs).
 
 %% replaces value of Key with Value if Key exists; otherwise Props is unchanged
--spec replace_value(any(), any(), kz_term:proplist()) -> kz_term:proplist().
+-spec replace_value(kz_term:proplist_key(), kz_term:proplist_value(), kz_term:proplist()) -> kz_term:proplist().
 replace_value(Key, Value, Props) ->
     lists:keyreplace(Key, 1, Props, {Key, Value}).
 
@@ -104,7 +104,7 @@ filter(Fun, Props) when is_function(Fun, 1),
                         is_list(Props) ->
     [P || P <- Props, Fun(P)].
 
--spec filter_empty([{any(), any()} | atom()]) -> [{any(), any()} | atom()].
+-spec filter_empty(kz_term:proplist()) -> kz_term:proplist().
 filter_empty(Props) ->
     filter(fun is_not_empty/1, Props).
 
@@ -112,7 +112,7 @@ filter_empty(Props) ->
 is_not_empty({_, V}) -> not kz_term:is_empty(V);
 is_not_empty(_V) -> 'true'.
 
--spec filter_empty_strings([{any(), any()} | atom()]) -> [{any(), any()} | atom()].
+-spec filter_empty_strings(kz_term:proplist()) -> kz_term:proplist().
 filter_empty_strings(Props) ->
     filter(fun is_not_empty_string/1, Props).
 

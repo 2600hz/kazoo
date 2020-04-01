@@ -552,6 +552,8 @@ publish_fun(<<"cnam_request">>) ->
     fun kapi_notifications:publish_cnam_request/1;
 publish_fun(<<"customer_update">>) ->
     fun kapi_notifications:publish_customer_update/1;
+publish_fun(<<"emergency_bridge">>) ->
+    fun kapi_notifications:publish_emergency_bridge/1;
 publish_fun(<<"denied_emergency_bridge">>) ->
     fun kapi_notifications:publish_denied_emergency_bridge/1;
 publish_fun(<<"deregister">>) ->

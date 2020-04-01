@@ -414,17 +414,18 @@ tone_detect_v(JObj) -> tone_detect_v(kz_json:to_proplist(JObj)).
 %% @end
 %%------------------------------------------------------------------------------
 -spec queue(kz_term:api_terms()) -> api_formatter_return().
-queue(Prop) when is_list(Prop) ->
-    case queue_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?QUEUE_REQ_HEADERS, ?OPTIONAL_QUEUE_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for queue_req"}
-    end;
-queue(JObj) -> queue(kz_json:to_proplist(JObj)).
+queue(API) ->
+    queue(API, queue_v(API)).
+
+-spec queue(kz_term:api_terms(), boolean()) -> api_formatter_return().
+queue(API, 'true') ->
+    kz_api:build_message(API, ?QUEUE_REQ_HEADERS, ?OPTIONAL_QUEUE_REQ_HEADERS);
+queue(_API, 'false') ->
+    {'error', "Proplist failed validation for queue_req"}.
 
 -spec queue_v(kz_term:api_terms()) -> boolean().
-queue_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?QUEUE_REQ_HEADERS, ?QUEUE_REQ_VALUES, ?QUEUE_REQ_TYPES);
-queue_v(JObj) -> queue_v(kz_json:to_proplist(JObj)).
+queue_v(API) ->
+    kz_api:validate(API, ?QUEUE_REQ_HEADERS, ?QUEUE_REQ_VALUES, ?QUEUE_REQ_TYPES).
 
 %%------------------------------------------------------------------------------
 %% @doc Play media.

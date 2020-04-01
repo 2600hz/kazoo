@@ -111,12 +111,12 @@ do_send(CallId, CtrlQ, Commands) ->
               ,{<<"Msg-ID">>, kz_binary:rand_hex(6)}
                | kz_api:default_headers(<<"call">>, <<"command">>, <<"call_response">>, <<"0.1.0">>)
               ],
-    kz_amqp_worker:cast(Command
-                       ,fun(C) ->
-                                {'ok', Payload} = kapi_dialplan:queue(C),
-                                kapi_dialplan:publish_action(CtrlQ, Payload)
-                        end
-                       ).
+    kz_amqp_worker:cast(Command, fun(C) -> publish_queue_command(CtrlQ, C) end).
+
+-spec publish_queue_command(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
+publish_queue_command(CtrlQ, Command) ->
+    {'ok', Payload} = kapi_dialplan:queue(Command),
+    kapi_dialplan:publish_action(CtrlQ, Payload).
 
 %%------------------------------------------------------------------------------
 %% @doc
