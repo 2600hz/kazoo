@@ -19,8 +19,8 @@
         ,trace_pid/1
         ,stop_trace/1
         ]).
--export([open_document/2
-        ,open_document_cached/2
+-export([open_document/2, open_document/3
+        ,open_document_cached/2, open_document_cached/3
         ]).
 
 -export([load_doc_from_file/2]).
@@ -83,20 +83,31 @@ stop_trace(Ref) ->
     io:format("trace stopped, see log at ~s~n", [Filename]).
 
 
--spec open_document(kz_term:ne_binary(), kz_term:ne_binary()) -> no_return.
+-spec open_document(kz_term:ne_binary(), kz_term:ne_binary()) -> 'no_return'.
 open_document(Db, Id) ->
-    print(kz_datamgr:open_doc(Db, Id)).
+    open_document(Db, Id, 'false').
 
--spec open_document_cached(kz_term:ne_binary(), kz_term:ne_binary()) -> no_return.
+-spec open_document(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary() | boolean()) -> 'no_return'.
+open_document(Db, Id, PP) ->
+    print(kz_datamgr:open_doc(Db, Id), kz_term:is_true(PP)).
+
+-spec open_document_cached(kz_term:ne_binary(), kz_term:ne_binary()) -> 'no_return'.
 open_document_cached(Db, Id) ->
-    print(kz_datamgr:open_cache_doc(Db, Id)).
+    open_document_cached(Db, Id, 'false').
 
-print({ok, JSON}) ->
-    io:format("~s\n", [kz_json:encode(JSON)]),
-    no_return;
-print({error, R}) ->
+-spec open_document_cached(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary() | boolean()) -> 'no_return'.
+open_document_cached(Db, Id, PP) ->
+    print(kz_datamgr:open_cache_doc(Db, Id), kz_term:is_true(PP)).
+
+print({'ok', JObj}, 'true') ->
+    io:format("~s\n", [kz_json:encode(JObj, ['pretty'])]),
+    'no_return';
+print({'ok', JObj}, 'false') ->
+    io:format("~s\n", [kz_json:encode(JObj)]),
+    'no_return';
+print({'error', R}, _PP) ->
     io:format("ERROR: ~p\n", [R]),
-    no_return.
+    'no_return'.
 
 -spec load_doc_from_file(kz_term:ne_binary(), kz_term:ne_binary()) ->
           {'ok', kz_json:object()} |
