@@ -275,7 +275,7 @@ maybe_get_endpoints(Number, OffnetJObj) ->
     case kapi_offnet_resource:hunt_account_id(OffnetJObj) of
         'undefined' -> get_global_endpoints(Number, OffnetJObj);
         HuntAccount -> maybe_get_local_endpoints(HuntAccount, Number, OffnetJObj)
-        end.
+    end.
 
 -spec maybe_get_local_endpoints(kz_term:ne_binary(), kz_term:ne_binary(), kapi_offnet_resource:req()) -> endpoints().
 maybe_get_local_endpoints(HuntAccount, Number, OffnetJObj) ->
