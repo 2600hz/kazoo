@@ -187,14 +187,14 @@ service_name(Feature) -> Feature.
 
 -spec list_available_features(feature_parameters()) -> kz_term:ne_binaries().
 list_available_features(Parameters) ->
-    ?LOG_DEV("is admin? ~s", [Parameters#feature_parameters.is_admin]),
+    ?LOG_DEBUG("is admin? ~s", [Parameters#feature_parameters.is_admin]),
     Allowed = cleanse_features(list_allowed_features(Parameters)),
     Denied = cleanse_features(list_denied_features(Parameters)),
     Available = [Feature
                  || Feature <- Allowed,
                     not lists:member(Feature, Denied)
                 ],
-    ?LOG_DEV("available features: ~s", [?PP(Available)]),
+    ?LOG_DEBUG("available features: ~s", [?PP(Available)]),
     Available.
 
 -spec cleanse_features(kz_term:ne_binaries()) -> kz_term:ne_binaries().
@@ -276,7 +276,7 @@ reseller_allowed_features(AccountId) ->
     case ?FEATURES_ALLOWED_RESELLER(AccountId) of
         'undefined' -> system_allowed_features();
         Providers ->
-            ?LOG_DEV("allowed features set on reseller for ~s: ~s", [AccountId, ?PP(Providers)]),
+            ?LOG_DEBUG("allowed features set on reseller for ~s: ~s", [AccountId, ?PP(Providers)]),
             Providers
     end.
 
@@ -289,7 +289,7 @@ system_allowed_features() ->
               Providers -> ?FEATURES_ALLOWED_SYSTEM(Providers)
           end
          ),
-    ?LOG_DEV("allowed features from system config: ~s", [?PP(Features)]),
+    ?LOG_DEBUG("allowed features from system config: ~s", [?PP(Features)]),
     Features.
 
 -spec number_allowed_features(feature_parameters()) -> kz_term:ne_binaries().
@@ -300,7 +300,7 @@ number_allowed_features(#feature_parameters{num = ?TEST_OLD5_1_NUM}) ->
                       ,?FEATURE_FORCE_OUTBOUND
                       ,?FEATURE_RENAME_CARRIER
                       ],
-    ?LOG_DEV("allowed features set on number document: ~s", [?PP(AllowedFeatures)]),
+    ?LOG_DEBUG("allowed features set on number document: ~s", [?PP(AllowedFeatures)]),
     AllowedFeatures;
 number_allowed_features(#feature_parameters{num = ?TEST_VITELITY_NUM}) ->
     AllowedFeatures = [?FEATURE_CNAM
@@ -309,7 +309,7 @@ number_allowed_features(#feature_parameters{num = ?TEST_VITELITY_NUM}) ->
                       ,?FEATURE_PREPEND
                       ,?FEATURE_RENAME_CARRIER
                       ],
-    ?LOG_DEV("allowed features set on number document: ~s", [?PP(AllowedFeatures)]),
+    ?LOG_DEBUG("allowed features set on number document: ~s", [?PP(AllowedFeatures)]),
     AllowedFeatures;
 number_allowed_features(#feature_parameters{num = ?TEST_TELNYX_NUM}) ->
     AllowedFeatures = [?FEATURE_CNAM
@@ -320,14 +320,14 @@ number_allowed_features(#feature_parameters{num = ?TEST_TELNYX_NUM}) ->
                       ,?FEATURE_RINGBACK
                       ,?FEATURE_RENAME_CARRIER
                       ],
-    ?LOG_DEV("allowed features set on number document: ~s", [?PP(AllowedFeatures)]),
+    ?LOG_DEBUG("allowed features set on number document: ~s", [?PP(AllowedFeatures)]),
     AllowedFeatures;
 number_allowed_features(#feature_parameters{allowed_features = AllowedFeatures}) ->
-    ?LOG_DEV("allowed features set on number document: ~s", [?PP(AllowedFeatures)]),
+    ?LOG_DEBUG("allowed features set on number document: ~s", [?PP(AllowedFeatures)]),
     AllowedFeatures.
 -else.
 number_allowed_features(#feature_parameters{allowed_features = AllowedFeatures}) ->
-    ?LOG_DEV("allowed features set on number document: ~s", [?PP(AllowedFeatures)]),
+    ?LOG_DEBUG("allowed features set on number document: ~s", [?PP(AllowedFeatures)]),
     AllowedFeatures.
 -endif.
 
@@ -343,13 +343,13 @@ list_denied_features(Parameters) ->
 
 -spec reseller_denied_features(feature_parameters()) -> kz_term:ne_binaries().
 reseller_denied_features(#feature_parameters{assigned_to = 'undefined'}) ->
-    ?LOG_DEV("denying external features for unassigned number"),
+    ?LOG_DEBUG("denying external features for unassigned number"),
     ?EXTERNAL_NUMBER_FEATURES;
 reseller_denied_features(#feature_parameters{assigned_to = AccountId}=Parameters) ->
     case ?FEATURES_DENIED_RESELLER(AccountId) of
         'undefined' -> local_denied_features(Parameters);
         Providers ->
-            ?LOG_DEV("denied features set on reseller for ~s: ~s", [AccountId, ?PP(Providers)]),
+            ?LOG_DEBUG("denied features set on reseller for ~s: ~s", [AccountId, ?PP(Providers)]),
             Providers
     end.
 
@@ -362,16 +362,16 @@ local_denied_features(#feature_parameters{is_local = 'true'
                                          ,context = #{local_feature_override := false}
                                          }) ->
     Features = ?EXTERNAL_NUMBER_FEATURES,
-    ?LOG_DEV("denying external features for local number: ~s", [?PP(Features)]),
+    ?LOG_DEBUG("denying external features for local number: ~s", [?PP(Features)]),
     Features;
 local_denied_features(#feature_parameters{is_local = 'true'}) ->
     case ?LOCAL_FEATURE_OVERRIDE of
         'true' ->
-            ?LOG_DEV("not denying external features on local number due to override"),
+            ?LOG_DEBUG("not denying external features on local number due to override"),
             [];
         'false' ->
             Features = ?EXTERNAL_NUMBER_FEATURES,
-            ?LOG_DEV("denying external features for local number: ~s", [?PP(Features)]),
+            ?LOG_DEBUG("denying external features for local number: ~s", [?PP(Features)]),
             Features
     end.
 
@@ -380,7 +380,7 @@ used_by_denied_features(#feature_parameters{used_by = <<"trunkstore">>}) -> [];
 used_by_denied_features(#feature_parameters{used_by = _UsedBy}) ->
     Features = [?FEATURE_FAILOVER
                ],
-    ?LOG_DEV("denying external features for number used by ~s: ~s", [_UsedBy, ?PP(Features)]),
+    ?LOG_DEBUG("denying external features for number used by ~s: ~s", [_UsedBy, ?PP(Features)]),
     Features.
 
 -spec number_denied_features(feature_parameters()) -> kz_term:ne_binaries().
@@ -389,22 +389,22 @@ number_denied_features(#feature_parameters{num = ?TEST_TELNYX_NUM}) ->
     DeniedFeatures = [?FEATURE_PORT
                      ,?FEATURE_FAILOVER
                      ],
-    ?LOG_DEV("denied features set on number document: ~s", [?PP(DeniedFeatures)]),
+    ?LOG_DEBUG("denied features set on number document: ~s", [?PP(DeniedFeatures)]),
     DeniedFeatures;
 number_denied_features(#feature_parameters{num = ?BW_EXISTING_DID}) ->
     DeniedFeatures = [?FEATURE_E911
                      ],
-    ?LOG_DEV("denied features set on number document: ~s", [?PP(DeniedFeatures)]),
+    ?LOG_DEBUG("denied features set on number document: ~s", [?PP(DeniedFeatures)]),
     DeniedFeatures;
 number_denied_features(#feature_parameters{denied_features = DeniedFeatures}) ->
-    ?LOG_DEV("denied features set on number document: ~s", [?PP(DeniedFeatures)]),
+    ?LOG_DEBUG("denied features set on number document: ~s", [?PP(DeniedFeatures)]),
     DeniedFeatures.
 -else.
 number_denied_features(#feature_parameters{denied_features = []}) ->
-    ?LOG_DEV("empty features set on number document"),
+    ?LOG_DEBUG("empty features set on number document"),
     [];
 number_denied_features(#feature_parameters{denied_features = DeniedFeatures}) ->
-    ?LOG_DEV("denied features set on number document: ~s", [?PP(DeniedFeatures)]),
+    ?LOG_DEBUG("denied features set on number document: ~s", [?PP(DeniedFeatures)]),
     DeniedFeatures.
 -endif.
 
@@ -412,7 +412,7 @@ number_denied_features(#feature_parameters{denied_features = DeniedFeatures}) ->
 maybe_deny_admin_only_features(#feature_parameters{is_admin = 'true'}) -> [];
 maybe_deny_admin_only_features(#feature_parameters{is_admin = 'false'}) ->
     Features = ?ADMIN_ONLY_FEATURES,
-    ?LOG_DEV("allowing admin-only features: ~s", [?PP(Features)]),
+    ?LOG_DEBUG("allowing admin-only features: ~s", [?PP(Features)]),
     Features.
 
 -spec legacy_provider_to_feature(kz_term:ne_binary()) -> kz_term:ne_binary().
@@ -438,9 +438,9 @@ requested_modules(PhoneNumber) ->
     RequestedFeatures = [Key || Key <- ?FEATURES_ROOT_KEYS,
                                 'undefined' =/= kz_json:get_value(Key, Doc)
                         ],
-    ?LOG_DEV("asked on public fields: ~s", [?PP(RequestedFeatures)]),
+    ?LOG_DEBUG("asked on public fields: ~s", [?PP(RequestedFeatures)]),
     ExistingFeatures = knm_phone_number:features_list(PhoneNumber),
-    ?LOG_DEV("previously allowed: ~s", [?PP(ExistingFeatures)]),
+    ?LOG_DEBUG("previously allowed: ~s", [?PP(ExistingFeatures)]),
     %% ?FEATURE_LOCAL is never user-writable thus must not be included.
     Features = (RequestedFeatures ++ ExistingFeatures) -- [?FEATURE_LOCAL],
     provider_modules(Features, AccountId).
@@ -503,7 +503,7 @@ do_exec(T0=#{'todo' := PNs}, Action) ->
 -spec exec(knm_phone_number:record(), exec_action()) -> knm_phone_number:record().
 exec(PN, Action='delete') ->
     RequestedModules = requested_modules(PN),
-    ?LOG_DEV("deleting feature providers: ~s", [?PP(RequestedModules)]),
+    ?LOG_DEBUG("deleting feature providers: ~s", [?PP(RequestedModules)]),
     exec(PN, Action, RequestedModules);
 exec(PN, Action='save') ->
     PN1 = remove_deprecated_features(PN),
@@ -513,7 +513,7 @@ exec(PN, Action='save') ->
         'true' ->
             exec(NewPN, Action, AllowedModules);
         'false' ->
-            ?LOG_DEV("denied feature providers: ~s", [?PP(DeniedModules)]),
+            ?LOG_DEBUG("denied feature providers: ~s", [?PP(DeniedModules)]),
             knm_errors:unauthorized()
     end.
 
@@ -530,14 +530,14 @@ remove_deprecated_features(PN) ->
 -spec maybe_rename_carrier_and_strip_denied(knm_phone_number:record()) -> {knm_phone_number:record(), kz_term:ne_binaries(), kz_term:ne_binaries()}.
 maybe_rename_carrier_and_strip_denied(PN) ->
     {AllowedRequests, DeniedRequests} = split_requests(PN),
-    ?LOG_DEV("allowing feature providers: ~s", [?PP(AllowedRequests)]),
+    ?LOG_DEBUG("allowing feature providers: ~s", [?PP(AllowedRequests)]),
     case lists:member(?PROVIDER_RENAME_CARRIER, AllowedRequests) of
         'false' -> {PN, AllowedRequests, DeniedRequests};
         'true' ->
             PN1 = exec(PN, 'save', [?PROVIDER_RENAME_CARRIER]),
             PN2 = remove_denied_features(PN1),
             {NewAllowed, NewDenied} = split_requests(PN2),
-            ?LOG_DEV("allowing feature providers: ~s", [?PP(NewAllowed)]),
+            ?LOG_DEBUG("allowing feature providers: ~s", [?PP(NewAllowed)]),
             {PN2, NewAllowed, NewDenied}
     end.
 
@@ -552,9 +552,9 @@ features_denied(PN) ->
 -spec split_requests(knm_phone_number:record()) -> {kz_term:ne_binaries(), kz_term:ne_binaries()}.
 split_requests(PN) ->
     RequestedModules = requested_modules(PN),
-    ?LOG_DEV("requested feature providers: ~s", [?PP(RequestedModules)]),
+    ?LOG_DEBUG("requested feature providers: ~s", [?PP(RequestedModules)]),
     AllowedModules = allowed_modules(PN),
-    ?LOG_DEV("allowed providers: ~s", [?PP(AllowedModules)]),
+    ?LOG_DEBUG("allowed providers: ~s", [?PP(AllowedModules)]),
     F = fun (Feature) -> lists:member(Feature, AllowedModules) end,
     lists:partition(F, RequestedModules).
 
@@ -564,10 +564,10 @@ exec(PN, _, []) -> PN;
 exec(PN, Action, [Provider|Providers]) ->
     case kz_module:ensure_loaded(Provider) of
         'false' ->
-            ?LOG_DEV("provider ~s is unknown, skipping", [Provider]),
+            ?LOG_DEBUG("provider ~s is unknown, skipping", [Provider]),
             exec(PN, Action, Providers);
         Module ->
-            ?LOG_DEV("attempting ~s:~s/1", [Module, Action]),
+            ?LOG_DEBUG("attempting ~s:~s/1", [Module, Action]),
             UpdatedPN = erlang:apply(Module, Action, [PN]),
             exec(UpdatedPN, Action, Providers)
     end.
@@ -588,9 +588,7 @@ activate_feature(PN, FeatureToSet={?NE_BINARY,_}) ->
 -spec do_activate_feature(knm_phone_number:record(), set_feature()) ->
           knm_phone_number:record().
 do_activate_feature(PhoneNumber, {Feature,FeatureData}) ->
-    ?LOG_DEV("adding feature ~s to ~s"
-            ,[Feature, knm_phone_number:number(PhoneNumber)]
-            ),
+    ?LOG_DEBUG("adding feature ~s to ~s", [Feature, knm_phone_number:number(PhoneNumber)]),
     knm_phone_number:set_feature(PhoneNumber, Feature, FeatureData).
 
 %%------------------------------------------------------------------------------

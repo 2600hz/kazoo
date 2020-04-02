@@ -32,7 +32,6 @@
 -define(LOG_INFO(F, A), io:format('user', "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
 -define(LOG_NOTICE(F, A), io:format('user', "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
 -define(LOG_WARNING(F, A), io:format('user', "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
--define(LOG_DEV(F, A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
 
 -define(LOG_ALERT(F), ?LOG_ALERT(F, [])).
 -define(LOG_CRITICAL(F), ?LOG_CRITICAL(F, [])).
@@ -42,7 +41,6 @@
 -define(LOG_INFO(F), ?LOG_INFO(F, [])).
 -define(LOG_NOTICE(F), ?LOG_NOTICE(F, [])).
 -define(LOG_WARNING(F), ?LOG_WARNING(F, [])).
--define(LOG_DEV(F), ?LOG_DEV(F, [])).
 
 -else.
 
@@ -54,7 +52,6 @@
 -define(LOG_INFO(F, A), lager:info(F, A)).
 -define(LOG_NOTICE(F, A), lager:notice(F, A)).
 -define(LOG_WARNING(F, A), lager:warning(F, A)).
--define(LOG_DEV(F, A), dev:debug(F, A)).
 
 -define(LOG_ALERT(F), ?LOG_ALERT(F, [])).
 -define(LOG_CRITICAL(F), ?LOG_CRITICAL(F, [])).
@@ -64,7 +61,6 @@
 -define(LOG_INFO(F), ?LOG_INFO(F, [])).
 -define(LOG_NOTICE(F), ?LOG_NOTICE(F, [])).
 -define(LOG_WARNING(F), ?LOG_WARNING(F, [])).
--define(LOG_DEV(F), ?LOG_DEV(F, [])).
 
 -endif.
 
