@@ -12,7 +12,9 @@
 | `flush_docs/2` | `(Account,DocId)` | |
 | `load_doc_from_file/2` | `(Db,FilePath) | (Db,_FilePath)` | |
 | `open_document/2` | `(Db,Id)` | |
+| `open_document/3` | `(Db,Id,PP)` | |
 | `open_document_cached/2` | `(Db,Id)` | |
+| `open_document_cached/3` | `(Db,Id,PP)` | |
 | `set_cache_strategy/1` | `(Strategy) | (_)` | |
 | `stop_trace/1` | `(Ref)` | |
 | `trace_function/1` | `(Function)` | |
