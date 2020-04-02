@@ -885,9 +885,7 @@ handle_fetched_doc(AccountId, Options, {'error', 'not_found'}) ->
 choose_open_doc_fun(Options, AccountId) ->
     case props:is_true('skip_cache', Options, 'false') of
         'false' ->
-            ?LOG_DEV("fetching services doc ~s (with cache)"
-                    ,[AccountId]
-                    ),
+            ?LOG_DEBUG("fetching services doc ~s (with cache)", [AccountId]),
             fun kz_datamgr:open_cache_doc/2;
         'true' ->
             lager:debug("fetching services doc ~s (without cache)"

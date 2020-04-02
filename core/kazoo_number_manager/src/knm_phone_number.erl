@@ -131,7 +131,7 @@
 -ifdef(FUNCTION_NAME).
 -define(DIRTY(PN),
         begin
-            ?LOG_DEV("dirty ~s ~s/~p", [number(PN), ?FUNCTION_NAME, ?FUNCTION_ARITY]),
+            ?LOG_DEBUG("dirty ~s ~s/~p", [number(PN), ?FUNCTION_NAME, ?FUNCTION_ARITY]),
             (PN)#knm_phone_number{is_dirty = 'true'
                                  ,modified = kz_time:now_s()
                                  }
@@ -139,7 +139,7 @@
 -else.
 -define(DIRTY(PN),
         begin
-            ?LOG_DEV("dirty ~s", [number(PN)]),
+            ?LOG_DEBUG("dirty ~s", [number(PN)]),
             (PN)#knm_phone_number{is_dirty = 'true'
                                  ,modified = kz_time:now_s()
                                  }
@@ -1204,7 +1204,7 @@ set_reserve_history(PN0=#knm_phone_number{reserve_history = 'undefined'}, Histor
         %% Since add_reserve_history/2 is exported, it has to dirty things itself.
         %% Us reverting here is the only way to work around that.
         'true' ->
-            ?LOG_DEV("undirty ~s", [number(PN2)]),
+            ?LOG_DEBUG("undirty ~s", [number(PN2)]),
             PN2#knm_phone_number{is_dirty = 'false'
                                 ,modified = PN0#knm_phone_number.modified
                                 }
