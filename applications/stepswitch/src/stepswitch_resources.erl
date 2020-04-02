@@ -255,24 +255,27 @@ endpoints(Number, OffnetJObj) ->
 
 -spec is_test_number(kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 is_test_number(Number, ResourceId) ->
-    Resource = get_resource(ResourceId),
-    Rules = get_resrc_rules_test(Resource),
-    maybe_match_test_number(Rules, Number).
+    case get_resource(ResourceId) of
+        'undefined' -> 'false';
+        Resource ->
+            Rules = get_resrc_rules_test(Resource),
+            maybe_match_test_number(Rules, Number)
+    end.
 
+-spec maybe_match_test_number([re:mp()] , kz_term:ne_binary()) -> boolean().
 maybe_match_test_number([], _) -> 'false';
 maybe_match_test_number([Rule | Rules], Number) ->
     case re:run(Number, Rule) of
         {'match', _Captured} -> 'true';
         'nomatch' -> maybe_match_test_number(Rules, Number)
-    end;
-maybe_match_test_number(_, _) -> 'false'.
+    end.
 
 -spec maybe_get_endpoints(kz_term:ne_binary(), kapi_offnet_resource:req()) -> endpoints().
 maybe_get_endpoints(Number, OffnetJObj) ->
     case kapi_offnet_resource:hunt_account_id(OffnetJObj) of
         'undefined' -> get_global_endpoints(Number, OffnetJObj);
         HuntAccount -> maybe_get_local_endpoints(HuntAccount, Number, OffnetJObj)
-    end.
+        end.
 
 -spec maybe_get_local_endpoints(kz_term:ne_binary(), kz_term:ne_binary(), kapi_offnet_resource:req()) -> endpoints().
 maybe_get_local_endpoints(HuntAccount, Number, OffnetJObj) ->
