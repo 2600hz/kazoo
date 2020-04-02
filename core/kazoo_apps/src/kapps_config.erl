@@ -375,6 +375,7 @@ get_ne_binary_or_ne_binaries(Category, Key, Default, Node) ->
     ValueOrValues = get(Category, Key, Default, Node),
     value_or_values(ValueOrValues, Default).
 
+value_or_values('undefined', Default) -> Default;
 value_or_values(<<>>, Default) -> Default;
 value_or_values([], Default) -> Default;
 value_or_values(<<Value/binary>>, _Default) -> Value;
