@@ -206,7 +206,7 @@ verify_mapped_row(Pred, MappedRow) when is_function(Pred, 2),
 -spec row_to_iolist(row()) -> iodata().
 row_to_iolist([Cell]) -> [cell_to_binary(Cell), $\n];
 row_to_iolist(Row=[_|_]) ->
-    [csv_ize(Row), $\n].
+    lists:join($,, [cell_to_binary(Cell) || Cell <- Row]) ++ [$\n].
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -356,8 +356,8 @@ take_line(CSV) ->
 %% value must be enclosed in double quotes.
 %% A double quote in a value must be escaped with another double quote.
 %%
-%% Note that empty cells <<",">> will be converted to [?ZILCH, ?ZILCH]
-%% but <<"\"\",">> will be converted to [<<>>, ?ZILCH]
+%% Note that empty cells `<<",">>' will be converted to `[?ZILCH, ?ZILCH]'
+%% but `<<"\"\",">>' will be converted to `[<<>>, ?ZILCH]'
 %% @end
 %%------------------------------------------------------------------------------
 -spec parse_row(kz_term:ne_binary()) -> row().
@@ -414,8 +414,8 @@ parse_row([H|T], CellAcc, RowAcc, State) when State =:= 'normal'; State =:= 'esc
 %%------------------------------------------------------------------------------
 %% @doc Convert the CellAcc from the function parse_row/4 to a binary
 %% string.
-%% Handles edge cases where a empty cell should be ?ZILCH but a empty
-%% cell with double quotes should be <<>>
+%% Handles edge cases where a empty cell should be `?ZILCH' but a empty
+%% cell with double quotes should be `<<>>'
 %% @end
 %%------------------------------------------------------------------------------
 -spec cell_acc_to_cell(list(), 'normal' | 'was_escaped') -> kz_term:binary() | 'undefined'.
