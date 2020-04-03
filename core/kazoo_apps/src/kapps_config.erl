@@ -128,10 +128,10 @@ get_binary(Category, Key, Default, Node) ->
           kz_term:api_object().
 get_json(Category, Key) ->
     V = get(Category, Key),
-    as_json_value(V, undefined).
+    as_json_value(V, 'undefined').
 
 -spec as_json_value(any(), kz_term:api_object()) -> kz_term:api_object().
-as_json_value(undefined, Default) -> Default;
+as_json_value('undefined', Default) -> Default;
 as_json_value(V, Default) ->
     case kz_json:is_json_object(V) of
         'true' -> V;
@@ -373,18 +373,17 @@ get_ne_binary_or_ne_binaries(Category, Key, Default) ->
 -spec get_ne_binary_or_ne_binaries(config_category(), config_key(), Default, config_node()) -> kz_term:ne_binary() | kz_term:ne_binaries() | Default.
 get_ne_binary_or_ne_binaries(Category, Key, Default, Node) ->
     ValueOrValues = get(Category, Key, Default, Node),
-    case kz_term:is_empty(ValueOrValues) of
-        'true' -> Default;
-        'false' ->
-            case ValueOrValues of
-                Value=?NE_BINARY -> Value;
-                Values when is_list(Values) ->
-                    [kz_term:to_binary(Value)
-                     || Value <- Values,
-                        kz_term:is_not_empty(Value)
-                    ]
-            end
-    end.
+    value_or_values(ValueOrValues, Default).
+
+value_or_values('undefined', Default) -> Default;
+value_or_values(<<>>, Default) -> Default;
+value_or_values([], Default) -> Default;
+value_or_values(<<Value/binary>>, _Default) -> Value;
+value_or_values([_|_]=Values, _Default) ->
+    [kz_term:to_binary(Value)
+     || Value <- Values,
+        kz_term:is_not_empty(Value)
+    ].
 
 -spec get_ne_binary(config_category(), config_key()) -> kz_term:api_ne_binary().
 get_ne_binary(Category, Key) ->
@@ -413,15 +412,7 @@ get_ne_binaries(Category, Key, Default) ->
 -spec get_ne_binaries(config_category(), config_key(), Default, config_node()) -> kz_term:ne_binaries() | Default.
 get_ne_binaries(Category, Key, Default, Node) ->
     Values = get(Category, Key, Default, Node),
-    case kz_term:is_empty(Values) of
-        'true' -> Default;
-        'false' ->
-            [kz_term:to_binary(Value)
-             || Value <- Values,
-                kz_term:is_not_empty(Value)
-            ]
-    end.
-
+    value_or_values(Values, Default).
 
 %%------------------------------------------------------------------------------
 %% @doc Get a configuration key for a given category but only if its configured
