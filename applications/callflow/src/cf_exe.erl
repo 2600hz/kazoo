@@ -535,6 +535,12 @@ handle_cast({'gen_listener', {'is_consuming', 'true'}}
            ) ->
     lager:debug("ready to recv events, launching the callflow"),
     {'noreply', launch_cf_module(State#state{status = 'running'})};
+handle_cast({'gen_listener', {'is_consuming', 'true'}}, State) ->
+    lager:info("consuming AMQP events"),
+    {'noreply', State};
+handle_cast({'gen_listener', {'is_consuming', 'false'}}, State) ->
+    lager:info("no longer consuming AMQP events"),
+    {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
