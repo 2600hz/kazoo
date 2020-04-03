@@ -1004,36 +1004,36 @@ create_resource(JObj, Resources) ->
                            )
     end.
 
--spec create_resource(kz_term:proplist(), kz_term:proplist(), kz_json:object(), resources()) -> resources().
-create_resource([], _ConfigClassifiers, _Resource, Resources) -> Resources;
-create_resource([{Classifier, ClassifierJObj}|Classifiers], ConfigClassifiers, Resource, Resources) ->
+-spec create_resource(kz_term:proplist(), kz_term:proplist(), kzd_resources:doc(), resources()) -> resources().
+create_resource([], _ConfigClassifiers, _ResourceJObj, Resources) -> Resources;
+create_resource([{Classifier, ClassifierJObj}|Classifiers], ConfigClassifiers, ResourceJObj, Resources) ->
     case props:get_value(Classifier, ConfigClassifiers) of
         'undefined' ->
-            create_resource(Classifiers, ConfigClassifiers, Resource, Resources);
+            create_resource(Classifiers, ConfigClassifiers, ResourceJObj, Resources);
         ConfigClassifier ->
             JObj =
-                create_classifier_resource(Resource
+                create_classifier_resource(ResourceJObj
                                           ,ClassifierJObj
                                           ,Classifier
                                           ,ConfigClassifier
                                           ),
             create_resource(Classifiers
                            ,ConfigClassifiers
-                           ,Resource
+                           ,ResourceJObj
                            ,[resource_from_jobj(JObj)
                              | Resources
                             ]
                            )
     end.
 
--spec create_classifier_resource(kz_json:object(), kz_json:object(), kz_term:ne_binary(), kz_term:proplist()) -> kz_json:object().
-create_classifier_resource(Resource, ClassifierJObj, Classifier, ConfigClassifier) ->
+-spec create_classifier_resource(kzd_resources:doc(), kz_json:object(), kz_term:ne_binary(), kz_term:proplist()) -> kz_json:object().
+create_classifier_resource(ResourceJObj, ClassifierJObj, Classifier, ConfigClassifier) ->
     DefaultRegex = kz_json:get_value(<<"regex">>, ConfigClassifier),
     DefaultEmergency = kz_json:is_true(<<"emergency">>, ConfigClassifier, 'undefined'),
     Props =
         props:filter_undefined(
-          [{<<"_id">>, <<(kz_json:get_value(<<"_id">>, Resource))/binary, "-", Classifier/binary>>}
-          ,{<<"name">>, <<(kz_json:get_value(<<"name">>, Resource))/binary, " - ", Classifier/binary>>}
+          [{<<"_id">>, <<(kz_doc:id(ResourceJObj))/binary, "-", Classifier/binary>>}
+          ,{<<"name">>, <<(kzd_resources:name(ResourceJObj))/binary, " - ", Classifier/binary>>}
           ,{<<"rules">>, [kz_json:get_value(<<"regex">>, ClassifierJObj, DefaultRegex)]}
           ,{<<"weight_cost">>, kz_json:get_value(<<"weight_cost">>, ClassifierJObj)}
           ,{<<"emergency">>, classifier_is_emergency(ClassifierJObj, Classifier, DefaultEmergency)}
@@ -1041,10 +1041,10 @@ create_classifier_resource(Resource, ClassifierJObj, Classifier, ConfigClassifie
           ,{<<"classifier_enable">>, kz_json:is_true(<<"enabled">>, ClassifierJObj, 'true')}
           ]
          ),
-    create_classifier_gateways(kz_json:set_values(Props, Resource), ClassifierJObj).
+    create_classifier_gateways(kz_json:set_values(Props, ResourceJObj), ClassifierJObj).
 
--spec create_classifier_gateways(kz_json:object(), kz_json:object()) -> kz_json:object().
-create_classifier_gateways(Resource, ClassifierJObj) ->
+-spec create_classifier_gateways(kzd_resources:doc(), kz_json:object()) -> kz_json:object().
+create_classifier_gateways(ResourceJObj, ClassifierJObj) ->
     Props =
         props:filter_undefined(
           [{<<"suffix">>, kz_json:get_value(<<"suffix">>, ClassifierJObj)}
@@ -1053,9 +1053,9 @@ create_classifier_gateways(Resource, ClassifierJObj) ->
          ),
     Gateways =
         [kz_json:set_values(Props, Gateway)
-         || Gateway <- kz_json:get_value(<<"gateways">>, Resource, [])
+         || Gateway <- kzd_resources:gateways(ResourceJObj, [])
         ],
-    kz_json:set_value(<<"gateways">>, Gateways, Resource).
+    kzd_resources:set_gateways(ResourceJObj, Gateways).
 
 -spec classifier_is_emergency(kz_json:object(), kz_term:ne_binary(), boolean() | 'undefined') -> boolean().
 classifier_is_emergency(ClassifierJObj, <<"emergency">>, _DefaultEmergency) ->
@@ -1144,12 +1144,12 @@ resource_rules([Rule|Rules], CompiledRules) ->
             resource_rules(Rules, CompiledRules)
     end.
 
--spec resource_cid_rules(kz_json:object()) -> rules().
-resource_cid_rules(JObj) ->
+-spec resource_cid_rules(kzd_resources:doc()) -> rules().
+resource_cid_rules(ResourceJObj) ->
     lager:info("compiling caller id rules for ~s / ~s"
-              ,[kz_doc:account_db(JObj, <<"offnet">>), kz_doc:id(JObj)]
+              ,[kz_doc:account_db(ResourceJObj, <<"offnet">>), kz_doc:id(ResourceJObj)]
               ),
-    Rules = kz_json:get_value(<<"cid_rules">>, JObj, []),
+    Rules = kzd_resources:cid_rules(ResourceJObj, []),
     resource_rules(Rules, []).
 
 -spec resource_grace_period(kzd_resources:doc() | integer()) -> 0..100.
@@ -1194,46 +1194,46 @@ gateways_from_jobjs([JObj|JObjs], Resource, Gateways) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec gateway_from_jobj(kz_json:object(), resource()) -> gateway().
-gateway_from_jobj(JObj, #resrc{is_emergency=IsEmergency
-                              ,format_from_uri=FormatFrom
-                              ,from_uri_realm=FromRealm
-                              ,from_account_realm=FromAccountRealm
-                              ,fax_option=T38
-                              ,codecs=Codecs
-                              ,bypass_media=BypassMedia
-                              ,privacy_method=PrivacyMethod
-                              ,privacy_hide_name=HideName
-                              ,privacy_hide_number=HideNumber
-                              }) ->
-    EndpointType = kz_json:get_ne_value(<<"endpoint_type">>, JObj, <<"sip">>),
+gateway_from_jobj(GatewayJObj, #resrc{is_emergency=IsEmergency
+                                     ,format_from_uri=FormatFrom
+                                     ,from_uri_realm=FromRealm
+                                     ,from_account_realm=FromAccountRealm
+                                     ,fax_option=T38
+                                     ,codecs=Codecs
+                                     ,bypass_media=BypassMedia
+                                     ,privacy_method=PrivacyMethod
+                                     ,privacy_hide_name=HideName
+                                     ,privacy_hide_number=HideNumber
+                                     }) ->
+    EndpointType = kz_json:get_ne_value(<<"endpoint_type">>, GatewayJObj, <<"sip">>),
     #gateway{endpoint_type = EndpointType
-            ,server = kz_json:get_ne_binary_value(<<"server">>, JObj)
-            ,port = kz_json:get_integer_value(<<"port">>, JObj)
-            ,realm = kz_json:get_value(<<"realm">>, JObj)
-            ,username = kz_json:get_value(<<"username">>, JObj)
-            ,password = kz_json:get_value(<<"password">>, JObj)
-            ,sip_headers = kz_custom_sip_headers:outbound(kz_json:get_json_value(<<"custom_sip_headers">>, JObj, kz_json:new()))
-            ,sip_interface = kz_json:get_ne_value(<<"custom_sip_interface">>, JObj)
-            ,invite_format = kz_json:get_value(<<"invite_format">>, JObj, <<"route">>)
-            ,format_from_uri = kz_json:is_true(<<"format_from_uri">>, JObj, FormatFrom)
-            ,from_uri_realm = kz_json:get_ne_value(<<"from_uri_realm">>, JObj, FromRealm)
-            ,from_account_realm=kz_json:is_true(<<"from_account_realm">>, JObj, FromAccountRealm)
-            ,is_emergency = gateway_is_emergency(JObj, IsEmergency)
-            ,fax_option = kz_json:is_true([<<"media">>, <<"fax_option">>], JObj, T38)
-            ,codecs = kz_json:get_value(<<"codecs">>, JObj, Codecs)
-            ,bypass_media = kz_json:is_true(<<"bypass_media">>, JObj, BypassMedia)
-            ,force_port = kz_json:is_true(<<"force_port">>, JObj)
-            ,route = kz_json:get_ne_value(<<"route">>, JObj, ?DEFAULT_ROUTE)
-            ,prefix = kz_json:get_binary_value(<<"prefix">>, JObj, ?DEFAULT_PREFIX)
-            ,suffix = kz_json:get_binary_value(<<"suffix">>, JObj, ?DEFAULT_SUFFIX)
-            ,rtcp_mux = kz_json:get_binary_value([<<"media">>, <<"rtcp_mux">>], JObj, ?DEFAULT_RTCP_MUX)
-            ,caller_id_type = kz_json:get_ne_value(<<"caller_id_type">>, JObj, ?DEFAULT_CALLER_ID_TYPE)
-            ,progress_timeout = kz_json:get_integer_value(<<"progress_timeout">>, JObj, ?DEFAULT_PROGRESS_TIMEOUT)
-            ,endpoint_options = endpoint_options(JObj, EndpointType)
-            ,privacy_method = kz_privacy:get_method(JObj, PrivacyMethod)
-            ,privacy_hide_name = kz_privacy:should_hide_name(JObj, HideName)
-            ,privacy_hide_number = kz_privacy:should_hide_name(JObj, HideNumber)
-            ,invite_parameters=kz_json:get_ne_value(<<"invite_parameters">>, JObj)
+            ,server = kz_json:get_ne_binary_value(<<"server">>, GatewayJObj)
+            ,port = kz_json:get_integer_value(<<"port">>, GatewayJObj)
+            ,realm = kz_json:get_value(<<"realm">>, GatewayJObj)
+            ,username = kz_json:get_value(<<"username">>, GatewayJObj)
+            ,password = kz_json:get_value(<<"password">>, GatewayJObj)
+            ,sip_headers = kz_custom_sip_headers:outbound(kz_json:get_json_value(<<"custom_sip_headers">>, GatewayJObj, kz_json:new()))
+            ,sip_interface = kz_json:get_ne_value(<<"custom_sip_interface">>, GatewayJObj)
+            ,invite_format = kz_json:get_value(<<"invite_format">>, GatewayJObj, <<"route">>)
+            ,format_from_uri = kz_json:is_true(<<"format_from_uri">>, GatewayJObj, FormatFrom)
+            ,from_uri_realm = kz_json:get_ne_value(<<"from_uri_realm">>, GatewayJObj, FromRealm)
+            ,from_account_realm=kz_json:is_true(<<"from_account_realm">>, GatewayJObj, FromAccountRealm)
+            ,is_emergency = gateway_is_emergency(GatewayJObj, IsEmergency)
+            ,fax_option = kz_json:is_true([<<"media">>, <<"fax_option">>], GatewayJObj, T38)
+            ,codecs = kz_json:get_value(<<"codecs">>, GatewayJObj, Codecs)
+            ,bypass_media = kz_json:is_true(<<"bypass_media">>, GatewayJObj, BypassMedia)
+            ,force_port = kz_json:is_true(<<"force_port">>, GatewayJObj)
+            ,route = kz_json:get_ne_value(<<"route">>, GatewayJObj, ?DEFAULT_ROUTE)
+            ,prefix = kz_json:get_binary_value(<<"prefix">>, GatewayJObj, ?DEFAULT_PREFIX)
+            ,suffix = kz_json:get_binary_value(<<"suffix">>, GatewayJObj, ?DEFAULT_SUFFIX)
+            ,rtcp_mux = kz_json:get_binary_value([<<"media">>, <<"rtcp_mux">>], GatewayJObj, ?DEFAULT_RTCP_MUX)
+            ,caller_id_type = kz_json:get_ne_value(<<"caller_id_type">>, GatewayJObj, ?DEFAULT_CALLER_ID_TYPE)
+            ,progress_timeout = kz_json:get_integer_value(<<"progress_timeout">>, GatewayJObj, ?DEFAULT_PROGRESS_TIMEOUT)
+            ,endpoint_options = endpoint_options(GatewayJObj, EndpointType)
+            ,privacy_method = kz_privacy:get_method(GatewayJObj, PrivacyMethod)
+            ,privacy_hide_name = kz_privacy:should_hide_name(GatewayJObj, HideName)
+            ,privacy_hide_number = kz_privacy:should_hide_name(GatewayJObj, HideNumber)
+            ,invite_parameters=kz_json:get_ne_value(<<"invite_parameters">>, GatewayJObj)
             }.
 
 -spec gateway_is_emergency(kz_json:object(), boolean()) -> boolean().
@@ -1254,8 +1254,7 @@ endpoint_options(JObj, <<"skype">>) ->
       ]);
 endpoint_options(JObj, <<"sip">>) ->
     kz_json:from_list(
-      [{<<"Route-ID">>, kz_json:get_value(<<"route_id">>, JObj)}
-      ]);
+      [{<<"Route-ID">>, kz_json:get_value(<<"route_id">>, JObj)}]);
 endpoint_options(_, _) ->
     kz_json:new().
 
