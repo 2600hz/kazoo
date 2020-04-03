@@ -157,7 +157,7 @@ The `INVITE` parameters object defines both static and dynamic parameters that s
 
 Static parameters are added 'as-is' and can be any format.  However, they should follow the SIP standard for the header field format and should not include a semi-colon.
 
-Dynamic parameters obtain the value from properties of the initiating call (requestor) if present, and are ignored if not. Dynamic parameters can be defined either as a string or an object.  When defined as a string the property is extracted from the requestor and if found the resulting value used without modification as an `INVITE` parameter.  When defined as an object both a tag as well as a key property must be defined.  The key property is used to extract the value from the requestor and the tag is appended as the `INVITE` parameter name.  By default the `INVITE` parameter name and value are separated by an equals sign but this can be overridden by providing a separator property.
+Dynamic parameters obtain the value from properties of the initiating call (requester) if present, and are ignored if not. Dynamic parameters can be defined either as a string or an object.  When defined as a string the property is extracted from the requester and if found the resulting value used without modification as an `INVITE` parameter.  When defined as an object both a tag as well as a key property must be defined.  The key property is used to extract the value from the requester and the tag is appended as the `INVITE` parameter name.  By default the `INVITE` parameter name and value are separated by an equals sign but this can be overridden by providing a separator property.
 
 For example, if a resource gateway contains the following object:
 
@@ -182,6 +182,13 @@ and assuming the requesting call has pass-through (with value `pass-through=0288
 INVITE sip:+14158867900@10.26.0.88;npid;id=XXXX;pass-through=0288 SIP/2.0
 ```
 
+## Formatting the From
+
+Some upstream carriers require the From address' realm to be formatted. There are a couple toggles you have to control this realm. First, you will need to configure `"format_from_uri":true` to enable this formatting functionality. Then you have 3 options, evaluated in this order:
+
+1. Set `"from_uri_realm":"{CUSTOM_REALM}"` where `{CUSTOM_REALM}` is the static realm you'd like on the From
+2. Set `"from_account_realm":true` to use the calling account's realm
+3. Set `"realm":"{CUSTOM_REALM}"` on a per-gateway basis (not on the top-level resource)
 
 ## Fetch
 
