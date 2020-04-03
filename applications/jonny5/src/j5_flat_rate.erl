@@ -107,8 +107,8 @@ maybe_get_resource_flat_rate(Request, 'true') ->
     ResourceId = j5_request:resource_id(Request),
     case kz_datamgr:open_cache_doc(?KZ_OFFNET_DB, ResourceId) of
         {'ok', JObj} ->
-            {kzd_resource:flat_rate_whitelist(JObj, ?WHITELIST)
-            ,kzd_resource:flat_rate_blacklist(JObj, ?BLACKLIST)
+            {kzd_resources:flat_rate_whitelist(JObj, ?WHITELIST)
+            ,kzd_resources:flat_rate_blacklist(JObj, ?BLACKLIST)
             };
         {'error', _E} ->
             {?WHITELIST, ?BLACKLIST}
