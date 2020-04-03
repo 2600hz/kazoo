@@ -149,7 +149,7 @@
                ,fax_option :: kz_term:ne_binary() | boolean()
                ,codecs = [] :: kz_term:ne_binaries()
                ,bypass_media = 'false' :: boolean()
-               ,formatters :: kz_term:api_objects()
+               ,formatters :: kz_term:api_object()
                ,proxies = [] :: kz_term:proplist()
                ,selector_marks = [] :: [tuple()]
                ,privacy_method = 'undefined' :: kz_term:api_binary()
@@ -913,7 +913,7 @@ fetch_global_resources() ->
             [];
         {'ok', JObjs} ->
             CacheProps = [{'origin', [{'db', ?KZ_OFFNET_DB, <<"resource">>}]}],
-            Docs = [kz_json:get_value(<<"doc">>, JObj) || JObj <- JObjs],
+            Docs = [kz_json:get_json_value(<<"doc">>, JObj) || JObj <- JObjs],
             Resources = resources_from_jobjs(Docs),
             kz_cache:store_local(?CACHE_NAME, 'global_resources', Resources, CacheProps),
             Resources
@@ -979,21 +979,21 @@ build_account_dedicated_proxy(Proxy) ->
 %% @end
 %%------------------------------------------------------------------------------
 
--spec resources_from_jobjs(kz_json:objects()) -> resources().
+-spec resources_from_jobjs(kzd_resources:docs()) -> resources().
 resources_from_jobjs(JObjs) ->
     resources_from_jobjs(JObjs, []).
 
--spec resources_from_jobjs(kz_json:objects(), resources()) -> resources().
+-spec resources_from_jobjs(kzd_resources:docs(), resources()) -> resources().
 resources_from_jobjs([], Resources) -> Resources;
 resources_from_jobjs([JObj|JObjs], Resources) ->
-    case kz_json:is_true(<<"enabled">>, JObj, 'true') of
+    case kzd_resources:enabled(JObj) of
         'false' -> resources_from_jobjs(JObjs, Resources);
         'true' -> resources_from_jobjs(JObjs, create_resource(JObj, Resources))
     end.
 
--spec create_resource(kz_json:object(), resources()) -> resources().
+-spec create_resource(kzd_resources:doc(), resources()) -> resources().
 create_resource(JObj, Resources) ->
-    case kz_json:get_value(<<"classifiers">>, JObj) of
+    case kzd_resources:classifiers(JObj) of
         'undefined' -> [resource_from_jobj(JObj) | Resources];
         ResourceClassifiers ->
             AvailableClassifiers = kz_json:to_proplist(knm_converters:available_classifiers()),
@@ -1070,21 +1070,21 @@ classifier_is_emergency(ClassifierJObj, _Classifier, DefaultEmergency) ->
 -type rule() :: re:mp().
 -type rules() :: [rule()].
 
--spec resource_from_jobj(kz_json:object()) -> resource().
+-spec resource_from_jobj(kzd_resources:doc()) -> resource().
 resource_from_jobj(JObj) ->
     Resource = #resrc{id=kz_doc:id(JObj)
                      ,rev=kz_doc:revision(JObj)
-                     ,name=kz_json:get_value(<<"name">>, JObj)
-                     ,flags=kz_json:get_value(<<"flags">>, JObj, [])
-                     ,require_flags=kz_json:is_true(<<"require_flags">>, JObj)
-                     ,ignore_flags=kz_json:is_true(<<"ignore_flags">>, JObj)
-                     ,format_from_uri=kz_json:is_true(<<"format_from_uri">>, JObj)
-                     ,from_uri_realm=kz_json:get_ne_value(<<"from_uri_realm">>, JObj)
-                     ,from_account_realm=kz_json:is_true(<<"from_account_realm">>, JObj)
-                     ,fax_option=kz_json:is_true([<<"media">>, <<"fax_option">>], JObj)
-                     ,raw_rules=kz_json:get_value(<<"rules">>, JObj, [])
+                     ,name=kzd_resources:name(JObj)
+                     ,flags=kzd_resources:flags(JObj, [])
+                     ,require_flags=kzd_resources:require_flags(JObj, 'false')
+                     ,ignore_flags=kzd_resources:ignore_flags(JObj, 'false')
+                     ,format_from_uri=kzd_resources:format_from_uri(JObj, 'false')
+                     ,from_uri_realm=kzd_resources:from_uri_realm(JObj)
+                     ,from_account_realm=kzd_resources:from_account_realm(JObj)
+                     ,fax_option=kzd_resources:media_fax_option(JObj)
+                     ,raw_rules=kzd_resources:rules(JObj, [])
                      ,rules=resource_rules(JObj)
-                     ,cid_raw_rules=kz_json:get_value(<<"cid_rules">>, JObj, [])
+                     ,cid_raw_rules=kzd_resources:cid_rules(JObj, [])
                      ,cid_rules=resource_cid_rules(JObj)
                      ,weight=resource_weight(JObj)
                      ,grace_period=resource_grace_period(JObj)
@@ -1099,39 +1099,38 @@ resource_from_jobj(JObj) ->
                      ,privacy_hide_number=kz_privacy:should_hide_number(JObj)
                      ,classifier=kz_json:get_ne_value(<<"classifier">>, JObj)
                      ,classifier_enable=kz_json:is_true(<<"classifier_enable">>, JObj, 'true')
-                     ,gateway_strategy=kz_json:get_atom_value(<<"gateway_strategy">>, JObj, 'sequential')
+                     ,gateway_strategy=kz_term:to_atom(kzd_resources:gateway_strategy(JObj, <<"sequential">>), 'true')
                      },
-    Gateways = gateways_from_jobjs(kz_json:get_value(<<"gateways">>, JObj, [])
-                                  ,Resource
-                                  ),
+    Gateways = gateways_from_jobjs(kzd_resources:gateways(JObj, []), Resource),
     Resource#resrc{gateways=Gateways}.
 
--spec resource_bypass_media(kz_json:object()) -> boolean().
+-spec resource_bypass_media(kzd_resources:doc()) -> boolean().
 resource_bypass_media(JObj) ->
     Default = kapps_config:get_is_true(?SS_CONFIG_CAT, <<"default_bypass_media">>, 'false'),
-    kz_json:is_true([<<"media">>, <<"bypass_media">>], JObj, Default).
+    kzd_resources:media_bypass_media(JObj, Default).
 
--spec resource_formatters(kz_json:object()) -> kz_term:api_objects().
+-spec resource_formatters(kzd_resources:doc()) -> kz_term:api_object().
 resource_formatters(JObj) ->
     Default = kapps_config:get(?SS_CONFIG_CAT, <<"default_formatters">>),
-    kz_json:get_value(<<"formatters">>, JObj, Default).
+    kzd_resources:formatters(JObj, Default).
 
--spec resource_codecs(kz_json:object()) -> kz_term:ne_binaries().
+-spec resource_codecs(kzd_resources:doc()) -> kz_term:ne_binaries().
 resource_codecs(JObj) ->
     DefaultAudio = kapps_config:get_ne_binaries(?SS_CONFIG_CAT, <<"default_audio_codecs">>, []),
     DefaultVideo = kapps_config:get_ne_binaries(?SS_CONFIG_CAT, <<"default_video_codecs">>, []),
-    case kz_json:get_value([<<"media">>, <<"audio">>, <<"codecs">>], JObj, DefaultAudio)
-        ++ kz_json:get_value([<<"media">>, <<"video">>, <<"codecs">>], JObj, DefaultVideo)
+    case kzd_resources:media_audio_codecs(JObj, DefaultAudio)
+        ++ kzd_resources:media_video_codecs(JObj, DefaultVideo)
     of
         [] -> kapps_config:get_ne_binaries(?SS_CONFIG_CAT, <<"default_codecs">>, []);
         Codecs -> Codecs
     end.
 
--spec resource_rules(kz_json:object()) -> rules().
+-spec resource_rules(kzd_resources:doc()) -> rules().
 resource_rules(JObj) ->
-    Rules = kz_json:get_value(<<"rules">>, JObj, []),
+    Rules = kzd_resources:rules(JObj, []),
     lager:info("compiling resource rules for ~s / ~s: ~p"
-              ,[kz_doc:account_db(JObj, <<"offnet">>), kz_doc:id(JObj), Rules]),
+              ,[kz_doc:account_db(JObj, <<"offnet">>), kz_doc:id(JObj), Rules]
+              ),
     resource_rules(Rules, []).
 
 -spec resource_rules(kz_term:ne_binaries(), rules()) -> rules().
@@ -1148,28 +1147,29 @@ resource_rules([Rule|Rules], CompiledRules) ->
 -spec resource_cid_rules(kz_json:object()) -> rules().
 resource_cid_rules(JObj) ->
     lager:info("compiling caller id rules for ~s / ~s"
-              ,[kz_doc:account_db(JObj, <<"offnet">>), kz_doc:id(JObj)]),
+              ,[kz_doc:account_db(JObj, <<"offnet">>), kz_doc:id(JObj)]
+              ),
     Rules = kz_json:get_value(<<"cid_rules">>, JObj, []),
     resource_rules(Rules, []).
 
--spec resource_grace_period(kz_json:object() | integer()) -> 0..100.
+-spec resource_grace_period(kzd_resources:doc() | integer()) -> 0..100.
 resource_grace_period(JObj) when not is_integer(JObj) ->
-    resource_grace_period(kz_json:get_integer_value(<<"grace_period">>, JObj, ?DEFAULT_WEIGHT));
+    resource_grace_period(kzd_resources:grace_period(JObj, ?DEFAULT_WEIGHT));
 resource_grace_period(GracePeriod) when is_integer(GracePeriod), GracePeriod > 100 -> 100;
 resource_grace_period(GracePeriod) when is_integer(GracePeriod), GracePeriod < 0 -> 0;
 resource_grace_period(GracePeriod) when is_integer(GracePeriod) -> GracePeriod.
 
--spec resource_weight(kz_json:object() | integer()) -> integer().
+-spec resource_weight(kzd_resources:doc() | integer()) -> integer().
 resource_weight(JObj) when not is_integer(JObj) ->
-    resource_weight(kz_json:get_integer_value(<<"weight_cost">>, JObj, ?DEFAULT_WEIGHT));
+    resource_weight(kzd_resources:weight_cost(JObj, ?DEFAULT_WEIGHT));
 resource_weight(W) when W > 100 -> 100;
 resource_weight(W) when W < 1 -> 1;
 resource_weight(W) -> W.
 
 -spec resource_is_emergency(kz_json:object()) -> boolean().
 resource_is_emergency(JObj) ->
-    kz_json:is_true(<<"emergency">>, JObj)
-        orelse (kz_json:get_value([<<"caller_id_options">>, <<"type">>], JObj) =:= <<"emergency">>).
+    kzd_resources:emergency(JObj, 'false')
+        orelse (kzd_resources:caller_id_options_type(JObj) =:= <<"emergency">>).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -1349,7 +1349,7 @@ get_resrc_codecs(#resrc{codecs=Codecs}) -> Codecs.
 -spec get_resrc_bypass_media(resource()) -> boolean().
 get_resrc_bypass_media(#resrc{bypass_media=BypassMedia}) -> BypassMedia.
 
--spec get_resrc_formatters(resource()) -> kz_term:api_objects().
+-spec get_resrc_formatters(resource()) -> kz_term:api_object().
 get_resrc_formatters(#resrc{formatters=Formatters}) -> Formatters.
 
 -spec get_resrc_proxies(resource()) -> kz_term:proplist().
@@ -1427,7 +1427,7 @@ set_resrc_codecs(Resource, Codecs) -> Resource#resrc{codecs=Codecs}.
 -spec set_resrc_bypass_media(resource(), boolean()) -> resource().
 set_resrc_bypass_media(Resource, BypassMedia) -> Resource#resrc{bypass_media=BypassMedia}.
 
--spec set_resrc_formatters(resource(), kz_term:api_objects()) -> resource().
+-spec set_resrc_formatters(resource(), kz_term:api_object()) -> resource().
 set_resrc_formatters(Resource, Formatters) -> Resource#resrc{formatters=Formatters}.
 
 -spec set_resrc_proxies(resource(), kz_term:proplist()) -> resource().
