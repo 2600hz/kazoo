@@ -148,10 +148,19 @@ handle_call(_Request, _From, State) ->
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'gen_listener', {'created_queue', _QueueNAme}}, State) ->
     {'noreply', State};
-handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
+handle_cast({'gen_listener', {'is_consuming', 'false'}}, State) ->
+    lager:debug("deactivating offnet worker"),
+    _ = gproc:unreg({'p', 'l', 'im_offnet'}),
     {'noreply', State};
-handle_cast({'gen_listener',{'server_confirms', _Confirms}}, State) ->
+handle_cast({'gen_listener', {'is_consuming', 'true'}}, State) ->
     {'noreply', State};
+handle_cast({'gen_listener',{'server_confirms', 'true'}}, State) ->
+    lager:debug("broker can confirm deliveries, activating offnet worker"),
+    'true' = gproc:reg({'p', 'l', 'im_offnet'}),
+    {'noreply', State};
+handle_cast({'gen_listener',{'server_confirms', 'false'}}, State) ->
+    lager:warning("broker can't confirm deliveries"),
+    {'stop', {'shutdown', 'no_confirms'}, State};
 handle_cast({'gen_listener', {'confirm', Confirm}}, State) ->
     {'noreply', handle_confirm(Confirm, State)};
 handle_cast(_Msg, State) ->
