@@ -62,16 +62,21 @@
 -export([ringtones_internal/1, ringtones_internal/2, set_ringtones_internal/2]).
 -export([sip/1, sip/2, set_sip/2]).
 -export([sip_custom_sip_headers/1, sip_custom_sip_headers/2, set_sip_custom_sip_headers/2]).
+-export([sip_custom_sip_interface/1, sip_custom_sip_interface/2, set_sip_custom_sip_interface/2]).
 -export([sip_expire_seconds/1, sip_expire_seconds/2, set_sip_expire_seconds/2]).
+-export([sip_forward/1, sip_forward/2, set_sip_forward/2]).
 -export([sip_ignore_completed_elsewhere/1, sip_ignore_completed_elsewhere/2, set_sip_ignore_completed_elsewhere/2]).
 -export([sip_invite_format/1, sip_invite_format/2, set_sip_invite_format/2]).
 -export([sip_ip/1, sip_ip/2, set_sip_ip/2]).
 -export([sip_method/1, sip_method/2, set_sip_method/2]).
 -export([sip_number/1, sip_number/2, set_sip_number/2]).
 -export([sip_password/1, sip_password/2, set_sip_password/2]).
+-export([sip_proxy/1, sip_proxy/2, set_sip_proxy/2]).
 -export([sip_realm/1, sip_realm/2, set_sip_realm/2]).
 -export([sip_route/1, sip_route/2, set_sip_route/2]).
+-export([sip_static_invite/1, sip_static_invite/2, set_sip_static_invite/2]).
 -export([sip_static_route/1, sip_static_route/2, set_sip_static_route/2]).
+-export([sip_transport/1, sip_transport/2, set_sip_transport/2]).
 -export([sip_username/1, sip_username/2, set_sip_username/2]).
 -export([suppress_unregister_notifications/1, suppress_unregister_notifications/2, set_suppress_unregister_notifications/2]).
 -export([timezone/1, timezone/2, set_timezone/2]).
@@ -791,6 +796,18 @@ sip_custom_sip_headers(Doc, Default) ->
 set_sip_custom_sip_headers(Doc, SipCustomSipHeaders) ->
     kz_json:set_value([<<"sip">>, <<"custom_sip_headers">>], SipCustomSipHeaders, Doc).
 
+-spec sip_custom_sip_interface(doc()) -> kz_term:api_binary().
+sip_custom_sip_interface(Doc) ->
+    sip_custom_sip_interface(Doc, 'undefined').
+
+-spec sip_custom_sip_interface(doc(), Default) -> binary() | Default.
+sip_custom_sip_interface(Doc, Default) ->
+    kz_json:get_binary_value([<<"sip">>, <<"custom_sip_interface">>], Doc, Default).
+
+-spec set_sip_custom_sip_interface(doc(), binary()) -> doc().
+set_sip_custom_sip_interface(Doc, SipCustomSipInterface) ->
+    kz_json:set_value([<<"sip">>, <<"custom_sip_interface">>], SipCustomSipInterface, Doc).
+
 -spec sip_expire_seconds(doc()) -> integer().
 sip_expire_seconds(Doc) ->
     sip_expire_seconds(Doc, 300).
@@ -802,6 +819,18 @@ sip_expire_seconds(Doc, Default) ->
 -spec set_sip_expire_seconds(doc(), integer()) -> doc().
 set_sip_expire_seconds(Doc, SipExpireSeconds) ->
     kz_json:set_value([<<"sip">>, <<"expire_seconds">>], SipExpireSeconds, Doc).
+
+-spec sip_forward(doc()) -> kz_term:api_binary().
+sip_forward(Doc) ->
+    sip_forward(Doc, 'undefined').
+
+-spec sip_forward(doc(), Default) -> binary() | Default.
+sip_forward(Doc, Default) ->
+    kz_json:get_binary_value([<<"sip">>, <<"forward">>], Doc, Default).
+
+-spec set_sip_forward(doc(), binary()) -> doc().
+set_sip_forward(Doc, SipForward) ->
+    kz_json:set_value([<<"sip">>, <<"forward">>], SipForward, Doc).
 
 -spec sip_ignore_completed_elsewhere(doc()) -> kz_term:api_boolean().
 sip_ignore_completed_elsewhere(Doc) ->
@@ -875,6 +904,18 @@ sip_password(Doc, Default) ->
 set_sip_password(Doc, SipPassword) ->
     kz_json:set_value([<<"sip">>, <<"password">>], SipPassword, Doc).
 
+-spec sip_proxy(doc()) -> kz_term:api_binary().
+sip_proxy(Doc) ->
+    sip_proxy(Doc, 'undefined').
+
+-spec sip_proxy(doc(), Default) -> binary() | Default.
+sip_proxy(Doc, Default) ->
+    kz_json:get_binary_value([<<"sip">>, <<"proxy">>], Doc, Default).
+
+-spec set_sip_proxy(doc(), binary()) -> doc().
+set_sip_proxy(Doc, SipProxy) ->
+    kz_json:set_value([<<"sip">>, <<"proxy">>], SipProxy, Doc).
+
 -spec sip_realm(doc()) -> kz_term:api_ne_binary().
 sip_realm(Doc) ->
     sip_realm(Doc, 'undefined').
@@ -899,6 +940,18 @@ sip_route(Doc, Default) ->
 set_sip_route(Doc, SipRoute) ->
     kz_json:set_value([<<"sip">>, <<"route">>], SipRoute, Doc).
 
+-spec sip_static_invite(doc()) -> kz_term:api_binary().
+sip_static_invite(Doc) ->
+    sip_static_invite(Doc, 'undefined').
+
+-spec sip_static_invite(doc(), Default) -> binary() | Default.
+sip_static_invite(Doc, Default) ->
+    kz_json:get_binary_value([<<"sip">>, <<"static_invite">>], Doc, Default).
+
+-spec set_sip_static_invite(doc(), binary()) -> doc().
+set_sip_static_invite(Doc, SipStaticInvite) ->
+    kz_json:set_value([<<"sip">>, <<"static_invite">>], SipStaticInvite, Doc).
+
 -spec sip_static_route(doc()) -> kz_term:api_binary().
 sip_static_route(Doc) ->
     sip_static_route(Doc, 'undefined').
@@ -910,6 +963,18 @@ sip_static_route(Doc, Default) ->
 -spec set_sip_static_route(doc(), binary()) -> doc().
 set_sip_static_route(Doc, SipStaticRoute) ->
     kz_json:set_value([<<"sip">>, <<"static_route">>], SipStaticRoute, Doc).
+
+-spec sip_transport(doc()) -> kz_term:api_binary().
+sip_transport(Doc) ->
+    sip_transport(Doc, 'undefined').
+
+-spec sip_transport(doc(), Default) -> binary() | Default.
+sip_transport(Doc, Default) ->
+    kz_json:get_binary_value([<<"sip">>, <<"transport">>], Doc, Default).
+
+-spec set_sip_transport(doc(), binary()) -> doc().
+set_sip_transport(Doc, SipTransport) ->
+    kz_json:set_value([<<"sip">>, <<"transport">>], SipTransport, Doc).
 
 -spec sip_username(doc()) -> kz_term:api_ne_binary().
 sip_username(Doc) ->

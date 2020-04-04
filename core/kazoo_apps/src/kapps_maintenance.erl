@@ -537,7 +537,7 @@ refresh([Database|Databases], Pause, Total, Unexpected) ->
             ?STACKTRACE(Error, Reason, StackTrace)
             [io_lib:format("WARNING: Unable to refresh/migrate db ~s! ~s: {~p, ~p}",
                            [Database, Error, Reason, StackTrace])
-             | Unexpected]
+            | Unexpected]
             end,
     refresh(Databases, Pause, Total, NewUnexpected).
 
@@ -662,7 +662,7 @@ ensure_aggregate_faxbox(Account) ->
     AccountDb = kzs_util:format_account_db(Account),
     case kz_datamgr:get_results(AccountDb, ?FAXBOX_VIEW, ['include_docs']) of
         {'ok', Faxboxes} ->
-            update_or_add_to_faxes_db([kz_json:get_value(<<"doc">>, Faxbox) || Faxbox <- Faxboxes]);
+            update_or_add_to_faxes_db([kz_json:get_json_value(<<"doc">>, Faxbox) || Faxbox <- Faxboxes]);
         {'error', _} -> 'ok'
     end.
 
@@ -1769,7 +1769,7 @@ call_id_status(CallId) ->
 -spec call_id_status(kz_term:ne_binary(), boolean() | kz_term:ne_binary()) -> 'ok'.
 call_id_status(CallId, Verbose) ->
     Req = [{<<"Call-ID">>, kz_term:to_binary(CallId)}
-           | kz_api:default_headers(<<"shell">>, <<"0">>)
+          | kz_api:default_headers(<<"shell">>, <<"0">>)
           ],
     case kz_amqp_worker:call(Req
                             ,fun kapi_call:publish_channel_status_req/1
@@ -1977,6 +1977,14 @@ deprecate_timezone_for_node(Node, AccountsConfig, Timezone, 'undefined') ->
 deprecate_timezone_for_node(Node, AccountsConfig, _Timezone, _Default) ->
     kz_json:delete_key([Node, <<"timezone">>], AccountsConfig).
 
+check_system_schemas() ->
+    _ = rpc:call(node()
+                ,'crossbar_maintenance'
+                ,'refresh_schemas'
+                ,[]
+                ),
+    'ok'.
+
 -spec check_system_configs() -> 'ok'.
 check_system_configs() ->
     io:format("starting system schemas validation~n"),
@@ -2129,7 +2137,7 @@ register_system_dbs_views() ->
             ,kapps_util:get_view_json(?APP, <<"views/pending_notify.json">>)
             ,kapps_util:get_view_json(?APP, <<"views/rates.json">>)
             ,kapps_util:get_view_json(?APP, <<"views/token_auth.json">>)
-             | kapps_util:get_views_json('kazoo_ips', "views")
+            | kapps_util:get_views_json('kazoo_ips', "views")
             ],
     kz_datamgr:register_views(?APP, Views).
 
@@ -2172,6 +2180,7 @@ check_release() ->
     kz_log:put_callid('check_release'),
     Checks = [fun kapps_started/0
              ,fun check_system_configs/0
+             ,fun check_system_schemas/0
              ,fun master_account_created/0
              ,fun migration_4_0_ran/0
              ,fun migration_ran/0
@@ -2193,20 +2202,20 @@ check_release() ->
 
 -spec run_check(fun()) -> 'ok'.
 run_check(CheckFun) ->
-    StartTimeMs = kz_time:now_ms(),
+    StartTime = kz_time:start_time(),
     {Pid, Ref} = kz_process:spawn_monitor(CheckFun, []),
-    wait_for_check(Pid, Ref, StartTimeMs).
+    wait_for_check(Pid, Ref, StartTime).
 
--spec wait_for_check(pid(), reference(), pos_integer()) -> 'ok'.
-wait_for_check(Pid, Ref, StartTimeMs) ->
+-spec wait_for_check(pid(), reference(), kz_time:start_time()) -> 'ok'.
+wait_for_check(Pid, Ref, StartTime) ->
     receive
         {'DOWN', Ref, 'process', Pid, 'normal'} ->
-            lager:info("check finished in ~pms", [kz_time:elapsed_ms(StartTimeMs)]);
+            lager:info("check finished in ~pms", [kz_time:elapsed_ms(StartTime)]);
         {'DOWN', Ref, 'process', Pid, Reason} ->
-            lager:error("check in ~p failed to run after ~pms: ~p", [Pid, kz_time:elapsed_ms(StartTimeMs), Reason]),
+            lager:error("check in ~p failed to run after ~pms: ~p", [Pid, kz_time:elapsed_ms(StartTime), Reason]),
             throw(Reason)
     after 5 * ?MILLISECONDS_IN_MINUTE ->
-            lager:error("check in ~p timed out", [Pid]),
+            lager:error("check in ~p timed out after 5 minutes", [Pid]),
             exit(Pid, 'kill'),
             throw('timeout')
     end.

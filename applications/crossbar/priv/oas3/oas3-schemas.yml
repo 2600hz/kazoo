@@ -4591,12 +4591,18 @@
                     Custom SIP Headers to be applied to calls outbound from Kazoo to the endpoint
           'description': A property list of SIP headers
           'type': object
+        'custom_sip_interface':
+          'description': If the bridge string should target a different SIP interface
+          'type': string
         'expire_seconds':
           'default': 300
           'description': |-
             The time, in seconds, sent to the provisioner for the registration period that the device should be configured with.
           'type': integer
           'x-support_level': supported
+        'forward':
+          'description': Forward IP to use
+          'type': string
         'ignore_completed_elsewhere':
           'description': |-
             When set to false the phone should not consider ring group calls answered elsewhere as missed
@@ -4635,6 +4641,9 @@
           'minLength': 5
           'type': string
           'x-support_level': supported
+        'proxy':
+          'description': Proxy IP address to use
+          'type': string
         'realm':
           'description': |-
             The realm this device should use, overriding the account realm. Should rarely be necessary.
@@ -4646,9 +4655,15 @@
           'description': The SIP URL used if the invite format is 'route'
           'type': string
           'x-support_level': supported
+        'static_invite':
+          'description': SIP To user
+          'type': string
         'static_route':
           'description': |-
             Sends all inbound calls to this string (instead of dialed number or username)
+          'type': string
+        'transport':
+          'description': SIP Transport to use
           'type': string
         'username':
           'description': SIP authentication username
