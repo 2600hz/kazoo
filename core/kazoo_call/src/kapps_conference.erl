@@ -635,13 +635,17 @@ set_focus(Focus, Conference) when is_binary(Focus) ->
 language(#kapps_conference{language='undefined'
                           ,account_id=AccountId
                           }) ->
+    kz_term:to_lower_binary(account_language(AccountId));
+language(#kapps_conference{language=Language}) ->
+    kz_term:to_lower_binary(Language).
+
+-spec account_language(kz_term:ne_binary()) -> kz_term:ne_binary().
+account_language(AccountId) ->
     Default = kz_media_util:default_prompt_language(),
     case kzd_accounts:fetch(AccountId) of
         {'ok', Account} -> kzd_accounts:language(Account, Default);
         {'error', _} -> Default
-    end;
-language(#kapps_conference{language=Language}) ->
-    Language.
+    end.
 
 -spec raw_language(conference()) -> kz_term:api_ne_binary().
 raw_language(#kapps_conference{language=Language}) ->
