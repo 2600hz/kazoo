@@ -32,13 +32,12 @@
 %%------------------------------------------------------------------------------
 -spec worker() -> {'error', 'no_connections'} | pid().
 worker() ->
-    Listeners = supervisor:which_children(?SERVER),
-    case length(Listeners) of
+    Pids = gproc:lookup_pids({'p', 'l', 'im_offnet'}),
+    case length(Pids) of
         0 -> {'error', 'no_connections'};
         Size ->
             Selected = rand:uniform(Size),
-            {_, Pid, _, _} = lists:nth(Selected, Listeners),
-            Pid
+            lists:nth(Selected, Pids)
     end.
 
 %%------------------------------------------------------------------------------

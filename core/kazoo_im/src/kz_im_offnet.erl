@@ -147,10 +147,19 @@ handle_call(_Request, _From, State) ->
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'gen_listener', {'created_queue', _QueueNAme}}, State) ->
     {'noreply', State};
-handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
+handle_cast({'gen_listener', {'is_consuming', 'false'}}, State) ->
+    lager:debug("deactivating offnet worker"),
+    _ = gproc:unreg({'p', 'l', 'im_offnet'}),
     {'noreply', State};
-handle_cast({'gen_listener',{'server_confirms', _Confirms}}, State) ->
+handle_cast({'gen_listener', {'is_consuming', 'true'}}, State) ->
     {'noreply', State};
+handle_cast({'gen_listener',{'server_confirms', 'true'}}, State) ->
+    lager:debug("broker can confirm deliveries, activating offnet worker"),
+    'true' = gproc:reg({'p', 'l', 'im_offnet'}),
+    {'noreply', State};
+handle_cast({'gen_listener',{'server_confirms', 'false'}}, State) ->
+    lager:warning("broker can't confirm deliveries"),
+    {'stop', {'shutdown', 'no_confirms'}, State};
 handle_cast({'gen_listener', {'confirm', Confirm}}, State) ->
     {'noreply', handle_confirm(Confirm, State)};
 handle_cast(_Msg, State) ->
@@ -268,7 +277,7 @@ lookup_number(Map) -> Map.
 number_has_im_enabled(#{phone_number := PN, im := IM} = Map) ->
     case knm_im:enabled(PN, kapps_im:type(IM)) of
         'true' -> Map;
-        'false' -> maps:without([account_id, account, phone_number]
+        'false' -> maps:without(['account_id', 'account', 'phone_number']
                                ,Map#{error => io_lib:format("number does not have ~s enabled", [kapps_im:type(IM)])}
                                )
     end;
@@ -287,14 +296,14 @@ account_from_number(Map) -> Map.
 
 account_fetch(#{account_id := AccountId} = Map) ->
     case kzd_accounts:fetch(AccountId) of
-        {'error', Error} -> maps:without([account_id], Map#{error => Error});
+        {'error', Error} -> maps:without(['account_id'], Map#{error => Error});
         {'ok', Account} -> Map#{account => Account}
     end;
 account_fetch(Map) -> Map.
 
 reseller_fetch(#{reseller_id := ResellerId} = Map) ->
     case kzd_accounts:fetch(ResellerId) of
-        {'error', Error} -> maps:without([reseller_id], Map#{error => Error});
+        {'error', Error} -> maps:without(['reseller_id'], Map#{error => Error});
         {'ok', Reseller} -> Map#{reseller => Reseller}
     end;
 reseller_fetch(Map) -> Map.
@@ -302,7 +311,7 @@ reseller_fetch(Map) -> Map.
 account_enabled(#{account := Account} = Map) ->
     case kzd_accounts:enabled(Account) of
         'true' -> Map;
-        'false' -> maps:without([account_id, account]
+        'false' -> maps:without(['account_id', 'account']
                                ,Map#{error => <<"account is disabled">>}
                                )
     end;
@@ -311,7 +320,7 @@ account_enabled(Map) -> Map.
 reseller_enabled(#{reseller := Reseller} = Map) ->
     case kzd_accounts:enabled(Reseller) of
         'true' -> Map;
-        'false' -> maps:without([account_id, account, reseller_id, reseller]
+        'false' -> maps:without(['account_id', 'account', 'reseller_id', 'reseller']
                                ,Map#{error => <<"reseller is disabled">>}
                                )
     end;
@@ -320,7 +329,7 @@ reseller_enabled(Map) -> Map.
 account_has_im_enabled(#{account_id := AccountId, im := IM} = Map) ->
     case kz_services_im:is_enabled(AccountId, kapps_im:type(IM)) of
         'true' -> Map;
-        'false' -> maps:without([account_id, account]
+        'false' -> maps:without(['account_id', 'account']
                                ,Map#{error => io_lib:format("account does not have ~s enabled", [kapps_im:type(IM)])}
                                )
     end;
@@ -329,7 +338,7 @@ account_has_im_enabled(Map) -> Map.
 reseller_has_im_enabled(#{reseller_id := ResellerId, im := IM} = Map) ->
     case kz_services_im:is_enabled(ResellerId, kapps_im:type(IM)) of
         'true' -> Map;
-        'false' -> maps:without([account_id, account, reseller_id, reseller]
+        'false' -> maps:without(['account_id', 'account', 'reseller_id', 'reseller']
                                ,Map#{error => kz_term:to_binary(io_lib:format("reseller ~s does not have ~s enabled", [ResellerId, kapps_im:type(IM)]))}
                                )
     end;
@@ -338,8 +347,8 @@ reseller_has_im_enabled(Map) -> Map.
 account_standing_is_acceptable(#{account_id := AccountId} = Map) ->
     case kz_services_standing:acceptable(AccountId) of
         {'true', _} -> Map;
-        {'false', Error} -> maps:without([account_id, account]
-                                        ,Map#{error => maps:get(reason, Error)}
+        {'false', Error} -> maps:without(['account_id', 'account']
+                                        ,Map#{error => maps:get('reason', Error)}
                                         )
     end;
 account_standing_is_acceptable(Map) -> Map.
@@ -347,8 +356,8 @@ account_standing_is_acceptable(Map) -> Map.
 reseller_standing_is_acceptable(#{reseller_id := ResellerId} = Map) ->
     case kz_services_standing:acceptable(ResellerId) of
         {'true', _} -> Map;
-        {'false', Error} -> maps:without([account_id, account, reseller_id, reseller]
-                                        ,Map#{error => maps:get(reason, Error)}
+        {'false', Error} -> maps:without(['account_id', 'account', 'reseller_id', 'reseller']
+                                        ,Map#{error => maps:get('reason', Error)}
                                         )
     end;
 reseller_standing_is_acceptable(Map) -> Map.

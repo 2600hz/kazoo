@@ -123,10 +123,19 @@ handle_call(_Request, _From, State) ->
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'gen_listener', {'created_queue', ?QUEUE_NAME}}, State) ->
     {'noreply', State};
-handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
+handle_cast({'gen_listener', {'is_consuming', 'false'}}, State) ->
+    lager:debug("deactivating onnet worker"),
+    _ = gproc:unreg({'p', 'l', 'im_onnet'}),
     {'noreply', State};
-handle_cast({'gen_listener',{'server_confirms', _Confirms}}, State) ->
+handle_cast({'gen_listener', {'is_consuming', 'true'}}, State) ->
     {'noreply', State};
+handle_cast({'gen_listener',{'server_confirms', 'true'}}, State) ->
+    lager:debug("broker can confirm deliveries, activating onnet worker"),
+    'true' = gproc:reg({'p', 'l', 'im_onnet'}),
+    {'noreply', State};
+handle_cast({'gen_listener',{'server_confirms', 'false'}}, State) ->
+    lager:warning("broker can't confirm deliveries"),
+    {'stop', {'shutdown', 'no_confirms'}, State};
 handle_cast({'gen_listener', {'confirm', Confirm}}, State) ->
     {'noreply', handle_confirm(Confirm, State)};
 handle_cast(_Msg, State) ->
@@ -183,16 +192,24 @@ code_change(_OldVsn, State, _Extra) ->
 -spec handle_outbound(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_outbound(JObj, Props) ->
     _ = kz_util:put_callid(JObj),
+
+    handle_outbound(JObj, Props, kapi_im:outbound_v(JObj)).
+
+handle_outbound(_JObj, Props, 'false') ->
+    ack(Props);
+handle_outbound(JObj, Props, 'true') ->
+    handle_outbound_resp(Props, handle_outbound_route(JObj, Props)).
+
+handle_outbound_resp(Props, 'ack') ->
+    ack(Props);
+handle_outbound_resp(Props, 'nack') ->
+    %% intentional
+    ack(Props).
+
+ack(Props) ->
     Srv = props:get_value('server', Props),
     Deliver = props:get_value('deliver', Props),
-    case kapi_im:outbound_v(JObj)
-        andalso handle_outbound_route(JObj, Props)
-    of
-        'false' -> gen_listener:ack(Srv, Deliver);
-        'ack' -> gen_listener:ack(Srv, Deliver);
-        'nack' -> gen_listener:ack(Srv, Deliver)
-    end.
-
+    gen_listener:ack(Srv, Deliver).
 
 -spec handle_outbound_route(kz_json:object(), kz_term:proplist()) -> 'ack' | 'nack'.
 handle_outbound_route(JObj, Props) ->
@@ -330,12 +347,15 @@ number(#{payload := JObj, im := IM} = Map) ->
                               ],
                     Map#{number => Num
                         ,module => Provider
-                        ,route => Provider
+                        ,route => provider_route(Provider)
                         ,payload => kz_json:exec_first(Setters, JObj)
                         }
             end;
         _ -> Map
     end.
+
+provider_route(<<"knm_", Provider/binary>>) -> Provider;
+provider_route(Provider) -> Provider.
 
 number_provider(Num) ->
     Mod = knm_phone_number:module_name(Num),
