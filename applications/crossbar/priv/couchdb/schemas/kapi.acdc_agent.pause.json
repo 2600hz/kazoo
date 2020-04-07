@@ -26,12 +26,12 @@
         },
         "Presence-State": {
             "enum": [
-                "trying",
-                "online",
-                "offline",
-                "early",
                 "confirmed",
-                "terminated"
+                "early",
+                "offline",
+                "online",
+                "terminated",
+                "trying"
             ],
             "type": "string"
         },
