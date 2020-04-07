@@ -93,10 +93,10 @@ load(Schema) -> fload(Schema).
 -spec load(kz_term:ne_binary() | string()) -> load_return().
 load(<<"./", Schema/binary>>) -> load(Schema);
 load(<<"file://", Schema/binary>>) -> load(Schema);
-load(<<Schema/binary>>) ->
-    case kz_datamgr:open_cache_doc(?KZ_SCHEMA_DB, Schema, [{'cache_failures', ['not_found']}]) of
+load(<<SchemaId/binary>>) ->
+    case kz_datamgr:open_cache_doc(?KZ_SCHEMA_DB, SchemaId, [{'cache_failures', ['not_found']}]) of
         {'error', _E}=E -> E;
-        {'ok', JObj} -> {'ok', kz_json:insert_value(<<"id">>, Schema, JObj)}
+        {'ok', JObj} -> {'ok', kz_json:insert_value(<<"id">>, SchemaId, JObj)}
     end;
 load(Schema) -> load(kz_term:to_binary(Schema)).
 -endif.
@@ -1005,7 +1005,7 @@ flatten_prop(Path, ?JSON_WRAPPER(L) = Value) when is_list(L) ->
 -spec default_object(string() | kz_term:ne_binary() | kz_json:object()) -> kz_json:object().
 default_object([_|_]=SchemaId) ->
     default_object(list_to_binary(SchemaId));
-default_object(?NE_BINARY=SchemaId) ->
+default_object(<<SchemaId/binary>>) ->
     {'ok', Schema} = load(SchemaId),
     default_object(Schema);
 default_object(Schema) ->

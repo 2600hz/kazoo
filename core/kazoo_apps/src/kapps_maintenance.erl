@@ -537,7 +537,7 @@ refresh([Database|Databases], Pause, Total, Unexpected) ->
             ?STACKTRACE(Error, Reason, StackTrace)
             [io_lib:format("WARNING: Unable to refresh/migrate db ~s! ~s: {~p, ~p}",
                            [Database, Error, Reason, StackTrace])
-             | Unexpected]
+            | Unexpected]
             end,
     refresh(Databases, Pause, Total, NewUnexpected).
 
@@ -1769,7 +1769,7 @@ call_id_status(CallId) ->
 -spec call_id_status(kz_term:ne_binary(), boolean() | kz_term:ne_binary()) -> 'ok'.
 call_id_status(CallId, Verbose) ->
     Req = [{<<"Call-ID">>, kz_term:to_binary(CallId)}
-           | kz_api:default_headers(<<"shell">>, <<"0">>)
+          | kz_api:default_headers(<<"shell">>, <<"0">>)
           ],
     case kz_amqp_worker:call(Req
                             ,fun kapi_call:publish_channel_status_req/1
@@ -1980,7 +1980,7 @@ deprecate_timezone_for_node(Node, AccountsConfig, _Timezone, _Default) ->
 check_system_schemas() ->
     _ = rpc:call(node()
                 ,'crossbar_maintenance'
-                ,'refresh_schemas'
+                ,'update_schemas'
                 ,[]
                 ),
     'ok'.
@@ -2137,7 +2137,7 @@ register_system_dbs_views() ->
             ,kapps_util:get_view_json(?APP, <<"views/pending_notify.json">>)
             ,kapps_util:get_view_json(?APP, <<"views/rates.json">>)
             ,kapps_util:get_view_json(?APP, <<"views/token_auth.json">>)
-             | kapps_util:get_views_json('kazoo_ips', "views")
+            | kapps_util:get_views_json('kazoo_ips', "views")
             ],
     kz_datamgr:register_views(?APP, Views).
 
