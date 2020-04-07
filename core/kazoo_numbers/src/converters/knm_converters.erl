@@ -16,6 +16,7 @@
         ,is_normalized/1
         ,is_npan/1, to_npan/1
         ,is_1npan/1, to_1npan/1
+        ,is_strip_plus/1, to_strip_plus/1
         ,to_db/1
         ,is_reconcilable/1, is_reconcilable/2, are_reconcilable/1
         ,classify/1, available_classifiers/0
@@ -174,6 +175,22 @@ is_1npan(Num) ->
 -spec to_1npan(kz_term:ne_binary()) -> kz_term:ne_binary().
 to_1npan(Num) ->
     (?CONVERTER_MOD):to_1npan(Num).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec is_strip_plus(kz_term:ne_binary()) -> boolean().
+is_strip_plus(Num) ->
+    to_strip_plus(Num) =:= Num.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec to_strip_plus(kz_term:ne_binary()) -> kz_term:ne_binary().
+to_strip_plus(Num) ->
+    (?CONVERTER_MOD):to_strip_plus(Num).
 
 %%------------------------------------------------------------------------------
 %% @doc Given a number determine the database name it belongs to..
