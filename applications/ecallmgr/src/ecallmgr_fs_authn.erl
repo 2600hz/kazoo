@@ -419,6 +419,8 @@ presence_id(AccountId, Endpoint) ->
     PresenceId = kzd_users:presence_id(Endpoint, kzd_users:email(Endpoint)),
     maybe_fix_presence_id(AccountId, PresenceId).
 
+maybe_fix_presence_id(_AccountId, undefined) ->
+    undefined;
 maybe_fix_presence_id(AccountId, PresenceId) ->
     case binary:match(PresenceId, <<"@">>) of
         'nomatch' -> fix_presence_id(AccountId, PresenceId);
