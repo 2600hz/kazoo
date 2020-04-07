@@ -33,8 +33,7 @@
 -type acc() :: #acc{}.
 
 -ifdef(TEST).
--export([base_schema/2
-        ]).
+-export([base_schema/2]).
 -endif.
 
 -spec to_schemas() -> 'ok'.
@@ -585,7 +584,7 @@ ast_to_value(Fun) when is_function(Fun) ->
 ast_to_value(<<Bin/binary>>) -> Bin;
 ast_to_value(Bins) when is_list(Bins) -> Bins;
 ast_to_value(?MOD_FUN_ARGS('kapi_presence', 'presence_states', [])) ->
-    kapi_presence:presence_states();
+    lists:usort(kapi_presence:presence_states());
 ast_to_value(?BINARY(_)=Bin) ->
     kz_ast_util:binary_match_to_binary(Bin);
 ast_to_value(?FA(F, A)) ->

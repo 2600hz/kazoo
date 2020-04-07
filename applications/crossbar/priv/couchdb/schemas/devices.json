@@ -346,11 +346,19 @@
                     "description": "A property list of SIP headers",
                     "type": "object"
                 },
+                "custom_sip_interface": {
+                    "description": "If the bridge string should target a different SIP interface",
+                    "type": "string"
+                },
                 "expire_seconds": {
                     "default": 300,
                     "description": "The time, in seconds, sent to the provisioner for the registration period that the device should be configured with.",
                     "support_level": "supported",
                     "type": "integer"
+                },
+                "forward": {
+                    "description": "Forward IP to use",
+                    "type": "string"
                 },
                 "ignore_completed_elsewhere": {
                     "description": "When set to false the phone should not consider ring group calls answered elsewhere as missed",
@@ -396,6 +404,10 @@
                     "support_level": "supported",
                     "type": "string"
                 },
+                "proxy": {
+                    "description": "Proxy IP address to use",
+                    "type": "string"
+                },
                 "realm": {
                     "description": "The realm this device should use, overriding the account realm. Should rarely be necessary.",
                     "maxLength": 253,
@@ -408,8 +420,16 @@
                     "support_level": "supported",
                     "type": "string"
                 },
+                "static_invite": {
+                    "description": "SIP To user",
+                    "type": "string"
+                },
                 "static_route": {
                     "description": "Sends all inbound calls to this string (instead of dialed number or username)",
+                    "type": "string"
+                },
+                "transport": {
+                    "description": "SIP Transport to use",
                     "type": "string"
                 },
                 "username": {

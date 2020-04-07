@@ -141,7 +141,7 @@ set_resource_id(Map) -> Map.
 
 -spec maybe_add_t38_settings(resource_context()) -> resource_context().
 maybe_add_t38_settings(#{resource := {'ok', Resource}, ccvs := CCVs} = Map) ->
-    Map#{ccvs => [{<<"Resource-Fax-Option">>, kzd_resources:fax_option(Resource)} | CCVs]};
+    Map#{ccvs => [{<<"Resource-Fax-Option">>, kzd_resources:media_fax_option(Resource)} | CCVs]};
 maybe_add_t38_settings(Map) -> Map.
 
 -spec set_ignore_display_updates(resource_context()) -> resource_context().

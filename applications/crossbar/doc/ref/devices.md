@@ -67,16 +67,21 @@ Key | Description | Type | Default | Required | Support Level
 `sip.custom_sip_headers.out` | Custom SIP Headers to be applied to calls outbound from Kazoo to the endpoint | [#/definitions/custom_sip_headers](#custom_sip_headers) |   | `false` |  
 `sip.custom_sip_headers.^[a-zA-z0-9_\-]+$` | The SIP header to add | `string()` |   | `false` |  
 `sip.custom_sip_headers` | A property list of SIP headers | `object()` |   | `false` |  
+`sip.custom_sip_interface` | If the bridge string should target a different SIP interface | `string()` |   | `false` |  
 `sip.expire_seconds` | The time, in seconds, sent to the provisioner for the registration period that the device should be configured with. | `integer()` | `300` | `false` | `supported`
+`sip.forward` | Forward IP to use | `string()` |   | `false` |  
 `sip.ignore_completed_elsewhere` | When set to false the phone should not consider ring group calls answered elsewhere as missed | `boolean()` |   | `false` |  
 `sip.invite_format` | The SIP request URI invite format | `string('username' | 'npan' | '1npan' | 'e164' | 'route' | 'contact')` | `contact` | `false` | `supported`
 `sip.ip` | IP address for this device | `string()` |   | `false` | `supported`
 `sip.method` | Method of authentication | `string('password' | 'ip')` | `password` | `false` | `supported`
 `sip.number` | The number used if the invite format is 1npan, npan, or e164 (if not set the dialed number is used) | `string()` |   | `false` |  
 `sip.password` | SIP authentication password | `string(5..32)` |   | `false` | `supported`
+`sip.proxy` | Proxy IP address to use | `string()` |   | `false` |  
 `sip.realm` | The realm this device should use, overriding the account realm. Should rarely be necessary. | `string(4..253)` |   | `false` |  
 `sip.route` | The SIP URL used if the invite format is 'route' | `string()` |   | `false` | `supported`
+`sip.static_invite` | SIP To user | `string()` |   | `false` |  
 `sip.static_route` | Sends all inbound calls to this string (instead of dialed number or username) | `string()` |   | `false` |  
+`sip.transport` | SIP Transport to use | `string()` |   | `false` |  
 `sip.username` | SIP authentication username | `string(2..32)` |   | `false` | `supported`
 `sip` | SIP Parameters | `object()` | `{}` | `false` |  
 `suppress_unregister_notifications` | When true disables deregister notifications | `boolean()` | `false` | `false` |  

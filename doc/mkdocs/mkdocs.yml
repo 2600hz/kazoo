@@ -406,6 +406,8 @@ pages:
   - 'Kazoo IPs':
     - 'core/kazoo_ips/doc/README.md'
     - 'core/kazoo_ips/doc/maintenance.md'
+  - 'Kazoo IM':
+    - 'core/kazoo_im/doc/README.md'
   - 'Kazoo Media':
     - 'core/kazoo_media/doc/README.md'
     - 'core/kazoo_media/doc/maintenance.md'
@@ -425,6 +427,8 @@ pages:
     - 'core/kazoo_apps/doc/kazoo_maintenance.md'
   - 'Kazoo Translator':
     - 'core/kazoo_translator/doc/README.md'
+  - 'Kazoo Telemetry':
+    - 'core/kazoo_telemetry/doc/README.md'
   - 'Kazoo Number Manager':
     - 'core/kazoo_numbers/doc/README.md'
     - 'core/kazoo_numbers/doc/carrier_types.md'

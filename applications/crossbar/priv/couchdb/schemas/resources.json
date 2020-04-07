@@ -3,6 +3,66 @@
     "_id": "resources",
     "description": "Schema for resources",
     "properties": {
+        "caller_id_options": {
+            "description": "Caller ID options",
+            "properties": {
+                "type": {
+                    "description": "Caller ID type to choose",
+                    "enum": [
+                        "internal",
+                        "external",
+                        "emergency"
+                    ],
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "cid_rules": {
+            "description": "Regexps to match against caller ID",
+            "items": {
+                "description": "Regexp to match against caller ID",
+                "type": "string"
+            },
+            "type": "array"
+        },
+        "classifiers": {
+            "description": "Resource classifiers to use as rules when matching against dialed numbers",
+            "properties": {
+                "emergency": {
+                    "default": false,
+                    "description": "Determines if the resource represents emergency services",
+                    "type": "boolean"
+                },
+                "enabled": {
+                    "default": true,
+                    "description": "Determines if the resource is currently enabled",
+                    "type": "boolean"
+                },
+                "prefix": {
+                    "description": "A string to prepend to the dialed number or capture group of the matching rule",
+                    "maxLength": 64,
+                    "type": "string"
+                },
+                "regex": {
+                    "description": "regexp to match against dialed number",
+                    "type": "string"
+                },
+                "suffix": {
+                    "description": "A string to append to the dialed number or capture group of the matching rule",
+                    "maxLength": 64,
+                    "type": "string"
+                },
+                "weight_cost": {
+                    "default": 50,
+                    "description": "A value between 0 and 100 that determines the order of resources when multiple can be used",
+                    "maximum": 100,
+                    "minimum": 0,
+                    "type": "integer"
+                }
+            },
+            "type": "object"
+        },
         "emergency": {
             "default": false,
             "description": "Determines if the resource represents emergency services",
@@ -36,6 +96,11 @@
         "formatters": {
             "$ref": "formatters",
             "type": "object"
+        },
+        "from_account_realm": {
+            "default": false,
+            "description": "When formatting SIP From on outbound requests, use the calling account's SIP realm",
+            "type": "boolean"
         },
         "from_uri_realm": {
             "description": "When formatting SIP From on outbound requests this can be used to override the realm",

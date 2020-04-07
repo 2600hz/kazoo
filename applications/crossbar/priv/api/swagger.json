@@ -5790,10 +5790,18 @@
                             "description": "A property list of SIP headers",
                             "type": "object"
                         },
+                        "custom_sip_interface": {
+                            "description": "If the bridge string should target a different SIP interface",
+                            "type": "string"
+                        },
                         "expire_seconds": {
                             "default": 300,
                             "description": "The time, in seconds, sent to the provisioner for the registration period that the device should be configured with.",
                             "type": "integer"
+                        },
+                        "forward": {
+                            "description": "Forward IP to use",
+                            "type": "string"
                         },
                         "ignore_completed_elsewhere": {
                             "description": "When set to false the phone should not consider ring group calls answered elsewhere as missed",
@@ -5835,6 +5843,10 @@
                             "minLength": 5,
                             "type": "string"
                         },
+                        "proxy": {
+                            "description": "Proxy IP address to use",
+                            "type": "string"
+                        },
                         "realm": {
                             "description": "The realm this device should use, overriding the account realm. Should rarely be necessary.",
                             "maxLength": 253,
@@ -5846,8 +5858,16 @@
                             "description": "The SIP URL used if the invite format is 'route'",
                             "type": "string"
                         },
+                        "static_invite": {
+                            "description": "SIP To user",
+                            "type": "string"
+                        },
                         "static_route": {
                             "description": "Sends all inbound calls to this string (instead of dialed number or username)",
+                            "type": "string"
+                        },
+                        "transport": {
+                            "description": "SIP Transport to use",
                             "type": "string"
                         },
                         "username": {
@@ -6895,12 +6915,12 @@
                 },
                 "Presence-State": {
                     "enum": [
-                        "trying",
-                        "online",
-                        "offline",
-                        "early",
                         "confirmed",
-                        "terminated"
+                        "early",
+                        "offline",
+                        "online",
+                        "terminated",
+                        "trying"
                     ],
                     "type": "string"
                 },
@@ -6943,12 +6963,12 @@
                 },
                 "Presence-State": {
                     "enum": [
-                        "offline",
-                        "online",
-                        "trying",
                         "confirmed",
                         "early",
-                        "terminated"
+                        "offline",
+                        "online",
+                        "terminated",
+                        "trying"
                     ],
                     "type": "string"
                 },
@@ -6991,12 +7011,12 @@
                 },
                 "Presence-State": {
                     "enum": [
-                        "offline",
-                        "online",
-                        "trying",
                         "confirmed",
                         "early",
-                        "terminated"
+                        "offline",
+                        "online",
+                        "terminated",
+                        "trying"
                     ],
                     "type": "string"
                 },
@@ -7067,12 +7087,12 @@
                 },
                 "Presence-State": {
                     "enum": [
-                        "offline",
-                        "online",
-                        "trying",
                         "confirmed",
                         "early",
-                        "terminated"
+                        "offline",
+                        "online",
+                        "terminated",
+                        "trying"
                     ],
                     "type": "string"
                 },
@@ -7115,12 +7135,12 @@
                 },
                 "Presence-State": {
                     "enum": [
-                        "offline",
-                        "online",
-                        "trying",
                         "confirmed",
                         "early",
-                        "terminated"
+                        "offline",
+                        "online",
+                        "terminated",
+                        "trying"
                     ],
                     "type": "string"
                 },
@@ -7163,12 +7183,12 @@
                 },
                 "Presence-State": {
                     "enum": [
-                        "trying",
-                        "online",
-                        "offline",
-                        "early",
                         "confirmed",
-                        "terminated"
+                        "early",
+                        "offline",
+                        "online",
+                        "terminated",
+                        "trying"
                     ],
                     "type": "string"
                 },
@@ -7211,12 +7231,12 @@
                 },
                 "Presence-State": {
                     "enum": [
-                        "trying",
-                        "online",
-                        "offline",
-                        "early",
                         "confirmed",
-                        "terminated"
+                        "early",
+                        "offline",
+                        "online",
+                        "terminated",
+                        "trying"
                     ],
                     "type": "string"
                 },
@@ -31246,6 +31266,66 @@
         "resources": {
             "description": "Schema for resources",
             "properties": {
+                "caller_id_options": {
+                    "description": "Caller ID options",
+                    "properties": {
+                        "type": {
+                            "description": "Caller ID type to choose",
+                            "enum": [
+                                "internal",
+                                "external",
+                                "emergency"
+                            ],
+                            "type": "string"
+                        }
+                    },
+                    "type": "object"
+                },
+                "cid_rules": {
+                    "description": "Regexps to match against caller ID",
+                    "items": {
+                        "description": "Regexp to match against caller ID",
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "classifiers": {
+                    "description": "Resource classifiers to use as rules when matching against dialed numbers",
+                    "properties": {
+                        "emergency": {
+                            "default": false,
+                            "description": "Determines if the resource represents emergency services",
+                            "type": "boolean"
+                        },
+                        "enabled": {
+                            "default": true,
+                            "description": "Determines if the resource is currently enabled",
+                            "type": "boolean"
+                        },
+                        "prefix": {
+                            "description": "A string to prepend to the dialed number or capture group of the matching rule",
+                            "maxLength": 64,
+                            "type": "string"
+                        },
+                        "regex": {
+                            "description": "regexp to match against dialed number",
+                            "type": "string"
+                        },
+                        "suffix": {
+                            "description": "A string to append to the dialed number or capture group of the matching rule",
+                            "maxLength": 64,
+                            "type": "string"
+                        },
+                        "weight_cost": {
+                            "default": 50,
+                            "description": "A value between 0 and 100 that determines the order of resources when multiple can be used",
+                            "maximum": 100,
+                            "minimum": 0,
+                            "type": "integer"
+                        }
+                    },
+                    "type": "object"
+                },
                 "emergency": {
                     "default": false,
                     "description": "Determines if the resource represents emergency services",
@@ -31279,6 +31359,11 @@
                 "formatters": {
                     "$ref": "#/definitions/formatters",
                     "type": "object"
+                },
+                "from_account_realm": {
+                    "default": false,
+                    "description": "When formatting SIP From on outbound requests, use the calling account's SIP realm",
+                    "type": "boolean"
                 },
                 "from_uri_realm": {
                     "description": "When formatting SIP From on outbound requests this can be used to override the realm",

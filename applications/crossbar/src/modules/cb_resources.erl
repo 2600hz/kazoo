@@ -640,16 +640,16 @@ validate_gateway_ips([{Idx, InboundIP, ServerIP}|IPs], SIPAuth, ACLs, ResourceId
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec aggregate_resource(kz_json:object()) -> 'ok'.
-aggregate_resource(Resource) ->
+-spec aggregate_resource(kzd_resources:doc()) -> 'ok'.
+aggregate_resource(ResourceJObj) ->
     lager:debug("adding resource to the sip auth aggregate"),
-    Doc = kz_doc:delete_revision(Resource),
+    Doc = kz_doc:delete_revision(ResourceJObj),
     Update = kz_json:to_proplist(kz_json:flatten(Doc)),
     UpdateOptions = [{'update', Update}
                     ,{'create', []}
                     ,{'ensure_saved', 'true'}
                     ],
-    {'ok', _} = kz_datamgr:update_doc(?KZ_SIP_DB, kz_doc:id(Resource), UpdateOptions),
+    {'ok', _} = kz_datamgr:update_doc(?KZ_SIP_DB, kz_doc:id(ResourceJObj), UpdateOptions),
     'ok'.
 
 -spec remove_aggregate(kz_term:ne_binary()) -> boolean().
@@ -740,37 +740,31 @@ validate_ip(IP, SIPAuth, ACLs, ResourceId) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec maybe_aggregate_resources(kz_json:objects()) -> 'ok'.
+-spec maybe_aggregate_resources(kzd_resources:docs()) -> 'ok'.
 maybe_aggregate_resources([]) -> 'ok';
-maybe_aggregate_resources([Resource|Resources]) ->
+maybe_aggregate_resources([ResourceJObj|ResourceJObjs]) ->
     case lists:any(fun(Gateway) ->
                            kz_json:is_true(<<"register">>, Gateway)
                                andalso (not kz_json:is_false(<<"enabled">>, Gateway))
                    end
-                  ,kz_json:get_list_value(<<"gateways">>, Resource, [])
+                  ,kzd_resources:gateways(ResourceJObj, [])
                   )
     of
         'true' ->
-            aggregate_resource(Resource),
+            aggregate_resource(ResourceJObj),
             _ = kapi_switch:publish_reload_gateways(),
             _ = kapi_switch:publish_reload_acls(),
-            maybe_aggregate_resources(Resources);
+            maybe_aggregate_resources(ResourceJObjs);
         'false' ->
-            _ = maybe_remove_aggregates([Resource]),
-            maybe_aggregate_resources(Resources)
+            _ = maybe_remove_aggregates([ResourceJObj]),
+            maybe_aggregate_resources(ResourceJObjs)
     end.
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec maybe_remove_aggregates(kz_json:objects()) -> 'ok'.
+-spec maybe_remove_aggregates(kzd_resources:docs()) -> 'ok'.
 maybe_remove_aggregates([]) -> 'ok';
-maybe_remove_aggregates([Resource|Resources]) ->
-    case kz_datamgr:del_doc(?KZ_SIP_DB, kz_doc:id(Resource)) of
-        {'ok', _JObj} ->
-            _ = kapi_switch:publish_reload_gateways(),
-            _ = kapi_switch:publish_reload_acls(),
-            maybe_remove_aggregates(Resources);
-        {'error', 'not_found'} ->
-            maybe_remove_aggregates(Resources)
-    end.
+maybe_remove_aggregates([ResourceJObj|ResourceJObjs]) ->
+    _ = remove_aggregate(kz_doc:id(ResourceJObj)),
+    maybe_remove_aggregates(ResourceJObjs).
