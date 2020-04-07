@@ -23,3 +23,42 @@ Key | Description | Type | Default | Required | Support Level
 
 
 
+
+
+
+## Example
+
+### Absolute mode
+
+When `use_absolute_mode` is `true`, a child branch is attempted if it matches the caller ID number exactly; otherwise the default child `"_"` is taken.
+
+```json
+{"module":"check_cid"
+ ,"data":{
+   "use_absolute_mode":true
+   ,"regex":"\\+?1?(\\d{10})"
+ }
+ ,"children":{
+   "_":{...no matching branches for the caller ID...}
+   "+14158867900":{...If caller ID matches +14158867900...}
+ }
+}
+```
+
+### Match / No Match
+
+When `use_absolute_mode` is `false`, two child branches can be taken, "match" and "nomatch", based on whether the regex matched the caller ID.
+
+```json
+{"module":"check_cid"
+ ,"data":{
+   "use_absolute_mode":false
+   ,"regex":"\\+?1?(\\d{10})"
+ }
+ ,"children":{
+    "match": { // callflow node to branch to when absolute mode is false and regex matches },
+    "nomatch": { // callflow node to branch to when regex does not match or no child node defined for incoming caller id },
+
+ }
+}
+```
