@@ -284,7 +284,7 @@ publish_req(Req, ContentType) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec resp(kz_term:api_terms()) -> kz_api:api_formatter_return().
-resp(Prop) ->
+resp(Prop) when is_list(Prop) ->
     Prop1 = case props:get_value(<<"Method">>, Prop) of
                 <<"bridge">> ->
                     Routes = [begin
@@ -295,10 +295,12 @@ resp(Prop) ->
                 _ ->
                     Prop
             end,
-    kapi_definition:build_message(Prop1, resp_definition()).
+    kapi_definition:build_message(Prop1, resp_definition());
+resp(JObj) ->
+    resp(kz_json:to_proplist(JObj)).
 
 -spec resp_v(kz_term:api_terms()) -> boolean().
-resp_v(Prop) ->
+resp_v(Prop) when is_list(Prop) ->
     Valid = kapi_definition:validate(Prop, resp_definition()),
     case props:get_value(<<"Method">>, Prop) of
         <<"bridge">> when Valid->
@@ -307,7 +309,9 @@ resp_v(Prop) ->
                      );
         _ ->
             Valid
-    end.
+    end;
+resp_v(JObj) ->
+    resp(kz_json:to_proplist(JObj)).
 
 -spec publish_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_resp(RespQ, JObj) ->
