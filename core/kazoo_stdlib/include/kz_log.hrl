@@ -32,7 +32,7 @@
 -define(LOG_INFO(F, A), io:format('user', "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
 -define(LOG_NOTICE(F, A), io:format('user', "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
 -define(LOG_WARNING(F, A), io:format('user', "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
--define(LOG_DEV(F, A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
+-define(LOG_DEV(F, A), io:format('user', "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
 
 -define(LOG_ALERT(F), ?LOG_ALERT(F, [])).
 -define(LOG_CRITICAL(F), ?LOG_CRITICAL(F, [])).
