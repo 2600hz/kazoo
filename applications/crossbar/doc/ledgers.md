@@ -31,8 +31,6 @@ Key | Description | Type | Default | Required | Support Level
 `usage.unit` | Usage unit | `string()` |   | `true` |  
 `usage` | Usage for ledger | `object()` |   | `true` |  
 
-
-
 ## Get Available Ledgers
 
 List available ledger sources from the account's reseller.
@@ -202,10 +200,11 @@ curl -v -X GET \
 
 ## Credit / Debit
 
-Credit or Debit a specific ledger.
-the `account_id` for `AUTH_TOKEN` must be reseller of target account.
+Credit or Debit a specific ledger.  
 
-Parameter "impact_reseller" (boolean not required) when true will also create the document in the reseller
+* The `account_id` for `AUTH_TOKEN` must be reseller of target account.  
+* The parameter `impact_reseller` (boolean not required) when true will also create the document in the reseller.  
+* The `source.id` field must be representative of a specific ledger entry. To that effect, the combination of that field, the `period.start` field, and the `period.end` field must be unique. This prevents mistakenly submitting the same ledger entry multiple times.
 
 > PUT /v2/accounts/{ACCOUNT_ID}/ledgers/debit
 
