@@ -5,7 +5,19 @@
 %%%-----------------------------------------------------------------------------
 -module(kzd_resources).
 
--export([new/0]).
+-export([new/0
+        ,type/0, type/1
+        ]).
+-export([caller_id_options/1, caller_id_options/2, set_caller_id_options/2]).
+-export([caller_id_options_type/1, caller_id_options_type/2, set_caller_id_options_type/2]).
+-export([cid_rules/1, cid_rules/2, set_cid_rules/2]).
+-export([classifiers/1, classifiers/2, set_classifiers/2]).
+-export([classifiers_emergency/1, classifiers_emergency/2, set_classifiers_emergency/2]).
+-export([classifiers_enabled/1, classifiers_enabled/2, set_classifiers_enabled/2]).
+-export([classifiers_prefix/1, classifiers_prefix/2, set_classifiers_prefix/2]).
+-export([classifiers_regex/1, classifiers_regex/2, set_classifiers_regex/2]).
+-export([classifiers_suffix/1, classifiers_suffix/2, set_classifiers_suffix/2]).
+-export([classifiers_weight_cost/1, classifiers_weight_cost/2, set_classifiers_weight_cost/2]).
 -export([emergency/1, emergency/2, set_emergency/2]).
 -export([enabled/1, enabled/2, set_enabled/2]).
 -export([flags/1, flags/2, set_flags/2]).
@@ -13,6 +25,7 @@
 -export([flat_rate_whitelist/1, flat_rate_whitelist/2, set_flat_rate_whitelist/2]).
 -export([format_from_uri/1, format_from_uri/2, set_format_from_uri/2]).
 -export([formatters/1, formatters/2, set_formatters/2]).
+-export([from_account_realm/1, from_account_realm/2, set_from_account_realm/2]).
 -export([from_uri_realm/1, from_uri_realm/2, set_from_uri_realm/2]).
 -export([gateway_strategy/1, gateway_strategy/2, set_gateway_strategy/2]).
 -export([gateways/1, gateways/2, set_gateways/2]).
@@ -24,17 +37,151 @@
 -export([rules/1, rules/2, set_rules/2]).
 -export([weight_cost/1, weight_cost/2, set_weight_cost/2]).
 
+-export([media_fax_option/1, media_fax_option/2
+        ,media_bypass_media/1, media_bypass_media/2
+        ,media_audio_codecs/1, media_audio_codecs/2
+        ,media_video_codecs/1, media_video_codecs/2
+        ]).
 
 -include("kz_documents.hrl").
 
 -type doc() :: kz_json:object().
--export_type([doc/0]).
+-type docs() :: [doc()].
+-export_type([doc/0, docs/0]).
 
+-define(PVT_TYPE, <<"resource">>).
 -define(SCHEMA, <<"resources">>).
 
 -spec new() -> doc().
 new() ->
-    kz_json_schema:default_object(?SCHEMA).
+    kz_doc:set_type(kz_json_schema:default_object(?SCHEMA), type()).
+
+-spec type() -> kz_term:ne_binary().
+type() -> ?PVT_TYPE.
+
+-spec type(doc()) -> kz_term:ne_binary().
+type(Doc) ->
+    kz_doc:type(Doc, ?PVT_TYPE).
+
+-spec caller_id_options(doc()) -> kz_term:api_object().
+caller_id_options(Doc) ->
+    caller_id_options(Doc, 'undefined').
+
+-spec caller_id_options(doc(), Default) -> kz_json:object() | Default.
+caller_id_options(Doc, Default) ->
+    kz_json:get_json_value([<<"caller_id_options">>], Doc, Default).
+
+-spec set_caller_id_options(doc(), kz_json:object()) -> doc().
+set_caller_id_options(Doc, CallerIdOptions) ->
+    kz_json:set_value([<<"caller_id_options">>], CallerIdOptions, Doc).
+
+-spec caller_id_options_type(doc()) -> kz_term:api_binary().
+caller_id_options_type(Doc) ->
+    caller_id_options_type(Doc, 'undefined').
+
+-spec caller_id_options_type(doc(), Default) -> binary() | Default.
+caller_id_options_type(Doc, Default) ->
+    kz_json:get_binary_value([<<"caller_id_options">>, <<"type">>], Doc, Default).
+
+-spec set_caller_id_options_type(doc(), binary()) -> doc().
+set_caller_id_options_type(Doc, CallerIdOptionsType) ->
+    kz_json:set_value([<<"caller_id_options">>, <<"type">>], CallerIdOptionsType, Doc).
+
+-spec cid_rules(doc()) -> kz_term:api_ne_binaries().
+cid_rules(Doc) ->
+    cid_rules(Doc, 'undefined').
+
+-spec cid_rules(doc(), Default) -> kz_term:ne_binaries() | Default.
+cid_rules(Doc, Default) ->
+    kz_json:get_list_value([<<"cid_rules">>], Doc, Default).
+
+-spec set_cid_rules(doc(), kz_term:ne_binaries()) -> doc().
+set_cid_rules(Doc, CidRules) ->
+    kz_json:set_value([<<"cid_rules">>], CidRules, Doc).
+
+-spec classifiers(doc()) -> kz_term:api_object().
+classifiers(Doc) ->
+    classifiers(Doc, 'undefined').
+
+-spec classifiers(doc(), Default) -> kz_json:object() | Default.
+classifiers(Doc, Default) ->
+    kz_json:get_json_value([<<"classifiers">>], Doc, Default).
+
+-spec set_classifiers(doc(), kz_json:object()) -> doc().
+set_classifiers(Doc, Classifiers) ->
+    kz_json:set_value([<<"classifiers">>], Classifiers, Doc).
+
+-spec classifiers_emergency(doc()) -> boolean().
+classifiers_emergency(Doc) ->
+    classifiers_emergency(Doc, false).
+
+-spec classifiers_emergency(doc(), Default) -> boolean() | Default.
+classifiers_emergency(Doc, Default) ->
+    kz_json:get_boolean_value([<<"classifiers">>, <<"emergency">>], Doc, Default).
+
+-spec set_classifiers_emergency(doc(), boolean()) -> doc().
+set_classifiers_emergency(Doc, ClassifiersEmergency) ->
+    kz_json:set_value([<<"classifiers">>, <<"emergency">>], ClassifiersEmergency, Doc).
+
+-spec classifiers_enabled(doc()) -> boolean().
+classifiers_enabled(Doc) ->
+    classifiers_enabled(Doc, true).
+
+-spec classifiers_enabled(doc(), Default) -> boolean() | Default.
+classifiers_enabled(Doc, Default) ->
+    kz_json:get_boolean_value([<<"classifiers">>, <<"enabled">>], Doc, Default).
+
+-spec set_classifiers_enabled(doc(), boolean()) -> doc().
+set_classifiers_enabled(Doc, ClassifiersEnabled) ->
+    kz_json:set_value([<<"classifiers">>, <<"enabled">>], ClassifiersEnabled, Doc).
+
+-spec classifiers_prefix(doc()) -> kz_term:api_binary().
+classifiers_prefix(Doc) ->
+    classifiers_prefix(Doc, 'undefined').
+
+-spec classifiers_prefix(doc(), Default) -> binary() | Default.
+classifiers_prefix(Doc, Default) ->
+    kz_json:get_binary_value([<<"classifiers">>, <<"prefix">>], Doc, Default).
+
+-spec set_classifiers_prefix(doc(), binary()) -> doc().
+set_classifiers_prefix(Doc, ClassifiersPrefix) ->
+    kz_json:set_value([<<"classifiers">>, <<"prefix">>], ClassifiersPrefix, Doc).
+
+-spec classifiers_regex(doc()) -> kz_term:api_binary().
+classifiers_regex(Doc) ->
+    classifiers_regex(Doc, 'undefined').
+
+-spec classifiers_regex(doc(), Default) -> binary() | Default.
+classifiers_regex(Doc, Default) ->
+    kz_json:get_binary_value([<<"classifiers">>, <<"regex">>], Doc, Default).
+
+-spec set_classifiers_regex(doc(), binary()) -> doc().
+set_classifiers_regex(Doc, ClassifiersRegex) ->
+    kz_json:set_value([<<"classifiers">>, <<"regex">>], ClassifiersRegex, Doc).
+
+-spec classifiers_suffix(doc()) -> kz_term:api_binary().
+classifiers_suffix(Doc) ->
+    classifiers_suffix(Doc, 'undefined').
+
+-spec classifiers_suffix(doc(), Default) -> binary() | Default.
+classifiers_suffix(Doc, Default) ->
+    kz_json:get_binary_value([<<"classifiers">>, <<"suffix">>], Doc, Default).
+
+-spec set_classifiers_suffix(doc(), binary()) -> doc().
+set_classifiers_suffix(Doc, ClassifiersSuffix) ->
+    kz_json:set_value([<<"classifiers">>, <<"suffix">>], ClassifiersSuffix, Doc).
+
+-spec classifiers_weight_cost(doc()) -> integer().
+classifiers_weight_cost(Doc) ->
+    classifiers_weight_cost(Doc, 50).
+
+-spec classifiers_weight_cost(doc(), Default) -> integer() | Default.
+classifiers_weight_cost(Doc, Default) ->
+    kz_json:get_integer_value([<<"classifiers">>, <<"weight_cost">>], Doc, Default).
+
+-spec set_classifiers_weight_cost(doc(), integer()) -> doc().
+set_classifiers_weight_cost(Doc, ClassifiersWeightCost) ->
+    kz_json:set_value([<<"classifiers">>, <<"weight_cost">>], ClassifiersWeightCost, Doc).
 
 -spec emergency(doc()) -> boolean().
 emergency(Doc) ->
@@ -119,6 +266,18 @@ formatters(Doc, Default) ->
 -spec set_formatters(doc(), kz_json:object()) -> doc().
 set_formatters(Doc, Formatters) ->
     kz_json:set_value([<<"formatters">>], Formatters, Doc).
+
+-spec from_account_realm(doc()) -> boolean().
+from_account_realm(Doc) ->
+    from_account_realm(Doc, 'false').
+
+-spec from_account_realm(doc(), Default) -> boolean() | Default.
+from_account_realm(Doc, Default) ->
+    kz_json:get_boolean_value([<<"from_account_realm">>], Doc, Default).
+
+-spec set_from_account_realm(doc(), boolean()) -> doc().
+set_from_account_realm(Doc, FromAccountRealm) ->
+    kz_json:set_value([<<"from_account_realm">>], FromAccountRealm, Doc).
 
 -spec from_uri_realm(doc()) -> kz_term:api_binary().
 from_uri_realm(Doc) ->
@@ -239,3 +398,35 @@ weight_cost(Doc, Default) ->
 -spec set_weight_cost(doc(), integer()) -> doc().
 set_weight_cost(Doc, WeightCost) ->
     kz_json:set_value([<<"weight_cost">>], WeightCost, Doc).
+
+-spec media_fax_option(doc()) -> boolean().
+media_fax_option(Doc) ->
+    media_fax_option(Doc, 'false').
+
+-spec media_fax_option(doc(), Default) -> boolean() | Default.
+media_fax_option(Doc, Default) ->
+    kz_json:is_true([<<"media">>, <<"fax_option">>], Doc, Default).
+
+-spec media_bypass_media(doc()) -> boolean().
+media_bypass_media(Doc) ->
+    media_bypass_media(Doc, 'false').
+
+-spec media_bypass_media(doc(), Default) -> boolean() | Default.
+media_bypass_media(Doc, Default) ->
+    kz_json:is_true([<<"media">>, <<"bypass_media">>], Doc, Default).
+
+-spec media_audio_codecs(doc()) -> kz_term:api_ne_binaries().
+media_audio_codecs(Doc) ->
+    media_audio_codecs(Doc, 'undefined').
+
+-spec media_audio_codecs(doc(), Default) -> kz_term:ne_binaries() | Default.
+media_audio_codecs(Doc, Default) ->
+    kz_json:get_list_value([<<"media">>, <<"audio">>, <<"codecs">>], Doc, Default).
+
+-spec media_video_codecs(doc()) -> kz_term:api_ne_binaries().
+media_video_codecs(Doc) ->
+    media_video_codecs(Doc, 'undefined').
+
+-spec media_video_codecs(doc(), Default) -> kz_term:ne_binaries() | Default.
+media_video_codecs(Doc, Default) ->
+    kz_json:get_list_value([<<"media">>, <<"video">>, <<"codecs">>], Doc, Default).

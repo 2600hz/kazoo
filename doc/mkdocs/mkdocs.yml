@@ -67,6 +67,7 @@ pages:
     - 'applications/crossbar/doc/hotdesks.md'
     - 'applications/crossbar/doc/menus.md'
     - 'applications/crossbar/doc/metaflows.md'
+    - 'applications/crossbar/doc/mms.md'
     - 'applications/crossbar/doc/phone_numbers.md'
     - 'applications/crossbar/doc/quickcall.md'
     - 'applications/crossbar/doc/recordings.md'
@@ -374,6 +375,8 @@ pages:
   - 'Kazoo IPs':
     - 'core/kazoo_ips/doc/README.md'
     - 'core/kazoo_ips/doc/maintenance.md'
+  - 'Kazoo IM':
+    - 'core/kazoo_im/doc/README.md'
   - 'Kazoo Media':
     - 'core/kazoo_media/doc/README.md'
   - 'Kazoo Convert':
@@ -385,6 +388,8 @@ pages:
     - 'core/kazoo_apps/doc/kapps_notify_publisher.md'
   - 'Kazoo Translator':
     - 'core/kazoo_translator/doc/README.md'
+  - 'Kazoo Telemetry':
+    - 'core/kazoo_telemetry/doc/README.md'
   - 'Kazoo Number Manager':
     - 'core/kazoo_number_manager/doc/README.md'
     - 'core/kazoo_number_manager/doc/knm_voip_innovations.md'
