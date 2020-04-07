@@ -373,6 +373,7 @@
                         "1npan",
                         "e164",
                         "route",
+                        "strip_plus",
                         "contact"
                     ],
                     "support_level": "supported",

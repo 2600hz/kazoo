@@ -43,6 +43,7 @@
                 "npan",
                 "1npan",
                 "route",
+                "strip_plus",
                 "loopback",
                 "contact"
             ],

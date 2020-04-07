@@ -66,7 +66,7 @@
             "default": [
                 "regex"
             ],
-            "description": "suffix for the KNM module to use for E164, NPAN and 1NPAN normalization of numbers",
+            "description": "suffix for the KNM module to use for E164, NPAN, 1NPAN and strip_plus normalization of numbers",
             "items": {
                 "type": "string"
             },
