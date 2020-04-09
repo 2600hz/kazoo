@@ -360,7 +360,7 @@ search_resources(IP, Port, Realm, [#resrc{id=Id
                                          ,gateways=Gateways
                                          ,global=Global
                                          }
-                                  | Resources
+                                   | Resources
                                   ]) ->
     case search_gateways(IP, Port, Realm, Gateways) of
         {'error', 'not_found'} ->
@@ -702,7 +702,7 @@ gateway_to_endpoint(DestinationNumber
            ,{<<"Matched-Number">>, DestinationNumber}
            ,{<<"Resource-Type">>, <<"offnet-termination">>}
            ,{<<"RTCP-MUX">>, RTCP_MUX}
-           | gateway_from_uri_settings(Gateway)
+            | gateway_from_uri_settings(Gateway)
            ],
     kz_json:from_list(
       props:filter_empty(
@@ -737,7 +737,7 @@ gateway_to_endpoint(DestinationNumber
           orelse kz_privacy:should_hide_number(OffnetJObj)
           orelse kz_privacy:should_hide_number(RequestorCCVs)
          }
-        | maybe_get_t38(Gateway, OffnetJObj)
+         | maybe_get_t38(Gateway, OffnetJObj)
         ])).
 
 -spec sip_invite_parameters(gateway(), kapi_offnet_resource:req()) -> kz_term:ne_binaries().
@@ -1023,7 +1023,7 @@ create_resource([{ResourceClassifier, ResourceClassifierJObj}|ResourceClassifier
                            ,ConfigClassifiers
                            ,ResourceJObj
                            ,[resource_from_jobj(JObj)
-                            | Resources
+                             | Resources
                             ]
                            )
     end.
