@@ -28,37 +28,42 @@
         },
         "classifiers": {
             "description": "Resource classifiers to use as rules when matching against dialed numbers",
-            "properties": {
-                "emergency": {
-                    "default": false,
-                    "description": "Determines if the resource represents emergency services",
-                    "type": "boolean"
-                },
-                "enabled": {
-                    "default": true,
-                    "description": "Determines if the resource is currently enabled",
-                    "type": "boolean"
-                },
-                "prefix": {
-                    "description": "A string to prepend to the dialed number or capture group of the matching rule",
-                    "maxLength": 64,
-                    "type": "string"
-                },
-                "regex": {
-                    "description": "regexp to match against dialed number",
-                    "type": "string"
-                },
-                "suffix": {
-                    "description": "A string to append to the dialed number or capture group of the matching rule",
-                    "maxLength": 64,
-                    "type": "string"
-                },
-                "weight_cost": {
-                    "default": 50,
-                    "description": "A value between 0 and 100 that determines the order of resources when multiple can be used",
-                    "maximum": 100,
-                    "minimum": 0,
-                    "type": "integer"
+            "patternProperties": {
+                ".+": {
+                    "properties": {
+                        "emergency": {
+                            "default": false,
+                            "description": "Determines if the resource represents emergency services",
+                            "type": "boolean"
+                        },
+                        "enabled": {
+                            "default": true,
+                            "description": "Determines if the resource is currently enabled",
+                            "type": "boolean"
+                        },
+                        "prefix": {
+                            "description": "A string to prepend to the dialed number or capture group of the matching rule",
+                            "maxLength": 64,
+                            "type": "string"
+                        },
+                        "regex": {
+                            "description": "regexp to match against dialed number",
+                            "type": "string"
+                        },
+                        "suffix": {
+                            "description": "A string to append to the dialed number or capture group of the matching rule",
+                            "maxLength": 64,
+                            "type": "string"
+                        },
+                        "weight_cost": {
+                            "default": 50,
+                            "description": "A value between 0 and 100 that determines the order of resources when multiple can be used",
+                            "maximum": 100,
+                            "minimum": 0,
+                            "type": "integer"
+                        }
+                    },
+                    "type": "object"
                 }
             },
             "type": "object"
