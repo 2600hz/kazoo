@@ -32,6 +32,7 @@
 -define(NODE_WORKER, ?NODE_CHILD_TYPE(<<"worker">>)).
 -define(NODE_SUPERVISOR, ?NODE_CHILD_TYPE(<<"supervisor">>)).
 
+-define(DEPRECATED_MODS, [<<"msg">>]).
 %%==============================================================================
 %% API functions
 %%==============================================================================
@@ -113,7 +114,7 @@ init([Node, Options]) ->
 
     NodeB = kz_term:to_binary(Node),
     Args = [Node, Options],
-    M = kazoo_bindings:map(<<"freeswitch.node.modules">>, []),
+    M = kazoo_bindings:map(<<"freeswitch.node.modules">>, []) -- ?DEPRECATED_MODS,
     Modules = lists:foldl(fun(A, B) -> A ++ B end, [], M),
     JObj = maybe_correct_modules(Modules),
     Children = kz_json:foldr(fun(Module, V, Acc) ->
