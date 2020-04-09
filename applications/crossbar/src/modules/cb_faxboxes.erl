@@ -108,7 +108,7 @@ validate(Context) ->
     validate_faxboxes(Context, cb_context:req_verb(Context)).
 
 validate_faxboxes(Context, ?HTTP_PUT) ->
-    validate_email_address(create_faxbox(remove_private_fields(Context)));
+    validate_request('undefined', create_faxbox(remove_private_fields(Context)));
 validate_faxboxes(Context, ?HTTP_GET) ->
     faxbox_listing(Context).
 
@@ -119,58 +119,59 @@ validate(Context, Id) ->
 validate_faxbox(Context, Id, ?HTTP_GET) ->
     read(Id, Context);
 validate_faxbox(Context, Id, ?HTTP_POST) ->
-    validate_email_address(update_faxbox(Id, remove_private_fields(Context)));
+    validate_request(Id, update_faxbox(Id, remove_private_fields(Context)));
 validate_faxbox(Context, Id, ?HTTP_PATCH) ->
-    validate_patch(update_faxbox(Id, remove_private_fields(Context)));
+    validate_patch_request(Id, update_faxbox(Id, remove_private_fields(Context)));
 validate_faxbox(Context, Id, ?HTTP_DELETE) ->
     delete_faxbox(Id, Context).
 
--spec validate_email_address(cb_context:context()) -> cb_context:context().
-validate_email_address(Context) ->
-    Email = kz_json:get_value(<<"custom_smtp_email_address">>, cb_context:doc(Context)),
-    IsValid =
-        case Email of
-            'undefined' -> 'true';
-            Email -> is_faxbox_email_global_unique(Email, kz_doc:id(cb_context:doc(Context)))
-        end,
-    case IsValid of
-        'true' -> Context;
-        'false' ->
-            cb_context:add_validation_error(<<"custom_smtp_email_address">>
-                                           ,<<"unique">>
-                                           ,kz_json:from_list(
-                                              [{<<"message">>, <<"email address must be unique">>}
-                                              ,{<<"cause">>, Email}
-                                              ])
-                                           ,Context
-                                           )
+%%------------------------------------------------------------------------------
+%% @doc Validate the data passed with the request using kzd_faxbox:validate
+%% @end
+%%------------------------------------------------------------------------------
+-spec validate_request(kz_term:api_ne_binary(), cb_context:context()) -> cb_context:context().
+validate_request(_FaxboxId, Context) ->
+    ReqJObj = cb_context:req_data(Context),
+    case kzd_faxbox:validate(ReqJObj) of
+        {'true', FaxboxJObj} -> FaxboxJObj;
+        {'validation_errors', ValidationErrors} ->
+            lager:info("validation errors on faxbox"),
+            add_validation_errors(Context, ValidationErrors);
+        {'system_error', Error} ->
+            lager:info("system error validating faxbox: ~p", [Error]),
+            cb_context:add_system_error(Error, Context)
     end.
 
--spec validate_patch(cb_context:context()) -> cb_context:context().
-validate_patch(Context) ->
-    DocId = kz_doc:id(cb_context:doc(Context)),
-    IsValid = case kz_json:get_value(<<"custom_smtp_email_address">>, cb_context:doc(Context)) of
-                  'undefined' -> 'true';
-                  CustomEmail -> is_faxbox_email_global_unique(CustomEmail, DocId)
-              end,
-    case IsValid of
-        'true' ->
-            Context1 = crossbar_doc:load(DocId, Context, ?TYPE_CHECK_OPTION(kzd_fax_box:type())),
-            case cb_context:resp_status(Context1) of
-                'success' ->
-                    PatchJObj = cb_context:req_data(Context),
-                    ConfigsJObj = kz_json:merge_jobjs(PatchJObj, cb_context:doc(Context1)),
-                    cb_context:set_doc(Context, ConfigsJObj);
-                _Status ->
-                    Context1
-            end;
-        'false' ->
-            cb_context:add_validation_error(<<"custom_smtp_email_address">>
-                                           ,<<"unique">>
-                                           ,<<"email address must be unique">>
-                                           ,Context
-                                           )
-    end.
+%%------------------------------------------------------------------------------
+%% @doc Validate the data passed with the patch request the
+%% crossbar_doc:patch_and_validate function
+%% @end
+%%------------------------------------------------------------------------------
+-spec validate_patch_request(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
+validate_patch_request(FaxboxId, Context) ->
+    crossbar_doc:patch_and_validate(FaxboxId, Context, fun validate_request/2).
+
+%%------------------------------------------------------------------------------
+%% @doc Add many validation errors to the current context to be returned in
+%% the response
+%% @end
+%%------------------------------------------------------------------------------
+-spec add_validation_errors(cb_context:context(), kzd_faxbox:validation_errors()) -> cb_context:context().
+add_validation_errors(Context, ValidationErrors) ->
+    lists:foldl(fun add_validation_error/2
+               ,Context
+               ,ValidationErrors
+               ).
+
+%%------------------------------------------------------------------------------
+%% @doc Add a validation error to the current context to be returned in the
+%% response
+%% @end
+%%------------------------------------------------------------------------------
+-spec add_validation_error(kzd_faxbox:validation_error(), cb_context:context()) -> cb_context:context().
+add_validation_error({Path, Reason, Msg}, Context) ->
+    cb_context:add_validation_error(Path, Reason, Msg, Context).
+
 
 %%------------------------------------------------------------------------------
 %% @doc If the HTTP verb is PUT, execute the actual action, usually a db save.
@@ -320,16 +321,6 @@ faxbox_listing(Context) ->
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_view_results(JObj, Acc) ->
     [leak_private_fields(kz_json:get_value(<<"doc">>, JObj)) | Acc].
-
--spec is_faxbox_email_global_unique(kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
-is_faxbox_email_global_unique(Email, FaxBoxId) ->
-    ViewOptions = [{'key', kz_term:to_lower_binary(Email)}],
-    case kz_datamgr:get_results(?KZ_FAXES_DB, <<"faxbox/email_address">>, ViewOptions) of
-        {'ok', []} -> 'true';
-        {'ok', [JObj]} -> kz_doc:id(JObj) =:= FaxBoxId;
-        {'error', 'not_found'} -> 'true';
-        _ -> 'false'
-    end.
 
 -spec save_faxbox_doc(cb_context:context(), 'create' | 'update') -> cb_context:context().
 save_faxbox_doc(Context0, Action) ->

@@ -42,7 +42,7 @@
 -export([notifications_outbound_sms_send_to/1, notifications_outbound_sms_send_to/2, set_notifications_outbound_sms_send_to/2]).
 -export([retries/1, retries/2, set_retries/2]).
 -export([smtp_permission_list/1, smtp_permission_list/2, set_smtp_permission_list/2]).
-
+-export([validate/1]).
 
 -include("kz_documents.hrl").
 
@@ -438,3 +438,73 @@ smtp_permission_list(Doc, Default) ->
 -spec set_smtp_permission_list(doc(), kz_term:ne_binaries()) -> doc().
 set_smtp_permission_list(Doc, SmtpPermissionList) ->
     kz_json:set_value([<<"smtp_permission_list">>], SmtpPermissionList, Doc).
+
+%%------------------------------------------------------------------------------
+%% @doc Validate a requested faxbox can be created
+%%
+%% Returns the updated faxbox doc (with relevant defaults)
+%% or returns the validation error {Path, ErrorType, ErrorMessage}
+%% @end
+%%------------------------------------------------------------------------------
+-type validation_error() :: {kz_json:path(), kz_term:ne_binary(), kz_json:object()}.
+-type validation_errors() :: [validation_error()].
+-spec validate(doc()) ->
+          {'true', doc()} |
+          {'validation_errors', validation_errors()} |
+          {'system_error', atom()}.
+validate(ReqJObj) ->
+    ValidateFuns = [fun validate_email_address/1],
+    try do_validation(ReqJObj, ValidateFuns) of
+        {FaxboxDoc, []} -> {'true', FaxboxDoc};
+        {_FaxboxDoc, ValidationErrors} -> {'validation_errors', ValidationErrors}
+    catch
+        'throw':SystemError -> SystemError
+    end.
+
+-type validate_acc() :: {doc(), validation_errors()}.
+-type validate_fun() :: fun((validate_acc()) -> validate_acc()).
+
+-spec do_validation(doc(), [validate_fun()]) ->
+          {'true', doc()} |
+          {'validation_errors', validation_errors()}.
+do_validation(ReqJObj, ValidateFuns) ->
+    lists:foldl(fun(F, Acc) -> F(Acc) end
+               ,{ReqJObj, []}
+               ,ValidateFuns
+               ).
+
+%%------------------------------------------------------------------------------
+%% @doc If custom_smtp_email_address is provided validate it is globally unique.
+%% @end
+%%------------------------------------------------------------------------------
+-spec validate_email_address(validate_acc()) -> validate_acc().
+validate_email_address({Doc, Errors}) ->
+    Email = custom_smtp_email_address(Doc),
+    IsValid =
+        case Email of
+            'undefined' -> 'true';
+            Email -> is_faxbox_email_global_unique(Email, kz_doc:id(Doc))
+        end,
+    case IsValid of
+        'true' -> {Doc, Errors};
+        'false' ->
+            Msg = kz_json:from_list(
+                    [{<<"message">>, <<"email address must be unique">>}
+                    ,{<<"cause">>, Email}
+                    ]),
+            {Doc, [{[<<"custom_smtp_email_address">>], <<"unique">>, Msg} | Errors]}
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc check if given email exists in the faxes DB
+%% @end
+%%------------------------------------------------------------------------------
+-spec is_faxbox_email_global_unique(kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
+is_faxbox_email_global_unique(Email, FaxBoxId) ->
+    ViewOptions = [{'key', kz_term:to_lower_binary(Email)}],
+    case kz_datamgr:get_results(?KZ_FAXES_DB, <<"faxbox/email_address">>, ViewOptions) of
+        {'ok', []} -> 'true';
+        {'ok', [JObj]} -> kz_doc:id(JObj) =:= FaxBoxId;
+        {'error', 'not_found'} -> 'true';
+        _ -> 'false'
+    end.
