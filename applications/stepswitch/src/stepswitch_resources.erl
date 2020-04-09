@@ -985,34 +985,36 @@ resources_from_jobjs([JObj|JObjs], Resources) ->
     end.
 
 -spec create_resource(kzd_resources:doc(), resources()) -> resources().
-create_resource(JObj, Resources) ->
-    case kzd_resources:classifiers(JObj) of
-        'undefined' -> [resource_from_jobj(JObj) | Resources];
+create_resource(ResourceJObj, Resources) ->
+    case kzd_resources:classifiers(ResourceJObj) of
+        'undefined' -> [resource_from_jobj(ResourceJObj) | Resources];
         ResourceClassifiers ->
             AvailableClassifiers = kz_json:to_proplist(knm_converters:available_classifiers()),
             create_resource(kz_json:to_proplist(ResourceClassifiers)
                            ,AvailableClassifiers
-                           ,JObj
+                           ,ResourceJObj
                            ,Resources
                            )
     end.
 
 -spec create_resource(kz_term:proplist(), kz_term:proplist(), kz_json:object(), resources()) -> resources().
-create_resource([], _ConfigClassifiers, _Resource, Resources) -> Resources;
-create_resource([{Classifier, ClassifierJObj}|Classifiers], ConfigClassifiers, Resource, Resources) ->
-    case props:get_value(Classifier, ConfigClassifiers) of
+create_resource([], _ConfigClassifiers, _ResourceJObj, Resources) -> Resources;
+create_resource([{ResourceClassifier, ResourceClassifierJObj}|ResourceClassifiers]
+               ,ConfigClassifiers, ResourceJObj, Resources
+               ) ->
+    case props:get_value(ResourceClassifier, ConfigClassifiers) of
         'undefined' ->
-            create_resource(Classifiers, ConfigClassifiers, Resource, Resources);
+            create_resource(ResourceClassifiers, ConfigClassifiers, ResourceJObj, Resources);
         ConfigClassifier ->
             JObj =
-                create_classifier_resource(Resource
-                                          ,ClassifierJObj
-                                          ,Classifier
+                create_classifier_resource(ResourceJObj
+                                          ,ResourceClassifierJObj
+                                          ,ResourceClassifier
                                           ,ConfigClassifier
                                           ),
-            create_resource(Classifiers
+            create_resource(ResourceClassifiers
                            ,ConfigClassifiers
-                           ,Resource
+                           ,ResourceJObj
                            ,[resource_from_jobj(JObj)
                              | Resources
                             ]

@@ -32,12 +32,13 @@ Key | Description | Type | Default | Required | Support Level
 `caller_id_options` | Caller ID options | `object()` |   | `false` |  
 `cid_rules.[]` |   | `string()` |   | `false` |  
 `cid_rules` | Regexps to match against caller ID | `array(string())` |   | `false` |  
-`classifiers.emergency` | Determines if the resource represents emergency services | `boolean()` | `false` | `false` |  
-`classifiers.enabled` | Determines if the resource is currently enabled | `boolean()` | `true` | `false` |  
-`classifiers.prefix` | A string to prepend to the dialed number or capture group of the matching rule | `string(0..64)` |   | `false` |  
-`classifiers.regex` | regexp to match against dialed number | `string()` |   | `false` |  
-`classifiers.suffix` | A string to append to the dialed number or capture group of the matching rule | `string(0..64)` |   | `false` |  
-`classifiers.weight_cost` | A value between 0 and 100 that determines the order of resources when multiple can be used | `integer()` | `50` | `false` |  
+`classifiers./.+/.emergency` | Determines if the resource represents emergency services | `boolean()` | `false` | `false` |  
+`classifiers./.+/.enabled` | Determines if the resource is currently enabled | `boolean()` | `true` | `false` |  
+`classifiers./.+/.prefix` | A string to prepend to the dialed number or capture group of the matching rule | `string(0..64)` |   | `false` |  
+`classifiers./.+/.regex` | regexp to match against dialed number | `string()` |   | `false` |  
+`classifiers./.+/.suffix` | A string to append to the dialed number or capture group of the matching rule | `string(0..64)` |   | `false` |  
+`classifiers./.+/.weight_cost` | A value between 0 and 100 that determines the order of resources when multiple can be used | `integer()` | `50` | `false` |  
+`classifiers./.+/` |   | `object()` |   | `false` |  
 `classifiers` | Resource classifiers to use as rules when matching against dialed numbers | `object()` |   | `false` |  
 `emergency` | Determines if the resource represents emergency services | `boolean()` | `false` | `false` |  
 `enabled` | Determines if the resource is currently enabled | `boolean()` | `true` | `false` |  
