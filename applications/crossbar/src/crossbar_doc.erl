@@ -690,13 +690,7 @@ save_attachment(DocId, Name, Contents, Context, Options) ->
     end.
 
 handle_saved_attachment(Context, DocId) ->
-    {'ok', Rev1} = kz_datamgr:lookup_doc_rev(cb_context:account_db(Context), DocId),
-    cb_context:setters(Context
-                      ,[{fun cb_context:set_doc/2, kz_json:new()}
-                       ,{fun cb_context:set_resp_status/2, 'success'}
-                       ,{fun cb_context:set_resp_data/2, kz_json:new()}
-                       ,{fun cb_context:set_resp_etag/2, rev_to_etag(Rev1)}
-                       ]).
+    load(DocId, Context).
 
 -spec maybe_delete_doc(cb_context:context(), kz_term:ne_binary()) ->
           {'ok', _} |

@@ -197,7 +197,7 @@ make_request([Code|_]=Codes, HTTP, URL, RequestHeaders) when is_integer(Code) ->
 make_request(#{'response_codes' := _}=Expectation, HTTP, URL, RequestHeaders) ->
     make_request([Expectation], HTTP, URL, RequestHeaders);
 make_request([#{}|_]=Expectations, HTTP, URL, RequestHeaders) ->
-    ?INFO("~p(~p, ~p)", [HTTP, URL, RequestHeaders]),
+    lager:info("~p(~p, ~p)", [HTTP, URL, RequestHeaders]),
 
     handle_response(Expectations, HTTP(URL, RequestHeaders)).
 
@@ -210,7 +210,7 @@ make_request([Code|_]=Codes, HTTP, URL, RequestHeaders, RequestBody) when is_int
 make_request(#{'response_codes' := _}=Expectation, HTTP, URL, RequestHeaders, RequestBody) ->
     make_request([Expectation], HTTP, URL, RequestHeaders, RequestBody);
 make_request([#{}|_]=Expectations, HTTP, URL, RequestHeaders, RequestBody) ->
-    ?INFO("~p: ~s", [HTTP, URL]),
+    lager:info("~p: ~s", [HTTP, URL]),
     ?DEBUG("headers: ~p", [RequestHeaders]),
     ?DEBUG("body: ~s", [RequestBody]),
     handle_response(Expectations, HTTP(URL, RequestHeaders, iolist_to_binary(RequestBody))).
@@ -246,22 +246,25 @@ handle_response(_Expectations, {'error', E}) ->
 
 -spec expectations_met(expectations(), response_code(), response_headers()) -> boolean().
 expectations_met(Expectations, RespCode, RespHeaders) ->
-    ?INFO("checking expectations against ~p: ~p", [RespCode, RespHeaders]),
+    lager:info("checking expectations against ~p: ~p", [RespCode, RespHeaders]),
     lists:any(fun(E) -> expectation_met(E, RespCode, RespHeaders) end
              ,Expectations
              ).
 
 -spec expectation_met(expectation(), response_code(), response_headers()) -> boolean().
 expectation_met(#{}=Expectation, RespCode, RespHeaders) ->
-    response_code_matches(Expectation, RespCode)
-        andalso response_headers_match(Expectation, RespHeaders).
+    CodeMatches = response_code_matches(Expectation, RespCode),
+    HeadersMatch = response_headers_match(Expectation, RespHeaders),
+    lager:info("code: ~p headers: ~p", [CodeMatches, HeadersMatch]),
+    CodeMatches
+        andalso HeadersMatch.
 
 -spec response_code_matches(expectation(), response_code()) -> boolean().
 response_code_matches(#{'response_codes' := ExpectedCodes}, ResponseCode) ->
     case lists:member(ResponseCode, ExpectedCodes) of
         'true' -> 'true';
         'false' ->
-            ?INFO("failed expectation: code ~w but expected ~w"
+            lager:info("failed expectation: code ~w but expected ~w"
                  ,[ResponseCode, ExpectedCodes]
                  ),
             'false'
@@ -347,4 +350,4 @@ init_system(AppsToStart, ModulesToStart) ->
             Mod <- ModulesToStart
         ],
 
-    ?INFO("INIT FINISHED").
+    lager:info("INIT FINISHED").
