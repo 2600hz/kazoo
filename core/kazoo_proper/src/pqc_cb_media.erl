@@ -93,7 +93,7 @@ update(API, AccountId, MediaJObj) ->
     URL = media_url(AccountId, kz_doc:id(MediaJObj)),
 
     Expectations = [#{response_codes => [200]
-                     ,response_headers => [{<<"content-type">>, "application/json"}]
+                     ,response_headers => [{"content-type", "application/json"}]
                      }
                    ],
 
