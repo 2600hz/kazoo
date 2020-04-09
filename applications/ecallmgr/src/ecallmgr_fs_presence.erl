@@ -127,41 +127,41 @@ code_change(_OldVsn, State, _Extra) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec init_props(kz_term:proplist(), kz_term:proplist()) -> kz_term:proplist().
-init_props(Props, Options) ->
-    case props:get_is_true(<<"Publish-Channel-State">>, Props) of
+-spec init_props(kzd_freeswitch:data(), kz_term:proplist()) -> kz_term:proplist().
+init_props(FSProps, Options) ->
+    case props:get_is_true(<<"Publish-Channel-State">>, FSProps) of
         'undefined' ->
             case props:is_false(<<"Publish-Channel-State">>, Options, 'false') of
-                'true' -> props:set_value(<<"Publish-Channel-State">>, 'false', Props);
-                _ -> Props
+                'true' -> props:set_value(<<"Publish-Channel-State">>, 'false', FSProps);
+                _ -> FSProps
             end;
-        _Value -> Props
+        _Value -> FSProps
     end.
 
--spec handle_presence_event(kz_term:ne_binary(), kz_term:api_binary(), kz_term:proplist(), atom(), kz_term:proplist()) -> any().
+-spec handle_presence_event(kz_term:ne_binary(), kz_term:api_binary(), kzd_freeswitch:data(), atom(), kz_term:proplist()) -> any().
 handle_presence_event(BindingEvent, UUID, FSProps, Node, Options) ->
     kz_util:put_callid(UUID),
-    Props = init_props(FSProps, Options),
-    EventName = props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)),
-    process_specific_event(BindingEvent, EventName, UUID, Props, Node).
+    InitProps = init_props(FSProps, Options),
+    EventName = props:get_value(<<"Event-Subclass">>, InitProps, kzd_freeswitch:event_name(InitProps)),
+    process_specific_event(BindingEvent, EventName, UUID, InitProps, Node).
 
--spec process_specific_event(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary(), kz_term:proplist(), atom()) -> any().
-process_specific_event(Event, Event, UUID, Props, Node) ->
-    maybe_build_presence_event(Node, UUID, Props).
+-spec process_specific_event(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary(), kzd_freeswitch:data(), atom()) -> any().
+process_specific_event(Event, Event, UUID, FSProps, Node) ->
+    maybe_build_presence_event(Node, UUID, FSProps).
 
--spec maybe_build_presence_event(atom(), kz_term:api_binary(), kz_term:proplist()) -> any().
-maybe_build_presence_event(Node, UUID, Props) ->
+-spec maybe_build_presence_event(atom(), kz_term:api_binary(), kzd_freeswitch:data()) -> any().
+maybe_build_presence_event(Node, UUID, FSProps) ->
     Routines = [fun check_proto/3
                ,fun check_publish_state/3
                ],
-    case lists:all(fun(F) -> F(Node, UUID, Props) end, Routines) of
-        'true' -> build_presence_event(Node, UUID, Props);
+    case lists:all(fun(F) -> F(Node, UUID, FSProps) end, Routines) of
+        'true' -> build_presence_event(Node, UUID, FSProps);
         'false' -> 'ok'
     end.
 
--spec check_proto(atom(), kz_term:api_binary(), kz_term:proplist()) -> boolean().
-check_proto(_Node, _UUID, Props) ->
-    Proto = props:get_value(<<"proto">>, Props),
+-spec check_proto(atom(), kz_term:api_binary(), kzd_freeswitch:data()) -> boolean().
+check_proto(_Node, _UUID, FSProps) ->
+    Proto = props:get_value(<<"proto">>, FSProps),
     check_proto(Proto).
 
 -spec check_proto(kz_term:api_binary()) -> boolean().
@@ -170,68 +170,85 @@ check_proto(_Proto) ->
     lager:debug("presence proto ~p not handled", [_Proto]),
     'false'.
 
--spec check_publish_state(atom(), kz_term:api_binary(), kz_term:proplist()) -> boolean().
-check_publish_state(_Node, _UUID, Props) ->
-    props:is_true(<<"Force-Publish-Event-State">>, Props, 'false')
-        orelse props:is_true(<<"Publish-Channel-State">>, Props, 'true').
+-spec check_publish_state(atom(), kz_term:api_binary(), kzd_freeswitch:data()) -> boolean().
+check_publish_state(_Node, _UUID, FSProps) ->
+    props:is_true(<<"Force-Publish-Event-State">>, FSProps, 'false')
+        orelse props:is_true(<<"Publish-Channel-State">>, FSProps, 'true').
 
--spec realm(kz_term:proplist()) -> kz_term:ne_binary().
-realm(Props) ->
+-spec realm(kzd_freeswitch:data()) -> kz_term:ne_binary().
+realm(FSProps) ->
     props:get_first_defined([?GET_CCV(<<"Realm">>)
                             ,<<"variable_sip_invite_domain">>
                             ,<<"variable_sip_auth_realm">>
                             ,<<"variable_sip_to_host">>
                             ,<<"variable_domain_name">>
-                            ], Props, ?DEFAULT_REALM).
+                            ]
+                           ,FSProps
+                           ,?DEFAULT_REALM
+                           ).
 
--spec get_user_realm(kz_term:proplist()) -> {kz_term:ne_binary(), kz_term:ne_binary()}.
-get_user_realm(Props) ->
-    case binary:split(from(Props), <<"@">>, ['global']) of
+-spec get_user_realm(kzd_freeswitch:data()) -> {kz_term:ne_binary(), kz_term:ne_binary()}.
+get_user_realm(FSProps) ->
+    case binary:split(from(FSProps), <<"@">>, ['global']) of
         [Username, Realm | _] -> {Username, Realm};
-        [From] -> {From, realm(Props)}
+        [From] -> {From, realm(FSProps)}
     end.
 
--spec from(kz_term:proplist()) -> kz_term:ne_binary().
-from(Props) ->
+-spec from(kzd_freeswitch:data()) -> kz_term:ne_binary().
+from(FSProps) ->
     props:get_first_defined([<<"from">>
                             ,<<"variable_presence_id">>
                             ,<<"Channel-Presence-ID">>
-                            ], Props).
+                            ]
+                           ,FSProps
+                           ).
 
--spec to_user(kz_term:proplist()) -> kz_term:ne_binary().
-to_user(Props) ->
-    to_user(direction(Props), Props).
+-spec presence_id(kzd_freeswitch:data(), kz_term:ne_binary()) -> kz_term:ne_binary().
+presence_id(FSProps, Realm) ->
+    [ID | _] = binary:split(kzd_freeswitch:presence_id(FSProps), <<"@">>),
+    <<ID/binary, "@", Realm/binary>>.
 
-to_user(<<"initiator">>, Props) ->
+-spec to_user(kzd_freeswitch:data()) -> kz_term:ne_binary().
+to_user(FSProps) ->
+    to_user(direction(FSProps), FSProps).
+
+to_user(<<"initiator">>, FSProps) ->
     props:get_first_defined([<<"Caller-Destination-Number">>
                             ,<<"variable_sip_to_user">>
-                            ], Props, <<"unknown">>);
-to_user(<<"recipient">>, Props) ->
+                            ]
+                           ,FSProps
+                           ,<<"unknown">>
+                           );
+to_user(<<"recipient">>, FSProps) ->
     props:get_first_defined([<<"Caller-Caller-ID-Number">>
                             ,<<"variable_sip_from_user">>
-                            ], Props, <<"unknown">>).
+                            ]
+                           ,FSProps
+                           ,<<"unknown">>
+                           ).
 
 -spec expires(kz_term:ne_binary()) -> integer().
 expires(<<"early">>) -> 0;
 expires(<<"confirmed">>) -> 0;
 expires(<<"terminated">>) -> 20.
 
--spec build_presence_event(atom(), kz_term:api_binary(), kz_term:proplist()) -> any().
-build_presence_event(_Node, UUID, Props) ->
-    ToTag = kzd_freeswitch:to_tag(Props),
-    FromTag = kzd_freeswitch:from_tag(Props),
+-spec build_presence_event(atom(), kz_term:api_binary(), kzd_freeswitch:data()) -> any().
+build_presence_event(_Node, UUID, FSProps) ->
+    ToTag = kzd_freeswitch:to_tag(FSProps),
+    FromTag = kzd_freeswitch:from_tag(FSProps),
 
-    {FromUser, Realm} = get_user_realm(Props),
-    PresenceId = <<FromUser/binary, "@", Realm/binary>>,
+    {FromUser, Realm} = get_user_realm(FSProps),
+    PresenceId = presence_id(FSProps, Realm),
+
     PresenceURI =  <<"sip:", PresenceId/binary>>,
 
-    ToUser =  to_user(Props),
+    ToUser =  to_user(FSProps),
     To =  <<ToUser/binary, "@", Realm/binary>>,
     ToURI =  <<"sip:", To/binary>>,
 
-    State = presence_status(Props),
+    State = presence_status(FSProps),
     Expires = expires(State),
-    SwitchURI = props:get_value(<<"Switch-URI">>, Props),
+    SwitchURI = kzd_freeswitch:switch_uri(FSProps),
 
     Payload = props:filter_undefined(
                 [{<<"Presence-ID">>, PresenceId}
@@ -247,7 +264,7 @@ build_presence_event(_Node, UUID, Props) ->
                 ,{<<"To-Tag">>, ToTag}
                 ,{<<"To-URI">>, PresenceURI}
 
-                ,{<<"Direction">>, direction(Props)}
+                ,{<<"Direction">>, direction(FSProps)}
                 ,{<<"State">>, State}
                 ,{<<"Call-ID">>, UUID}
                 ,{<<"Switch-URI">>, SwitchURI}
@@ -263,26 +280,26 @@ maybe_delay(<<"terminated">>) ->
     timer:sleep(?MILLISECONDS_IN_SECOND);
 maybe_delay(_) -> 'ok'.
 
--spec direction(kz_term:proplist()) -> kz_term:ne_binary().
-direction(Props) ->
-    case props:get_value(<<"Presence-Call-Direction">>, Props) of
+-spec direction(kzd_freeswitch:data()) -> kz_term:ne_binary().
+direction(FSProps) ->
+    case kzd_freeswitch:presence_direction(FSProps) of
         <<"inbound">> -> <<"initiator">>;
         <<"outbound">> -> <<"recipient">>
     end.
 
--spec status(kz_term:proplist()) -> kz_term:ne_binary().
-status(Props) ->
-    kz_term:to_lower_binary(props:get_binary_value(<<"status">>, Props)).
+-spec status(kzd_freeswitch:data()) -> kz_term:ne_binary().
+status(FSProps) ->
+    kz_term:to_lower_binary(props:get_binary_value(<<"status">>, FSProps)).
 
--spec answer_state(kz_term:proplist()) -> kz_term:ne_binary().
-answer_state(Props) ->
-    kz_term:to_lower_binary(props:get_value(<<"Answer-State">>, Props)).
+-spec answer_state(kzd_freeswitch:data()) -> kz_term:ne_binary().
+answer_state(FSProps) ->
+    kz_term:to_lower_binary(props:get_value(<<"Answer-State">>, FSProps)).
 
--spec presence_status(kz_term:proplist()) -> kz_term:ne_binary().
-presence_status(Props) ->
-    Status = status(Props),
-    AnswerState = answer_state(Props),
-    Direction = direction(Props),
+-spec presence_status(kzd_freeswitch:data()) -> kz_term:ne_binary().
+presence_status(FSProps) ->
+    Status = status(FSProps),
+    AnswerState = answer_state(FSProps),
+    Direction = direction(FSProps),
     presence_status(Direction, Status, AnswerState).
 
 -spec presence_status(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
