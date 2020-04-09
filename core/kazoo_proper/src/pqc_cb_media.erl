@@ -65,8 +65,8 @@ fetch(API, AccountId, MediaId) ->
 -spec fetch(pqc_cb_api:state(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> pqc_cb_api:response().
 fetch(API, AccountId, MediaId, AcceptType) ->
     Expectations = [#{response_codes => [200]
-                                ,response_headers => [{"content-type", kz_term:to_list(AcceptType)}]
-                                }],
+                     ,response_headers => [{"content-type", kz_term:to_list(AcceptType)}]
+                     }],
 
     pqc_cb_api:make_request(Expectations
                            ,fun kz_http:get/2
@@ -127,8 +127,8 @@ update_binary(API, AccountId, MediaId, Data) ->
     URL = media_bin_url(AccountId, MediaId),
 
     Expectations = [#{response_codes =>[200]
-                                ,response_headers => [{"content-type", "application/json"}]
-                                }
+                     ,response_headers => [{"content-type", "application/json"}]
+                     }
                    ],
 
     pqc_cb_api:make_request(Expectations
@@ -143,8 +143,8 @@ patch(API, AccountId, MediaId, PatchJObj) ->
     URL = media_url(AccountId, MediaId),
 
     Expectations = [#{response_codes =>[200]
-                                ,response_headers => [{"content-type", "application/json"}]
-                                }
+                     ,response_headers => [{"content-type", "application/json"}]
+                     }
                    ],
 
     Envelope = pqc_cb_api:create_envelope(PatchJObj),

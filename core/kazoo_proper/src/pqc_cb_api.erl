@@ -265,8 +265,8 @@ response_code_matches(#{'response_codes' := ExpectedCodes}, ResponseCode) ->
         'true' -> 'true';
         'false' ->
             lager:info("failed expectation: code ~w but expected ~w"
-                 ,[ResponseCode, ExpectedCodes]
-                 ),
+                      ,[ResponseCode, ExpectedCodes]
+                      ),
             'false'
     end;
 response_code_matches(_Expectation, _Code) -> 'true'.
