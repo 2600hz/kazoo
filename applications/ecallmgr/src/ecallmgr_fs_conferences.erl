@@ -442,7 +442,7 @@ conference_from_props(Props, Node) ->
 
 -spec conference_from_props(kz_term:proplist(), atom(), conference()) -> conference().
 conference_from_props(Props, Node, Conference) ->
-    CtrlNode = kz_term:to_atom(kzd_freeswitch:ccv(Props, <<"Ecallmgr-Node">>), 'true'),
+    CtrlNode = conference_control_node(Node, Props),
     AccountId = find_account_id(Props),
 
     Conference#conference{node = Node
@@ -458,6 +458,19 @@ conference_from_props(Props, Node, Conference) ->
                          ,origin_node = CtrlNode
                          ,control_node = CtrlNode
                          }.
+
+conference_control_node(Node, Props) ->
+    CtrlNode = kz_term:to_atom(kzd_freeswitch:ccv(Props, <<"Ecallmgr-Node">>), 'true'),
+    conference_control_node(Node, Props, CtrlNode).
+
+conference_control_node(Node, Props, undefined) ->
+    UUID = kzd_freeswitch:call_id(Props),
+    CtrlNode = kz_nodes:whapp_oldest_node(ecallmgr),
+    ToSet = [{<<"Ecallmgr-Node">>, kz_term:to_binary(CtrlNode)}],
+    ecallmgr_fs_command:bg_set(Node, UUID, ToSet),
+    CtrlNode;
+conference_control_node(_Node, _Props, Value) ->
+    Value.
 
 -spec find_account_id(kzd_freeswitch:doc()) -> kz_term:api_ne_binary().
 find_account_id(Props) ->
