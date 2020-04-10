@@ -532,12 +532,12 @@ save_attachment(Context, Filename, FileJObj) ->
     BoxId = kz_doc:id(JObj),
     Contents = kz_json:get_ne_binary_value(<<"contents">>, FileJObj),
     CT = kz_json:get_ne_binary_value([<<"headers">>, <<"content_type">>], FileJObj),
-    Opts = [{'content_type', CT}
-           ,{'rev', kz_doc:revision(JObj)}
-            | ?TYPE_CHECK_OPTION(<<"mailbox_message">>)
-           ],
+    Options = [{'content_type', CT}
+              ,{'rev', kz_doc:revision(JObj)}
+              | ?TYPE_CHECK_OPTION(<<"mailbox_message">>)
+              ],
     AttName = cb_modules_util:attachment_name(Filename, CT),
-    C1 = crossbar_doc:save_attachment(BoxId, AttName, Contents, Context, Opts),
+    C1 = crossbar_doc:save_attachment(BoxId, AttName, Contents, Context, Options),
     case cb_context:resp_status(C1) of
         'success' ->
             C2 = crossbar_util:response(kzd_box_message:metadata(JObj), C1),
