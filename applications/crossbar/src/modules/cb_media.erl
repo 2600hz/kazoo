@@ -883,14 +883,14 @@ update_media_binary(Context, MediaId, [{Filename, FileObj}|Files]) ->
     Contents = kz_json:get_value(<<"contents">>, FileObj),
     CT = kz_json:get_value([<<"headers">>, <<"content_type">>], FileObj),
     lager:debug("file content type: ~s", [CT]),
-    Opts = [{'content_type', CT} | ?TYPE_CHECK_OPTION(kzd_media:type())],
+    Options = [{'content_type', CT} | ?TYPE_CHECK_OPTION(kzd_media:type())],
 
     AttachmentName = cb_modules_util:attachment_name(Filename, CT),
     Context1 = crossbar_doc:save_attachment(MediaId
                                            ,AttachmentName
                                            ,Contents
                                            ,Context
-                                           ,Opts
+                                           ,Options
                                            ),
     case cb_context:resp_status(Context1) of
         'success' -> update_media_binary(Context1, MediaId, Files);

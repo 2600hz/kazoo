@@ -681,22 +681,17 @@ save_attachment(DocId, Name, Contents, Context, Options) ->
                        ,[AName, DocId, cb_context:account_db(Context)]
                        ),
             lager:debug("attachment params: ~p", [_Params]),
-            handle_saved_attachment(Context, DocId);
+            handle_saved_attachment(DocId, Context);
         {'ok', _Res} ->
             lager:debug("saved attachment ~s to doc ~s to db ~s"
                        ,[AName, DocId, cb_context:account_db(Context)]
                        ),
-            handle_saved_attachment(Context, DocId)
+            handle_saved_attachment(DocId, Context)
     end.
 
-handle_saved_attachment(Context, DocId) ->
-    {'ok', Rev1} = kz_datamgr:lookup_doc_rev(cb_context:account_db(Context), DocId),
-    cb_context:setters(Context
-                      ,[{fun cb_context:set_doc/2, kz_json:new()}
-                       ,{fun cb_context:set_resp_status/2, 'success'}
-                       ,{fun cb_context:set_resp_data/2, kz_json:new()}
-                       ,{fun cb_context:set_resp_etag/2, rev_to_etag(Rev1)}
-                       ]).
+-spec handle_saved_attachment(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
+handle_saved_attachment(DocId, Context) ->
+    load(DocId, Context, ?TYPE_CHECK_OPTION(<<"any">>)).
 
 -spec maybe_delete_doc(cb_context:context(), kz_term:ne_binary()) ->
           {'ok', _} |
