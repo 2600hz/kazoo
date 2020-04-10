@@ -534,7 +534,7 @@ save_attachment(Context, Filename, FileJObj) ->
     CT = kz_json:get_ne_binary_value([<<"headers">>, <<"content_type">>], FileJObj),
     Options = [{'content_type', CT}
               ,{'rev', kz_doc:revision(JObj)}
-              | ?TYPE_CHECK_OPTION(<<"mailbox_message">>)
+               | ?TYPE_CHECK_OPTION(<<"mailbox_message">>)
               ],
     AttName = cb_modules_util:attachment_name(Filename, CT),
     C1 = crossbar_doc:save_attachment(BoxId, AttName, Contents, Context, Options),
