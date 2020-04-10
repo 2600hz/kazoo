@@ -1,0 +1,47 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.dialplan.dialplan",
+    "description": "AMQP API for dialplan.dialplan",
+    "properties": {
+        "Call-ID": {
+            "type": "string"
+        },
+        "Channel-Call-State": {
+            "type": "string"
+        },
+        "Channel-State": {
+            "type": "string"
+        },
+        "Custom-Channel-Vars": {
+            "type": "object"
+        },
+        "Dialplan-Error": {
+            "type": "string"
+        },
+        "Error-Message": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "error"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "dialplan"
+            ],
+            "type": "string"
+        },
+        "Request": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Channel-Call-State",
+        "Channel-State",
+        "Dialplan-Error",
+        "Error-Message"
+    ],
+    "type": "object"
+}

@@ -13,70 +13,193 @@
 
 -compile({'no_auto_import', [error/1]}).
 
+-export([api_definitions/0, api_definition/1]).
+
 -export([v/1]).
 
 -export([optional_bridge_req_headers/0]).
 -export([optional_bridge_req_endpoint_headers/0]).
 
--export([bridge/1, bridge_v/1, bridge_endpoint/1, bridge_endpoint_v/1
-        ,unbridge/1, unbridge_v/1
-        ,page/1, page_v/1
-        ,store/1, store_v/1, store_amqp_resp/1, store_amqp_resp_v/1
-        ,store_http_resp/1, store_http_resp_v/1
-        ,noop/1, noop_v/1
-        ,fetch/1, fetch_v/1
-        ,respond/1, respond_v/1
-        ,redirect/1, redirect_v/1
-        ,progress/1, progress_v/1
-        ,ring/1, ring_v/1
-        ,receive_fax/1, receive_fax_v/1
-        ,store_fax/1, store_fax_v/1
-        ,execute_extension/1, execute_extension_v/1
-        ,break/1, break_v/1
-        ,play/1, play_v/1, playstop/1, playstop_v/1
-        ,playseek/1, playseek_v/1
-        ,tts/1, tts_v/1
-        ,record/1, record_v/1
-        ,record_call/1, record_call_v/1
-        ,answer/1, answer_v/1
-        ,echo/1, echo_v/1
-        ,privacy/1, privacy_v/1
-        ,hold/1, hold_v/1
-        ,soft_hold/1, soft_hold_v/1
-        ,park/1, park_v/1
-        ,play_and_collect_digits/1, play_and_collect_digits_v/1
-        ,call_pickup/1, call_pickup_v/1
-        ,connect_leg/1, connect_leg_v/1
-        ,eavesdrop/1, eavesdrop_v/1
-        ,hangup/1, hangup_v/1
-        ,say/1, say_v/1
-        ,sleep/1, sleep_v/1
-        ,tone_detect/1, tone_detect_v/1
-        ,set/1, set_v/1
-        ,set_terminators/1, set_terminators_v/1
-        ,send_dtmf/1, send_dtmf_v/1
-        ,recv_dtmf/1, recv_dtmf_v/1
-        ,tones/1, tones_req_tone/1, tones_v/1, tones_req_tone_v/1
-        ,tones_req_tone_headers/1
-        ,conference/1, conference_v/1
-        ,originate_ready/1, originate_ready_v/1
-        ,originate_execute/1, originate_execute_v/1
-        ,fax_detection/1, fax_detection_v/1
-        ,store_vm/1, store_vm_v/1
-        ,b_leg_events_v/1
-        ,audio_level/1, audio_level_v/1
-        ,transfer/1, transfer_v/1
-        ,media_macro/1, media_macro_v/1
-        ,play_macro/1, play_macro_v/1
-        ,sound_touch/1, sound_touch_v/1
-        ,hold_control/1, hold_control_v/1
-        ,event_actions/1, event_actions_v/1
-        ,continue_on_fail_v/1
+-export([bridge/1
+        ,bridge_v/1
+        ]).
+-export([bridge_endpoint/1
+        ,bridge_endpoint_v/1
+        ]).
+-export([unbridge/1
+        ,unbridge_v/1
+        ]).
+-export([page/1
+        ,page_v/1
+        ]).
+-export([store/1
+        ,store_v/1
+        ]).
+-export([store_amqp_resp/1
+        ,store_amqp_resp_v/1
+        ]).
+-export([store_http_resp/1
+        ,store_http_resp_v/1
+        ]).
+-export([noop/1
+        ,noop_v/1
+        ]).
+-export([fetch/1
+        ,fetch_v/1
+        ]).
+-export([respond/1
+        ,respond_v/1
+        ]).
+-export([redirect/1
+        ,redirect_v/1
+        ]).
+-export([progress/1
+        ,progress_v/1
+        ]).
+-export([ring/1
+        ,ring_v/1
+        ]).
+-export([receive_fax/1
+        ,receive_fax_v/1
+        ]).
+-export([store_fax/1
+        ,store_fax_v/1
+        ]).
+-export([execute_extension/1
+        ,execute_extension_v/1
+        ]).
+-export([break/1
+        ,break_v/1
+        ]).
+-export([play/1
+        ,play_v/1
+        ]).
+-export([playstop/1
+        ,playstop_v/1
+        ]).
+-export([playseek/1
+        ,playseek_v/1
+        ]).
+-export([tts/1
+        ,tts_v/1
+        ]).
+-export([record/1
+        ,record_v/1
+        ]).
+-export([record_call/1
+        ,record_call_v/1
+        ]).
+-export([answer/1
+        ,answer_v/1
+        ]).
+-export([echo/1
+        ,echo_v/1
+        ]).
+-export([privacy/1
+        ,privacy_v/1
+        ]).
+-export([hold/1
+        ,hold_v/1
+        ]).
+-export([soft_hold/1
+        ,soft_hold_v/1
+        ]).
+-export([park/1
+        ,park_v/1
+        ]).
+-export([play_and_collect_digits/1
+        ,play_and_collect_digits_v/1
+        ]).
+-export([call_pickup/1
+        ,call_pickup_v/1
+        ]).
+-export([connect_leg/1
+        ,connect_leg_v/1
+        ]).
+-export([eavesdrop/1
+        ,eavesdrop_v/1
+        ]).
+-export([hangup/1
+        ,hangup_v/1
+        ]).
+-export([say/1
+        ,say_v/1
+        ]).
+-export([sleep/1
+        ,sleep_v/1
+        ]).
+-export([tone_detect/1
+        ,tone_detect_v/1
+        ]).
+-export([set/1
+        ,set_v/1
+        ]).
+-export([set_terminators/1
+        ,set_terminators_v/1
+        ]).
+-export([send_dtmf/1
+        ,send_dtmf_v/1
+        ]).
+-export([recv_dtmf/1
+        ,recv_dtmf_v/1
+        ]).
+-export([tones/1
+        ,tones_v/1
+        ]).
+-export([tones_req_tone/1
+        ,tones_req_tone_v/1
+        ]).
+-export([conference/1
+        ,conference_v/1
+        ]).
+-export([originate_ready/1
+        ,originate_ready_v/1
+        ,publish_originate_ready/2
+        ,publish_originate_ready/3
+        ]).
+-export([originate_execute/1
+        ,originate_execute_v/1
+        ,publish_originate_execute/2
+        ,publish_originate_execute/3
+        ]).
+-export([fax_detection/1
+        ,fax_detection_v/1
+        ]).
+-export([store_vm/1
+        ,store_vm_v/1
+        ]).
+-export([audio_level/1
+        ,audio_level_v/1
+        ]).
+-export([transfer/1
+        ,transfer_v/1
+        ]).
+-export([media_macro/1
+        ,media_macro_v/1
+        ]).
+-export([play_macro/1
+        ,play_macro_v/1
+        ]).
+-export([sound_touch/1
+        ,sound_touch_v/1
+        ]).
+-export([hold_control/1
+        ,hold_control_v/1
+        ]).
+-export([event_actions/1
+        ,event_actions_v/1
+        ]).
+-export([queue/1
+        ,queue_v/1
+        ]).
+-export([error/1
+        ,error_v/1
+        ,publish_error/2
+        ,publish_error/3
         ]).
 
--export([queue/1, queue_v/1
-        ,error/1, error_v/1
-        ,build_command/1, build_command/2
+-export([build_command/1
+        ,build_command/2
         ]).
 
 %% API Helpers
@@ -94,22 +217,2176 @@
 -export([declare_exchanges/0]).
 
 -export([publish_action/2, publish_action/3
-        ,publish_error/2, publish_error/3
         ,publish_command/2, publish_command/3
-        ,publish_originate_ready/2, publish_originate_ready/3
-        ,publish_originate_execute/2, publish_originate_execute/3
+        ]).
+
+-export([tones_req_tone_headers/1
+        ,b_leg_events_v/1
+        ,continue_on_fail_v/1
         ]).
 
 -include("kz_amqp_util.hrl").
 -include("kapi_dialplan.hrl").
 
+%%------------------------------------------------------------------------------
+%% @doc Get all API definitions of this module.
+%% @end
+%%------------------------------------------------------------------------------
+-spec api_definitions() -> kapi_definition:apis().
+api_definitions() ->
+    [bridge_definition()
+    ,bridge_endpoint_definition()
+    ,unbridge_definition()
+    ,page_definition()
+    ,store_definition()
+    ,store_amqp_resp_definition()
+    ,store_http_resp_definition()
+    ,noop_definition()
+    ,fetch_definition()
+    ,respond_definition()
+    ,redirect_definition()
+    ,progress_definition()
+    ,ring_definition()
+    ,receive_fax_definition()
+    ,store_fax_definition()
+    ,execute_extension_definition()
+    ,break_definition()
+    ,play_definition()
+    ,playstop_definition()
+    ,playseek_definition()
+    ,tts_definition()
+    ,record_definition()
+    ,record_call_definition()
+    ,answer_definition()
+    ,echo_definition()
+    ,privacy_definition()
+    ,hold_definition()
+    ,soft_hold_definition()
+    ,park_definition()
+    ,play_and_collect_digits_definition()
+    ,call_pickup_definition()
+    ,connect_leg_definition()
+    ,eavesdrop_definition()
+    ,hangup_definition()
+    ,say_definition()
+    ,sleep_definition()
+    ,tone_detect_definition()
+    ,set_definition()
+    ,set_terminators_definition()
+    ,send_dtmf_definition()
+    ,recv_dtmf_definition()
+    ,tones_definition()
+    ,tones_req_tone_definition()
+    ,conference_definition()
+    ,originate_ready_definition()
+    ,originate_execute_definition()
+    ,fax_detection_definition()
+    ,store_vm_definition()
+    ,audio_level_definition()
+    ,transfer_definition()
+    ,media_macro_definition()
+    ,play_macro_definition()
+    ,sound_touch_definition()
+    ,hold_control_definition()
+    ,event_actions_definition()
+    ,queue_definition()
+    ,error_definition()
+    ].
+
+%%------------------------------------------------------------------------------
+%% @doc Get API definition of the given `Name'.
+%% @see api_definitions/0
+%% @end
+%%------------------------------------------------------------------------------
+-spec api_definition(kz_term:text()) -> kapi_definition:api().
+api_definition(Name) when not is_binary(Name) ->
+    api_definition(kz_term:to_binary(Name));
+api_definition(<<"bridge">>) ->
+    bridge_definition();
+api_definition(<<"bridge_endpoint">>) ->
+    bridge_endpoint_definition();
+api_definition(<<"unbridge">>) ->
+    unbridge_definition();
+api_definition(<<"page">>) ->
+    page_definition();
+api_definition(<<"store">>) ->
+    store_definition();
+api_definition(<<"store_amqp_resp">>) ->
+    store_amqp_resp_definition();
+api_definition(<<"store_http_resp">>) ->
+    store_http_resp_definition();
+api_definition(<<"noop">>) ->
+    noop_definition();
+api_definition(<<"fetch">>) ->
+    fetch_definition();
+api_definition(<<"respond">>) ->
+    respond_definition();
+api_definition(<<"redirect">>) ->
+    redirect_definition();
+api_definition(<<"progress">>) ->
+    progress_definition();
+api_definition(<<"ring">>) ->
+    ring_definition();
+api_definition(<<"receive_fax">>) ->
+    receive_fax_definition();
+api_definition(<<"store_fax">>) ->
+    store_fax_definition();
+api_definition(<<"execute_extension">>) ->
+    execute_extension_definition();
+api_definition(<<"break">>) ->
+    break_definition();
+api_definition(<<"play">>) ->
+    play_definition();
+api_definition(<<"playstop">>) ->
+    playstop_definition();
+api_definition(<<"playseek">>) ->
+    playseek_definition();
+api_definition(<<"tts">>) ->
+    tts_definition();
+api_definition(<<"record">>) ->
+    record_definition();
+api_definition(<<"record_call">>) ->
+    record_call_definition();
+api_definition(<<"answer">>) ->
+    answer_definition();
+api_definition(<<"echo">>) ->
+    echo_definition();
+api_definition(<<"privacy">>) ->
+    privacy_definition();
+api_definition(<<"hold">>) ->
+    hold_definition();
+api_definition(<<"soft_hold">>) ->
+    soft_hold_definition();
+api_definition(<<"park">>) ->
+    park_definition();
+api_definition(<<"play_and_collect_digits">>) ->
+    play_and_collect_digits_definition();
+api_definition(<<"call_pickup">>) ->
+    call_pickup_definition();
+api_definition(<<"connect_leg">>) ->
+    connect_leg_definition();
+api_definition(<<"eavesdrop">>) ->
+    eavesdrop_definition();
+api_definition(<<"hangup">>) ->
+    hangup_definition();
+api_definition(<<"say">>) ->
+    say_definition();
+api_definition(<<"sleep">>) ->
+    sleep_definition();
+api_definition(<<"tone_detect">>) ->
+    tone_detect_definition();
+api_definition(<<"set">>) ->
+    set_definition();
+api_definition(<<"set_terminators">>) ->
+    set_terminators_definition();
+api_definition(<<"send_dtmf">>) ->
+    send_dtmf_definition();
+api_definition(<<"recv_dtmf">>) ->
+    recv_dtmf_definition();
+api_definition(<<"tones">>) ->
+    tones_definition();
+api_definition(<<"tones_req_tone">>) ->
+    tones_req_tone_definition();
+api_definition(<<"conference">>) ->
+    conference_definition();
+api_definition(<<"originate_ready">>) ->
+    originate_ready_definition();
+api_definition(<<"originate_execute">>) ->
+    originate_execute_definition();
+api_definition(<<"fax_detection">>) ->
+    fax_detection_definition();
+api_definition(<<"store_vm">>) ->
+    store_vm_definition();
+api_definition(<<"audio_level">>) ->
+    audio_level_definition();
+api_definition(<<"transfer">>) ->
+    transfer_definition();
+api_definition(<<"media_macro">>) ->
+    media_macro_definition();
+api_definition(<<"play_macro">>) ->
+    play_macro_definition();
+api_definition(<<"sound_touch">>) ->
+    sound_touch_definition();
+api_definition(<<"hold_control">>) ->
+    hold_control_definition();
+api_definition(<<"event_actions">>) ->
+    event_actions_definition();
+api_definition(<<"queue">>) ->
+    queue_definition();
+api_definition(<<"error">>) ->
+    error_definition().
+
+-spec bridge_definition() -> kapi_definition:api().
+bridge_definition() ->
+    EventName = <<"command">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Bridge a Call">>}
+              ,{fun kapi_definition:set_description/2, <<"Bridge a Call">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun bridge/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun bridge_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ,<<"Endpoints">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Asserted-Identity-Name">>
+                                                            ,<<"Asserted-Identity-Number">>
+                                                            ,<<"Asserted-Identity-Realm">>
+                                                            ,<<"B-Leg-Events">>
+                                                            ,<<"Bridge-Actions">>
+                                                            ,<<"Call-Context">>
+                                                            ,<<"Callee-ID-Name">>
+                                                            ,<<"Callee-ID-Number">>
+                                                            ,<<"Caller-ID-Name">>
+                                                            ,<<"Caller-ID-Number">>
+                                                            ,<<"Confirm-Cancel-Timeout">>
+                                                            ,<<"Confirm-File">>
+                                                            ,<<"Confirm-Key">>
+                                                            ,<<"Continue-After">>
+                                                            ,<<"Continue-On-Fail">>
+                                                            ,<<"Custom-Application-Vars">>
+                                                            ,<<"Custom-Channel-Vars">>
+                                                            ,<<"Custom-SIP-Headers">>
+                                                            ,<<"Dial-Endpoint-Method">>
+                                                            ,<<"Enable-T38-Fax">>
+                                                            ,<<"Enable-T38-Fax-Request">>
+                                                            ,<<"Enable-T38-Gateway">>
+                                                            ,<<"Enable-T38-Passthrough">>
+                                                            ,<<"Export-Bridge-Variables">>
+                                                            ,<<"Export-Variables">>
+                                                            ,<<"Fail-On-Single-Reject">>
+                                                            ,<<"Force-Fax">>
+                                                            ,<<"Hold-Media">>
+                                                            ,<<"Ignore-Completed-Elsewhere">>
+                                                            ,<<"Ignore-Early-Media">>
+                                                            ,<<"Ignore-Forward">>
+                                                            ,<<"Insert-At">>
+                                                            ,<<"Loopback-Bowout">>
+                                                            ,<<"Media">>
+                                                            ,<<"Outbound-Callee-ID-Name">>
+                                                            ,<<"Outbound-Callee-ID-Number">>
+                                                            ,<<"Outbound-Caller-ID-Name">>
+                                                            ,<<"Outbound-Caller-ID-Number">>
+                                                            ,<<"Privacy-Hide-Name">>
+                                                            ,<<"Privacy-Hide-Number">>
+                                                            ,<<"Privacy-Method">>
+                                                            ,<<"Ringback">>
+                                                            ,<<"Secure-RTP">>
+                                                            ,<<"Simplify-Loopback">>
+                                                            ,<<"SIP-Invite-Parameters">>
+                                                            ,<<"SIP-Transport">>
+                                                            ,<<"Timeout">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"bridge">>}
+                ,{<<"Dial-Endpoint-Method">>, [?DIAL_METHOD_SINGLE, ?DIAL_METHOD_SIMUL]}
+                ,{<<"Media">>, [<<"process">>, <<"bypass">>, <<"auto">>]}
+                ,{<<"SIP-Transport">>, [<<"udp">>, <<"tcp">>, <<"tls">>]}
+                ,{<<"Enable-T38-Gateway">>, [<<"self">>, <<"peer">>]}
+                ,?INSERT_AT_TUPLE
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2
+               ,[{<<"B-Leg-Events">>, fun b_leg_events_v/1}
+                ,{<<"Continue-On-Fail">>, fun continue_on_fail_v/1}
+                ,{<<"Continue-After">>, fun kz_term:is_boolean/1}
+                ,{<<"Custom-Application-Vars">>, fun kz_json:is_json_object/1}
+                ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
+                ,{<<"Custom-SIP-Headers">>, fun kz_json:is_json_object/1}
+                ,{<<"Endpoints">>, fun kz_json:are_json_objects/1}
+                ,{<<"SIP-Invite-Parameters">>, fun erlang:is_list/1}
+                ,{<<"Secure-RTP">>, fun kz_term:is_boolean/1}
+                ,{<<"Bridge-Actions">>, fun kz_json:is_json_object/1}
+                ]
+               }
+              ],
+    kapi_definition:setters(Setters).
+
+-spec bridge_endpoint_definition() -> kapi_definition:api().
+bridge_endpoint_definition() ->
+    Setters = [{fun kapi_definition:set_friendly_name/2, <<"Bridge Endpoints">>}
+              ,{fun kapi_definition:set_description/2, <<"Bridge Endpoints">>}
+              ,{fun kapi_definition:set_build_fun/2, fun bridge_endpoint/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun bridge_endpoint_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Invite-Format">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Account-ID">>
+                                                            ,<<"Auth-Password">>
+                                                            ,<<"Auth-Realm">>
+                                                            ,<<"Auth-User">>
+                                                            ,<<"Bypass-Media">>
+                                                            ,<<"Call-Context">>
+                                                            ,<<"Callee-ID-Name">>
+                                                            ,<<"Callee-ID-Number">>
+                                                            ,<<"Caller-ID-Name">>
+                                                            ,<<"Caller-ID-Number">>
+                                                            ,<<"Codecs">>
+                                                            ,<<"Custom-Application-Vars">>
+                                                            ,<<"Custom-Channel-Vars">>
+                                                            ,<<"Custom-SIP-Headers">>
+                                                            ,<<"Enable-T38-Fax">>
+                                                            ,<<"Enable-T38-Fax-Request">>
+                                                            ,<<"Enable-T38-Gateway">>
+                                                            ,<<"Enable-T38-Passthrough">>
+                                                            ,<<"Endpoint-Actions">>
+                                                            ,<<"Endpoint-Delay">>
+                                                            ,<<"Endpoint-ID">>
+                                                            ,<<"Endpoint-Options">>
+                                                            ,<<"Endpoint-Progress-Timeout">>
+                                                            ,<<"Endpoint-Timeout">>
+                                                            ,<<"Endpoint-Type">>
+                                                            ,<<"Endpoint-URI">>
+                                                            ,<<"Failover">>
+                                                            ,<<"Force-Fax">>
+                                                            ,<<"Forward-IP">>
+                                                            ,<<"Hold-Media">>
+                                                            ,<<"Ignore-Completed-Elsewhere">>
+                                                            ,<<"Ignore-Early-Media">>
+                                                            ,<<"Loopback-Bowout">>
+                                                            ,<<"Outbound-Callee-ID-Name">>
+                                                            ,<<"Outbound-Callee-ID-Number">>
+                                                            ,<<"Outbound-Caller-ID-Name">>
+                                                            ,<<"Outbound-Caller-ID-Number">>
+                                                            ,<<"Outbound-Call-ID">>
+                                                            ,<<"Presence-ID">>
+                                                            ,<<"Privacy-Hide-Name">>
+                                                            ,<<"Privacy-Hide-Number">>
+                                                            ,<<"Privacy-Method">>
+                                                            ,<<"Proxy-IP">>
+                                                            ,<<"Proxy-Zone">>
+                                                            ,<<"Route">>
+                                                            ,<<"Simplify-Loopback">>
+                                                            ,<<"SIP-Interface">>
+                                                            ,<<"SIP-Invite-Parameters">>
+                                                            ,<<"SIP-Transport">>
+                                                            ,<<"To-DID">>
+                                                            ,<<"To-IP">>
+                                                            ,<<"To-Realm">>
+                                                            ,<<"To-URI">>
+                                                            ,<<"To-User">>
+                                                            ,<<"To-Username">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[?INVITE_FORMAT_TUPLE
+                ,{<<"Endpoint-Type">>, [<<"sip">>, <<"freetdm">>, <<"skype">>]}
+                ,{<<"Enable-T38-Gateway">>, [<<"self">>, <<"peer">>]}
+                ,{<<"SIP-Transport">>, [<<"udp">>, <<"tcp">>, <<"tls">>, <<"sctp">>]}
+                ]
+               }
+              ,{fun kapi_definition:set_types/2
+               ,[{<<"Custom-SIP-Headers">>, fun kz_json:is_json_object/1}
+                ,{<<"Custom-Application-Vars">>, fun kz_json:is_json_object/1}
+                ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
+                ,{<<"Endpoint-Options">>, fun kz_json:is_json_object/1}
+                ,{<<"Ignore-Early-Media">>, fun kz_term:is_boolean/1}
+                ,{<<"Bypass-Media">>, fun kz_term:is_boolean/1}
+                ,{<<"SIP-Invite-Parameters">>, fun erlang:is_list/1}
+                ]
+               }
+              ],
+    kapi_definition:setters(Setters).
+
+-spec unbridge_definition() -> kapi_definition:api().
+unbridge_definition() ->
+    EventName = <<"command">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Unbridge a Call">>}
+              ,{fun kapi_definition:set_description/2, <<"Unbridge a Call">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun unbridge/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun unbridge_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Insert-At">>
+                                                            ,<<"Leg">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"unbridge">>}
+                ,{<<"Leg">>, [<<"A">>, <<"B">>, <<"Both">>]}
+                ,?INSERT_AT_TUPLE
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
+
+-spec page_definition() -> kapi_definition:api().
+page_definition() ->
+    EventName = <<"command">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Page Request">>}
+              ,{fun kapi_definition:set_description/2, <<"Page a Call">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun page/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun page_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ,<<"Endpoints">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Callee-ID-Name">>
+                                                            ,<<"Callee-ID-Number">>
+                                                            ,<<"Caller-ID-Name">>
+                                                            ,<<"Caller-ID-Number">>
+                                                            ,<<"Custom-Channel-Vars">>
+                                                            ,<<"Custom-SIP-Headers">>
+                                                            ,<<"Insert-At">>
+                                                            ,<<"Page-Options">>
+                                                            ,<<"Timeout">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"page">>}
+                ,?INSERT_AT_TUPLE
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2
+               ,[{<<"Endpoints">>, fun erlang:is_list/1}
+                ,{<<"Custom-SIP-Headers">>, fun kz_json:is_json_object/1}
+                ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
+                ]
+               }
+              ],
+    kapi_definition:setters(Setters).
+
+-spec store_definition() -> kapi_definition:api().
+store_definition() ->
+    EventName = <<"command">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Store Request">>}
+              ,{fun kapi_definition:set_description/2, <<"Store Request">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun store/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun store_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ,<<"Media-Name">>
+                                                            ,<<"Media-Transfer-Destination">>
+                                                            ,<<"Media-Transfer-Method">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Additional-Headers">>
+                                                            ,<<"Insert-At">>
+                                                            ,<<"Suppress-Error-Report">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"store">>}
+                ,{<<"Media-Transfer-Method">>, [<<"stream">>, <<"put">>, <<"post">>]}
+                ,?INSERT_AT_TUPLE
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2
+               ,[{<<"Additional-Headers">>, fun erlang:is_list/1}
+                ,{<<"Suppress-Error-Report">>, fun kz_term:is_boolean/1}
+                ]
+               }
+              ],
+    kapi_definition:setters(Setters).
+
+-spec store_amqp_resp_definition() -> kapi_definition:api().
+store_amqp_resp_definition() ->
+    Setters = [{fun kapi_definition:set_friendly_name/2, <<"Store AMQP Response">>}
+              ,{fun kapi_definition:set_description/2, <<"Store (via AMQP) Response">>}
+              ,{fun kapi_definition:set_build_fun/2, fun store_amqp_resp/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun store_amqp_resp_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ,<<"Media-Content">>
+                                                            ,<<"Media-Name">>
+                                                            ,<<"Media-Transfer-Method">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Media-Sequence-ID">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"store">>}
+                ,{<<"Media-Transfer-Method">>, <<"stream">>}
+                ]
+               }
+              ,{fun kapi_definition:set_types/2
+               ,[{<<"Media-Content">>, fun store_media_content_v/1}
+                ,{<<"Media-Name">>, fun is_binary/1}
+                ]
+               }
+              ],
+    kapi_definition:setters(Setters).
+
+-spec store_http_resp_definition() -> kapi_definition:api().
+store_http_resp_definition() ->
+    EventName = <<"response">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Store HTTP Response">>}
+              ,{fun kapi_definition:set_description/2, <<"Store (via HTTP) Response">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun store_http_resp/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun store_http_resp_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ,<<"Media-Name">>
+                                                            ,<<"Media-Transfer-Method">>
+                                                            ,<<"Media-Transfer-Results">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, []}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"store">>}
+                ,{<<"Media-Transfer-Method">>, [<<"put">>, <<"post">>]}
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2
+               ,[{<<"Media-Transfer-Results">>, fun kz_json:is_json_object/1}
+                ]
+               }
+              ],
+    kapi_definition:setters(Setters).
+
+%% NoOp Request
+%% Filter-Applications: will remove applications in the ecallmgr command queue matching those in this list
+%% So, if you want to remove Play commands, set Filter-Applications = [<<"play">>]. This will filter
+%% the command queue until a non-Play command is encountered.
+%% Alternatively, you can specify the elements in the Filter-Applications list as:
+%% [ {"Application-Name":"play", "Fields":{"Terminators":["#"]}}, ...]
+%% This says, filter Play commands terminate-able with the "#" key
+%%
+%% IMPORTANT: to use the filter-applications list, Insert-At must be "now"
+-spec noop_definition() -> kapi_definition:api().
+noop_definition() ->
+    EventName = <<"command">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"NoOp Request">>}
+              ,{fun kapi_definition:set_description/2, <<"Format a Dialplan: noop API call">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun noop/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun noop_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"B-Leg-Events">>
+                                                            ,<<"Filter-Applications">>
+                                                            ,<<"Insert-At">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"noop">>}
+                ,?INSERT_AT_TUPLE
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2
+               ,[{<<"B-Leg-Events">>, fun b_leg_events_v/1}
+                ]
+               }
+              ],
+    kapi_definition:setters(Setters).
+
+-spec fetch_definition() -> kapi_definition:api().
+fetch_definition() ->
+    EventName = <<"command">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Fetch">>}
+              ,{fun kapi_definition:set_description/2, <<"Fetch Custom Channel variables">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun fetch/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun fetch_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"From-Other-Leg">>
+                                                            ,<<"Insert-At">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"fetch">>}
+                ,?INSERT_AT_TUPLE
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2
+               ,[{<<"From-Other-Leg">>, fun kz_term:is_boolean/1}
+                ]
+               }
+              ],
+    kapi_definition:setters(Setters).
+
+-spec respond_definition() -> kapi_definition:api().
+respond_definition() ->
+    EventName = <<"command">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Respond">>}
+              ,{fun kapi_definition:set_description/2, <<"Respond a session">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun respond/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun respond_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ,<<"Response-Code">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Insert-At">>
+                                                            ,<<"Response-Message">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"respond">>}
+                ,?INSERT_AT_TUPLE
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2
+               ,[{<<"Response-Code">>, fun is_binary/1}
+                ,{<<"Response-Message">>, fun is_binary/1}
+                ]
+               }
+              ],
+    kapi_definition:setters(Setters).
+
+-spec redirect_definition() -> kapi_definition:api().
+redirect_definition() ->
+    EventName = <<"command">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Redirect">>}
+              ,{fun kapi_definition:set_description/2, <<"Redirect a session">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun redirect/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun redirect_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ,<<"Redirect-Contact">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Insert-At">>
+                                                            ,<<"Redirect-Node">>
+                                                            ,<<"Redirect-Server">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"redirect">>}
+                ,?INSERT_AT_TUPLE
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2
+               ,[{<<"Redirect-Contact">>, fun is_binary/1}
+                ,{<<"Redirect-Node">>, fun is_binary/1}
+                ,{<<"Redirect-Server">>, fun is_binary/1}
+                ]
+               }
+              ],
+    kapi_definition:setters(Setters).
+
+-spec progress_definition() -> kapi_definition:api().
+progress_definition() ->
+    EventName = <<"command">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Progress">>}
+              ,{fun kapi_definition:set_description/2, <<"Progress a session">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun progress/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun progress_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Insert-At">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"progress">>}
+                ,?INSERT_AT_TUPLE
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
+
+-spec ring_definition() -> kapi_definition:api().
+ring_definition() ->
+    EventName = <<"command">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Ring">>}
+              ,{fun kapi_definition:set_description/2, <<"Ring a session">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun ring/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun ring_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Insert-At">>
+                                                            ,<<"Ringback">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"ring">>}
+                ,?INSERT_AT_TUPLE
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
+
+-spec receive_fax_definition() -> kapi_definition:api().
+receive_fax_definition() ->
+    EventName = <<"command">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Receive Fax">>}
+              ,{fun kapi_definition:set_description/2, <<"Receive a fax, storing it to local disk">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun receive_fax/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun receive_fax_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Enable-T38-Fax">>
+                                                            ,<<"Enable-T38-Fax-Request">>
+                                                            ,<<"Enable-T38-Gateway">>
+                                                            ,<<"Enable-T38-Passthrough">>
+                                                            ,<<"Fax-Local-Filename">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"receive_fax">>}
+                ,?INSERT_AT_TUPLE
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
+
+-spec store_fax_definition() -> kapi_definition:api().
+store_fax_definition() ->
+    EventName = <<"command">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Store Fax">>}
+              ,{fun kapi_definition:set_description/2, <<"Store a fax, storing it to the DB">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun store_fax/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun store_fax_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ,<<"Media-Transfer-Destination">>
+                                                            ,<<"Media-Transfer-Method">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Additional-Headers">>
+                                                            ,<<"Fax-Local-Filename">>
+                                                            ,<<"Insert-At">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"store_fax">>}
+                ,{<<"Media-Transfer-Method">>, <<"put">>}
+                ,?INSERT_AT_TUPLE
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2
+               ,[{<<"Additional-Headers">>, fun erlang:is_list/1}
+                ]
+               }
+              ],
+    kapi_definition:setters(Setters).
+
+-spec execute_extension_definition() -> kapi_definition:api().
+execute_extension_definition() ->
+    EventName = <<"command">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Execute_Extension">>}
+              ,{fun kapi_definition:set_description/2, <<"Execute_Extension a session">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun execute_extension/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun execute_extension_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ,<<"Extension">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Custom-Channel-Vars">>
+                                                            ,<<"Insert-At">>
+                                                            ,<<"Reset">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"execute_extension">>}
+                ,?INSERT_AT_TUPLE
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2
+               ,[{<<"Extension">>, fun is_binary/1}
+                ]
+               }
+              ],
+    kapi_definition:setters(Setters).
+
+-spec break_definition() -> kapi_definition:api().
+break_definition() ->
+    EventName = <<"command">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Break">>}
+              ,{fun kapi_definition:set_description/2, <<"Moves to the next step in callflow">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun break/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun break_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Insert-At">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"break">>}
+                ,{<<"Insert-At">>, <<"now">>}
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
+
+-spec play_definition() -> kapi_definition:api().
+play_definition() ->
+    EventName = <<"command">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Play">>}
+              ,{fun kapi_definition:set_description/2, <<"Play media">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun play/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun play_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ,<<"Media-Name">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Endless-Playback">>
+                                                            ,<<"Format">>
+                                                            ,<<"Group-ID">> % group media together (one DTMF cancels all in group)
+                                                            ,<<"Insert-At">>
+                                                            ,<<"Language">>
+                                                            ,<<"Leg">>
+                                                            ,<<"Loop-Count">>
+                                                            ,<<"Terminators">>
+                                                            ,<<"Voice">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"play">>}
+                ,{<<"Leg">>, [<<"A">>, <<"B">>, <<"Both">>]}
+                ,?INSERT_AT_TUPLE
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2
+               ,[{<<"Endless-Playback">>, fun kz_term:is_boolean/1}
+                ,{<<"Loop-Count">>, fun kz_term:is_pos_integer/1}
+                ,{<<"Terminators">>, ?IS_TERMINATOR}
+                ]
+               }
+              ],
+    kapi_definition:setters(Setters).
+
+-spec playstop_definition() -> kapi_definition:api().
+playstop_definition() ->
+    EventName = <<"command">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"PlayStop">>}
+              ,{fun kapi_definition:set_description/2, <<"Stop media from playing">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun playstop/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun playstop_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Insert-At">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"playstop">>}
+                ,{<<"Insert-At">>, <<"now">>}
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
+
+-spec playseek_definition() -> kapi_definition:api().
+playseek_definition() ->
+    EventName = <<"command">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"PlaySeek">>}
+              ,{fun kapi_definition:set_description/2, <<"Change position in playing media">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun playseek/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun playseek_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ,<<"Direction">>
+                                                            ,<<"Duration">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Insert-At">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"playseek">>}
+                ,{<<"Insert-At">>, <<"now">>}
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2
+               ,[{<<"Duration">>, fun is_integer/1}
+                ]
+               }
+              ],
+    kapi_definition:setters(Setters).
+
+-spec tts_definition() -> kapi_definition:api().
+tts_definition() ->
+    EventName = <<"command">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"TTS">>}
+              ,{fun kapi_definition:set_description/2, <<"TTS - Text-to-speech">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun tts/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun tts_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ,<<"Text">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Conference-ID">>
+                                                            ,<<"Endless-Playback">>
+                                                            ,<<"Engine">>
+                                                            ,<<"Group-ID">> % group media together (one DTMF cancels all in group)
+                                                            ,<<"Insert-At">>
+                                                            ,<<"Language">>
+                                                            ,<<"Leg">>
+                                                            ,<<"Loop-Count">>
+                                                            ,<<"Terminators">>
+                                                            ,<<"Voice">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"tts">>}
+                ,{<<"Voice">>, [<<"male">>, <<"female">>]}
+                ,?INSERT_AT_TUPLE
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2
+               ,[{<<"Endless-Playback">>, fun kz_term:is_boolean/1}
+                ,{<<"Loop-Count">>, fun kz_term:is_pos_integer/1}
+                ,{<<"Terminators">>, ?IS_TERMINATOR}
+                ]
+               }
+              ],
+    kapi_definition:setters(Setters).
+
+-spec record_definition() -> kapi_definition:api().
+record_definition() ->
+    EventName = <<"command">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Record">>}
+              ,{fun kapi_definition:set_description/2, <<"Record media">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun record/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun record_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ,<<"Media-Name">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Insert-At">>
+                                                            ,<<"Silence-Hits">>
+                                                            ,<<"Silence-Threshold">>
+                                                            ,<<"Terminators">>
+                                                            ,<<"Time-Limit">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"record">>}
+                ,?INSERT_AT_TUPLE
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2
+               ,[{<<"Terminators">>, ?IS_TERMINATOR}
+                ]
+               }
+              ],
+    kapi_definition:setters(Setters).
+
+%% Stream-To = local -> results in the recording being stored on the media server.
+%% Stream-To = remote -> will stream the recording to the handling ecallmgr server.
+-spec record_call_definition() -> kapi_definition:api().
+record_call_definition() ->
+    EventName = <<"command">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Record Call">>}
+              ,{fun kapi_definition:set_description/2, <<"Record call media">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun record_call/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun record_call_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ,<<"Record-Action">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Additional-Headers">>
+                                                            ,<<"Channels-As-Stereo">>
+                                                            ,<<"Follow-Transfer">>
+                                                            ,<<"Insert-At">>
+                                                            ,<<"Media-Name">>
+                                                            ,<<"Media-Recorder">>
+                                                            ,<<"Media-Recording-Endpoint-ID">>
+                                                            ,<<"Media-Recording-ID">>
+                                                            ,<<"Media-Recording-Origin">>
+                                                            ,<<"Media-Transfer-Destination">>
+                                                            ,<<"Media-Transfer-Method">>
+                                                            ,<<"Recording-Variables">>
+                                                            ,<<"Record-Min-Sec">>
+                                                            ,<<"Record-Sample-Rate">>
+                                                            ,<<"Time-Limit">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"record_call">>}
+                ,{<<"Record-Action">>, [<<"start">>, <<"stop">>, <<"mask">>, <<"unmask">>]}
+                ,?INSERT_AT_TUPLE
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2
+               ,[{<<"Record-Sample-Rate">>, fun is_integer/1}
+                ]
+               }
+              ],
+    kapi_definition:setters(Setters).
+
+-spec answer_definition() -> kapi_definition:api().
+answer_definition() ->
+    EventName = <<"command">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Answer">>}
+              ,{fun kapi_definition:set_description/2, <<"Answer a session">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun answer/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun answer_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Insert-At">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"answer">>}
+                ,?INSERT_AT_TUPLE
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
+
+-spec echo_definition() -> kapi_definition:api().
+echo_definition() ->
+    EventName = <<"command">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Echo">>}
+              ,{fun kapi_definition:set_description/2, <<"Echo a session">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun echo/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun echo_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Insert-At">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"echo">>}
+                ,?INSERT_AT_TUPLE
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
+
+-spec privacy_definition() -> kapi_definition:api().
+privacy_definition() ->
+    EventName = <<"command">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Privacy">>}
+              ,{fun kapi_definition:set_description/2, <<"Privacy">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun privacy/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun privacy_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Insert-At">>
+                                                            ,<<"Privacy-Mode">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"privacy">>}
+                ,{<<"Privacy-Mode">>, [<<"full">>, <<"name">>, <<"number">>, <<"none">>]}
+                ,?INSERT_AT_TUPLE
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
+
+-spec hold_definition() -> kapi_definition:api().
+hold_definition() ->
+    EventName = <<"command">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Hold">>}
+              ,{fun kapi_definition:set_description/2, <<"Hold a call">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun hold/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun hold_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Hold-Media">>
+                                                            ,<<"Insert-At">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"hold">>}
+                ,?INSERT_AT_TUPLE
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
+
+-spec soft_hold_definition() -> kapi_definition:api().
+soft_hold_definition() ->
+    EventName = <<"command">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Soft Hold">>}
+              ,{fun kapi_definition:set_description/2, <<"Soft Hold">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun soft_hold/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun soft_hold_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ,<<"Unhold-Key">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"A-MOH">>
+                                                            ,<<"B-MOH">>
+                                                            ,<<"Insert-At">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"soft_hold">>}
+                ,?INSERT_AT_TUPLE
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
+
+-spec park_definition() -> kapi_definition:api().
+park_definition() ->
+    EventName = <<"command">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Park">>}
+              ,{fun kapi_definition:set_description/2, <<"Park a call">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun park/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun park_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Hangup-Cause">>
+                                                            ,<<"Insert-At">>
+                                                            ,<<"Timeout">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"park">>}
+                ,?INSERT_AT_TUPLE
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
+
+-spec play_and_collect_digits_definition() -> kapi_definition:api().
+play_and_collect_digits_definition() ->
+    EventName = <<"command">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Play and Record Digits">>}
+              ,{fun kapi_definition:set_description/2, <<"Play media and record digits">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun play_and_collect_digits/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun play_and_collect_digits_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ,<<"Digits-Regex">>
+                                                            ,<<"Maximum-Digits">>
+                                                            ,<<"Media-Name">>
+                                                            ,<<"Media-Tries">>
+                                                            ,<<"Minimum-Digits">>
+                                                            ,<<"Terminators">>
+                                                            ,<<"Timeout">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Failed-Media-Name">>
+                                                            ,<<"Insert-At">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"play_and_collect_digits">>}
+                ,?INSERT_AT_TUPLE
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2
+               ,[{<<"Terminators">>, ?IS_TERMINATOR}
+                ]
+               }
+              ],
+    kapi_definition:setters(Setters).
+
+-spec call_pickup_definition() -> kapi_definition:api().
+call_pickup_definition() ->
+    EventName = <<"command">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Call Pickup">>}
+              ,{fun kapi_definition:set_description/2, <<"Pickup a call">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun call_pickup/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun call_pickup_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ,<<"Target-Call-ID">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Continue-On-Cancel">>
+                                                            ,<<"Continue-On-Fail">>
+                                                            ,<<"Hangup-After-Pickup">>
+                                                            ,<<"Insert-At">>
+                                                            ,<<"Move-Channel-If-Necessary">>
+                                                            ,<<"Other-Leg">>
+                                                            ,<<"Park-After-Pickup">> %% Will park either leg after cancel
+                                                            ,<<"Unanswered-Only">>
+                                                            ,<<"Unbridged-Only">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"call_pickup">>}
+                ,?INSERT_AT_TUPLE
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2
+               ,[{<<"Hangup-After-Pickup">>, fun kz_term:is_boolean/1}
+                ,{<<"Move-Channel-If-Necessary">>, fun kz_term:is_boolean/1}
+                ,{<<"Park-After-Pickup">>, fun kz_term:is_boolean/1}
+                ]
+               }
+              ],
+    kapi_definition:setters(Setters).
+
+-spec connect_leg_definition() -> kapi_definition:api().
+connect_leg_definition() ->
+    EventName = <<"command">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Connect Leg">>}
+              ,{fun kapi_definition:set_description/2, <<"Connect a leg to the current leg">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun connect_leg/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun connect_leg_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ,<<"Target-Call-ID">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"B-Leg-Events">>
+                                                            ,<<"Continue-On-Cancel">>
+                                                            ,<<"Continue-On-Fail">>
+                                                            ,<<"Hangup-After-Pickup">>
+                                                            ,<<"Insert-At">>
+                                                            ,<<"Move-Channel-If-Necessary">>
+                                                            ,<<"Other-Leg">>
+                                                            ,<<"Park-After-Pickup">> %% Will park either leg after cancel
+                                                            ,<<"Publish-Usurp">>
+                                                            ,<<"Unanswered-Only">>
+                                                            ,<<"Unbridged-Only">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"connect_leg">>}
+                ,?INSERT_AT_TUPLE
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2
+               ,[{<<"B-Leg-Events">>, fun b_leg_events_v/1}
+                ,{<<"Hangup-After-Pickup">>, fun kz_term:is_boolean/1}
+                ,{<<"Move-Channel-If-Necessary">>, fun kz_term:is_boolean/1}
+                ,{<<"Park-After-Pickup">>, fun kz_term:is_boolean/1}
+                ,{<<"Publish-Usurp">>, fun kz_term:is_boolean/1}
+                ]
+               }
+              ],
+    kapi_definition:setters(Setters).
+
+-spec eavesdrop_definition() -> kapi_definition:api().
+eavesdrop_definition() ->
+    EventName = <<"command">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Eavesdrop">>}
+              ,{fun kapi_definition:set_description/2, <<"Eavesdrop">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun eavesdrop/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun eavesdrop_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ,<<"Target-Call-ID">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Continue-On-Cancel">>
+                                                            ,<<"Continue-On-Fail">>
+                                                            ,<<"Enable-DTMF">>
+                                                            ,<<"Insert-At">>
+                                                            ,<<"Move-Channel-If-Necessary">>
+                                                            ,<<"Other-Leg">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"eavesdrop">>}
+                ,?INSERT_AT_TUPLE
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2
+               ,[{<<"Move-Channel-If-Necessary">>, fun kz_term:is_boolean/1}
+                ]
+               }
+              ],
+    kapi_definition:setters(Setters).
+
+%% Include the Other-Leg-Call-ID to only hangup the other leg
+-spec hangup_definition() -> kapi_definition:api().
+hangup_definition() ->
+    EventName = <<"command">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Hangup">>}
+              ,{fun kapi_definition:set_description/2, <<"Hangup a call">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun hangup/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun hangup_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Hangup-Cause">>
+                                                            ,<<"Insert-At">>
+                                                            ,<<"Other-Leg-Only">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"hangup">>}
+                ,?INSERT_AT_TUPLE
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2
+               ,[{<<"Hangup-Cause">>, fun is_binary/1}
+                ,{<<"Other-Leg-Only">>, fun kz_term:is_boolean/1}
+                ]
+               }
+              ],
+    kapi_definition:setters(Setters).
+
+-spec say_definition() -> kapi_definition:api().
+say_definition() ->
+    EventName = <<"command">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Say">>}
+              ,{fun kapi_definition:set_description/2, <<"Say - convert text to speech">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun say/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun say_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ,<<"Language">>
+                                                            ,<<"Method">>
+                                                            ,<<"Say-Text">>
+                                                            ,<<"Type">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Group-ID">>
+                                                            ,<<"Insert-At">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"say">>}
+                ,{<<"Type">>, [<<"account_number">>
+                              ,<<"currency">>
+                              ,<<"current_date">>
+                              ,<<"current_date_time">>
+                              ,<<"current_time">>
+                              ,<<"e-mail_address">>
+                              ,<<"ip_address">>
+                              ,<<"items">>
+                              ,<<"messages">>
+                              ,<<"name_phonetic">>
+                              ,<<"name_spelled">>
+                              ,<<"number">>
+                              ,<<"persons">>
+                              ,<<"postal_address">>
+                              ,<<"short_date_time">>
+                              ,<<"telephone_extension">>
+                              ,<<"telephone_number">>
+                              ,<<"time_measurement">>
+                              ,<<"url">>
+                              ]}
+                ,{<<"Method">>, [<<"none">>, <<"pronounced">>, <<"iterated">>, <<"counted">>]}
+                ,{<<"Gender">>, [<<"masculine">>, <<"feminine">>, <<"neuter">>]}
+                ,?INSERT_AT_TUPLE
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
+
+-spec sleep_definition() -> kapi_definition:api().
+sleep_definition() ->
+    EventName = <<"command">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Sleep">>}
+              ,{fun kapi_definition:set_description/2, <<"Sleep - Pauses execution">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun sleep/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun sleep_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ,<<"Time">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Insert-At">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"sleep">>}
+                ,?INSERT_AT_TUPLE
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
+
+-spec tone_detect_definition() -> kapi_definition:api().
+tone_detect_definition() ->
+    EventName = <<"command">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Tone Detect">>}
+              ,{fun kapi_definition:set_description/2, <<"Detect tones on the line">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun tone_detect/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun tone_detect_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ,<<"Frequencies">>
+                                                            ,<<"Tone-Detect-Name">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Hits-Needed">>
+                                                            ,<<"Insert-At">>
+                                                            ,<<"On-Success">>
+                                                            ,<<"Sniff-Direction">>
+                                                            ,<<"Timeout">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"tone_detect">>}
+                ,{<<"Sniff-Direction">>, [<<"read">>, <<"write">>]}
+                ,?INSERT_AT_TUPLE
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2
+               ,[{<<"On-Success">>, fun erlang:is_list/1}
+                ,{<<"Timeout">>, fun tone_timeout_v/1}
+                ]
+               }
+              ],
+    kapi_definition:setters(Setters).
+
+-spec set_definition() -> kapi_definition:api().
+set_definition() ->
+    EventName = <<"command">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Set">>}
+              ,{fun kapi_definition:set_description/2, <<"Set Custom Channel variables">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun set/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun set_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ,<<"Custom-Call-Vars">>
+                                                            ,<<"Custom-Channel-Vars">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Custom-Application-Vars">>
+                                                            ,<<"Export-All">>
+                                                            ,<<"Insert-At">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"set">>}
+                ,?INSERT_AT_TUPLE
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2
+               ,[{<<"Custom-Application-Vars">>, fun kz_json:is_json_object/1}
+                ,{<<"Custom-Channel-Vars">>,fun kz_json:is_json_object/1}
+                ,{<<"Custom-Call-Vars">>, fun kz_json:is_json_object/1}
+                ,{<<"Export-All">>, fun is_boolean/1}
+                ]
+               }
+              ],
+    kapi_definition:setters(Setters).
+
+-spec set_terminators_definition() -> kapi_definition:api().
+set_terminators_definition() ->
+    EventName = <<"command">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Set Terminators">>}
+              ,{fun kapi_definition:set_description/2, <<"Set Terminators for playback/record">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun set_terminators/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun set_terminators_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ,<<"Terminators">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Insert-At">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"set_terminators">>}
+                ,?INSERT_AT_TUPLE
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2
+               ,[{<<"Terminators">>, ?IS_TERMINATOR}
+                ]
+               }
+              ],
+    kapi_definition:setters(Setters).
+
+-spec send_dtmf_definition() -> kapi_definition:api().
+send_dtmf_definition() ->
+    EventName = <<"command">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Send DTMF">>}
+              ,{fun kapi_definition:set_description/2, <<"Create a DTMF (or DTMFs) on the channel">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun send_dtmf/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun send_dtmf_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ,<<"DTMFs">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Duration">>
+                                                            ,<<"Insert-At">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"send_dtmf">>}
+                ,?INSERT_AT_TUPLE
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2
+               ,[{<<"DTMFs">>, fun is_binary/1}
+                ]
+               }
+              ],
+    kapi_definition:setters(Setters).
+
+-spec recv_dtmf_definition() -> kapi_definition:api().
+recv_dtmf_definition() ->
+    EventName = <<"command">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Receive DTMF">>}
+              ,{fun kapi_definition:set_description/2, <<"Receive DTMF">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun recv_dtmf/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun recv_dtmf_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ,<<"DTMFs">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Insert-At">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"recv_dtmf">>}
+                ,?INSERT_AT_TUPLE
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2
+               ,[{<<"DTMFs">>, fun is_binary/1}
+                ]
+               }
+              ],
+    kapi_definition:setters(Setters).
+
+-spec tones_definition() -> kapi_definition:api().
+tones_definition() ->
+    EventName = <<"command">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Tones">>}
+              ,{fun kapi_definition:set_description/2, <<"Create a tone on the channel">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun tones/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun tones_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ,<<"Tones">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Conference-ID">>
+                                                            ,<<"Group-ID">>
+                                                            ,<<"Insert-At">>
+                                                            ,<<"Terminators">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"tones">>}
+                ,?INSERT_AT_TUPLE
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2
+               ,[{<<"Tones">>, fun erlang:is_list/1}
+                ,{<<"Terminators">>, ?IS_TERMINATOR}
+                ]
+               }
+              ],
+    kapi_definition:setters(Setters).
+
+-spec tones_req_tone_definition() -> kapi_definition:api().
+tones_req_tone_definition() ->
+    Setters = [{fun kapi_definition:set_friendly_name/2, <<"Tone within Tones request">>}
+              ,{fun kapi_definition:set_description/2, <<"A Tone within a Tones request">>}
+              ,{fun kapi_definition:set_build_fun/2, fun tones_req_tone/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun tones_req_tone_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Duration-OFF">>
+                                                            ,<<"Duration-ON">>
+                                                            ,<<"Frequencies">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Repeat">>
+                                                            ,<<"Volume">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2, []}
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
+
+-spec conference_definition() -> kapi_definition:api().
+conference_definition() ->
+    EventName = <<"command">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Conference">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"Conference - Sends caller to a conference">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun conference/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun conference_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ,<<"Conference-ID">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Deaf">>
+                                                            ,<<"Insert-At">>
+                                                            ,<<"Member-Nospeak">> %% sets joining member to nospeak relations
+                                                            ,<<"Moderator">>
+                                                            ,<<"Mute">>
+                                                            ,<<"Nospeak-Check">> %% update relations
+                                                            ,<<"Profile">>
+                                                            ,<<"Reinvite">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"conference">>}
+                ,?INSERT_AT_TUPLE
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2
+               ,[{<<"Call-ID">>, fun is_binary/1}
+                ,{<<"Conference-ID">>, fun is_binary/1}
+                ,{<<"Mute">>, fun kz_term:is_boolean/1}
+                ,{<<"Deaf">>, fun kz_term:is_boolean/1}
+                ,{<<"Moderator">>, fun kz_term:is_boolean/1}
+                ,{<<"Reinvite">>, fun kz_term:is_boolean/1}
+                ]
+               }
+              ],
+    kapi_definition:setters(Setters).
+
+-spec originate_ready_definition() -> kapi_definition:api().
+originate_ready_definition() ->
+    EventName = <<"originate_ready">>,
+    Category = <<"dialplan">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Originate Ready">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"Send Requestor a message that the originate is ready to execute">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun originate_ready/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun originate_ready_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_originate_ready/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Call-ID">>
+                                                            ,<<"Control-Queue">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, []}
+              ,{fun kapi_definition:set_values/2
+               ,kapi_definition:event_type_headers(Category, EventName)
+               }
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
+
+-spec originate_execute_definition() -> kapi_definition:api().
+originate_execute_definition() ->
+    EventName = <<"originate_execute">>,
+    Category = <<"dialplan">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Originate Execute">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"Wait for the Requestor to respond to execute the origination">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun originate_execute/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun originate_execute_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_originate_execute/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Call-ID">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, []}
+              ,{fun kapi_definition:set_values/2
+               ,kapi_definition:event_type_headers(Category, EventName)
+               }
+              ,{fun kapi_definition:set_types/2
+               ,[]
+               }
+              ],
+    kapi_definition:setters(Setters).
+
+-spec fax_detection_definition() -> kapi_definition:api().
+fax_detection_definition() ->
+    EventName = <<"command">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Fax Detection">>}
+              ,{fun kapi_definition:set_description/2, <<"Detect fax on the line">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun fax_detection/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun fax_detection_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Action">>
+                                                            ,<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Action">>
+                                                            ,<<"Direction">>
+                                                            ,<<"Duration">>
+                                                            ,<<"Insert-At">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"fax_detection">>}
+                ,{<<"Direction">>, [<<"inbound">>, <<"outbound">>]}
+                ,{<<"Action">>, [<<"start">>, <<"stop">>]}
+                ,?INSERT_AT_TUPLE
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
+
+-spec store_vm_definition() -> kapi_definition:api().
+store_vm_definition() ->
+    EventName = <<"command">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Store VM">>}
+              ,{fun kapi_definition:set_description/2, <<"Store VoiceMail">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun store_vm/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun store_vm_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ,<<"Media-Name">>
+                                                            ,<<"Media-Transfer-Destination">>
+                                                            ,<<"Media-Transfer-Method">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Additional-Headers">>
+                                                            ,<<"Insert-At">>
+                                                            ,<<"Suppress-Error-Report">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"store_vm">>}
+                ,{<<"Media-Transfer-Method">>, [<<"stream">>, <<"put">>, <<"post">>]}
+                ,?INSERT_AT_TUPLE
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2
+               ,[{<<"Additional-Headers">>, fun erlang:is_list/1}
+                ,{<<"Suppress-Error-Report">>, fun kz_term:is_boolean/1}
+                ]
+               }
+              ],
+    kapi_definition:setters(Setters).
+
+-spec audio_level_definition() -> kapi_definition:api().
+audio_level_definition() ->
+    EventName = <<"command">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Audio level">>}
+              ,{fun kapi_definition:set_description/2, <<"Audio level/mute">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun audio_level/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun audio_level_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Action">>
+                                                            ,<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ,<<"Insert-At">>
+                                                            ,<<"Level">>
+                                                            ,<<"Mode">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, []}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"audio_level">>}
+                ,?INSERT_AT_TUPLE
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
+
+-spec transfer_definition() -> kapi_definition:api().
+transfer_definition() ->
+    EventName = <<"command">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Transfer">>}
+              ,{fun kapi_definition:set_description/2, <<"Transfer">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun transfer/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun transfer_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ,<<"Transfer-To">>
+                                                            ,<<"Transfer-Type">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Attended-Transfer-Keys">>
+                                                            ,<<"Caller-ID-Name">>
+                                                            ,<<"Caller-ID-Number">>
+                                                            ,<<"Custom-Channel-Vars">>
+                                                            ,<<"Insert-At">>
+                                                            ,<<"Transfer-Context">>
+                                                            ,<<"Transfer-Leg">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"transfer">>}
+                ,{<<"Transfer-Type">>, [<<"blind">>, <<"attended">>]}
+                ,{<<"Transfer-Leg">>, [<<"bleg">>, <<"both">>]}
+                ,?INSERT_AT_TUPLE
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2
+               ,[{<<"Call-ID">>, fun is_binary/1}
+                ]
+               }
+              ],
+    kapi_definition:setters(Setters).
+
+-spec media_macro_definition() -> kapi_definition:api().
+media_macro_definition() ->
+    EventName = <<"command">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Media macro">>}
+              ,{fun kapi_definition:set_description/2, <<"Media macro">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun media_macro/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun media_macro_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ,<<"Media-Macros">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Insert-At">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"media_macro">>}
+                ,{<<"Insert-At">>, <<"now">>}
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2
+               ,[{<<"Call-ID">>, fun is_binary/1}
+                ,{<<"Media-Macros">>, fun kz_json:is_json_object/1}
+                ]
+               }
+              ],
+    kapi_definition:setters(Setters).
+
+-spec play_macro_definition() -> kapi_definition:api().
+play_macro_definition() ->
+    EventName = <<"command">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Play macro">>}
+              ,{fun kapi_definition:set_description/2, <<"Play macro">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun play_macro/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun play_macro_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ,<<"Media-Macro">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Insert-At">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"play_macro">>}
+                ,{<<"Insert-At">>, <<"now">>}
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2
+               ,[{<<"Call-ID">>, fun is_binary/1}
+                ]
+               }
+              ],
+    kapi_definition:setters(Setters).
+
+-spec sound_touch_definition() -> kapi_definition:api().
+sound_touch_definition() ->
+    EventName = <<"command">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Sound touch">>}
+              ,{fun kapi_definition:set_description/2, <<"Sound touch">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun sound_touch/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun sound_touch_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Action">>
+                                                            ,<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ,<<"Insert-At">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Adjust-In-Octaves">>
+                                                            ,<<"Adjust-In-Semitones">>
+                                                            ,<<"Hook-DTMF">>
+                                                            ,<<"Pitch">>
+                                                            ,<<"Rate">>
+                                                            ,<<"Sending-Leg">>
+                                                            ,<<"Tempo">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"sound_touch">>}
+                ,{<<"Action">>, [<<"start">>, <<"stop">>]}
+                ,?INSERT_AT_TUPLE
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2
+               ,[{<<"Hook-DTMF">>, fun is_boolean/1}
+                ,{<<"Sending-Leg">>, fun is_boolean/1}
+                ]
+               }
+              ],
+    kapi_definition:setters(Setters).
+
+-spec hold_control_definition() -> kapi_definition:api().
+hold_control_definition() ->
+    EventName = <<"command">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Hold Control">>}
+              ,{fun kapi_definition:set_description/2, <<"Hold Control">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun hold_control/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun hold_control_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Action">>
+                                                            ,<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Insert-At">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"hold_control">>}
+                ,{<<"Action">>, [<<"hold">>, <<"unhold">>, <<"toggle">>]}
+                ,?INSERT_AT_TUPLE
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
+
+-spec event_actions_definition() -> kapi_definition:api().
+event_actions_definition() ->
+    EventName = <<"command">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Event Actions">>}
+              ,{fun kapi_definition:set_description/2, <<"Event Actions">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun event_actions/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun event_actions_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ,<<"Event-Actions">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Insert-At">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"event_actions">>}
+                ,{<<"Insert-At">>, <<"now">>}
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2
+               ,[{<<"Event-Actions">>, fun kz_json:is_json_object/1}
+                ]
+               }
+              ],
+    kapi_definition:setters(Setters).
+
+-spec queue_definition() -> kapi_definition:api().
+queue_definition() ->
+    EventName = <<"command">>,
+    Category = <<"call">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Queue">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"Send a list of dialplan applications in bulk">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun queue/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun queue_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_command/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Application-Name">>
+                                                            ,<<"Call-ID">>
+                                                            ,<<"Commands">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Insert-At">>]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Application-Name">>, <<"queue">>}
+                ,?INSERT_AT_TUPLE
+                 | kapi_definition:event_type_headers(Category, EventName)
+                ]
+               }
+              ,{fun kapi_definition:set_types/2
+               ,[{<<"Commands">>, fun erlang:is_list/1}
+                ]
+               }
+              ],
+    kapi_definition:setters(Setters).
+
+-spec error_definition() -> kapi_definition:api().
+error_definition() ->
+    EventName = <<"dialplan">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Error">>}
+              ,{fun kapi_definition:set_description/2, <<"Error - Sends error to Queue">>}
+              ,{fun kapi_definition:set_build_fun/2, fun error/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun error_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_error/2}
+              ,{fun kapi_definition:set_binding/2, fun kapi_call:event_routing_key/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Channel-Call-State">>
+                                                            ,<<"Channel-State">>
+                                                            ,<<"Dialplan-Error">>
+                                                                 | ?ERROR_RESP_HEADERS
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Custom-Channel-Vars">>
+                                                                 | ?OPTIONAL_ERROR_RESP_HEADERS
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Event-Name">>, EventName}
+                 | ?ERROR_RESP_VALUES
+                ]
+               }
+              ,{fun kapi_definition:set_types/2, ?ERROR_RESP_TYPES}
+              ],
+    kapi_definition:setters(Setters).
+
 -spec optional_bridge_req_headers() -> kz_term:ne_binaries().
 optional_bridge_req_headers() ->
-    ?OPTIONAL_BRIDGE_REQ_HEADERS.
+    kapi_definition:optional_headers(bridge_definition()).
 
 -spec optional_bridge_req_endpoint_headers() -> kz_term:ne_binaries().
 optional_bridge_req_endpoint_headers() ->
-    ?OPTIONAL_BRIDGE_REQ_ENDPOINT_HEADERS.
+    kapi_definition:optional_headers(bridge_endpoint_definition()).
 
 -spec b_leg_events_v(kz_term:ne_binaries()) -> boolean().
 b_leg_events_v(Events) ->
@@ -154,7 +2431,7 @@ v(Prop, DPApp) ->
 %% Takes {@link kz_term:api_term()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec bridge(kz_term:api_terms()) -> api_formatter_return().
+-spec bridge(kz_term:api_terms()) -> kz_api:api_formatter_return().
 bridge(Prop) when is_list(Prop) ->
     EPs = [begin
                {'ok', EPProps} = bridge_endpoint_headers(EP),
@@ -163,76 +2440,60 @@ bridge(Prop) when is_list(Prop) ->
            || EP <- props:get_value(<<"Endpoints">>, Prop, []),
               bridge_endpoint_v(EP)
           ],
-    Prop1 = props:set_value(<<"Endpoints">>, EPs, Prop),
-    case bridge_v(Prop1) of
-        'true' -> kz_api:build_message(Prop1, ?BRIDGE_REQ_HEADERS, ?OPTIONAL_BRIDGE_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for bridge_req"}
-    end;
+    kapi_definition:build_message(props:set_value(<<"Endpoints">>, EPs, Prop), bridge_definition());
 bridge(JObj) ->
     bridge(kz_json:to_proplist(JObj)).
 
 -spec bridge_v(kz_term:api_terms()) -> boolean().
-bridge_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?BRIDGE_REQ_HEADERS, ?BRIDGE_REQ_VALUES, ?BRIDGE_REQ_TYPES);
-bridge_v(JObj) ->
-    bridge_v(kz_json:to_proplist(JObj)).
+bridge_v(Req) ->
+    kapi_definition:validate(Req, bridge_definition()).
 
 %%------------------------------------------------------------------------------
 %% @doc Unbridge a call.
 %% Takes {@link kz_term:api_term()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec unbridge(kz_term:api_terms()) -> api_formatter_return().
-unbridge(Prop) when is_list(Prop) ->
-    case unbridge_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?UNBRIDGE_REQ_HEADERS, ?OPTIONAL_UNBRIDGE_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for unbridge_req"}
-    end;
-unbridge(JObj) ->
-    unbridge(kz_json:to_proplist(JObj)).
+-spec unbridge(kz_term:api_terms()) -> kz_api:api_formatter_return().
+unbridge(Req) ->
+    kapi_definition:build_message(Req, unbridge_definition()).
 
 -spec unbridge_v(kz_term:api_terms()) -> boolean().
-unbridge_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?UNBRIDGE_REQ_HEADERS, ?UNBRIDGE_REQ_VALUES, ?UNBRIDGE_REQ_TYPES);
-unbridge_v(JObj) ->
-    unbridge_v(kz_json:to_proplist(JObj)).
+unbridge_v(Req) ->
+    kapi_definition:validate(Req, unbridge_definition()).
 
 %%------------------------------------------------------------------------------
 %% @doc Endpoints for bridging a call.
 %% Takes {@link kz_term:api_term()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec bridge_endpoint(kz_term:api_terms()) ->
-          {'ok', kz_term:proplist()} |
-          {'error', string()}.
-bridge_endpoint(Prop) when is_list(Prop) ->
-    case bridge_endpoint_v(Prop) of
-        'true' -> kz_api:build_message_specific(Prop, ?BRIDGE_REQ_ENDPOINT_HEADERS, ?OPTIONAL_BRIDGE_REQ_ENDPOINT_HEADERS);
-        'false' -> {'error', "Proplist failed validation for bridge_req_endpoint"}
-    end;
-bridge_endpoint(JObj) ->
-    bridge_endpoint(kz_json:to_proplist(JObj)).
+-spec bridge_endpoint(kz_term:api_terms()) -> kz_api:api_formatter_return().
+bridge_endpoint(Req) ->
+    kapi_definition:build_message(Req, bridge_endpoint_definition()).
 
 -spec bridge_endpoint_headers(kz_term:api_terms()) ->
           {'ok', kz_term:proplist()} |
           {'error', string()}.
 bridge_endpoint_headers(Prop) when is_list(Prop) ->
-    kz_api:build_message_specific_headers(Prop, ?BRIDGE_REQ_ENDPOINT_HEADERS, ?OPTIONAL_BRIDGE_REQ_ENDPOINT_HEADERS);
+    Definition = bridge_endpoint_definition(),
+    ReqHeaders = kapi_definition:required_headers(Definition),
+    OptHeaders = kapi_definition:optional_headers(Definition),
+    kz_api:build_message_specific_headers(Prop
+                                         ,ReqHeaders
+                                         ,OptHeaders
+                                         );
 bridge_endpoint_headers(JObj) ->
     bridge_endpoint_headers(kz_json:to_proplist(JObj)).
 
 -spec bridge_endpoint_v(kz_term:api_terms()) -> boolean().
-bridge_endpoint_v(Prop) when is_list(Prop) ->
-    kz_api:validate_message(Prop, ?BRIDGE_REQ_ENDPOINT_HEADERS, ?BRIDGE_REQ_ENDPOINT_VALUES, ?BRIDGE_REQ_ENDPOINT_TYPES);
-bridge_endpoint_v(JObj) ->
-    bridge_endpoint_v(kz_json:to_proplist(JObj)).
+bridge_endpoint_v(Req) ->
+    kapi_definition:validate_message(Req, bridge_endpoint_definition()).
 
 %%------------------------------------------------------------------------------
 %% @doc Page a call.
 %% Takes {@link kz_term:api_term()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec page(kz_term:api_terms()) -> api_formatter_return().
+-spec page(kz_term:api_terms()) -> kz_api:api_formatter_return().
 page(Prop) when is_list(Prop) ->
     EPs = [begin
                {'ok', EPProps} = bridge_endpoint_headers(EP),
@@ -241,58 +2502,50 @@ page(Prop) when is_list(Prop) ->
            || EP <- props:get_value(<<"Endpoints">>, Prop, []),
               bridge_endpoint_v(EP)
           ],
-    Prop1 = [ {<<"Endpoints">>, EPs} | props:delete(<<"Endpoints">>, Prop)],
-    case page_v(Prop1) of
-        'true' -> kz_api:build_message(Prop1, ?PAGE_REQ_HEADERS, ?OPTIONAL_PAGE_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for page_req"}
-    end;
-page(JObj) -> page(kz_json:to_proplist(JObj)).
+    kapi_definition:build_message(props:set_value(<<"Endpoints">>, EPs, Prop), page_definition()).
 
 -spec page_v(kz_term:api_terms()) -> boolean().
-page_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?PAGE_REQ_HEADERS, ?PAGE_REQ_VALUES, ?PAGE_REQ_TYPES);
-page_v(JObj) -> page_v(kz_json:to_proplist(JObj)).
+page_v(Req) ->
+    kapi_definition:validate(Req, page_definition()).
 
--spec store(kz_term:api_terms()) ->
-          {'ok', kz_term:proplist()} |
-          {'error', string()}.
-store(Prop) when is_list(Prop) ->
-    case store_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?STORE_REQ_HEADERS, ?OPTIONAL_STORE_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for store"}
-    end;
-store(JObj) -> store(kz_json:to_proplist(JObj)).
+%%------------------------------------------------------------------------------
+%% @doc Store Request.
+%% Takes {@link kz_term:api_term()}, creates JSON string or error.
+%% @end
+%%------------------------------------------------------------------------------
+-spec store(kz_term:api_terms()) -> kz_api:api_formatter_return().
+store(Req) ->
+    kapi_definition:build_message(Req, store_definition()).
 
 -spec store_v(kz_term:api_terms()) -> boolean().
-store_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?STORE_REQ_HEADERS, ?STORE_REQ_VALUES, ?STORE_REQ_TYPES);
-store_v(JObj) -> store_v(kz_json:to_proplist(JObj)).
+store_v(Req) ->
+    kapi_definition:validate(Req, store_definition()).
 
--spec store_amqp_resp(kz_term:api_terms()) -> api_formatter_return().
-store_amqp_resp(Prop) when is_list(Prop) ->
-    case store_amqp_resp_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?STORE_AMQP_RESP_HEADERS, ?OPTIONAL_STORE_AMQP_RESP_HEADERS);
-        'false' -> {'error', "Proplist failed validate for store_amqp_resp"}
-    end;
-store_amqp_resp(JObj) -> store_amqp_resp(kz_json:to_proplist(JObj)).
+%%------------------------------------------------------------------------------
+%% @doc Store (via AMQP) Response.
+%% Takes {@link kz_term:api_term()}, creates JSON string or error.
+%% @end
+%%------------------------------------------------------------------------------
+-spec store_amqp_resp(kz_term:api_terms()) -> kz_api:api_formatter_return().
+store_amqp_resp(Req) ->
+    kapi_definition:build_message(Req, store_amqp_resp_definition()).
 
 -spec store_amqp_resp_v(kz_term:api_terms()) -> boolean().
-store_amqp_resp_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?STORE_AMQP_RESP_HEADERS, ?STORE_AMQP_RESP_VALUES, ?STORE_AMQP_RESP_TYPES);
-store_amqp_resp_v(JObj) -> store_amqp_resp_v(kz_json:to_proplist(JObj)).
+store_amqp_resp_v(Req) ->
+    kapi_definition:validate(Req, store_amqp_resp_definition()).
 
--spec store_http_resp(kz_term:api_terms()) -> api_formatter_return().
-store_http_resp(Prop) when is_list(Prop) ->
-    case store_http_resp_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?STORE_HTTP_RESP_HEADERS, ?OPTIONAL_STORE_HTTP_RESP_HEADERS);
-        'false' -> {'error', "Proplist failed validate for store_http_resp"}
-    end;
-store_http_resp(JObj) -> store_http_resp(kz_json:to_proplist(JObj)).
+%%------------------------------------------------------------------------------
+%% @doc Store (via HTTP) Response.
+%% Takes {@link kz_term:api_term()}, creates JSON string or error.
+%% @end
+%%------------------------------------------------------------------------------
+-spec store_http_resp(kz_term:api_terms()) -> kz_api:api_formatter_return().
+store_http_resp(Req) ->
+    kapi_definition:build_message(Req, store_http_resp_definition()).
 
 -spec store_http_resp_v(kz_term:api_terms()) -> boolean().
-store_http_resp_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?STORE_HTTP_RESP_HEADERS, ?STORE_HTTP_RESP_VALUES, ?STORE_HTTP_RESP_TYPES);
-store_http_resp_v(JObj) -> store_http_resp_v(kz_json:to_proplist(JObj)).
+store_http_resp_v(Req) ->
+    kapi_definition:validate(Req, store_http_resp_definition()).
 
 -spec store_media_content_v(binary() | 'eof') -> boolean().
 store_media_content_v(V) ->
@@ -304,38 +2557,33 @@ store_media_content_v(V) ->
 %% Takes {@link kz_term:api_term()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec send_dtmf(kz_term:api_terms()) -> api_formatter_return() .
-send_dtmf(Prop) when is_list(Prop) ->
-    case send_dtmf_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?SEND_DTMF_HEADERS, ?OPTIONAL_SEND_DTMF_HEADERS);
-        'false' -> {'error', "Prop failed validation for send_dtmf"}
-    end;
-send_dtmf(JObj) -> send_dtmf(kz_json:to_proplist(JObj)).
+-spec send_dtmf(kz_term:api_terms()) -> kz_api:api_formatter_return().
+send_dtmf(Req) ->
+    kapi_definition:build_message(Req, send_dtmf_definition()).
 
 -spec send_dtmf_v(kz_term:api_terms()) -> boolean().
-send_dtmf_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?SEND_DTMF_HEADERS, ?SEND_DTMF_VALUES, ?SEND_DTMF_TYPES);
-send_dtmf_v(JObj) -> send_dtmf_v(kz_json:to_proplist(JObj)).
+send_dtmf_v(Req) ->
+    kapi_definition:validate(Req, send_dtmf_definition()).
 
--spec recv_dtmf(kz_term:api_terms()) -> api_formatter_return() .
-recv_dtmf(Prop) when is_list(Prop) ->
-    case recv_dtmf_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?RECV_DTMF_HEADERS, ?OPTIONAL_RECV_DTMF_HEADERS);
-        'false' -> {'error', "Prop failed validation for send_dtmf"}
-    end;
-recv_dtmf(JObj) -> recv_dtmf(kz_json:to_proplist(JObj)).
+%%------------------------------------------------------------------------------
+%% @doc Receive DTMF.
+%% Takes {@link kz_term:api_term()}, creates JSON string or error.
+%% @end
+%%------------------------------------------------------------------------------
+-spec recv_dtmf(kz_term:api_terms()) -> kz_api:api_formatter_return().
+recv_dtmf(Req) ->
+    kapi_definition:build_message(Req, recv_dtmf_definition()).
 
 -spec recv_dtmf_v(kz_term:api_terms()) -> boolean().
-recv_dtmf_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?RECV_DTMF_HEADERS, ?RECV_DTMF_VALUES, ?RECV_DTMF_TYPES);
-recv_dtmf_v(JObj) -> recv_dtmf_v(kz_json:to_proplist(JObj)).
+recv_dtmf_v(Req) ->
+    kapi_definition:validate(Req, recv_dtmf_definition()).
 
 %%------------------------------------------------------------------------------
 %% @doc Create a tone on the channel.
 %% Takes {@link kz_term:api_term()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec tones(kz_term:api_terms()) -> api_formatter_return() .
+-spec tones(kz_term:api_terms()) -> kz_api:api_formatter_return().
 tones(Prop) when is_list(Prop) ->
     Tones = [begin
                  {'ok', TonesProp} = tones_req_tone_headers(Tone),
@@ -344,16 +2592,53 @@ tones(Prop) when is_list(Prop) ->
              || Tone <- props:get_value(<<"Tones">>, Prop, []),
                 tones_req_tone_v(Tone)],
     Prop1 = [ {<<"Tones">>, Tones} | props:delete(<<"Tones">>, Prop)],
-    case tones_v(Prop1) of
-        'true' -> kz_api:build_message(Prop1, ?TONES_REQ_HEADERS, ?OPTIONAL_TONES_REQ_HEADERS);
-        'false' -> {'error', "Prop failed validation for tones_req"}
-    end;
-tones(JObj) -> tones(kz_json:to_proplist(JObj)).
+    kapi_definition:build_message(Prop1, tones_definition());
+tones(JObj) ->
+    tones(kz_json:to_proplist(JObj)).
 
 -spec tones_v(kz_term:api_terms()) -> boolean().
-tones_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?TONES_REQ_HEADERS, ?TONES_REQ_VALUES, ?TONES_REQ_TYPES);
-tones_v(JObj) -> tones_v(kz_json:to_proplist(JObj)).
+tones_v(Req) ->
+    kapi_definition:validate(Req, tones_definition()).
+
+%%------------------------------------------------------------------------------
+%% @doc A Tone within a Tones request.
+%% Takes {@link kz_term:api_term()} and returns a proplist
+%% @end
+%%------------------------------------------------------------------------------
+-spec tones_req_tone(kz_term:api_terms()) -> kz_api:api_formatter_return().
+tones_req_tone(Req) ->
+    kapi_definition:build_message(Req, tones_req_tone_definition()).
+
+-spec tones_req_tone_v(kz_term:api_terms()) -> boolean().
+tones_req_tone_v(Req) ->
+    kapi_definition:validate_message(Req, tones_req_tone_definition()).
+
+-spec tones_req_tone_headers(kz_term:api_terms()) ->
+          {'ok', kz_term:proplist()} |
+          {'error', string()}.
+tones_req_tone_headers(Prop) when is_list(Prop) ->
+    Definition = tones_req_tone_definition(),
+    ReqHeaders = kapi_definition:required_headers(Definition),
+    OptHeaders = kapi_definition:optional_headers(Definition),
+    kz_api:build_message_specific_headers(Prop
+                                         ,ReqHeaders
+                                         ,OptHeaders
+                                         );
+tones_req_tone_headers(JObj) ->
+    tones_req_tone_headers(kz_json:to_proplist(JObj)).
+
+%%------------------------------------------------------------------------------
+%% @doc Detect tones on the line.
+%% Takes {@link kz_term:api_term()}, creates JSON string or error.
+%% @end
+%%------------------------------------------------------------------------------
+-spec tone_detect(kz_term:api_terms()) -> kz_api:api_formatter_return().
+tone_detect(Req) ->
+    kapi_definition:build_message(Req, tone_detect_definition()).
+
+-spec tone_detect_v(kz_term:api_terms()) -> boolean().
+tone_detect_v(Req) ->
+    kapi_definition:validate(Req, tone_detect_definition()).
 
 -spec tone_timeout_v(any()) -> boolean().
 tone_timeout_v(Timeout) ->
@@ -366,763 +2651,539 @@ tone_timeout_v(Timeout) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc A Tone within a Tones request.
-%% Takes {@link kz_term:api_term()} and returns a proplist
-%% @end
-%%------------------------------------------------------------------------------
--spec tones_req_tone(kz_term:api_terms()) -> api_formatter_return().
-tones_req_tone(Prop) when is_list(Prop) ->
-    case tones_req_tone_v(Prop) of
-        'true' -> kz_api:build_message_specific(Prop, ?TONES_REQ_TONE_HEADERS, ?OPTIONAL_TONES_REQ_TONE_HEADERS);
-        'false' -> {'error', "Proplist failed validation for tones_req_tone"}
-    end;
-tones_req_tone(JObj) -> tones_req_tone(kz_json:to_proplist(JObj)).
-
--spec tones_req_tone_v(kz_term:api_terms()) -> boolean().
-tones_req_tone_v(Prop) when is_list(Prop) ->
-    kz_api:validate_message(Prop, ?TONES_REQ_TONE_HEADERS, ?TONES_REQ_TONE_VALUES, ?TONES_REQ_TONE_TYPES);
-tones_req_tone_v(JObj) -> tones_req_tone_v(kz_json:to_proplist(JObj)).
-
--spec tones_req_tone_headers(kz_term:api_terms()) ->
-          {'ok', kz_term:proplist()} |
-          {'error', string()}.
-tones_req_tone_headers(Prop) when is_list(Prop) ->
-    kz_api:build_message_specific_headers(Prop, ?TONES_REQ_TONE_HEADERS, ?OPTIONAL_TONES_REQ_TONE_HEADERS);
-tones_req_tone_headers(JObj) -> tones_req_tone_headers(kz_json:to_proplist(JObj)).
-
-%%------------------------------------------------------------------------------
-%% @doc Detect tones on the line.
-%% Takes {@link kz_term:api_term()}, creates JSON string or error.
-%% @end
-%%------------------------------------------------------------------------------
--spec tone_detect(kz_term:api_terms()) -> api_formatter_return().
-tone_detect(Prop) when is_list(Prop) ->
-    case tone_detect_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?TONE_DETECT_REQ_HEADERS, ?OPTIONAL_TONE_DETECT_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for tone_detect"}
-    end;
-tone_detect(JObj) -> tone_detect(kz_json:to_proplist(JObj)).
-
--spec tone_detect_v(kz_term:api_terms()) -> boolean().
-tone_detect_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?TONE_DETECT_REQ_HEADERS, ?TONE_DETECT_REQ_VALUES, ?TONE_DETECT_REQ_TYPES);
-tone_detect_v(JObj) -> tone_detect_v(kz_json:to_proplist(JObj)).
-
-%%------------------------------------------------------------------------------
 %% @doc Send a list of dialplan applications in bulk.
 %% Takes {@link kz_term:api_term()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec queue(kz_term:api_terms()) -> api_formatter_return().
-queue(API) ->
-    queue(API, queue_v(API)).
-
--spec queue(kz_term:api_terms(), boolean()) -> api_formatter_return().
-queue(API, 'true') ->
-    kz_api:build_message(API, ?QUEUE_REQ_HEADERS, ?OPTIONAL_QUEUE_REQ_HEADERS);
-queue(_API, 'false') ->
-    {'error', "Proplist failed validation for queue_req"}.
+-spec queue(kz_term:api_terms()) -> kz_api:api_formatter_return().
+queue(Req) ->
+    kapi_definition:build_message(Req, queue_definition()).
 
 -spec queue_v(kz_term:api_terms()) -> boolean().
-queue_v(API) ->
-    kz_api:validate(API, ?QUEUE_REQ_HEADERS, ?QUEUE_REQ_VALUES, ?QUEUE_REQ_TYPES).
+queue_v(Req) ->
+    kapi_definition:validate(Req, queue_definition()).
 
 %%------------------------------------------------------------------------------
 %% @doc Play media.
 %% Takes {@link kz_term:api_term()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec play(kz_term:api_terms()) -> api_formatter_return().
-play(Prop) when is_list(Prop) ->
-    case play_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?PLAY_REQ_HEADERS, ?OPTIONAL_PLAY_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for play"}
-    end;
-play(JObj) -> play(kz_json:to_proplist(JObj)).
+-spec play(kz_term:api_terms()) -> kz_api:api_formatter_return().
+play(Req) ->
+    kapi_definition:build_message(Req, play_definition()).
 
 -spec play_v(kz_term:api_terms()) -> boolean().
-play_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?PLAY_REQ_HEADERS, ?PLAY_REQ_VALUES, ?PLAY_REQ_TYPES);
-play_v(JObj) -> play_v(kz_json:to_proplist(JObj)).
+play_v(Req) ->
+    kapi_definition:validate(Req, play_definition()).
 
 %%------------------------------------------------------------------------------
 %% @doc Moves to the next step in callflow.
 %% Takes {@link kz_term:api_term()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec break(kz_term:api_terms()) -> api_formatter_return().
-break(Prop) when is_list(Prop) ->
-    case break_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?BREAK_REQ_HEADERS, ?OPTIONAL_BREAK_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for break"}
-    end;
-break(JObj) -> break(kz_json:to_proplist(JObj)).
+-spec break(kz_term:api_terms()) -> kz_api:api_formatter_return().
+break(Req) ->
+    kapi_definition:build_message(Req, break_definition()).
 
 -spec break_v(kz_term:api_terms()) -> boolean().
-break_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?BREAK_REQ_HEADERS, ?BREAK_REQ_VALUES, ?BREAK_REQ_TYPES);
-break_v(JObj) -> break_v(kz_json:to_proplist(JObj)).
-
+break_v(Req) ->
+    kapi_definition:validate(Req, break_definition()).
 
 %%------------------------------------------------------------------------------
 %% @doc Stop media from playing.
 %% Takes {@link kz_term:api_term()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec playstop(kz_term:api_terms()) -> api_formatter_return().
-playstop(Prop) when is_list(Prop) ->
-    case playstop_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?PLAY_STOP_REQ_HEADERS, ?OPTIONAL_PLAY_STOP_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for playstop"}
-    end;
-playstop(JObj) -> playstop(kz_json:to_proplist(JObj)).
+-spec playstop(kz_term:api_terms()) -> kz_api:api_formatter_return().
+playstop(Req) ->
+    kapi_definition:build_message(Req, playstop_definition()).
 
 -spec playstop_v(kz_term:api_terms()) -> boolean().
-playstop_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?PLAY_STOP_REQ_HEADERS, ?PLAY_STOP_REQ_VALUES, ?PLAY_STOP_REQ_TYPES);
-playstop_v(JObj) -> playstop_v(kz_json:to_proplist(JObj)).
+playstop_v(Req) ->
+    kapi_definition:validate(Req, playstop_definition()).
 
 %%------------------------------------------------------------------------------
 %% @doc Change position in playing media.
 %% Takes {@link kz_term:api_term()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec playseek(kz_term:api_terms()) -> api_formatter_return().
-playseek(Prop) when is_list(Prop) ->
-    case playseek_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?PLAY_SEEK_REQ_HEADERS, ?OPTIONAL_PLAY_SEEK_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for playseek"}
-    end;
-playseek(JObj) -> playseek(kz_json:to_proplist(JObj)).
+-spec playseek(kz_term:api_terms()) -> kz_api:api_formatter_return().
+playseek(Req) ->
+    kapi_definition:build_message(Req, playseek_definition()).
 
 -spec playseek_v(kz_term:api_terms()) -> boolean().
-playseek_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?PLAY_SEEK_REQ_HEADERS, ?PLAY_SEEK_REQ_VALUES, ?PLAY_SEEK_REQ_TYPES);
-playseek_v(JObj) -> playseek_v(kz_json:to_proplist(JObj)).
+playseek_v(Req) ->
+    kapi_definition:validate(Req, playseek_definition()).
 
 %%------------------------------------------------------------------------------
 %% @doc TTS - Text-to-speech.
 %% Takes {@link kz_term:api_term()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec tts(kz_term:api_terms()) -> api_formatter_return().
-tts(Prop) when is_list(Prop) ->
-    case tts_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?TTS_REQ_HEADERS, ?OPTIONAL_TTS_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for tts"}
-    end;
-tts(JObj) -> tts(kz_json:to_proplist(JObj)).
+-spec tts(kz_term:api_terms()) -> kz_api:api_formatter_return().
+tts(Req) ->
+    kapi_definition:build_message(Req, tts_definition()).
 
 -spec tts_v(kz_term:api_terms()) -> boolean().
-tts_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?TTS_REQ_HEADERS, ?TTS_REQ_VALUES, ?TTS_REQ_TYPES);
-tts_v(JObj) -> tts_v(kz_json:to_proplist(JObj)).
+tts_v(Req) ->
+    kapi_definition:validate(Req, tts_definition()).
 
 %%------------------------------------------------------------------------------
 %% @doc Record media.
 %% Takes {@link kz_term:api_term()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec record(kz_term:api_terms()) -> api_formatter_return().
-record(Prop) when is_list(Prop) ->
-    case record_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?RECORD_REQ_HEADERS, ?OPTIONAL_RECORD_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for record_req"}
-    end;
-record(JObj) -> record(kz_json:to_proplist(JObj)).
+-spec record(kz_term:api_terms()) -> kz_api:api_formatter_return().
+record(Req) ->
+    kapi_definition:build_message(Req, record_definition()).
 
 -spec record_v(kz_term:api_terms()) -> boolean().
-record_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?RECORD_REQ_HEADERS, ?RECORD_REQ_VALUES, ?RECORD_REQ_TYPES);
-record_v(JObj) -> record_v(kz_json:to_proplist(JObj)).
+record_v(Req) ->
+    kapi_definition:validate(Req, record_definition()).
 
 %%------------------------------------------------------------------------------
 %% @doc Record call media.
 %% Takes {@link kz_term:api_term()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec record_call(kz_term:api_terms()) -> api_formatter_return().
-record_call(Prop) when is_list(Prop) ->
-    case record_call_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?RECORD_CALL_REQ_HEADERS, ?OPTIONAL_RECORD_CALL_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for record_call_req"}
-    end;
-record_call(JObj) -> record_call(kz_json:to_proplist(JObj)).
+-spec record_call(kz_term:api_terms()) -> kz_api:api_formatter_return().
+record_call(Req) ->
+    kapi_definition:build_message(Req, record_call_definition()).
 
 -spec record_call_v(kz_term:api_terms()) -> boolean().
-record_call_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?RECORD_CALL_REQ_HEADERS, ?RECORD_CALL_REQ_VALUES, ?RECORD_CALL_REQ_TYPES);
-record_call_v(JObj) -> record_call_v(kz_json:to_proplist(JObj)).
+record_call_v(Req) ->
+    kapi_definition:validate(Req, record_call_definition()).
 
 %%------------------------------------------------------------------------------
 %% @doc Answer a session.
 %% Takes {@link kz_term:api_term()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec answer(kz_term:api_terms()) -> api_formatter_return().
-answer(Prop) when is_list(Prop) ->
-    case answer_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?ANSWER_REQ_HEADERS, ?OPTIONAL_ANSWER_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for answer_req"}
-    end;
-answer(JObj) -> answer(kz_json:to_proplist(JObj)).
+-spec answer(kz_term:api_terms()) -> kz_api:api_formatter_return().
+answer(Req) ->
+    kapi_definition:build_message(Req, answer_definition()).
 
 -spec answer_v(kz_term:api_terms()) -> boolean().
-answer_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?ANSWER_REQ_HEADERS, ?ANSWER_REQ_VALUES, ?ANSWER_REQ_TYPES);
-answer_v(JObj) -> answer_v(kz_json:to_proplist(JObj)).
+answer_v(Req) ->
+    kapi_definition:validate(Req, answer_definition()).
 
 %%------------------------------------------------------------------------------
 %% @doc Echo a session.
 %% Takes {@link kz_term:api_term()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec echo(kz_term:api_terms()) -> api_formatter_return().
-echo(Prop) when is_list(Prop) ->
-    case echo_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?ECHO_REQ_HEADERS, ?OPTIONAL_ECHO_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for echo"}
-    end;
-echo(JObj) -> echo(kz_json:to_proplist(JObj)).
+-spec echo(kz_term:api_terms()) -> kz_api:api_formatter_return().
+echo(Req) ->
+    kapi_definition:build_message(Req, echo_definition()).
 
 -spec echo_v(kz_term:api_terms()) -> boolean().
-echo_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?ECHO_REQ_HEADERS, ?ECHO_REQ_VALUES, ?ECHO_REQ_TYPES);
-echo_v(JObj) -> echo_v(kz_json:to_proplist(JObj)).
+echo_v(Req) ->
+    kapi_definition:validate(Req, echo_definition()).
 
 %%------------------------------------------------------------------------------
 %% @doc Privacy.
 %% @end
 %%------------------------------------------------------------------------------
--spec privacy(kz_term:api_terms()) -> api_formatter_return().
-privacy(Prop) when is_list(Prop) ->
-    case privacy_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?PRIVACY_REQ_HEADERS, ?OPTIONAL_PRIVACY_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for privacy"}
-    end;
-privacy(JObj) -> privacy(kz_json:to_proplist(JObj)).
+-spec privacy(kz_term:api_terms()) -> kz_api:api_formatter_return().
+privacy(Req) ->
+    kapi_definition:build_message(Req, privacy_definition()).
 
 -spec privacy_v(kz_term:api_terms()) -> boolean().
-privacy_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?PRIVACY_REQ_HEADERS, ?PRIVACY_REQ_VALUES, ?PRIVACY_REQ_TYPES);
-privacy_v(JObj) -> privacy_v(kz_json:to_proplist(JObj)).
+privacy_v(Req) ->
+    kapi_definition:validate(Req, privacy_definition()).
 
 %%------------------------------------------------------------------------------
 %% @doc Progress a session.
 %% Takes {@link kz_term:api_term()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec progress(kz_term:api_terms()) -> api_formatter_return().
-progress(Prop) when is_list(Prop) ->
-    case progress_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?PROGRESS_REQ_HEADERS, ?OPTIONAL_PROGRESS_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for progress_req"}
-    end;
-progress(JObj) -> progress(kz_json:to_proplist(JObj)).
+-spec progress(kz_term:api_terms()) -> kz_api:api_formatter_return().
+progress(Req) ->
+    kapi_definition:build_message(Req, progress_definition()).
 
 -spec progress_v(kz_term:api_terms()) -> boolean().
-progress_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?PROGRESS_REQ_HEADERS, ?PROGRESS_REQ_VALUES, ?PROGRESS_REQ_TYPES);
-progress_v(JObj) -> progress_v(kz_json:to_proplist(JObj)).
+progress_v(Req) ->
+    kapi_definition:validate(Req, progress_definition()).
 
 %%------------------------------------------------------------------------------
 %% @doc Ring a session.
 %% Takes {@link kz_term:api_term()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec ring(kz_term:api_terms()) -> api_formatter_return().
-ring(Prop) when is_list(Prop) ->
-    case ring_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?RING_REQ_HEADERS, ?OPTIONAL_RING_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for ring_req"}
-    end;
-ring(JObj) -> ring(kz_json:to_proplist(JObj)).
+-spec ring(kz_term:api_terms()) -> kz_api:api_formatter_return().
+ring(Req) ->
+    kapi_definition:build_message(Req, ring_definition()).
 
 -spec ring_v(kz_term:api_terms()) -> boolean().
-ring_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?RING_REQ_HEADERS, ?RING_REQ_VALUES, ?RING_REQ_TYPES);
-ring_v(JObj) -> ring_v(kz_json:to_proplist(JObj)).
+ring_v(Req) ->
+    kapi_definition:validate(Req, ring_definition()).
 
 %%------------------------------------------------------------------------------
 %% @doc Receive a fax, storing it to local disk.
 %% Takes {@link kz_term:api_term()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec receive_fax(kz_term:api_terms()) -> api_formatter_return().
-receive_fax(Prop) when is_list(Prop) ->
-    case receive_fax_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?RECV_FAX_HEADERS, ?OPTIONAL_RECV_FAX_HEADERS);
-        'false' -> {'error', "Proplist failed validation for receive_fax"}
-    end;
-receive_fax(JObj) -> receive_fax(kz_json:to_proplist(JObj)).
+-spec receive_fax(kz_term:api_terms()) -> kz_api:api_formatter_return().
+receive_fax(Req) ->
+    kapi_definition:build_message(Req, receive_fax_definition()).
 
 -spec receive_fax_v(kz_term:api_terms()) -> boolean().
-receive_fax_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?RECV_FAX_HEADERS, ?RECV_FAX_VALUES, ?RECV_FAX_TYPES);
-receive_fax_v(JObj) -> receive_fax_v(kz_json:to_proplist(JObj)).
+receive_fax_v(Req) ->
+    kapi_definition:validate(Req, receive_fax_definition()).
 
 %%------------------------------------------------------------------------------
 %% @doc Store a fax, storing it to the DB.
 %% Takes {@link kz_term:api_term()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec store_fax(kz_term:api_terms()) -> api_formatter_return().
-store_fax(Prop) when is_list(Prop) ->
-    case store_fax_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?STORE_FAX_HEADERS, ?OPTIONAL_STORE_FAX_HEADERS);
-        'false' -> {'error', "Proplist failed validation for store_fax"}
-    end;
-store_fax(JObj) ->
-    store_fax(kz_json:to_proplist(JObj)).
+-spec store_fax(kz_term:api_terms()) -> kz_api:api_formatter_return().
+store_fax(Req) ->
+    kapi_definition:build_message(Req, store_fax_definition()).
 
 -spec store_fax_v(kz_term:api_terms()) -> boolean().
-store_fax_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?STORE_FAX_HEADERS, ?STORE_FAX_VALUES, ?STORE_FAX_TYPES);
-store_fax_v(JObj) ->
-    store_fax_v(kz_json:to_proplist(JObj)).
+store_fax_v(Req) ->
+    kapi_definition:validate(Req, store_fax_definition()).
 
 %%------------------------------------------------------------------------------
 %% @doc Hangup a call.
 %% Takes {@link kz_term:api_term()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec hangup(kz_term:api_terms()) -> api_formatter_return().
-hangup(Prop) when is_list(Prop) ->
-    case hangup_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?HANGUP_REQ_HEADERS, ?OPTIONAL_HANGUP_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for hangup_req"}
-    end;
-hangup(JObj) ->
-    hangup(kz_json:to_proplist(JObj)).
+-spec hangup(kz_term:api_terms()) -> kz_api:api_formatter_return().
+hangup(Req) ->
+    kapi_definition:build_message(Req, hangup_definition()).
 
 -spec hangup_v(kz_term:api_terms()) -> boolean().
-hangup_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?HANGUP_REQ_HEADERS, ?HANGUP_REQ_VALUES, ?HANGUP_REQ_TYPES);
-hangup_v(JObj) ->
-    hangup_v(kz_json:to_proplist(JObj)).
+hangup_v(Req) ->
+    kapi_definition:validate(Req, hangup_definition()).
 
--spec soft_hold(kz_term:api_terms()) -> api_formatter_return().
-soft_hold(Prop) when is_list(Prop) ->
-    case soft_hold_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?SOFT_HOLD_REQ_HEADERS, ?OPTIONAL_SOFT_HOLD_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for hold_req"}
-    end;
-soft_hold(JObj) ->
-    soft_hold(kz_json:to_proplist(JObj)).
+%%------------------------------------------------------------------------------
+%% @doc Soft Hold.
+%% Takes {@link kz_term:api_term()}, creates JSON string or error.
+%% @end
+%%------------------------------------------------------------------------------
+-spec soft_hold(kz_term:api_terms()) -> kz_api:api_formatter_return().
+soft_hold(Req) ->
+    kapi_definition:build_message(Req, soft_hold_definition()).
 
 -spec soft_hold_v(kz_term:api_terms()) -> boolean().
-soft_hold_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?SOFT_HOLD_REQ_HEADERS, ?SOFT_HOLD_REQ_VALUES, ?SOFT_HOLD_REQ_TYPES);
-soft_hold_v(JObj) ->
-    soft_hold_v(kz_json:to_proplist(JObj)).
+soft_hold_v(Req) ->
+    kapi_definition:validate(Req, soft_hold_definition()).
 
 %%------------------------------------------------------------------------------
 %% @doc Hold a call.
 %% Takes {@link kz_term:api_term()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec hold(kz_term:api_terms()) -> api_formatter_return().
-hold(Prop) when is_list(Prop) ->
-    case hold_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?HOLD_REQ_HEADERS, ?OPTIONAL_HOLD_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for hold_req"}
-    end;
-hold(JObj) ->
-    hold(kz_json:to_proplist(JObj)).
+-spec hold(kz_term:api_terms()) -> kz_api:api_formatter_return().
+hold(Req) ->
+    kapi_definition:build_message(Req, hold_definition()).
 
 -spec hold_v(kz_term:api_terms()) -> boolean().
-hold_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?HOLD_REQ_HEADERS, ?HOLD_REQ_VALUES, ?HOLD_REQ_TYPES);
-hold_v(JObj) ->
-    hold_v(kz_json:to_proplist(JObj)).
+hold_v(Req) ->
+    kapi_definition:validate(Req, hold_definition()).
 
--spec hold_control(kz_term:api_terms()) -> api_formatter_return().
-hold_control(Prop) when is_list(Prop) ->
-    case hold_control_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?HOLD_CTL_REQ_HEADERS, ?OPTIONAL_HOLD_CTL_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for hold_req"}
-    end;
-hold_control(JObj) ->
-    hold_control(kz_json:to_proplist(JObj)).
+%%------------------------------------------------------------------------------
+%% @doc Hold control.
+%% Takes {@link kz_term:api_term()}, creates JSON string or error.
+%% @end
+%%------------------------------------------------------------------------------
+-spec hold_control(kz_term:api_terms()) -> kz_api:api_formatter_return().
+hold_control(Req) ->
+    kapi_definition:build_message(Req, hold_control_definition()).
 
 -spec hold_control_v(kz_term:api_terms()) -> boolean().
-hold_control_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?HOLD_CTL_REQ_HEADERS, ?HOLD_CTL_REQ_VALUES, ?HOLD_CTL_REQ_TYPES);
-hold_control_v(JObj) ->
-    hold_control_v(kz_json:to_proplist(JObj)).
+hold_control_v(Req) ->
+    kapi_definition:validate(Req, hold_control_definition()).
 
 %%------------------------------------------------------------------------------
 %% @doc Park a call.
 %% Takes {@link kz_term:api_term()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec park(kz_term:api_terms()) -> api_formatter_return().
-park(Prop) when is_list(Prop) ->
-    case park_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?PARK_REQ_HEADERS, ?OPTIONAL_PARK_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for park_req"}
-    end;
-park(JObj) ->
-    park(kz_json:to_proplist(JObj)).
+-spec park(kz_term:api_terms()) -> kz_api:api_formatter_return().
+park(Req) ->
+    kapi_definition:build_message(Req, park_definition()).
 
 -spec park_v(kz_term:api_terms()) -> boolean().
-park_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?PARK_REQ_HEADERS, ?PARK_REQ_VALUES, ?PARK_REQ_TYPES);
-park_v(JObj) ->
-    park_v(kz_json:to_proplist(JObj)).
+park_v(Req) ->
+    kapi_definition:validate(Req, park_definition()).
 
--spec audio_level(kz_term:api_terms()) -> api_formatter_return().
-audio_level(Prop) when is_list(Prop) ->
-    case audio_level_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?AUDIO_REQ_HEADERS, ?OPTIONAL_AUDIO_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for audio_level_req"}
-    end;
-audio_level(JObj) ->
-    audio_level(kz_json:to_proplist(JObj)).
+%%------------------------------------------------------------------------------
+%% @doc Audio level/mute.
+%% Takes {@link kz_term:api_term()}, creates JSON string or error.
+%% @end
+%%------------------------------------------------------------------------------
+-spec audio_level(kz_term:api_terms()) -> kz_api:api_formatter_return().
+audio_level(Req) ->
+    kapi_definition:build_message(Req, audio_level_definition()).
 
 -spec audio_level_v(kz_term:api_terms()) -> boolean().
-audio_level_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?AUDIO_REQ_HEADERS, ?AUDIO_REQ_VALUES, ?AUDIO_REQ_TYPES);
-audio_level_v(JObj) ->
-    audio_level(kz_json:to_proplist(JObj)).
+audio_level_v(Req) ->
+    kapi_definition:validate(Req, audio_level_definition()).
 
 %%------------------------------------------------------------------------------
 %% @doc Set Custom Channel variables.
 %% Takes {@link kz_term:api_term()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec set(kz_term:api_terms()) -> api_formatter_return().
-set(Prop) when is_list(Prop) ->
-    case set_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?SET_REQ_HEADERS, ?OPTIONAL_SET_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for set_req"}
-    end;
-set(JObj) ->
-    set(kz_json:to_proplist(JObj)).
+-spec set(kz_term:api_terms()) -> kz_api:api_formatter_return().
+set(Req) ->
+    kapi_definition:build_message(Req, set_definition()).
 
--spec set_v(kz_term:api_terms()) -> boolean() .
-set_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?SET_REQ_HEADERS, ?SET_REQ_VALUES, ?SET_REQ_TYPES);
-set_v(JObj) ->
-    set_v(kz_json:to_proplist(JObj)).
+-spec set_v(kz_term:api_terms()) -> boolean().
+set_v(Req) ->
+    kapi_definition:validate(Req, set_definition()).
 
 %%------------------------------------------------------------------------------
 %% @doc Set Terminators for playback/record.
 %% Takes {@link kz_term:api_term()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec set_terminators(kz_term:api_terms()) -> api_formatter_return().
-set_terminators(Prop) when is_list(Prop) ->
-    case set_terminators_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?SET_TERM_HEADERS, ?OPTIONAL_SET_TERM_HEADERS);
-        'false' -> {'error', "Proplist failed validation for set_terminators"}
-    end;
-set_terminators(JObj) ->
-    set_terminators(kz_json:to_proplist(JObj)).
+-spec set_terminators(kz_term:api_terms()) -> kz_api:api_formatter_return().
+set_terminators(Req) ->
+    kapi_definition:build_message(Req, set_terminators_definition()).
 
--spec set_terminators_v(kz_term:api_terms()) -> boolean() .
-set_terminators_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?SET_TERM_HEADERS, ?SET_TERM_VALUES, ?SET_TERM_TYPES);
-set_terminators_v(JObj) ->
-    set_terminators_v(kz_json:to_proplist(JObj)).
+-spec set_terminators_v(kz_term:api_terms()) -> boolean().
+set_terminators_v(Req) ->
+    kapi_definition:validate(Req, set_terminators_definition()).
 
 %%------------------------------------------------------------------------------
 %% @doc Fetch Custom Channel variables.
 %% Takes {@link kz_term:api_term()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec fetch(kz_term:api_terms()) -> api_formatter_return().
-fetch(Prop) when is_list(Prop) ->
-    case fetch_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?FETCH_REQ_HEADERS, ?OPTIONAL_FETCH_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for fetch_req"}
-    end;
-fetch(JObj) ->
-    fetch(kz_json:to_proplist(JObj)).
+-spec fetch(kz_term:api_terms()) -> kz_api:api_formatter_return().
+fetch(Req) ->
+    kapi_definition:build_message(Req, fetch_definition()).
 
 -spec fetch_v(kz_term:api_terms()) -> boolean().
-fetch_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?FETCH_REQ_HEADERS, ?FETCH_REQ_VALUES, ?FETCH_REQ_TYPES);
-fetch_v(JObj) ->
-    fetch_v(kz_json:to_proplist(JObj)).
+fetch_v(Req) ->
+    kapi_definition:validate(Req, fetch_definition()).
 
 %%------------------------------------------------------------------------------
 %% @doc Play media and record digits.
 %% Takes {@link kz_term:api_term()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec play_and_collect_digits(kz_term:api_terms()) -> api_formatter_return().
-play_and_collect_digits(Prop) when is_list(Prop) ->
-    case play_and_collect_digits_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?PLAY_COLLECT_DIGITS_REQ_HEADERS, ?OPTIONAL_PLAY_COLLECT_DIGITS_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for play_collect_digits_req"}
-    end;
-play_and_collect_digits(JObj) ->
-    play_and_collect_digits(kz_json:to_proplist(JObj)).
+-spec play_and_collect_digits(kz_term:api_terms()) -> kz_api:api_formatter_return().
+play_and_collect_digits(Req) ->
+    kapi_definition:build_message(Req, play_and_collect_digits_definition()).
 
 -spec play_and_collect_digits_v(kz_term:api_terms()) -> boolean().
-play_and_collect_digits_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?PLAY_COLLECT_DIGITS_REQ_HEADERS, ?PLAY_COLLECT_DIGITS_REQ_VALUES, ?PLAY_COLLECT_DIGITS_REQ_TYPES);
-play_and_collect_digits_v(JObj) ->
-    play_and_collect_digits_v(kz_json:to_proplist(JObj)).
+play_and_collect_digits_v(Req) ->
+    kapi_definition:validate(Req, play_and_collect_digits_definition()).
 
 %%------------------------------------------------------------------------------
 %% @doc Pickup a call.
 %% Takes {@link kz_term:api_term()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec call_pickup(kz_term:api_terms()) -> api_formatter_return().
-call_pickup(Prop) when is_list(Prop) ->
-    case call_pickup_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?CALL_PICKUP_REQ_HEADERS, ?OPTIONAL_CALL_PICKUP_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for call_pickup_req"}
-    end;
-call_pickup(JObj) ->
-    call_pickup(kz_json:to_proplist(JObj)).
+-spec call_pickup(kz_term:api_terms()) -> kz_api:api_formatter_return().
+call_pickup(Req) ->
+    kapi_definition:build_message(Req, call_pickup_definition()).
 
 -spec call_pickup_v(kz_term:api_terms()) -> boolean().
-call_pickup_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?CALL_PICKUP_REQ_HEADERS, ?CALL_PICKUP_REQ_VALUES, ?CALL_PICKUP_REQ_TYPES);
-call_pickup_v(JObj) ->
-    call_pickup_v(kz_json:to_proplist(JObj)).
+call_pickup_v(Req) ->
+    kapi_definition:validate(Req, call_pickup_definition()).
 
 %%------------------------------------------------------------------------------
 %% @doc Connect a leg to the current leg.
 %% Takes {@link kz_term:api_term()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec connect_leg(kz_term:api_terms()) -> api_formatter_return().
-connect_leg(Prop) when is_list(Prop) ->
-    case connect_leg_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?CONNECT_LEG_REQ_HEADERS, ?OPTIONAL_CONNECT_LEG_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for connect_leg_req"}
-    end;
-connect_leg(JObj) ->
-    connect_leg(kz_json:to_proplist(JObj)).
+-spec connect_leg(kz_term:api_terms()) -> kz_api:api_formatter_return().
+connect_leg(Req) ->
+    kapi_definition:build_message(Req, connect_leg_definition()).
 
 -spec connect_leg_v(kz_term:api_terms()) -> boolean().
-connect_leg_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?CONNECT_LEG_REQ_HEADERS, ?CONNECT_LEG_REQ_VALUES, ?CONNECT_LEG_REQ_TYPES);
-connect_leg_v(JObj) ->
-    connect_leg_v(kz_json:to_proplist(JObj)).
+connect_leg_v(Req) ->
+    kapi_definition:validate(Req, connect_leg_definition()).
 
 %%------------------------------------------------------------------------------
 %% @doc Eavesdrop.
 %% Takes {@link kz_term:api_term()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec eavesdrop(kz_term:api_terms()) -> api_formatter_return().
-eavesdrop(Prop) when is_list(Prop) ->
-    case eavesdrop_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?EAVESDROP_REQ_HEADERS, ?OPTIONAL_EAVESDROP_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for eavesdrop_req"}
-    end;
-eavesdrop(JObj) ->
-    eavesdrop(kz_json:to_proplist(JObj)).
+-spec eavesdrop(kz_term:api_terms()) -> kz_api:api_formatter_return().
+eavesdrop(Req) ->
+    kapi_definition:build_message(Req, eavesdrop_definition()).
 
 -spec eavesdrop_v(kz_term:api_terms()) -> boolean().
-eavesdrop_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?EAVESDROP_REQ_HEADERS, ?EAVESDROP_REQ_VALUES, ?EAVESDROP_REQ_TYPES);
-eavesdrop_v(JObj) ->
-    eavesdrop_v(kz_json:to_proplist(JObj)).
+eavesdrop_v(Req) ->
+    kapi_definition:validate(Req, eavesdrop_definition()).
 
 %%------------------------------------------------------------------------------
 %% @doc Say - convert text to speech.
 %% Takes {@link kz_term:api_term()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec say(kz_term:api_terms()) -> api_formatter_return().
-say(Prop) when is_list(Prop) ->
-    case say_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?SAY_REQ_HEADERS, ?OPTIONAL_SAY_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for say_req"}
-    end;
-say(JObj) ->
-    say(kz_json:to_proplist(JObj)).
+-spec say(kz_term:api_terms()) -> kz_api:api_formatter_return().
+say(Req) ->
+    kapi_definition:build_message(Req, say_definition()).
 
 -spec say_v(kz_term:api_terms()) -> boolean().
-say_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?SAY_REQ_HEADERS, ?SAY_REQ_VALUES, ?SAY_REQ_TYPES);
-say_v(JObj) ->
-    say_v(kz_json:to_proplist(JObj)).
+say_v(Req) ->
+    kapi_definition:validate(Req, say_definition()).
 
 %%------------------------------------------------------------------------------
 %% @doc Respond a session.
 %% Takes {@link kz_term:api_term()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec respond(kz_term:api_terms()) -> api_formatter_return().
-respond(Prop) when is_list(Prop) ->
-    case respond_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?RESPOND_REQ_HEADERS, ?OPTIONAL_RESPOND_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for respond_req"}
-    end;
-respond(JObj) ->
-    respond(kz_json:to_proplist(JObj)).
+-spec respond(kz_term:api_terms()) -> kz_api:api_formatter_return().
+respond(Req) ->
+    kapi_definition:build_message(Req, respond_definition()).
 
 -spec respond_v(kz_term:api_terms()) -> boolean().
-respond_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?RESPOND_REQ_HEADERS, ?RESPOND_REQ_VALUES, ?RESPOND_REQ_TYPES);
-respond_v(JObj) ->
-    respond_v(kz_json:to_proplist(JObj)).
+respond_v(Req) ->
+    kapi_definition:validate(Req, respond_definition()).
 
 %%------------------------------------------------------------------------------
 %% @doc Redirect a session.
 %% Takes {@link kz_term:api_term()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec redirect(kz_term:api_terms()) -> api_formatter_return().
-redirect(Prop) when is_list(Prop) ->
-    case redirect_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?REDIRECT_REQ_HEADERS, ?OPTIONAL_REDIRECT_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for redirect_req"}
-    end;
-redirect(JObj) ->
-    redirect(kz_json:to_proplist(JObj)).
+-spec redirect(kz_term:api_terms()) -> kz_api:api_formatter_return().
+redirect(Req) ->
+    kapi_definition:build_message(Req, redirect_definition()).
 
 -spec redirect_v(kz_term:api_terms()) -> boolean().
-redirect_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?REDIRECT_REQ_HEADERS, ?REDIRECT_REQ_VALUES, ?REDIRECT_REQ_TYPES);
-redirect_v(JObj) ->
-    redirect_v(kz_json:to_proplist(JObj)).
+redirect_v(Req) ->
+    kapi_definition:validate(Req, redirect_definition()).
 
 %%------------------------------------------------------------------------------
 %% @doc Execute_Extension a session.
 %% Takes {@link kz_term:api_term()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec execute_extension(kz_term:api_terms()) -> api_formatter_return().
-execute_extension(Prop) when is_list(Prop) ->
-    case execute_extension_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?EXECUTE_EXTENSION_REQ_HEADERS, ?OPTIONAL_EXECUTE_EXTENSION_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for execute_extension_req"}
-    end;
-execute_extension(JObj) ->
-    execute_extension(kz_json:to_proplist(JObj)).
+-spec execute_extension(kz_term:api_terms()) -> kz_api:api_formatter_return().
+execute_extension(Req) ->
+    kapi_definition:build_message(Req, execute_extension_definition()).
 
 -spec execute_extension_v(kz_term:api_terms()) -> boolean().
-execute_extension_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?EXECUTE_EXTENSION_REQ_HEADERS, ?EXECUTE_EXTENSION_REQ_VALUES, ?EXECUTE_EXTENSION_REQ_TYPES);
-execute_extension_v(JObj) ->
-    execute_extension_v(kz_json:to_proplist(JObj)).
+execute_extension_v(Req) ->
+    kapi_definition:validate(Req, execute_extension_definition()).
 
 %%------------------------------------------------------------------------------
 %% @doc Sleep - Pauses execution.
 %% Takes {@link kz_term:api_term()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec sleep(kz_term:api_terms()) -> api_formatter_return().
-sleep(Prop) when is_list(Prop) ->
-    case sleep_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?SLEEP_REQ_HEADERS, ?OPTIONAL_SLEEP_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for sleep_req"}
-    end;
-sleep(JObj) ->
-    sleep(kz_json:to_proplist(JObj)).
+-spec sleep(kz_term:api_terms()) -> kz_api:api_formatter_return().
+sleep(Req) ->
+    kapi_definition:build_message(Req, sleep_definition()).
 
 -spec sleep_v(kz_term:api_terms()) -> boolean().
-sleep_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?SLEEP_REQ_HEADERS, ?SLEEP_REQ_VALUES, ?SLEEP_REQ_TYPES);
-sleep_v(JObj) ->
-    sleep_v(kz_json:to_proplist(JObj)).
+sleep_v(Req) ->
+    kapi_definition:validate(Req, sleep_definition()).
 
 %%------------------------------------------------------------------------------
-%% @doc Format a Dialplan:noop API call.
+%% @doc Format a Dialplan: noop API call.
 %% Takes {@link kz_term:api_term()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec noop(kz_term:api_terms()) -> api_formatter_return().
-noop(Prop) when is_list(Prop) ->
-    case noop_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?NOOP_REQ_HEADERS, ?OPTIONAL_NOOP_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for noop_req"}
-    end;
-noop(JObj) ->
-    noop(kz_json:to_proplist(JObj)).
+-spec noop(kz_term:api_terms()) -> kz_api:api_formatter_return().
+noop(Req) ->
+    kapi_definition:build_message(Req, noop_definition()).
 
 -spec noop_v(kz_term:api_terms()) -> boolean().
-noop_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?NOOP_REQ_HEADERS, ?NOOP_REQ_VALUES, ?NOOP_REQ_TYPES);
-noop_v(JObj) ->
-    noop_v(kz_json:to_proplist(JObj)).
+noop_v(Req) ->
+    kapi_definition:validate(Req, noop_definition()).
 
 %%------------------------------------------------------------------------------
 %% @doc Conference - Sends caller to a conference.
 %% Takes {@link kz_term:api_term()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec conference(kz_term:api_terms()) -> api_formatter_return().
-conference(Prop) when is_list(Prop) ->
-    case conference_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?CONFERENCE_REQ_HEADERS, ?OPTIONAL_CONFERENCE_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for conference_req"}
-    end;
-conference(JObj) -> conference(kz_json:to_proplist(JObj)).
+-spec conference(kz_term:api_terms()) -> kz_api:api_formatter_return().
+conference(Req) ->
+    kapi_definition:build_message(Req, conference_definition()).
 
 -spec conference_v(kz_term:api_terms()) -> boolean().
-conference_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?CONFERENCE_REQ_HEADERS, ?CONFERENCE_REQ_VALUES, ?CONFERENCE_REQ_TYPES);
-conference_v(JObj) -> conference_v(kz_json:to_proplist(JObj)).
+conference_v(Req) ->
+    kapi_definition:validate(Req, conference_definition()).
 
 %%------------------------------------------------------------------------------
-%% @doc Originate Ready/Execute.
-%% Send Requestor a message that the originate is ready to execute and
-%% wait for the Requestor to respond to execute the origination.
+%% @doc Originate Ready.
+%% Send Requestor a message that the originate is ready to execute.
 %% @end
 %%------------------------------------------------------------------------------
--spec originate_ready(kz_term:api_terms()) -> api_formatter_return().
-originate_ready(Prop) when is_list(Prop) ->
-    case originate_ready_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?ORIGINATE_READY_HEADERS, ?OPTIONAL_ORIGINATE_READY_HEADERS);
-        'false' -> {'error', "Proplist failed validation for originate_ready"}
-    end;
-originate_ready(JObj) ->
-    originate_ready(kz_json:to_proplist(JObj)).
+-spec originate_ready(kz_term:api_terms()) -> kz_api:api_formatter_return().
+originate_ready(Req) ->
+    kapi_definition:build_message(Req, originate_ready_definition()).
 
 -spec originate_ready_v(kz_term:api_terms()) -> boolean().
-originate_ready_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?ORIGINATE_READY_HEADERS, ?ORIGINATE_READY_VALUES, ?ORIGINATE_READY_TYPES);
-originate_ready_v(JObj) ->
-    originate_ready_v(kz_json:to_proplist(JObj)).
+originate_ready_v(Req) ->
+    kapi_definition:validate(Req, originate_ready_definition()).
 
--spec originate_execute(kz_term:api_terms()) -> api_formatter_return().
-originate_execute(Prop) when is_list(Prop) ->
-    case originate_execute_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?ORIGINATE_EXECUTE_HEADERS, ?OPTIONAL_ORIGINATE_EXECUTE_HEADERS);
-        'false' -> {'error', "Proplist failed validation for originate_execute"}
-    end;
-originate_execute(JObj) ->
-    originate_execute(kz_json:to_proplist(JObj)).
+-spec publish_originate_ready(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
+publish_originate_ready(ServerId, JObj) ->
+    publish_originate_ready(ServerId, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_originate_ready(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
+publish_originate_ready(ServerId, API, ContentType) ->
+    Definition = originate_ready_definition(),
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:targeted_publish(ServerId, Payload, ContentType).
+
+%%------------------------------------------------------------------------------
+%% @doc Originate Execute.
+%% Wait for the Requestor to respond to execute the origination.
+%% @end
+%%------------------------------------------------------------------------------
+-spec originate_execute(kz_term:api_terms()) -> kz_api:api_formatter_return().
+originate_execute(Req) ->
+    kapi_definition:build_message(Req, originate_execute_definition()).
 
 -spec originate_execute_v(kz_term:api_terms()) -> boolean().
-originate_execute_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?ORIGINATE_EXECUTE_HEADERS, ?ORIGINATE_EXECUTE_VALUES, ?ORIGINATE_EXECUTE_TYPES);
-originate_execute_v(JObj) ->
-    originate_execute_v(kz_json:to_proplist(JObj)).
+originate_execute_v(Req) ->
+    kapi_definition:validate(Req, originate_execute_definition()).
+
+-spec publish_originate_execute(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
+publish_originate_execute(ServerId, JObj) ->
+    publish_originate_execute(ServerId, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_originate_execute(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
+publish_originate_execute(ServerId, API, ContentType) ->
+    Definition = originate_execute_definition(),
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:targeted_publish(ServerId, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
 %% @doc Error - Sends error to Queue.
 %% Takes {@link kz_term:api_term()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec error(kz_term:api_terms()) -> api_formatter_return().
-error(Prop) when is_list(Prop) ->
-    case error_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?DP_ERROR_RESP_HEADERS, ?OPTIONAL_DP_ERROR_RESP_HEADERS);
-        'false' -> {'error', "Proplist failed validation for error_req"}
-    end;
-error(JObj) -> error(kz_json:to_proplist(JObj)).
+-spec error(kz_term:api_terms()) -> kz_api:api_formatter_return().
+error(Req) ->
+    kapi_definition:build_message(Req, error_definition()).
 
 -spec error_v(kz_term:api_terms()) -> boolean().
-error_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop
-                   ,?DP_ERROR_RESP_HEADERS
-                   ,[{<<"Event-Name">>, <<"dialplan">>}
-                     | ?ERROR_RESP_VALUES
-                    ]
-                   ,?ERROR_RESP_TYPES
-                   );
-error_v(JObj) -> error_v(kz_json:to_proplist(JObj)).
+error_v(Req) ->
+    kapi_definition:validate(Req, error_definition()).
+
+-spec publish_error(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
+publish_error(CallID, JObj) ->
+    publish_error(CallID, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_error(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
+publish_error(CallID, API, ContentType) ->
+    Definition = error_definition(),
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:callevt_publish((kapi_definition:binding(Definition))(<<"dialplan">>, CallID)
+                                ,Payload
+                                ,ContentType
+                                ).
 
 %%------------------------------------------------------------------------------
 %% @doc Takes a generic API JObj, determines what type it is, and calls
@@ -1178,35 +3239,6 @@ publish_action(Queue, JSON) ->
 publish_action(Queue, Payload, ContentType) ->
     kz_amqp_util:callctl_publish(Queue, Payload, ContentType).
 
--spec publish_error(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
-publish_error(CallID, JObj) ->
-    publish_error(CallID, JObj, ?DEFAULT_CONTENT_TYPE).
-
--spec publish_error(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
-publish_error(CallID, API, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(API, [{<<"Event-Name">>, <<"dialplan">>}
-                                                       | ?ERROR_RESP_VALUES
-                                                      ], fun error/1),
-    kz_amqp_util:callevt_publish(kapi_call:event_routing_key(<<"dialplan">>, CallID), Payload, ContentType).
-
--spec publish_originate_ready(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
-publish_originate_ready(ServerId, JObj) ->
-    publish_originate_ready(ServerId, JObj, ?DEFAULT_CONTENT_TYPE).
-
--spec publish_originate_ready(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
-publish_originate_ready(ServerId, API, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(API, ?ORIGINATE_READY_VALUES, fun originate_ready/1),
-    kz_amqp_util:targeted_publish(ServerId, Payload, ContentType).
-
--spec publish_originate_execute(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
-publish_originate_execute(ServerId, JObj) ->
-    publish_originate_execute(ServerId, JObj, ?DEFAULT_CONTENT_TYPE).
-
--spec publish_originate_execute(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
-publish_originate_execute(ServerId, API, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(API, ?ORIGINATE_EXECUTE_VALUES, fun originate_execute/1),
-    kz_amqp_util:targeted_publish(ServerId, Payload, ContentType).
-
 -spec dial_method_single() -> kz_term:ne_binary().
 dial_method_single() -> ?DIAL_METHOD_SINGLE.
 
@@ -1249,108 +3281,99 @@ offsite_store_url('undefined', _) -> throw({'error', <<"URL not defined">>});
 offsite_store_url(Url, MediaName) ->
     iolist_to_binary([kz_binary:strip_right(Url, $/), "/", MediaName]).
 
-%%------------------------------------------------------------------------------
-%% @doc Detect fax on the line.
-%% Takes {@link kz_term:api_term()}, creates JSON string or error.
-%% @end
-%%------------------------------------------------------------------------------
--spec fax_detection(kz_term:api_terms()) -> api_formatter_return().
-fax_detection(Prop) when is_list(Prop) ->
-    case fax_detection_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?FAX_DETECTION_REQ_HEADERS, ?OPTIONAL_FAX_DETECTION_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for tone_detect"}
-    end;
-fax_detection(JObj) -> fax_detection(kz_json:to_proplist(JObj)).
-
--spec fax_detection_v(kz_term:api_terms()) -> boolean().
-fax_detection_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?FAX_DETECTION_REQ_HEADERS, ?FAX_DETECTION_REQ_VALUES, ?FAX_DETECTION_REQ_TYPES);
-fax_detection_v(JObj) -> fax_detection_v(kz_json:to_proplist(JObj)).
-
--spec store_vm(kz_term:api_terms()) ->
-          {'ok', kz_term:proplist()} |
-          {'error', string()}.
-store_vm(Prop) when is_list(Prop) ->
-    case store_vm_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?STORE_VM_REQ_HEADERS, ?OPTIONAL_STORE_VM_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for store_vm"}
-    end;
-store_vm(JObj) -> store_vm(kz_json:to_proplist(JObj)).
-
--spec store_vm_v(kz_term:api_terms()) -> boolean().
-store_vm_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?STORE_VM_REQ_HEADERS, ?STORE_VM_REQ_VALUES, ?STORE_VM_REQ_TYPES);
-store_vm_v(JObj) -> store_vm_v(kz_json:to_proplist(JObj)).
-
--spec transfer(kz_term:api_terms()) -> api_formatter_return().
-transfer(Prop) when is_list(Prop) ->
-    case transfer_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?TRANSFER_HEADERS, ?OPTIONAL_TRANSFER_HEADERS);
-        'false' -> {'error', "Proplist failed validation for conference_req"}
-    end;
-transfer(JObj) -> transfer(kz_json:to_proplist(JObj)).
-
--spec transfer_v(kz_term:api_terms()) -> boolean().
-transfer_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?TRANSFER_HEADERS, ?TRANSFER_VALUES, ?TRANSFER_TYPES);
-transfer_v(JObj) -> transfer_v(kz_json:to_proplist(JObj)).
-
--spec media_macro(kz_term:api_terms()) -> api_formatter_return().
-media_macro(Prop) when is_list(Prop) ->
-    case media_macro_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?MEDIA_MACRO_HEADERS, ?OPTIONAL_MEDIA_MACRO_HEADERS);
-        'false' -> {'error', "Proplist failed validation for media macro"}
-    end;
-media_macro(JObj) -> media_macro(kz_json:to_proplist(JObj)).
-
--spec media_macro_v(kz_term:api_terms()) -> boolean().
-media_macro_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?MEDIA_MACRO_HEADERS, ?MEDIA_MACRO_VALUES, ?MEDIA_MACRO_TYPES);
-media_macro_v(JObj) -> media_macro_v(kz_json:to_proplist(JObj)).
-
--spec play_macro(kz_term:api_terms()) -> api_formatter_return().
-play_macro(Prop) when is_list(Prop) ->
-    case play_macro_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?PLAY_MACRO_HEADERS, ?OPTIONAL_PLAY_MACRO_HEADERS);
-        'false' -> {'error', "Proplist failed validation for play macro"}
-    end;
-play_macro(JObj) -> play_macro(kz_json:to_proplist(JObj)).
-
--spec play_macro_v(kz_term:api_terms()) -> boolean().
-play_macro_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?PLAY_MACRO_HEADERS, ?PLAY_MACRO_VALUES, ?PLAY_MACRO_TYPES);
-play_macro_v(JObj) -> play_macro_v(kz_json:to_proplist(JObj)).
-
--spec sound_touch(kz_term:api_terms()) -> api_formatter_return().
-sound_touch(Prop) when is_list(Prop) ->
-    case sound_touch_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?SOUNDTOUCH_HEADERS, ?OPTIONAL_SOUNDTOUCH_HEADERS);
-        'false' -> {'error', "Proplist failed validation for sound touch"}
-    end;
-sound_touch(JObj) -> sound_touch(kz_json:to_proplist(JObj)).
-
--spec sound_touch_v(kz_term:api_terms()) -> boolean().
-sound_touch_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?SOUNDTOUCH_HEADERS, ?SOUNDTOUCH_VALUES, ?SOUNDTOUCH_TYPES);
-sound_touch_v(JObj) -> sound_touch_v(kz_json:to_proplist(JObj)).
-
 -spec application_name(kz_term:api_terms()) -> kz_term:api_ne_binary().
 application_name(Prop) when is_list(Prop) ->
     props:get_value(<<"Application-Name">>, Prop);
 application_name(JObj) ->
     kz_json:get_ne_binary_value(<<"Application-Name">>, JObj).
 
--spec event_actions(kz_term:api_terms()) -> api_formatter_return().
-event_actions(Prop) when is_list(Prop) ->
-    case event_actions_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?EVENT_ACTIONS_HEADERS, ?OPTIONAL_EVENT_ACTIONS_HEADERS);
-        'false' -> {'error', "Proplist failed validation for hangup_req"}
-    end;
-event_actions(JObj) ->
-    event_actions(kz_json:to_proplist(JObj)).
+%%------------------------------------------------------------------------------
+%% @doc Detect fax on the line.
+%% Takes {@link kz_term:api_term()}, creates JSON string or error.
+%% @end
+%%------------------------------------------------------------------------------
+-spec fax_detection(kz_term:api_terms()) -> kz_api:api_formatter_return().
+fax_detection(Req) ->
+    kapi_definition:build_message(Req, fax_detection_definition()).
+
+-spec fax_detection_v(kz_term:api_terms()) -> boolean().
+fax_detection_v(Req) ->
+    kapi_definition:validate(Req, fax_detection_definition()).
+
+%%------------------------------------------------------------------------------
+%% @doc Store VoiceMail.
+%% Takes {@link kz_term:api_term()}, creates JSON string or error.
+%% @end
+%%------------------------------------------------------------------------------
+-spec store_vm(kz_term:api_terms()) -> kz_api:api_formatter_return().
+store_vm(Req) ->
+    kapi_definition:build_message(Req, store_vm_definition()).
+
+-spec store_vm_v(kz_term:api_terms()) -> boolean().
+store_vm_v(Req) ->
+    kapi_definition:validate(Req, store_vm_definition()).
+
+%%------------------------------------------------------------------------------
+%% @doc Transfer.
+%% Takes {@link kz_term:api_term()}, creates JSON string or error.
+%% @end
+%%------------------------------------------------------------------------------
+-spec transfer(kz_term:api_terms()) -> kz_api:api_formatter_return().
+transfer(Req) ->
+    kapi_definition:build_message(Req, transfer_definition()).
+
+-spec transfer_v(kz_term:api_terms()) -> boolean().
+transfer_v(Req) ->
+    kapi_definition:validate(Req, transfer_definition()).
+
+%%------------------------------------------------------------------------------
+%% @doc Media macro.
+%% Takes {@link kz_term:api_term()}, creates JSON string or error.
+%% @end
+%%------------------------------------------------------------------------------
+-spec media_macro(kz_term:api_terms()) -> kz_api:api_formatter_return().
+media_macro(Req) ->
+    kapi_definition:build_message(Req, media_macro_definition()).
+
+-spec media_macro_v(kz_term:api_terms()) -> boolean().
+media_macro_v(Req) ->
+    kapi_definition:validate(Req, media_macro_definition()).
+
+%%------------------------------------------------------------------------------
+%% @doc Play macro.
+%% Takes {@link kz_term:api_term()}, creates JSON string or error.
+%% @end
+%%------------------------------------------------------------------------------
+-spec play_macro(kz_term:api_terms()) -> kz_api:api_formatter_return().
+play_macro(Req) ->
+    kapi_definition:build_message(Req, play_macro_definition()).
+
+-spec play_macro_v(kz_term:api_terms()) -> boolean().
+play_macro_v(Req) ->
+    kapi_definition:validate(Req, play_macro_definition()).
+
+%%------------------------------------------------------------------------------
+%% @doc Sound touch.
+%% Takes {@link kz_term:api_term()}, creates JSON string or error.
+%% @end
+%%------------------------------------------------------------------------------
+-spec sound_touch(kz_term:api_terms()) -> kz_api:api_formatter_return().
+sound_touch(Req) ->
+    kapi_definition:build_message(Req, sound_touch_definition()).
+
+-spec sound_touch_v(kz_term:api_terms()) -> boolean().
+sound_touch_v(Req) ->
+    kapi_definition:validate(Req, sound_touch_definition()).
+
+%%------------------------------------------------------------------------------
+%% @doc Event action.
+%% Takes {@link kz_term:api_term()}, creates JSON string or error.
+%% @end
+%%------------------------------------------------------------------------------
+-spec event_actions(kz_term:api_terms()) -> kz_api:api_formatter_return().
+event_actions(Req) ->
+    kapi_definition:build_message(Req, event_actions_definition()).
 
 -spec event_actions_v(kz_term:api_terms()) -> boolean().
-event_actions_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?EVENT_ACTIONS_HEADERS, ?EVENT_ACTIONS_VALUES, ?EVENT_ACTIONS_TYPES);
-event_actions_v(JObj) ->
-    event_actions_v(kz_json:to_proplist(JObj)).
+event_actions_v(Req) ->
+    kapi_definition:validate(Req, event_actions_definition()).

@@ -113,9 +113,9 @@ ast_to_list_of_binaries(?SUBTRACT(First, Second), Binaries) ->
 ast_to_list_of_binaries(?EMPTY_LIST, Binaries) ->
     lists:reverse(Binaries);
 ast_to_list_of_binaries(?MOD_FUN_ARGS('kapi_dialplan', 'optional_bridge_req_headers', []), Binaries) ->
-    ?OPTIONAL_BRIDGE_REQ_HEADERS ++ Binaries;
+    kapi_dialplan:optional_bridge_req_headers() ++ Binaries;
 ast_to_list_of_binaries(?MOD_FUN_ARGS('kapi_dialplan', 'optional_bridge_req_endpoint_headers', []), Binaries) ->
-    ?OPTIONAL_BRIDGE_REQ_ENDPOINT_HEADERS ++ Binaries;
+    kapi_dialplan:optional_bridge_req_endpoint_headers() ++ Binaries;
 ast_to_list_of_binaries(?MOD_FUN_ARGS('kapi_call', 'optional_call_event_headers', []), Binaries) ->
     kapi_call:optional_call_event_headers() ++ Binaries;
 ast_to_list_of_binaries(?LIST(?LIST(_, _)=H, T), Binaries) ->

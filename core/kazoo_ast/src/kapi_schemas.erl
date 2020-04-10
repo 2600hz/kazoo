@@ -57,7 +57,8 @@ update_schema(PrivDir, API) ->
 maybe_update_schema(PrivDir, API) ->
     maybe_update_schema(PrivDir, API, kz_doc:id(API)).
 
-maybe_update_schema(_PrivDir, _JObj, 'undefined') -> 'ok';
+maybe_update_schema(_PrivDir, _JObj, 'undefined') ->
+    ?DEBUG("no ID in JSON, not writing to ~s~n", [_PrivDir]);
 maybe_update_schema(PrivDir, GeneratedJObj, ID) ->
     ?DEBUG("adding ~s to ~s: ~s", [ID, PrivDir, kz_json:encode(GeneratedJObj)]),
     Path = kz_ast_util:schema_path(<<ID/binary, ".json">>, PrivDir),
@@ -86,7 +87,7 @@ existing_schema(Name) ->
 
 -spec process() -> kz_json:object().
 process() ->
-    io:format("process kapi modules: "),
+    io:format("processing kapi modules: "),
     Options = [{'expression', fun expression_to_schema/2}
               ,{'function', fun set_function/3}
               ,{'module', fun print_dot/2}
@@ -101,7 +102,7 @@ process() ->
 
 -spec process_app(atom()) -> kz_json:object().
 process_app(App) ->
-    io:format("process kapi modules: "),
+    io:format("processing kapi modules: "),
     Options = [{'expression', fun expression_to_schema/2}
               ,{'function', fun set_function/3}
               ,{'module', fun print_dot/2}
@@ -116,7 +117,7 @@ process_app(App) ->
 
 -spec process_module(module()) -> kz_json:object().
 process_module(KapiModule) ->
-    io:format("process kapi module ~s: ", [KapiModule]),
+    io:format("processing kapi module ~s: ", [KapiModule]),
     Options = [{'expression', fun expression_to_schema/2}
               ,{'function', fun set_function/3}
               ,{'module', fun print_dot/2}
@@ -142,7 +143,7 @@ print_dot(<<"kapi_definition">>, #acc{}=Acc) ->
     {'skip', Acc};
 print_dot(<<"kapi_", Module/binary>>, #acc{}=Acc) ->
     io:format("."),
-    ?DEBUG("process kapi_~s~n", [Module]),
+    ?DEBUG("processing kapi_~s~n", [Module]),
     Acc#acc{kapi_name=Module};
 print_dot(<<_/binary>>, #acc{}=Acc) ->
     {'skip', Acc};
@@ -166,10 +167,10 @@ add_schemas_to_bucket(_App, #acc{schema_dir = PrivDir
                                 }=Acc) ->
     ProjectSchema = kz_json:get_json_value(PrivDir, ProjectSchemas, kz_json:new()),
 
-    ?DEBUG("merging dir ~s / app ~p into proj ~p~n", [PrivDir, AppSchemas, ProjectSchema]),
+    %% ?DEBUG("merging dir ~s / app ~p into proj ~p~n", [PrivDir, AppSchemas, ProjectSchema]),
 
     UpdatedSchema = kz_json:merge(ProjectSchema, AppSchemas),
-    ?DEBUG("merged: ~p~n", [UpdatedSchema]),
+    %% ?DEBUG("merged: ~p~n", [UpdatedSchema]),
 
     Acc#acc{app_schemas = kz_json:new()
            ,project_schemas = kz_json:set_value(PrivDir, UpdatedSchema, ProjectSchemas)
@@ -229,6 +230,9 @@ expression_to_schema(_Expr, Acc) ->
 
 kapi_definition_to_schema([_|_]=Fields, #acc{}=Acc) ->
     lists:foldl(fun kapi_definition_field_to_schema/2, Acc, Fields);
+kapi_definition_to_schema(#kapi_definition{name='undefined'}=_Def, Acc) ->
+    ?DEBUG("skipping no-name kapi ~p~n", [_Def]),
+    Acc;
 kapi_definition_to_schema(#kapi_definition{}=Def, Acc) ->
     Fields = record_info('fields', 'kapi_definition'),
     [_, Name|Values] = tuple_to_list(Def),
@@ -268,7 +272,7 @@ properties_to_schema(RequiredHs, OptionalHs, #acc{}=Acc) ->
     {DetectedRequired, OptHs} = just_required(RequiredHs),
     SchemaRequired = kz_json:get_list_value(<<"required">>, Schema, []),
 
-    Required = lists:merge(lists:sort(SchemaRequired), lists:sort(DetectedRequired)),
+    Required = lists:merge(lists:usort(SchemaRequired), lists:usort(DetectedRequired)),
 
     Optional = OptHs ++ OptionalHs,
 
@@ -286,9 +290,9 @@ set_required(Schema, Required) ->
 just_required(Required) ->
     lists:foldl(fun flatten_required/2, {[], []}, Required).
 
-flatten_required(<<_/binary>>=R, {Req, Opt}) ->
+flatten_required(<<R/binary>>, {Req, Opt}) ->
     {[R | Req], Opt};
-flatten_required([R, <<_/binary>>=Optional], {Req, Opt}) ->
+flatten_required([R, <<Optional/binary>>], {Req, Opt}) ->
     {[R | Req], [Optional | Opt]};
 flatten_required([R, Optional], {Req, Opt}) ->
     {[R | Req], Optional ++ Opt}.
@@ -309,7 +313,7 @@ base_schema(<<KAPI/binary>>, <<API/binary>>) ->
                       ,{<<"description">>, <<"AMQP API for ", KAPI/binary, ".", API/binary>>}
                       ,{<<"type">>, <<"object">>}
                       ]);
-base_schema(<<KAPI/binary>>, _) ->
+base_schema(<<KAPI/binary>>, _API) ->
     kz_json:from_list([{<<"_id">>, <<"kapi.", KAPI/binary>>}
                       ,{<<"$schema">>, <<"http://json-schema.org/draft-04/schema#">>}
                       ,{<<"description">>, <<"AMQP API for ", KAPI/binary>>}
@@ -319,19 +323,78 @@ base_schema(<<KAPI/binary>>, _) ->
 set_kapi_schema(#acc{app_schemas=Schemas
                     ,kapi_name=KAPI
                     ,api_name=API
-                    }=Acc, Schema) ->
+                    }=Acc
+               ,Schema
+               ) ->
     case kz_json:is_empty(kz_json:get_json_value(<<"properties">>, Schema, kz_json:new())) of
         'true' -> Acc;
         'false' ->
-            Acc#acc{app_schemas=kz_json:set_value([KAPI, API], Schema, Schemas)}
+            Acc#acc{app_schemas=maybe_merge(KAPI, API, Schema, Schemas)}
     end.
+
+maybe_merge(<<"dialplan">> = KAPI, <<"command">> = API, Schema, Schemas) ->
+    CmdSchema = kz_json:get_json_value([KAPI, API], Schemas, kz_json:new()),
+    Merged = kz_json:foldl(fun merge_schemas/3, CmdSchema, Schema),
+    kz_json:set_value([KAPI, API], Merged, Schemas);
+maybe_merge(KAPI, API, Schema, Schemas) ->
+    ?DEBUG("setting ~s.~s schema~n", [KAPI, API]),
+    kz_json:set_value([KAPI, API], Schema, Schemas).
+
+merge_schemas(<<"properties">>, Properties, CmdSchema) ->
+    CmdProperties = kz_json:get_json_value(<<"properties">>, CmdSchema, kz_json:new()),
+    Merged = merge_schema_properties(Properties, CmdProperties),
+    kz_json:set_value(<<"properties">>, Merged, CmdSchema);
+merge_schemas(<<"required">>, SchemaRequired, CmdSchema) ->
+    CmdRequired = kz_json:get_list_value(<<"required">>, CmdSchema, []),
+    Required = lists:usort(CmdRequired++SchemaRequired),
+    kz_json:set_value(<<"required">>, Required, CmdSchema);
+merge_schemas(Key, Value, CmdSchema) ->
+    CmdValue = kz_json:get_value(Key, CmdSchema),
+    maybe_merge_value(Key, Value, CmdSchema, CmdValue, kz_json:is_json_object(CmdValue)).
+
+maybe_merge_value(Key, Value, CmdSchema, CmdValue, 'true') ->
+    Merged = kz_json:merge_recursive(Value, CmdValue),
+    io:format("merged ~s: ~p~n", [Key, Merged]),
+    kz_json:set_value(Key, Merged, CmdSchema);
+maybe_merge_value(Key, Value, CmdSchema, 'undefined', 'false') ->
+    kz_json:set_value(Key, Value, CmdSchema);
+maybe_merge_value(_Key, Value, CmdSchema, Value, 'false') ->
+    CmdSchema;
+maybe_merge_value(Key, Value, CmdSchema, _CmdValue, 'false') ->
+    kz_json:set_value(Key, Value, CmdSchema).
+
+merge_schema_properties(Properties, CmdProperties) ->
+    kz_json:foldl(fun merge_schema_property_fold/3, CmdProperties, Properties).
+
+merge_schema_property_fold(Property, PropertySchema, CmdProperties) ->
+    CmdPropertySchema = kz_json:get_json_value(Property, CmdProperties, kz_json:new()),
+    MergedPropertySchema = merge_schema_property(PropertySchema, CmdPropertySchema),
+    kz_json:set_value(Property, MergedPropertySchema, CmdProperties).
+
+merge_schema_property(PropertySchema, CmdPropertySchema) ->
+    merge_schema_property(PropertySchema, CmdPropertySchema, kz_json:get_value(<<"type">>, PropertySchema)).
+
+merge_schema_property(PropertySchema, CmdPropertySchema, <<"object">>) ->
+    kz_json:foldl(fun merge_schemas/3, CmdPropertySchema, PropertySchema);
+merge_schema_property(PropertySchema, CmdPropertySchema, <<"string">>) ->
+    case kz_json:get_list_value(<<"enum">>, PropertySchema) of
+        'undefined' -> PropertySchema;
+        PropertyEnums ->
+            CmdEnums = kz_json:get_list_value(<<"enum">>, CmdPropertySchema, []),
+            ?DEBUG("enum: ~p cmd.enum: ~p~n", [PropertyEnums, CmdEnums]),
+            Enums = lists:usort(PropertyEnums++CmdEnums),
+            ?DEBUG("enum: ~p~n", [Enums]),
+            kz_json:set_value(<<"enum">>, Enums, CmdPropertySchema)
+    end;
+merge_schema_property(PropertySchema, CmdPropertySchema, _Type) ->
+    kz_json:merge(PropertySchema, CmdPropertySchema).
 
 add_field([_|_]=Fields, Schema) ->
     Path = property_path(Fields),
 
     Guessed = guess_field_default(lists:last(Fields)),
 
-    ?DEBUG("adding path ~p guessed type ~p~n", [Path, Guessed]),
+    %% ?DEBUG("adding path ~p guessed type ~p~n", [Path, Guessed]),
 
     Properties = kz_json:get_json_value(Path, Schema, kz_json:new()),
 
@@ -429,13 +492,15 @@ validators_to_schema(Values, Types, Acc) ->
     set_kapi_schema(Acc, Schema).
 
 add_validator({Field, 'undefined'}, Schema) ->
+    ?DEBUG("ensuring empty validator ~s~n", [Field]),
     Properties = kz_json:get_json_value([<<"properties">>, Field], Schema, kz_json:new()),
     kz_json:set_value([<<"properties">>, Field], Properties, Schema);
 add_validator({[_|_]=Fields, Value}, Schema) ->
     Path = property_path(Fields),
     Properties = kz_json:get_json_value(Path, Schema, kz_json:new()),
-    ValidatorProperties = validator_properties(Value),
-    Updated = kz_json:merge(ValidatorProperties, Properties),
+    ValidatorProperties = validator_properties(Fields, Value),
+
+    Updated = merge_schema_property(ValidatorProperties, Properties),
     kz_json:set_value(Path, Updated, Schema);
 add_validator({Field, Value}, Schema) ->
     add_validator({[Field], Value}, Schema).
@@ -443,51 +508,52 @@ add_validator({Field, Value}, Schema) ->
 property_path(Fields) ->
     lists:foldr(fun(Field, Acc) -> [<<"properties">>, Field | Acc] end, [], Fields).
 
-validator_properties(<<_/binary>>=Value) ->
+validator_properties(_Fields, <<Value/binary>>) ->
+    ?DEBUG("single enum for ~p: ~p~n", [_Fields, Value]),
     kz_json:from_list([{<<"type">>, <<"string">>}
                       ,{<<"enum">>, [Value]}
                       ]);
-validator_properties([<<_/binary>>|_]=Values) ->
+validator_properties(_Fields, [<<_/binary>>|_]=Values) ->
     kz_json:from_list([{<<"type">>, <<"string">>}
                       ,{<<"enum">>, Values}
                       ]);
-validator_properties({_, 'is_pos_integer', 1}) ->
+validator_properties(_Fields, {_, 'is_pos_integer', 1}) ->
     kz_json:from_list([{<<"type">>, <<"integer">>}
                       ,{<<"minimum">>, 1}
                       ]);
-validator_properties({_, 'is_integer', 1}) ->
+validator_properties(_Fields, {_, 'is_integer', 1}) ->
     kz_json:from_list([{<<"type">>, <<"integer">>}]);
-validator_properties({_, 'is_binary', 1}) ->
+validator_properties(_Fields, {_, 'is_binary', 1}) ->
     kz_json:from_list([{<<"type">>, <<"string">>}]);
-validator_properties({_, 'is_boolean', 1}) ->
+validator_properties(_Fields, {_, 'is_boolean', 1}) ->
     kz_json:from_list([{<<"type">>, <<"boolean">>}]);
-validator_properties({_, 'is_list', 1}) ->
+validator_properties(_Fields, {_, 'is_list', 1}) ->
     kz_json:from_list([{<<"type">>, <<"array">>}
                       ,{<<"items">>
                        ,kz_json:from_list([{<<"type">>, <<"string">>}])
                        }
                       ]);
-validator_properties({'kz_json', 'is_json_object', 1}) ->
+validator_properties(_Fields, {'kz_json', 'is_json_object', 1}) ->
     kz_json:from_list([{<<"type">>, <<"object">>}]);
-validator_properties({'kz_json', 'are_json_objects', 1}) ->
+validator_properties(_Fields, {'kz_json', 'are_json_objects', 1}) ->
     kz_json:from_list([{<<"type">>, <<"array">>}
                       ,{<<"items">>
                        ,kz_json:from_list([{<<"type">>, <<"object">>}])
                        }
                       ]);
-validator_properties({'kz_term', 'is_boolean', 1}) ->
+validator_properties(_Fields, {'kz_term', 'is_boolean', 1}) ->
     kz_json:from_list([{<<"type">>, <<"boolean">>}]);
-validator_properties({'kz_term', 'is_ne_binary', 1}) ->
+validator_properties(_Fields, {'kz_term', 'is_ne_binary', 1}) ->
     kz_json:from_list([{<<"type">>, <<"string">>}
                       ,{<<"minLength">>, 1}
                       ]);
-validator_properties({'kz_term', 'is_ne_binaries', 1}) ->
+validator_properties(_Fields, {'kz_term', 'is_ne_binaries', 1}) ->
     kz_json:from_list([{<<"type">>, <<"array">>}
                       ,{<<"items">>
                        ,kz_json:from_list([{<<"type">>, <<"string">>}])
                        }
                       ]);
-validator_properties({'kapi_dialplan', 'terminators_v', 1}) ->
+validator_properties(_Fields, {'kapi_dialplan', 'terminators_v', 1}) ->
     kz_json:from_list([{<<"type">>, <<"array">>}
                       ,{<<"items">>
                        ,kz_json:from_list([{<<"type">>, <<"string">>}
@@ -495,17 +561,17 @@ validator_properties({'kapi_dialplan', 'terminators_v', 1}) ->
                                           ])
                        }
                       ]);
-validator_properties({'kz_term', 'is_ne_list', 1}) ->
+validator_properties(_Fields, {'kz_term', 'is_ne_list', 1}) ->
     kz_json:from_list([{<<"type">>, <<"array">>}
                       ,{<<"minItems">>, 1}
                       ]);
-validator_properties({'kz_term', 'is_ne_binary_or_binaries', 1}) ->
+validator_properties(_Fields, {'kz_term', 'is_ne_binary_or_binaries', 1}) ->
     kz_json:from_list([{<<"type">>, [<<"string">>, <<"array">>]}
                       ,{<<"items">>
                        ,kz_json:from_list([{<<"type">>, <<"string">>}])
                        }
                       ]);
-validator_properties({'kapi_dialplan', 'b_leg_events_v', 1}) ->
+validator_properties(_Fields, {'kapi_dialplan', 'b_leg_events_v', 1}) ->
     kz_json:from_list([{<<"type">>, <<"array">>}
                       ,{<<"items">>
                        ,kz_json:from_list([{<<"type">>, <<"string">>}
@@ -513,7 +579,7 @@ validator_properties({'kapi_dialplan', 'b_leg_events_v', 1}) ->
                                           ])
                        }
                       ]);
-validator_properties({'function', 'b_leg_events_v', 1}) ->
+validator_properties(_Fields, {'function', 'b_leg_events_v', 1}) ->
     kz_json:from_list([{<<"type">>, <<"array">>}
                       ,{<<"items">>
                        ,kz_json:from_list([{<<"type">>, <<"string">>}
@@ -521,24 +587,24 @@ validator_properties({'function', 'b_leg_events_v', 1}) ->
                                           ])
                        }
                       ]);
-validator_properties({'function', 'tone_timeout_v', 1}) ->
+validator_properties(_Fields, {'function', 'tone_timeout_v', 1}) ->
     kz_json:from_list([{<<"type">>, <<"integer">>}
                       ,{<<"minimum">>, 0}
                       ]);
-validator_properties({'function', 'binding_digit_timeout_v', 1}) ->
+validator_properties(_Fields, {'function', 'binding_digit_timeout_v', 1}) ->
     kz_json:from_list([{<<"type">>, <<"integer">>}
                       ,{<<"minimum">>, 0}
                       ]);
-validator_properties({'function', 'has_cost_parameters', 1}) ->
+validator_properties(_Fields, {'function', 'has_cost_parameters', 1}) ->
     kz_json:from_list([{<<"type">>, <<"object">>}
                       ,{<<"properties">>, cost_parameters_schema()}
                       ]);
-validator_properties({'function', 'store_media_content_v', 1}) ->
+validator_properties(_Fields, {'function', 'store_media_content_v', 1}) ->
     kz_json:from_list([{<<"type">>, <<"string">>}]);
-validator_properties({'kz_api', 'event_name', 1}) ->
+validator_properties(_Fields, {'kz_api', 'event_name', 1}) ->
     kz_json:from_list([{<<"type">>, <<"string">>}]);
-validator_properties({'function', _F, _A}) ->
-    ?DEBUG("  no properties for fun ~p/~p~n", [_F, _A]),
+validator_properties(_Fields, {'function', _F, _A}) ->
+    ?DEBUG("  no properties for ~p fun ~p/~p~n", [_Fields, _F, _A]),
     kz_json:from_list([{<<"type">>, <<"string">>}]).
 
 cost_parameters_schema() ->

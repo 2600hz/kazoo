@@ -12,6 +12,7 @@
 
 -export([build_message/2
         ,validate/2
+        ,validate_message/2
         ,event_type_headers/2
         ,setters/1, setters/2
         ]).
@@ -242,7 +243,7 @@ build_message(JObj, Definition) ->
     build_message(kz_json:to_proplist(JObj), Definition).
 
 %%------------------------------------------------------------------------------
-%% @doc Generic function to validate API payload.
+%% @doc Generic functions to validate API payload.
 %% @end
 %%------------------------------------------------------------------------------
 -spec validate(kz_term:api_terms(), api()) -> boolean().
@@ -253,3 +254,12 @@ validate(Prop, #kapi_definition{required_headers = ReqH
     kz_api:validate(Prop, ReqH, Values, Types);
 validate(JObj, Definition) ->
     validate(kz_json:to_proplist(JObj), Definition).
+
+-spec validate_message(kz_term:api_terms(), api()) -> boolean().
+validate_message(Prop, #kapi_definition{required_headers = ReqH
+                                       ,values = Values
+                                       ,types = Types
+                                       }) when is_list(Prop) ->
+    kz_api:validate_message(Prop, ReqH, Values, Types);
+validate_message(JObj, Definition) ->
+    validate_message(kz_json:to_proplist(JObj), Definition).

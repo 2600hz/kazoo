@@ -1,0 +1,252 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.dialplan",
+    "description": "AMQP API for dialplan",
+    "properties": {
+        "Account-ID": {
+            "type": "string"
+        },
+        "Application-Name": {
+            "enum": [
+                "store"
+            ],
+            "type": "string"
+        },
+        "Auth-Password": {
+            "type": "string"
+        },
+        "Auth-Realm": {
+            "type": "string"
+        },
+        "Auth-User": {
+            "type": "string"
+        },
+        "Bypass-Media": {
+            "type": "string"
+        },
+        "Call-Context": {
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Callee-ID-Name": {
+            "type": "string"
+        },
+        "Callee-ID-Number": {
+            "type": "string"
+        },
+        "Caller-ID-Name": {
+            "type": "string"
+        },
+        "Caller-ID-Number": {
+            "type": "string"
+        },
+        "Codecs": {
+            "type": "string"
+        },
+        "Custom-Application-Vars": {
+            "type": "object"
+        },
+        "Custom-Channel-Vars": {
+            "type": "object"
+        },
+        "Custom-SIP-Headers": {
+            "type": "object"
+        },
+        "Duration-OFF": {
+            "type": "string"
+        },
+        "Duration-ON": {
+            "type": "string"
+        },
+        "Enable-T38-Fax": {
+            "type": "string"
+        },
+        "Enable-T38-Fax-Request": {
+            "type": "string"
+        },
+        "Enable-T38-Gateway": {
+            "enum": [
+                "self",
+                "peer"
+            ],
+            "type": "string"
+        },
+        "Enable-T38-Passthrough": {
+            "type": "string"
+        },
+        "Endpoint-Actions": {
+            "type": "object"
+        },
+        "Endpoint-Delay": {
+            "type": "string"
+        },
+        "Endpoint-ID": {
+            "type": "string"
+        },
+        "Endpoint-Options": {
+            "type": "string"
+        },
+        "Endpoint-Progress-Timeout": {
+            "type": "integer"
+        },
+        "Endpoint-Timeout": {
+            "type": "integer"
+        },
+        "Endpoint-Type": {
+            "enum": [
+                "sip",
+                "freetdm",
+                "skype"
+            ],
+            "type": "string"
+        },
+        "Endpoint-URI": {
+            "type": "string"
+        },
+        "Failover": {
+            "type": "string"
+        },
+        "Force-Fax": {
+            "type": "string"
+        },
+        "Forward-IP": {
+            "type": "string"
+        },
+        "Frequencies": {
+            "type": "string"
+        },
+        "Hold-Media": {
+            "type": "string"
+        },
+        "Ignore-Completed-Elsewhere": {
+            "type": "string"
+        },
+        "Ignore-Early-Media": {
+            "type": "string"
+        },
+        "Invite-Format": {
+            "enum": [
+                "username",
+                "e164",
+                "npan",
+                "1npan",
+                "route",
+                "loopback",
+                "contact",
+                "endpoint",
+                "forward"
+            ],
+            "type": "string"
+        },
+        "Loopback-Bowout": {
+            "type": "string"
+        },
+        "Media-Content": {
+            "type": "string"
+        },
+        "Media-Name": {
+            "type": "string"
+        },
+        "Media-Sequence-ID": {
+            "type": "string"
+        },
+        "Media-Transfer-Method": {
+            "enum": [
+                "stream"
+            ],
+            "type": "string"
+        },
+        "Outbound-Call-ID": {
+            "type": "string"
+        },
+        "Outbound-Callee-ID-Name": {
+            "type": "string"
+        },
+        "Outbound-Callee-ID-Number": {
+            "type": "string"
+        },
+        "Outbound-Caller-ID-Name": {
+            "type": "string"
+        },
+        "Outbound-Caller-ID-Number": {
+            "type": "string"
+        },
+        "Presence-ID": {
+            "type": "string"
+        },
+        "Privacy-Hide-Name": {
+            "type": "string"
+        },
+        "Privacy-Hide-Number": {
+            "type": "string"
+        },
+        "Privacy-Method": {
+            "type": "string"
+        },
+        "Proxy-IP": {
+            "type": "string"
+        },
+        "Proxy-Zone": {
+            "type": "string"
+        },
+        "Repeat": {
+            "type": "string"
+        },
+        "Route": {
+            "type": "string"
+        },
+        "SIP-Interface": {
+            "type": "string"
+        },
+        "SIP-Invite-Parameters": {
+            "type": "string"
+        },
+        "SIP-Transport": {
+            "enum": [
+                "udp",
+                "tcp",
+                "tls",
+                "sctp"
+            ],
+            "type": "string"
+        },
+        "Simplify-Loopback": {
+            "type": "string"
+        },
+        "To-DID": {
+            "type": "string"
+        },
+        "To-IP": {
+            "type": "string"
+        },
+        "To-Realm": {
+            "type": "string"
+        },
+        "To-URI": {
+            "type": "string"
+        },
+        "To-User": {
+            "type": "string"
+        },
+        "To-Username": {
+            "type": "string"
+        },
+        "Volume": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Application-Name",
+        "Call-ID",
+        "Duration-OFF",
+        "Duration-ON",
+        "Frequencies",
+        "Invite-Format",
+        "Media-Content",
+        "Media-Name",
+        "Media-Transfer-Method"
+    ],
+    "type": "object"
+}

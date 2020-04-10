@@ -13719,6 +13719,256 @@
             ],
             "type": "object"
         },
+        "kapi.dialplan": {
+            "description": "AMQP API for dialplan",
+            "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Application-Name": {
+                    "enum": [
+                        "store"
+                    ],
+                    "type": "string"
+                },
+                "Auth-Password": {
+                    "type": "string"
+                },
+                "Auth-Realm": {
+                    "type": "string"
+                },
+                "Auth-User": {
+                    "type": "string"
+                },
+                "Bypass-Media": {
+                    "type": "string"
+                },
+                "Call-Context": {
+                    "type": "string"
+                },
+                "Call-ID": {
+                    "type": "string"
+                },
+                "Callee-ID-Name": {
+                    "type": "string"
+                },
+                "Callee-ID-Number": {
+                    "type": "string"
+                },
+                "Caller-ID-Name": {
+                    "type": "string"
+                },
+                "Caller-ID-Number": {
+                    "type": "string"
+                },
+                "Codecs": {
+                    "type": "string"
+                },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
+                "Custom-Channel-Vars": {
+                    "type": "object"
+                },
+                "Custom-SIP-Headers": {
+                    "type": "object"
+                },
+                "Duration-OFF": {
+                    "type": "string"
+                },
+                "Duration-ON": {
+                    "type": "string"
+                },
+                "Enable-T38-Fax": {
+                    "type": "string"
+                },
+                "Enable-T38-Fax-Request": {
+                    "type": "string"
+                },
+                "Enable-T38-Gateway": {
+                    "enum": [
+                        "self",
+                        "peer"
+                    ],
+                    "type": "string"
+                },
+                "Enable-T38-Passthrough": {
+                    "type": "string"
+                },
+                "Endpoint-Actions": {
+                    "type": "object"
+                },
+                "Endpoint-Delay": {
+                    "type": "string"
+                },
+                "Endpoint-ID": {
+                    "type": "string"
+                },
+                "Endpoint-Options": {
+                    "type": "string"
+                },
+                "Endpoint-Progress-Timeout": {
+                    "type": "integer"
+                },
+                "Endpoint-Timeout": {
+                    "type": "integer"
+                },
+                "Endpoint-Type": {
+                    "enum": [
+                        "sip",
+                        "freetdm",
+                        "skype"
+                    ],
+                    "type": "string"
+                },
+                "Endpoint-URI": {
+                    "type": "string"
+                },
+                "Failover": {
+                    "type": "string"
+                },
+                "Force-Fax": {
+                    "type": "string"
+                },
+                "Forward-IP": {
+                    "type": "string"
+                },
+                "Frequencies": {
+                    "type": "string"
+                },
+                "Hold-Media": {
+                    "type": "string"
+                },
+                "Ignore-Completed-Elsewhere": {
+                    "type": "string"
+                },
+                "Ignore-Early-Media": {
+                    "type": "string"
+                },
+                "Invite-Format": {
+                    "enum": [
+                        "username",
+                        "e164",
+                        "npan",
+                        "1npan",
+                        "route",
+                        "loopback",
+                        "contact",
+                        "endpoint",
+                        "forward"
+                    ],
+                    "type": "string"
+                },
+                "Loopback-Bowout": {
+                    "type": "string"
+                },
+                "Media-Content": {
+                    "type": "string"
+                },
+                "Media-Name": {
+                    "type": "string"
+                },
+                "Media-Sequence-ID": {
+                    "type": "string"
+                },
+                "Media-Transfer-Method": {
+                    "enum": [
+                        "stream"
+                    ],
+                    "type": "string"
+                },
+                "Outbound-Call-ID": {
+                    "type": "string"
+                },
+                "Outbound-Callee-ID-Name": {
+                    "type": "string"
+                },
+                "Outbound-Callee-ID-Number": {
+                    "type": "string"
+                },
+                "Outbound-Caller-ID-Name": {
+                    "type": "string"
+                },
+                "Outbound-Caller-ID-Number": {
+                    "type": "string"
+                },
+                "Presence-ID": {
+                    "type": "string"
+                },
+                "Privacy-Hide-Name": {
+                    "type": "string"
+                },
+                "Privacy-Hide-Number": {
+                    "type": "string"
+                },
+                "Privacy-Method": {
+                    "type": "string"
+                },
+                "Proxy-IP": {
+                    "type": "string"
+                },
+                "Proxy-Zone": {
+                    "type": "string"
+                },
+                "Repeat": {
+                    "type": "string"
+                },
+                "Route": {
+                    "type": "string"
+                },
+                "SIP-Interface": {
+                    "type": "string"
+                },
+                "SIP-Invite-Parameters": {
+                    "type": "string"
+                },
+                "SIP-Transport": {
+                    "enum": [
+                        "udp",
+                        "tcp",
+                        "tls",
+                        "sctp"
+                    ],
+                    "type": "string"
+                },
+                "Simplify-Loopback": {
+                    "type": "string"
+                },
+                "To-DID": {
+                    "type": "string"
+                },
+                "To-IP": {
+                    "type": "string"
+                },
+                "To-Realm": {
+                    "type": "string"
+                },
+                "To-URI": {
+                    "type": "string"
+                },
+                "To-User": {
+                    "type": "string"
+                },
+                "To-Username": {
+                    "type": "string"
+                },
+                "Volume": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Application-Name",
+                "Call-ID",
+                "Duration-OFF",
+                "Duration-ON",
+                "Frequencies",
+                "Invite-Format",
+                "Media-Content",
+                "Media-Name",
+                "Media-Transfer-Method"
+            ],
+            "type": "object"
+        },
         "kapi.dialplan.answer": {
             "description": "AMQP API for dialplan.answer",
             "properties": {
@@ -14398,6 +14648,722 @@
             ],
             "type": "object"
         },
+        "kapi.dialplan.command": {
+            "description": "AMQP API for dialplan.command",
+            "properties": {
+                "A-MOH": {
+                    "type": "string"
+                },
+                "Action": {
+                    "enum": [
+                        "hold",
+                        "start",
+                        "stop",
+                        "toggle",
+                        "unhold"
+                    ],
+                    "type": "string"
+                },
+                "Additional-Headers": {
+                    "items": {
+                        "type": "object"
+                    },
+                    "type": "array"
+                },
+                "Adjust-In-Octaves": {
+                    "type": "string"
+                },
+                "Adjust-In-Semitones": {
+                    "type": "string"
+                },
+                "Application-Name": {
+                    "enum": [
+                        "answer",
+                        "audio_level",
+                        "break",
+                        "bridge",
+                        "call_pickup",
+                        "conference",
+                        "connect_leg",
+                        "eavesdrop",
+                        "echo",
+                        "event_actions",
+                        "execute_extension",
+                        "fax_detection",
+                        "fetch",
+                        "hangup",
+                        "hold",
+                        "hold_control",
+                        "media_macro",
+                        "noop",
+                        "page",
+                        "park",
+                        "play",
+                        "play_and_collect_digits",
+                        "play_macro",
+                        "playseek",
+                        "playstop",
+                        "privacy",
+                        "progress",
+                        "queue",
+                        "receive_fax",
+                        "record",
+                        "record_call",
+                        "recv_dtmf",
+                        "redirect",
+                        "respond",
+                        "ring",
+                        "say",
+                        "send_dtmf",
+                        "set",
+                        "set_terminators",
+                        "sleep",
+                        "soft_hold",
+                        "sound_touch",
+                        "store",
+                        "store_fax",
+                        "store_vm",
+                        "tone_detect",
+                        "tones",
+                        "transfer",
+                        "tts",
+                        "unbridge"
+                    ],
+                    "type": "string"
+                },
+                "Asserted-Identity-Name": {
+                    "type": "string"
+                },
+                "Asserted-Identity-Number": {
+                    "type": "string"
+                },
+                "Asserted-Identity-Realm": {
+                    "type": "string"
+                },
+                "Attended-Transfer-Keys": {
+                    "type": "string"
+                },
+                "B-Leg-Events": {
+                    "type": "string"
+                },
+                "B-MOH": {
+                    "type": "string"
+                },
+                "Bridge-Actions": {
+                    "type": "object"
+                },
+                "Call-Context": {
+                    "type": "string"
+                },
+                "Call-ID": {
+                    "type": "string"
+                },
+                "Callee-ID-Name": {
+                    "type": "string"
+                },
+                "Callee-ID-Number": {
+                    "type": "string"
+                },
+                "Caller-ID-Name": {
+                    "type": "string"
+                },
+                "Caller-ID-Number": {
+                    "type": "string"
+                },
+                "Channels-As-Stereo": {
+                    "type": "string"
+                },
+                "Commands": {
+                    "items": {
+                        "type": "object"
+                    },
+                    "type": "array"
+                },
+                "Conference-ID": {
+                    "type": "string"
+                },
+                "Confirm-Cancel-Timeout": {
+                    "type": "integer"
+                },
+                "Confirm-File": {
+                    "type": "string"
+                },
+                "Confirm-Key": {
+                    "type": "string"
+                },
+                "Continue-After": {
+                    "type": "string"
+                },
+                "Continue-On-Cancel": {
+                    "type": "string"
+                },
+                "Continue-On-Fail": {
+                    "type": "string"
+                },
+                "Custom-Application-Vars": {
+                    "type": "object"
+                },
+                "Custom-Call-Vars": {
+                    "type": "object"
+                },
+                "Custom-Channel-Vars": {
+                    "type": "object"
+                },
+                "Custom-SIP-Headers": {
+                    "type": "object"
+                },
+                "DTMFs": {
+                    "type": "string"
+                },
+                "Deaf": {
+                    "type": "string"
+                },
+                "Dial-Endpoint-Method": {
+                    "enum": [
+                        "simultaneous",
+                        "single"
+                    ],
+                    "type": "string"
+                },
+                "Digits-Regex": {
+                    "type": "string"
+                },
+                "Direction": {
+                    "enum": [
+                        "inbound",
+                        "outbound"
+                    ],
+                    "type": "string"
+                },
+                "Duration": {
+                    "type": "string"
+                },
+                "Enable-DTMF": {
+                    "type": "string"
+                },
+                "Enable-T38-Fax": {
+                    "type": "string"
+                },
+                "Enable-T38-Fax-Request": {
+                    "type": "string"
+                },
+                "Enable-T38-Gateway": {
+                    "enum": [
+                        "peer",
+                        "self"
+                    ],
+                    "type": "string"
+                },
+                "Enable-T38-Passthrough": {
+                    "type": "string"
+                },
+                "Endless-Playback": {
+                    "type": "string"
+                },
+                "Endpoints": {
+                    "items": {
+                        "$ref": "#/definitions/kapi.dialplan.bridge_endpoint",
+                        "type": "object"
+                    },
+                    "type": "array"
+                },
+                "Engine": {
+                    "type": "string"
+                },
+                "Event-Actions": {
+                    "type": "object"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "call"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "command"
+                    ],
+                    "type": "string"
+                },
+                "Export-All": {
+                    "type": "string"
+                },
+                "Export-Bridge-Variables": {
+                    "type": "string"
+                },
+                "Export-Variables": {
+                    "type": "string"
+                },
+                "Extension": {
+                    "type": "string"
+                },
+                "Fail-On-Single-Reject": {
+                    "type": "string"
+                },
+                "Failed-Media-Name": {
+                    "type": "string"
+                },
+                "Fax-Local-Filename": {
+                    "type": "string"
+                },
+                "Filter-Applications": {
+                    "type": "string"
+                },
+                "Follow-Transfer": {
+                    "type": "string"
+                },
+                "Force-Fax": {
+                    "type": "string"
+                },
+                "Format": {
+                    "type": "string"
+                },
+                "Frequencies": {
+                    "type": "string"
+                },
+                "From-Other-Leg": {
+                    "type": "string"
+                },
+                "Gender": {
+                    "enum": [
+                        "feminine",
+                        "masculine",
+                        "neuter"
+                    ]
+                },
+                "Group-ID": {
+                    "type": "string"
+                },
+                "Hangup-After-Pickup": {
+                    "type": "string"
+                },
+                "Hangup-Cause": {
+                    "type": "string"
+                },
+                "Hits-Needed": {
+                    "type": "string"
+                },
+                "Hold-Media": {
+                    "type": "string"
+                },
+                "Hook-DTMF": {
+                    "type": "string"
+                },
+                "Ignore-Completed-Elsewhere": {
+                    "type": "string"
+                },
+                "Ignore-Early-Media": {
+                    "type": "string"
+                },
+                "Ignore-Forward": {
+                    "type": "string"
+                },
+                "Insert-At": {
+                    "enum": [
+                        "flush",
+                        "head",
+                        "now",
+                        "tail"
+                    ],
+                    "type": "string"
+                },
+                "Language": {
+                    "type": "string"
+                },
+                "Leg": {
+                    "enum": [
+                        "A",
+                        "B",
+                        "Both"
+                    ],
+                    "type": "string"
+                },
+                "Level": {
+                    "type": "string"
+                },
+                "Loop-Count": {
+                    "minimum": 1,
+                    "type": "string"
+                },
+                "Loopback-Bowout": {
+                    "type": "string"
+                },
+                "Maximum-Digits": {
+                    "type": "string"
+                },
+                "Media": {
+                    "enum": [
+                        "auto",
+                        "bypass",
+                        "process"
+                    ],
+                    "type": "string"
+                },
+                "Media-Macro": {
+                    "type": "string"
+                },
+                "Media-Macros": {
+                    "type": "object"
+                },
+                "Media-Name": {
+                    "type": "string"
+                },
+                "Media-Recorder": {
+                    "type": "string"
+                },
+                "Media-Recording-Endpoint-ID": {
+                    "type": "string"
+                },
+                "Media-Recording-ID": {
+                    "type": "string"
+                },
+                "Media-Recording-Origin": {
+                    "type": "string"
+                },
+                "Media-Transfer-Destination": {
+                    "type": "string"
+                },
+                "Media-Transfer-Method": {
+                    "enum": [
+                        "post",
+                        "put",
+                        "stream"
+                    ],
+                    "type": "string"
+                },
+                "Media-Tries": {
+                    "type": "string"
+                },
+                "Member-Nospeak": {
+                    "type": "string"
+                },
+                "Method": {
+                    "enum": [
+                        "counted",
+                        "iterated",
+                        "none",
+                        "pronounced"
+                    ],
+                    "type": "string"
+                },
+                "Minimum-Digits": {
+                    "type": "string"
+                },
+                "Mode": {
+                    "type": "string"
+                },
+                "Moderator": {
+                    "type": "string"
+                },
+                "Move-Channel-If-Necessary": {
+                    "type": "string"
+                },
+                "Mute": {
+                    "type": "string"
+                },
+                "Nospeak-Check": {
+                    "type": "string"
+                },
+                "On-Success": {
+                    "items": {
+                        "type": "object"
+                    },
+                    "type": "array"
+                },
+                "Other-Leg": {
+                    "type": "string"
+                },
+                "Other-Leg-Only": {
+                    "type": "string"
+                },
+                "Outbound-Callee-ID-Name": {
+                    "type": "string"
+                },
+                "Outbound-Callee-ID-Number": {
+                    "type": "string"
+                },
+                "Outbound-Caller-ID-Name": {
+                    "type": "string"
+                },
+                "Outbound-Caller-ID-Number": {
+                    "type": "string"
+                },
+                "Page-Options": {
+                    "type": "string"
+                },
+                "Park-After-Pickup": {
+                    "type": "string"
+                },
+                "Pitch": {
+                    "type": "string"
+                },
+                "Privacy-Hide-Name": {
+                    "type": "string"
+                },
+                "Privacy-Hide-Number": {
+                    "type": "string"
+                },
+                "Privacy-Method": {
+                    "type": "string"
+                },
+                "Privacy-Mode": {
+                    "enum": [
+                        "full",
+                        "name",
+                        "none",
+                        "number"
+                    ],
+                    "type": "string"
+                },
+                "Profile": {
+                    "type": "string"
+                },
+                "Publish-Usurp": {
+                    "type": "string"
+                },
+                "Rate": {
+                    "type": "string"
+                },
+                "Record-Action": {
+                    "enum": [
+                        "mask",
+                        "start",
+                        "stop",
+                        "unmask"
+                    ],
+                    "type": "string"
+                },
+                "Record-Min-Sec": {
+                    "type": "string"
+                },
+                "Record-Sample-Rate": {
+                    "type": "string"
+                },
+                "Recording-Variables": {
+                    "type": "string"
+                },
+                "Redirect-Contact": {
+                    "type": "string"
+                },
+                "Redirect-Node": {
+                    "type": "string"
+                },
+                "Redirect-Server": {
+                    "type": "string"
+                },
+                "Reinvite": {
+                    "type": "string"
+                },
+                "Reset": {
+                    "type": "string"
+                },
+                "Response-Code": {
+                    "type": "string"
+                },
+                "Response-Message": {
+                    "type": "string"
+                },
+                "Ringback": {
+                    "type": "string"
+                },
+                "SIP-Invite-Parameters": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "string"
+                },
+                "SIP-Transport": {
+                    "enum": [
+                        "tcp",
+                        "tls",
+                        "udp"
+                    ],
+                    "type": "string"
+                },
+                "Say-Text": {
+                    "type": "string"
+                },
+                "Secure-RTP": {
+                    "type": "string"
+                },
+                "Sending-Leg": {
+                    "type": "string"
+                },
+                "Silence-Hits": {
+                    "type": "string"
+                },
+                "Silence-Threshold": {
+                    "type": "string"
+                },
+                "Simplify-Loopback": {
+                    "type": "string"
+                },
+                "Sniff-Direction": {
+                    "enum": [
+                        "read",
+                        "write"
+                    ],
+                    "type": "string"
+                },
+                "Suppress-Error-Report": {
+                    "type": "string"
+                },
+                "Target-Call-ID": {
+                    "type": "string"
+                },
+                "Tempo": {
+                    "type": "string"
+                },
+                "Terminators": {
+                    "items": {
+                        "enum": [
+                            "1",
+                            "2",
+                            "3",
+                            "4",
+                            "5",
+                            "6",
+                            "7",
+                            "8",
+                            "9",
+                            "*",
+                            "0",
+                            "#"
+                        ],
+                        "type": "string"
+                    },
+                    "type": "string"
+                },
+                "Text": {
+                    "type": "string"
+                },
+                "Time": {
+                    "type": "string"
+                },
+                "Time-Limit": {
+                    "type": "integer"
+                },
+                "Timeout": {
+                    "type": "string"
+                },
+                "Tone-Detect-Name": {
+                    "type": "string"
+                },
+                "Tones": {
+                    "items": {
+                        "$ref": "#/definitions/kapi.dialplan.tones_req_tone_headers",
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "Transfer-Context": {
+                    "type": "string"
+                },
+                "Transfer-Leg": {
+                    "enum": [
+                        "bleg",
+                        "both"
+                    ],
+                    "type": "string"
+                },
+                "Transfer-To": {
+                    "type": "string"
+                },
+                "Transfer-Type": {
+                    "enum": [
+                        "attended",
+                        "blind"
+                    ],
+                    "type": "string"
+                },
+                "Type": {
+                    "enum": [
+                        "account_number",
+                        "currency",
+                        "current_date",
+                        "current_date_time",
+                        "current_time",
+                        "e-mail_address",
+                        "ip_address",
+                        "items",
+                        "messages",
+                        "name_phonetic",
+                        "name_spelled",
+                        "number",
+                        "persons",
+                        "postal_address",
+                        "short_date_time",
+                        "telephone_extension",
+                        "telephone_number",
+                        "time_measurement",
+                        "url"
+                    ],
+                    "type": "string"
+                },
+                "Unanswered-Only": {
+                    "type": "string"
+                },
+                "Unbridged-Only": {
+                    "type": "string"
+                },
+                "Unhold-Key": {
+                    "type": "string"
+                },
+                "Voice": {
+                    "enum": [
+                        "female",
+                        "male"
+                    ],
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Action",
+                "Application-Name",
+                "Call-ID",
+                "Commands",
+                "Conference-ID",
+                "Custom-Call-Vars",
+                "Custom-Channel-Vars",
+                "DTMFs",
+                "Digits-Regex",
+                "Direction",
+                "Duration",
+                "Endpoints",
+                "Event-Actions",
+                "Extension",
+                "Frequencies",
+                "Insert-At",
+                "Language",
+                "Level",
+                "Maximum-Digits",
+                "Media-Macro",
+                "Media-Macros",
+                "Media-Name",
+                "Media-Transfer-Destination",
+                "Media-Transfer-Method",
+                "Media-Tries",
+                "Method",
+                "Minimum-Digits",
+                "Mode",
+                "Record-Action",
+                "Redirect-Contact",
+                "Response-Code",
+                "Say-Text",
+                "Target-Call-ID",
+                "Terminators",
+                "Text",
+                "Time",
+                "Timeout",
+                "Tone-Detect-Name",
+                "Tones",
+                "Transfer-To",
+                "Transfer-Type",
+                "Type",
+                "Unhold-Key"
+            ],
+            "type": "object"
+        },
         "kapi.dialplan.conference": {
             "description": "AMQP API for dialplan.conference",
             "properties": {
@@ -14564,6 +15530,51 @@
                 "Application-Name",
                 "Call-ID",
                 "Target-Call-ID"
+            ],
+            "type": "object"
+        },
+        "kapi.dialplan.dialplan": {
+            "description": "AMQP API for dialplan.dialplan",
+            "properties": {
+                "Call-ID": {
+                    "type": "string"
+                },
+                "Channel-Call-State": {
+                    "type": "string"
+                },
+                "Channel-State": {
+                    "type": "string"
+                },
+                "Custom-Channel-Vars": {
+                    "type": "object"
+                },
+                "Dialplan-Error": {
+                    "type": "string"
+                },
+                "Error-Message": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "error"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "dialplan"
+                    ],
+                    "type": "string"
+                },
+                "Request": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Channel-Call-State",
+                "Channel-State",
+                "Dialplan-Error",
+                "Error-Message"
             ],
             "type": "object"
         },
@@ -16124,6 +17135,53 @@
                 "Application-Name",
                 "Call-ID",
                 "Response-Code"
+            ],
+            "type": "object"
+        },
+        "kapi.dialplan.response": {
+            "description": "AMQP API for dialplan.response",
+            "properties": {
+                "Application-Name": {
+                    "enum": [
+                        "store"
+                    ],
+                    "type": "string"
+                },
+                "Call-ID": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "call"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "response"
+                    ],
+                    "type": "string"
+                },
+                "Media-Name": {
+                    "type": "string"
+                },
+                "Media-Transfer-Method": {
+                    "enum": [
+                        "put",
+                        "post"
+                    ],
+                    "type": "string"
+                },
+                "Media-Transfer-Results": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Application-Name",
+                "Call-ID",
+                "Media-Name",
+                "Media-Transfer-Method",
+                "Media-Transfer-Results"
             ],
             "type": "object"
         },
