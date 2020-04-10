@@ -10,12 +10,7 @@
 -export([caller_id_options_type/1, caller_id_options_type/2, set_caller_id_options_type/2]).
 -export([cid_rules/1, cid_rules/2, set_cid_rules/2]).
 -export([classifiers/1, classifiers/2, set_classifiers/2]).
--export([classifiers_emergency/1, classifiers_emergency/2, set_classifiers_emergency/2]).
--export([classifiers_enabled/1, classifiers_enabled/2, set_classifiers_enabled/2]).
--export([classifiers_prefix/1, classifiers_prefix/2, set_classifiers_prefix/2]).
--export([classifiers_regex/1, classifiers_regex/2, set_classifiers_regex/2]).
--export([classifiers_suffix/1, classifiers_suffix/2, set_classifiers_suffix/2]).
--export([classifiers_weight_cost/1, classifiers_weight_cost/2, set_classifiers_weight_cost/2]).
+-export([classifier/2, classifier/3, set_classifier/3]).
 -export([emergency/1, emergency/2, set_emergency/2]).
 -export([enabled/1, enabled/2, set_enabled/2]).
 -export([flags/1, flags/2, set_flags/2]).
@@ -95,77 +90,17 @@ classifiers(Doc, Default) ->
 set_classifiers(Doc, Classifiers) ->
     kz_json:set_value([<<"classifiers">>], Classifiers, Doc).
 
--spec classifiers_emergency(doc()) -> boolean().
-classifiers_emergency(Doc) ->
-    classifiers_emergency(Doc, false).
+-spec classifier(doc(), kz_json:key()) -> kz_term:api_object().
+classifier(Doc, Classifier) ->
+    classifier(Doc, Classifier, 'undefined').
 
--spec classifiers_emergency(doc(), Default) -> boolean() | Default.
-classifiers_emergency(Doc, Default) ->
-    kz_json:get_boolean_value([<<"classifiers">>, <<"emergency">>], Doc, Default).
+-spec classifier(doc(), kz_json:key(), Default) -> kz_json:object() | Default.
+classifier(Doc, Classifier, Default) ->
+    kz_json:get_json_value([<<"classifiers">>, Classifier], Doc, Default).
 
--spec set_classifiers_emergency(doc(), boolean()) -> doc().
-set_classifiers_emergency(Doc, ClassifiersEmergency) ->
-    kz_json:set_value([<<"classifiers">>, <<"emergency">>], ClassifiersEmergency, Doc).
-
--spec classifiers_enabled(doc()) -> boolean().
-classifiers_enabled(Doc) ->
-    classifiers_enabled(Doc, true).
-
--spec classifiers_enabled(doc(), Default) -> boolean() | Default.
-classifiers_enabled(Doc, Default) ->
-    kz_json:get_boolean_value([<<"classifiers">>, <<"enabled">>], Doc, Default).
-
--spec set_classifiers_enabled(doc(), boolean()) -> doc().
-set_classifiers_enabled(Doc, ClassifiersEnabled) ->
-    kz_json:set_value([<<"classifiers">>, <<"enabled">>], ClassifiersEnabled, Doc).
-
--spec classifiers_prefix(doc()) -> kz_term:api_binary().
-classifiers_prefix(Doc) ->
-    classifiers_prefix(Doc, 'undefined').
-
--spec classifiers_prefix(doc(), Default) -> binary() | Default.
-classifiers_prefix(Doc, Default) ->
-    kz_json:get_binary_value([<<"classifiers">>, <<"prefix">>], Doc, Default).
-
--spec set_classifiers_prefix(doc(), binary()) -> doc().
-set_classifiers_prefix(Doc, ClassifiersPrefix) ->
-    kz_json:set_value([<<"classifiers">>, <<"prefix">>], ClassifiersPrefix, Doc).
-
--spec classifiers_regex(doc()) -> kz_term:api_binary().
-classifiers_regex(Doc) ->
-    classifiers_regex(Doc, 'undefined').
-
--spec classifiers_regex(doc(), Default) -> binary() | Default.
-classifiers_regex(Doc, Default) ->
-    kz_json:get_binary_value([<<"classifiers">>, <<"regex">>], Doc, Default).
-
--spec set_classifiers_regex(doc(), binary()) -> doc().
-set_classifiers_regex(Doc, ClassifiersRegex) ->
-    kz_json:set_value([<<"classifiers">>, <<"regex">>], ClassifiersRegex, Doc).
-
--spec classifiers_suffix(doc()) -> kz_term:api_binary().
-classifiers_suffix(Doc) ->
-    classifiers_suffix(Doc, 'undefined').
-
--spec classifiers_suffix(doc(), Default) -> binary() | Default.
-classifiers_suffix(Doc, Default) ->
-    kz_json:get_binary_value([<<"classifiers">>, <<"suffix">>], Doc, Default).
-
--spec set_classifiers_suffix(doc(), binary()) -> doc().
-set_classifiers_suffix(Doc, ClassifiersSuffix) ->
-    kz_json:set_value([<<"classifiers">>, <<"suffix">>], ClassifiersSuffix, Doc).
-
--spec classifiers_weight_cost(doc()) -> integer().
-classifiers_weight_cost(Doc) ->
-    classifiers_weight_cost(Doc, 50).
-
--spec classifiers_weight_cost(doc(), Default) -> integer() | Default.
-classifiers_weight_cost(Doc, Default) ->
-    kz_json:get_integer_value([<<"classifiers">>, <<"weight_cost">>], Doc, Default).
-
--spec set_classifiers_weight_cost(doc(), integer()) -> doc().
-set_classifiers_weight_cost(Doc, ClassifiersWeightCost) ->
-    kz_json:set_value([<<"classifiers">>, <<"weight_cost">>], ClassifiersWeightCost, Doc).
+-spec set_classifier(doc(), kz_json:key(), kz_json:object()) -> doc().
+set_classifier(Doc, Classifier, Value) ->
+    kz_json:set_value([<<"classifiers">>, Classifier], Value, Doc).
 
 -spec emergency(doc()) -> boolean().
 emergency(Doc) ->
