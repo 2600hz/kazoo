@@ -620,7 +620,7 @@ list_acls(ACLs, Network) ->
     Props = kz_json:foldl(fun(Name, ACL, Acc) ->
                                   [{kz_json:get_value(<<"network-list-name">>, ACL)
                                    ,kz_json:set_value(<<"name">>, Name, ACL)}
-                                  | Acc
+                                   | Acc
                                   ]
                           end, [], ACLs),
     _ = [maybe_print_acl(Network, FormatString, ACL)

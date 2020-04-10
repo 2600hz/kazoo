@@ -90,6 +90,16 @@ from(JObj) ->
                              ,JObj
                              ).
 
+-spec presence_id(kz_json:object(), kz_term:ne_binary()) -> kz_term:ne_binary().
+presence_id(JObj, Realm) ->
+    PresenceId = kz_json:get_first_defined([<<"Channel-Presence-ID">>
+                                           ,<<"variable_presence_id">>
+                                           ]
+                                          ,JObj
+                                          ),
+    [Id|_] = binary:split(PresenceId, <<"@">>),
+    <<Id/binary, "@", Realm/binary>>.
+
 -spec to_user(kz_json:object()) -> kz_term:ne_binary().
 to_user(JObj) ->
     to_user(direction(JObj), JObj).
@@ -118,7 +128,7 @@ build_presence_event(UUID, #{payload := JObj}) ->
     FromTag = kz_evt_freeswitch:from_tag(JObj),
 
     {FromUser, Realm} = get_user_realm(JObj),
-    PresenceId = <<FromUser/binary, "@", Realm/binary>>,
+    PresenceId = presence_id(JObj, Realm),
     PresenceURI =  <<"sip:", PresenceId/binary>>,
 
     ToUser =  to_user(JObj),
