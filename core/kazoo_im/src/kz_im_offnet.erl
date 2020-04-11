@@ -261,8 +261,8 @@ maybe_relay_request(JObj) ->
                     lager:warning("onnet rejected request for account ~s : ~p", [AccountId, _Error]),
                     'ack'
             end;
-        M ->
-            lager:debug("unable to determine account for ~s => ~p", [Number, M]),
+        _ ->
+            lager:debug("unable to determine account for ~s when receiving ~s from ~s", [Number, kapps_im:type(IM), kapps_im:from(IM)]),
             'nack'
     end.
 
@@ -278,7 +278,7 @@ number_has_im_enabled(#{phone_number := PN, im := IM} = Map) ->
     case knm_im:enabled(PN, kapps_im:type(IM)) of
         'true' -> Map;
         'false' -> maps:without(['account_id', 'account', 'phone_number']
-                               ,Map#{error => io_lib:format("number does not have ~s enabled", [kapps_im:type(IM)])}
+                               ,Map#{error => kz_term:to_binary(io_lib:format("number does not have ~s enabled", [kapps_im:type(IM)]))}
                                )
     end;
 number_has_im_enabled(Map) -> Map.
@@ -330,7 +330,7 @@ account_has_im_enabled(#{account_id := AccountId, im := IM} = Map) ->
     case kz_services_im:is_enabled(AccountId, kapps_im:type(IM)) of
         'true' -> Map;
         'false' -> maps:without(['account_id', 'account']
-                               ,Map#{error => io_lib:format("account does not have ~s enabled", [kapps_im:type(IM)])}
+                               ,Map#{error => kz_term:to_binary(io_lib:format("account does not have ~s enabled", [kapps_im:type(IM)]))}
                                )
     end;
 account_has_im_enabled(Map) -> Map.
