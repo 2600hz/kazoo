@@ -74,7 +74,7 @@ maybe_send_push_notification('undefined', _) -> 'ok';
 maybe_send_push_notification({Pid, ExtraHeaders}, JObj) ->
     TokenID = kz_json:get_value(<<"Token-ID">>, JObj),
     Topic = apns_topic(JObj),
-    Headers = kz_maps:merge(#{apns_topic => Topic}, ExtraHeaders),
+    Headers = kz_maps:merge(#{apns_topic => Topic, apns_push_type => <<"voip">>, apns_priority=><<"10">>}, ExtraHeaders),
     Msg = build_payload(JObj),
     lager:debug_unsafe("pushing topic ~s for token-id ~s : ~s", [Topic, TokenID, kz_json:encode(kz_json:from_map(Msg), ['pretty'])]),
     {Result, _Props, _Ignore} = apns:push_notification(Pid, TokenID, Msg, Headers),
