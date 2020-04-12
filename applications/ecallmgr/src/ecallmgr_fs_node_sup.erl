@@ -32,7 +32,6 @@
 -define(NODE_WORKER, ?NODE_CHILD_TYPE(<<"worker">>)).
 -define(NODE_SUPERVISOR, ?NODE_CHILD_TYPE(<<"supervisor">>)).
 
--define(DEPRECATED_MODS, [<<"msg">>]).
 %%==============================================================================
 %% API functions
 %%==============================================================================
@@ -114,14 +113,25 @@ init([Node, Options]) ->
 
     NodeB = kz_term:to_binary(Node),
     Args = [Node, Options],
-    M = kazoo_bindings:map(<<"freeswitch.node.modules">>, []) -- ?DEPRECATED_MODS,
+    M = kazoo_bindings:map(<<"freeswitch.node.modules">>, []),
     Modules = lists:foldl(fun(A, B) -> A ++ B end, [], M),
-    JObj = maybe_correct_modules(Modules),
+    JObj = ensure_modules(maybe_correct_modules(Modules)),
     Children = kz_json:foldr(fun(Module, V, Acc) ->
                                      Type = kz_json:get_ne_binary_value(<<"type">>, V),
                                      [child_name(NodeB, Args, Module, Type) | Acc]
-                             end, [], JObj),
+                             end
+                            ,[]
+                            ,JObj
+                            ),
     {'ok', {SupFlags, Children}}.
+
+-spec ensure_modules(kz_json:object()) -> kz_json:object().
+ensure_modules(JObj) ->
+    kz_json:filter(fun ensure_module/1, JObj).
+
+-spec ensure_module({kz_json:key(), kz_json:json_term()}) -> boolean().
+ensure_module({Module, _}) ->
+    kz_module:ensure_loaded(<<"ecallmgr_fs_", Module/binary>>) =/= 'false'.
 
 -spec child_name(binary(), list(), binary(), binary()) -> any().
 child_name(NodeB, Args, Module, <<"supervisor">>) ->
