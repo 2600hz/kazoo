@@ -67,17 +67,17 @@
 -export([md5_auth/1, sha1_auth/1, signature_secret/1]).
 
 
--export([fetch/2]).
--export([to_vcard/1]).
--export([enable/1, disable/1]).
--export([type/0]).
--export([fax_settings/1]).
--export([name/1]).
--export([is_account_admin/1, is_account_admin/2]).
--export([classifier_restriction/2, classifier_restriction/3, set_classifier_restriction/3]).
--export([full_name/1, full_name/2]).
-
--export([full_name/3]).
+-export([fetch/2
+        ,to_vcard/1
+        ,enable/1, disable/1
+        ,type/0
+        ,fax_settings/1
+        ,name/1
+        ,is_account_admin/1, is_account_admin/2
+        ,classifier_restriction/2, classifier_restriction/3, set_classifier_restriction/3
+        ,full_name/1, full_name/2, full_name/3
+        ,validate/3
+        ]).
 
 -include("kz_documents.hrl").
 
@@ -86,6 +86,19 @@
 -export_type([doc/0, docs/0]).
 
 -define(SCHEMA, <<"users">>).
+-define(LIST_BY_USERNAME, <<"users/list_by_username">>).
+-define(LIST_BY_HOTDESK_ID, <<"users/list_by_hotdesk_id">>).
+
+-define(SYSCONFIG_CB_USERS, <<"crossbar.users">>).
+-define(SHOULD_GENERATE_USER_PASSWORD_IF_EMPTY
+       ,kapps_config:get_is_true(?SYSCONFIG_CB_USERS, <<"generate_password_if_empty">>, 'false')
+       ).
+-define(SHOULD_GENERATE_USER_USERNAME_IF_EMPTY
+       ,kapps_config:get_is_true(?SYSCONFIG_CB_USERS, <<"generate_username_if_empty">>, 'true')
+       ).
+-define(SHOULD_RESET_IDENTITY_SECRET_ON_REHASH
+       ,kapps_config:get_is_true(?SYSCONFIG_CB_USERS, <<"reset_identity_secret_on_rehash">>, 'true')
+       ).
 
 -spec new() -> doc().
 new() ->
@@ -999,3 +1012,391 @@ sha1_auth(Doc) ->
 -spec signature_secret(doc()) -> kz_term:api_object().
 signature_secret(Doc) ->
     kz_json:get_ne_binary_value(<<"pvt_signature_secret">>, Doc).
+
+%%------------------------------------------------------------------------------
+%% @doc Validate a requested user can be created
+%%
+%% Returns the updated user doc (with relevant defaults)
+%% or returns the validation error {Path, ErrorType, ErrorMessage}
+%% @end
+%%------------------------------------------------------------------------------
+-spec validate(kz_term:api_ne_binary(), kz_term:api_ne_binary(), doc()) ->
+          {'true', doc()} |
+          {'validation_errors', kazoo_documents:doc_validation_errors()} |
+          {'system_error', atom()}.
+validate(AccountId, UserId, ReqJObj) ->
+    ValidateFuns = [fun maybe_normalize_username/3
+                   ,fun maybe_validate_username_is_unique/3
+                   ,fun maybe_normalize_emergency_caller_id_number/3
+                   ,fun maybe_validate_hotdesk_id_is_unique/3
+
+                    %% validate_user_schema will load and merge the current docs pvt fields
+                   ,fun validate_user_schema/3
+
+                   ,fun maybe_set_identity_secret/3
+                   ,fun maybe_rehash_creds/3
+                   ],
+    try do_validation(AccountId, UserId, ReqJObj, ValidateFuns) of
+        {UserDoc, []} -> {'true', UserDoc};
+        {_UserDoc, ValidationErrors} -> {'validation_errors', ValidationErrors}
+    catch
+        'throw':SystemError -> SystemError
+    end.
+
+-spec do_validation(kz_term:api_ne_binary(), kz_term:api_ne_binary(), doc(), [kazoo_documents:doc_validation_fun()]) ->
+          {'true', doc()} |
+          {'validation_errors', kazoo_documents:doc_validation_errors()}.
+do_validation(AccountId, UserId, ReqJObj, ValidateFuns) ->
+    lists:foldl(fun(F, Acc) -> F(AccountId, UserId, Acc) end
+               ,{ReqJObj, []}
+               ,ValidateFuns
+               ).
+
+%%------------------------------------------------------------------------------
+%% @doc If set, Normalize the user's username by converting it to lower case.
+%% @end
+%%------------------------------------------------------------------------------
+-spec maybe_normalize_username(kz_term:api_ne_binary(), kz_term:api_ne_binary(), kazoo_documents:doc_validation_acc()) ->
+          kazoo_documents:doc_validation_acc().
+maybe_normalize_username(_AccountId, _UserId, {Doc, Errors}) ->
+    case username(Doc) of
+        'undefined' -> {Doc, Errors};
+        Username ->
+            NormalizedUsername = kz_term:to_lower_binary(Username),
+            lager:debug("normalized username '~s' to '~s'", [Username, NormalizedUsername]),
+            {set_username(Doc, NormalizedUsername), Errors}
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc If set, Validate the user's username is unique within the account.
+%% @end
+%%------------------------------------------------------------------------------
+-spec maybe_validate_username_is_unique(kz_term:api_ne_binary(), kz_term:api_ne_binary(), kazoo_documents:doc_validation_acc()) ->
+          kazoo_documents:doc_validation_acc().
+maybe_validate_username_is_unique(AccountId, UserId, {Doc, Errors}) ->
+    Username = username(Doc),
+    CurrentUsername = case fetch(AccountId, UserId) of
+                          {'ok', CurrentDoc} -> username(CurrentDoc);
+                          {'error', _R} -> 'undefined'
+                      end,
+
+    case kz_term:is_empty(Username)
+        orelse Username =:= CurrentUsername
+        orelse is_username_unique(AccountId, UserId, Username)
+    of
+        'true' ->
+            lager:debug("username '~s' (currently '~s') is unique within account", [Username, CurrentUsername]),
+            {Doc, Errors};
+        'false' ->
+            lager:error("username '~s' (currently '~s') is not unique within account", [Username, CurrentUsername]),
+            Msg = kz_json:from_list(
+                    [{<<"message">>, <<"Username must be unique within account">>}
+                    ,{<<"cause">>, Username}
+                    ]),
+            {Doc, [{[<<"username">>], <<"unique">>, Msg} | Errors]}
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc Return true if a user's username is unique within an account, else
+%% return false.
+%% @end
+%%------------------------------------------------------------------------------
+-spec is_username_unique(kz_term:api_ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> boolean().
+is_username_unique(AccountId, UserId, Username) ->
+    AccountDb = kzs_util:format_account_db(AccountId),
+    ViewOptions = [{'key', Username}],
+    case kz_datamgr:get_results(AccountDb, ?LIST_BY_USERNAME, ViewOptions) of
+        {'ok', []} -> 'true';
+        {'ok', [JObj]} -> kz_doc:id(JObj) =:= UserId;
+        _Else -> 'false'
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc If set, Normalize emergency caller id number.
+%% @end
+%%------------------------------------------------------------------------------
+-spec maybe_normalize_emergency_caller_id_number(kz_term:api_ne_binary(), kz_term:api_ne_binary()
+                                                ,kazoo_documents:doc_validation_acc()) -> kazoo_documents:doc_validation_acc().
+maybe_normalize_emergency_caller_id_number(_AccountId, _UserId, {Doc, Errors}) ->
+    {kzd_module_utils:maybe_normalize_emergency_caller_id_number(Doc), Errors}.
+
+%%------------------------------------------------------------------------------
+%% @doc Import user credentials if `<<"credentials">>' key is set.
+%% @end
+%%------------------------------------------------------------------------------
+-spec maybe_import_credentials(kz_term:api_ne_binary(), kz_term:api_ne_binary(), kazoo_documents:doc_validation_acc()) ->
+          kazoo_documents:doc_validation_acc().
+maybe_import_credentials(_AccountId, _UserId, {Doc, Errors}) ->
+    case kz_json:get_ne_value(<<"credentials">>, Doc) of
+        'undefined' -> {Doc, Errors};
+        Creds ->
+            lager:debug("importing user credentials"),
+            RemoveKeys = [<<"credentials">>, <<"pvt_sha1_auth">>],
+            kz_json:set_value(<<"pvt_md5_auth">>
+                             ,Creds
+                             ,kz_json:delete_keys(RemoveKeys, Doc)
+                             )
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc Verify the user doc against the user doc schema.
+%% On Success merge the private fields from the current user doc into Doc.
+%% @end
+%%------------------------------------------------------------------------------
+-spec validate_user_schema(kz_term:api_ne_binary(), kz_term:api_ne_binary(), kazoo_documents:doc_validation_acc()) ->
+          kazoo_documents:doc_validation_acc().
+validate_user_schema(AccountId, UserId, {Doc, Errors}) ->
+    OnSuccess = fun(ValidateAcc) -> on_successful_schema_validation(AccountId, UserId, ValidateAcc) end,
+    kzd_module_utils:validate_schema(<<"users">>, {Doc, Errors}, OnSuccess).
+
+%%------------------------------------------------------------------------------
+%% @doc Executed after `validate_user_schema/3' if it passes schema validation.
+%% If the UserId is defined then merge the current user doc's private fields
+%% into Doc.
+%% @end
+%%------------------------------------------------------------------------------
+-spec on_successful_schema_validation(kz_term:api_ne_binary(), kz_term:api_ne_binary(), kazoo_documents:doc_validation_acc()) ->
+          kazoo_documents:doc_validation_acc().
+on_successful_schema_validation(AccountId, 'undefined', {Doc, Errors}) ->
+    lager:debug("new user doc passed schema validation"),
+    Props = [{<<"pvt_type">>, type()}],
+    JObj = kz_json:set_values(Props, Doc),
+    maybe_import_credentials(AccountId, 'undefined', {JObj, Errors});
+on_successful_schema_validation(AccountId, UserId, {Doc, Errors}) ->
+    lager:debug("updated user doc passed schema validation"),
+    UpdatedDoc = maybe_merge_current_private_fields(AccountId, UserId, Doc),
+    maybe_import_credentials(AccountId, UserId, {UpdatedDoc, Errors}).
+
+%%------------------------------------------------------------------------------
+%% @doc Merge the current (cached) doc's private fields into Doc. If the current
+%% doc can not be found by Account Id and User Id, then return the unaltered
+%% Doc.
+%% @end
+%%------------------------------------------------------------------------------
+-spec maybe_merge_current_private_fields(kz_term:ne_binary(), kz_term:ne_binary(), doc()) -> doc().
+maybe_merge_current_private_fields(AccountId, UserId, Doc) ->
+    case fetch(AccountId, UserId) of
+        {'ok', CurrentDoc} ->
+            kz_json:merge_jobjs(kz_doc:private_fields(CurrentDoc), Doc);
+        {'error', _R} -> Doc
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc Check if user has a non-empty `pvt_signature_secret'
+%% If set then update `pvt_signature_secret'.
+%% If there are any errors in the doc validation accumulator then do nothing.
+%% @end
+%%------------------------------------------------------------------------------
+-spec maybe_set_identity_secret(kz_term:api_ne_binary(), kz_term:api_ne_binary(), kazoo_documents:doc_validation_acc()) ->
+          kazoo_documents:doc_validation_acc().
+maybe_set_identity_secret(_AccountId, _UserId, {Doc, []=Errors}) ->
+    case kz_auth_identity:has_doc_secret(Doc) of
+        'true' -> {Doc, Errors};
+        'false' ->
+            lager:debug("initializing identity secret"),
+            {kz_auth_identity:reset_doc_secret(Doc), Errors}
+    end;
+maybe_set_identity_secret(_AccountId, _UserId, ValidateAcc) -> ValidateAcc.
+
+%%------------------------------------------------------------------------------
+%% @doc If set, Validate the user's hotdesk id is unique within the account.
+%% @end
+%%------------------------------------------------------------------------------
+-spec maybe_validate_hotdesk_id_is_unique(kz_term:api_ne_binary(), kz_term:api_ne_binary(), kazoo_documents:doc_validation_acc()) ->
+          kazoo_documents:doc_validation_acc().
+maybe_validate_hotdesk_id_is_unique(AccountId, UserId, {Doc, Errors}) ->
+    HotdeskId = hotdesk_id(Doc),
+    CurrentHotdeskId = case fetch(AccountId, UserId) of
+                           {'ok', CurrentDoc} -> hotdesk_id(CurrentDoc);
+                           {'error', _R} -> 'undefined'
+                       end,
+
+    case kz_term:is_empty(HotdeskId)
+        orelse HotdeskId =:= CurrentHotdeskId
+        orelse is_hotdesk_id_unique(AccountId, UserId, HotdeskId)
+    of
+        'true' ->
+            lager:debug("hotdesk id '~s' (currently '~s') is unique within account", [HotdeskId, CurrentHotdeskId]),
+            {Doc, Errors};
+        'false' ->
+            lager:error("hotdesk id '~s' (currently '~s') is not unique within account", [HotdeskId, CurrentHotdeskId]),
+            Msg = kz_json:from_list(
+                    [{<<"message">>, <<"Hotdesk ID must be unique within account">>}
+                    ,{<<"cause">>, HotdeskId}
+                    ]),
+            {Doc, [{[<<"hotdesk">>, <<"id">>], <<"unique">>, Msg} | Errors]}
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc Return true if a user's hotdesk id is unique within an account, else
+%% return false.
+%% @end
+%%------------------------------------------------------------------------------
+-spec is_hotdesk_id_unique(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
+is_hotdesk_id_unique(AccountId, UserId, HotdeskId) ->
+    AccountDb = kzs_util:format_account_db(AccountId),
+    ViewOptions = [{'key', HotdeskId}],
+    case kz_datamgr:get_results(AccountDb, ?LIST_BY_HOTDESK_ID, ViewOptions) of
+        {'ok', []} -> 'true';
+        {'ok', [JObj]} -> kz_doc:id(JObj) =:= UserId;
+        _Else -> 'false'
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc Maybe rehash the users creds if needed.
+%% If there are any errors in the doc validation accumulator then do nothing.
+%% @end
+%%------------------------------------------------------------------------------
+-spec maybe_rehash_creds(kz_term:api_ne_binary(), kz_term:api_ne_binary(), kazoo_documents:doc_validation_acc()) ->
+          kazoo_documents:doc_validation_acc().
+maybe_rehash_creds(AccountId, UserId, {Doc, []}=ValidateAcc) ->
+    Username = username(Doc),
+    Password = password(Doc),
+    CurrentDoc = case fetch(AccountId, UserId) of
+                     {'ok', JObj} -> JObj;
+                     {'error', _R} -> kz_json:new()
+                 end,
+    CurrentUsername = username(CurrentDoc),
+    GeneratePassword = ?SHOULD_GENERATE_USER_PASSWORD_IF_EMPTY,
+    GenerateUsername = ?SHOULD_GENERATE_USER_USERNAME_IF_EMPTY,
+    GenerateCreds =
+        GenerateUsername
+        andalso GeneratePassword,
+    case
+        {Username =:= CurrentUsername
+        ,kz_term:is_empty(Username)
+        ,kz_term:is_empty(Password)}
+    of
+        {'false', 'false', 'false'} ->
+            lager:debug("requested different username (new: ~s current: ~s) with a password"
+                       ,[Username, CurrentUsername]
+                       ),
+            rehash_creds(Username, Password, ValidateAcc);
+        {'false', 'false', 'true'} ->
+            lager:debug("requested different username (new: ~s current: ~s) without a password"
+                       ,[Username, CurrentUsername]
+                       ),
+            maybe_generate_password_hash(GeneratePassword, Username, ValidateAcc);
+        {'false', 'true', 'false'} ->
+            lager:debug("requested no username but provided a password"),
+            maybe_generated_username_hash(GenerateUsername, Password, ValidateAcc);
+        {'false', 'true', 'true'} ->
+            lager:debug("requested no username or password"),
+            maybe_generate_creds_hash(GenerateCreds, ValidateAcc);
+        {'true', 'false', 'false'} ->
+            lager:debug("requested same username (new: ~s current: ~s) with a password"
+                       ,[Username, CurrentUsername]
+                       ),
+            rehash_creds(Username, Password, ValidateAcc);
+        {'true', 'false', 'true'} ->
+            lager:debug("requested same username (new: ~s current: ~s) without a password"
+                       ,[Username, CurrentUsername]
+                       ),
+            ValidateAcc;
+        {'true', 'true', 'false'} ->
+            lager:debug("requested no username (new: ~s current: ~s) with a password"
+                       ,[Username, CurrentUsername]
+                       ),
+            maybe_generated_username_hash(GenerateUsername, Password, ValidateAcc);
+        {'true', 'true', 'true'} ->
+            lager:debug("requested no username, no current username, and no password"),
+            maybe_generate_creds_hash(GenerateCreds, ValidateAcc)
+    end;
+maybe_rehash_creds(_AccountId, _UserId, ValidateAcc) -> ValidateAcc.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec maybe_generate_password_hash(boolean(), kz_term:ne_binary(), kazoo_documents:doc_validation_acc()) -> kazoo_documents:doc_validation_acc().
+maybe_generate_password_hash('false', _Username, {Doc, Errors}) ->
+    Msg = kz_json:from_list(
+            [{<<"message">>, <<"The password must be provided when creating / updating the user name">>}
+            ,{<<"cause">>, username(Doc)}
+            ]),
+    {Doc, [{[<<"password">>], <<"required">>, Msg} | Errors]};
+maybe_generate_password_hash('true', Username, ValidateAcc) ->
+    rehash_creds(Username, generate_password(), ValidateAcc).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec maybe_generated_username_hash(boolean(), kz_term:ne_binary(), kazoo_documents:doc_validation_acc()) -> kazoo_documents:doc_validation_acc().
+maybe_generated_username_hash('false', _Password, {Doc, Errors}) ->
+    Msg = kz_json:from_list(
+            [{<<"message">>, <<"The username must be provided when updating the password">>}
+            ,{<<"cause">>, username(Doc)}
+            ]),
+    {Doc, [{[<<"username">>], <<"required">>, Msg} | Errors]};
+maybe_generated_username_hash('true', Password, {Doc, Errors}) ->
+    Username = generate_username(),
+    UpdatedDoc = set_username(Doc, Username),
+    rehash_creds(Username, Password, {UpdatedDoc, Errors}).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec maybe_generate_creds_hash(boolean(), kazoo_documents:doc_validation_acc()) -> kazoo_documents:doc_validation_acc().
+maybe_generate_creds_hash('false', {Doc, Errors}) ->
+    {remove_creds(Doc), Errors};
+maybe_generate_creds_hash('true', {Doc, Errors}) ->
+    Username = generate_username(),
+    UpdatedDoc = set_username(Doc, Username),
+    rehash_creds(Username, generate_password(), {UpdatedDoc, Errors}).
+
+%%------------------------------------------------------------------------------
+%% @doc Generate a random username beginning with `user_' and followed by 8
+%% random characters.
+%% @end
+%%------------------------------------------------------------------------------
+-spec generate_username() -> kz_term:ne_binary().
+generate_username() ->
+    lager:debug("generating random username"),
+    <<"user_", (kz_binary:rand_hex(8))/binary>>.
+
+%%------------------------------------------------------------------------------
+%% @doc Generate a random 32 char long password.
+%% @end
+%%------------------------------------------------------------------------------
+-spec generate_password() -> kz_term:ne_binary().
+generate_password() ->
+    lager:debug("generating random password"),
+    kz_binary:rand_hex(32).
+
+%%------------------------------------------------------------------------------
+%% @doc Remove `pvt_md5_auth' and `pvt_sha1_auth' from a user's doc.
+%% @end
+%%------------------------------------------------------------------------------
+-spec remove_creds(doc()) -> doc().
+remove_creds(Doc) ->
+    lager:debug("removing user creds"),
+    HashKeys = [<<"pvt_md5_auth">>, <<"pvt_sha1_auth">>],
+    kz_json:delete_keys(HashKeys, Doc).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec rehash_creds(kz_term:ne_binary(), kz_term:ne_binary(), kazoo_documents:doc_validation_acc()) -> kazoo_documents:doc_validation_acc().
+rehash_creds(Username, Password, {Doc, Errors}) ->
+    lager:debug("updating cred hashes for ~s", [Username]),
+    DocMD5 = kz_json:get_ne_value(<<"pvt_md5_auth">>, Doc),
+    DocSHA1 = kz_json:get_ne_value(<<"pvt_sha1_auth">>, Doc),
+    {MD5, SHA1} = kzd_module_utils:pass_hashes(Username, Password),
+    UpdatedDoc = kz_json:set_values([{<<"pvt_md5_auth">>, MD5}
+                                    ,{<<"pvt_sha1_auth">>, SHA1}
+                                    ]
+                                   ,Doc
+                                   ),
+    case ?SHOULD_RESET_IDENTITY_SECRET_ON_REHASH
+        andalso (DocMD5 =/= MD5
+                 orelse DocSHA1 =/= SHA1)
+    of
+        'false' ->
+            {kz_json:delete_key(<<"password">>, UpdatedDoc), Errors};
+        'true' ->
+            lager:debug("resetting identity secret"),
+            {kz_auth_identity:reset_doc_secret(kz_json:delete_key(<<"password">>, UpdatedDoc)), Errors}
+    end.
