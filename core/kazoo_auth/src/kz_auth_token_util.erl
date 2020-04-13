@@ -15,6 +15,7 @@
 
 -export([add_application/1
         ,add_provider/1
+        ,add_discovery/1
         ,verify/1
         ,access_code/1
         ,access_token/1
@@ -38,6 +39,23 @@ add_provider(#{auth_app := #{pvt_auth_provider := Provider}}=Token) ->
 add_provider(#{claims := #{iss :=Issuer}}=Token) ->
     Token#{auth_provider => kz_auth_providers:provider_by_issuer(Issuer)};
 add_provider(#{}=Token) -> Token.
+
+-spec add_discovery(map()) -> map().
+add_discovery(#{auth_provider := #{discovery := DiscoveryUrl}}=Token) ->
+    lager:debug("getting discovery document from ~s", [DiscoveryUrl]),
+    case kz_auth_util:get_json_from_url(DiscoveryUrl) of
+        {'ok', JObj} -> Token#{discovery => JObj};
+        _ -> Token
+    end;
+add_discovery(#{auth_provider := #{name := <<"kazoo">>}}=Token) ->
+    Token;
+add_discovery(#{payload := #{<<"iss">> := <<"http", _/binary>> = Issuer}}=Token) ->
+    DiscoveryUrl = <<Issuer/binary, "/.well-known/openid-configuration">>,
+    case kz_auth_util:get_json_from_url(DiscoveryUrl) of
+        {'ok', JObj} -> Token#{discovery => JObj};
+        _ -> Token
+    end;
+add_discovery(#{}=Token) -> Token.
 
 
 -spec access_code(map()) -> map().
