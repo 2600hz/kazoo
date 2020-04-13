@@ -279,6 +279,9 @@ build_voicemail_data(DataJObj) ->
       ,{<<"box">>, kz_json:get_value(<<"voicemail_box">>, DataJObj)} %% backward compatibility
       ,{<<"vmbox_name">>, kz_json:get_value([<<"vmbox_doc">>, <<"name">>], DataJObj)}
       ,{<<"vmbox_number">>, kz_json:get_value([<<"vmbox_doc">>, <<"mailbox">>], DataJObj)}
+      ,{<<"vmbox_include_message_on_notify">>
+       ,kz_json:get_value([<<"vmbox_doc">>, <<"include_message_on_notify">>], DataJObj, 'true')
+       }
       ,{<<"msg_id">>, kz_json:get_value(<<"voicemail_id">>, DataJObj)}
       ,{<<"name">>, kz_json:get_value(<<"voicemail_id">>, DataJObj)} %% backward compatibility
       ,{<<"transcription">>, maybe_get_transcription(DataJObj)}
