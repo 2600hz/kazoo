@@ -77,6 +77,7 @@
         ,classifier_restriction/2, classifier_restriction/3, set_classifier_restriction/3
         ,full_name/1, full_name/2, full_name/3
         ,validate/3
+        ,get_setters/0
         ]).
 
 -include("kz_documents.hrl").
@@ -1012,6 +1013,17 @@ sha1_auth(Doc) ->
 -spec signature_secret(doc()) -> kz_term:api_object().
 signature_secret(Doc) ->
     kz_json:get_ne_binary_value(<<"pvt_signature_secret">>, Doc).
+
+%%------------------------------------------------------------------------------
+%% @doc Get a mapping of all setter functions (start with set_) with arity 2 for
+%% a users document.
+%% Returns map where the key (Function name without set_) is a binary and the
+%% value (Function name) is an atom.
+%% @end
+%%------------------------------------------------------------------------------
+-spec get_setters() -> #{kz_term:ne_binary() => atom()}.
+get_setters() ->
+    kzd_module_utils:get_setters(?MODULE).
 
 %%------------------------------------------------------------------------------
 %% @doc Validate a requested user can be created
