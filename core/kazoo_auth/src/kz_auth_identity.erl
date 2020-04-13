@@ -379,12 +379,11 @@ reset_secret(Claims) ->
 reset_doc_secret(JObj) ->
     kz_json:set_value(?PVT_SIGNING_SECRET, generate_new_kazoo_signing_secret(), JObj).
 
-
 %%------------------------------------------------------------------------------
 %% @doc Check if `?PVT_SIGNING_SECRET' is a non-empty value
 %% @end
 %%------------------------------------------------------------------------------
--spec has_doc_secret(kz_json:object()) -> kz_json:object().
+-spec has_doc_secret(kz_json:object()) -> boolean().
 has_doc_secret(JObj) ->
     kz_json:get_ne_binary_value(?PVT_SIGNING_SECRET, JObj) =/= 'undefined'.
 

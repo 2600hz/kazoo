@@ -64,6 +64,7 @@ authenticate(Token)
   when is_map(Token) ->
     Routines = [fun kz_auth_token_util:add_application/1
                ,fun kz_auth_token_util:add_provider/1
+               ,fun kz_auth_token_util:add_discovery/1
                ,fun kz_auth_token_util:access_code/1
                ,fun kz_auth_token_util:access_token/1
                ,fun kz_auth_token_util:verify/1
