@@ -1016,27 +1016,8 @@ handle_no_descendants(ViewOptions) ->
 -spec format_emergency_caller_id_number(cb_context:context()) ->
           cb_context:context().
 format_emergency_caller_id_number(Context) ->
-    case cb_context:req_value(Context, [<<"caller_id">>, ?KEY_EMERGENCY]) of
-        'undefined' -> Context;
-        Emergency ->
-            format_emergency_caller_id_number(Context, Emergency)
-    end.
-
--spec format_emergency_caller_id_number(cb_context:context(), kz_json:object()) ->
-          cb_context:context().
-format_emergency_caller_id_number(Context, Emergency) ->
-    case kz_json:get_ne_binary_value(<<"number">>, Emergency) of
-        'undefined' -> Context;
-        Number ->
-            NEmergencyJObj = kz_json:set_value(<<"number">>, knm_converters:normalize(Number), Emergency),
-            CallerIdJObj = cb_context:req_value(Context, <<"caller_id">>),
-            NCallerIdJObj = kz_json:set_value(?KEY_EMERGENCY, NEmergencyJObj, CallerIdJObj),
-
-            lager:debug("setting emergency caller id from ~s to ~s", [Number, knm_converters:normalize(Number)]),
-            cb_context:set_req_data(Context
-                                   ,kz_json:set_value(<<"caller_id">>, NCallerIdJObj, cb_context:req_data(Context))
-                                   )
-    end.
+    Doc = cb_context:req_data(Context),
+    cb_context:set_req_data(Context, kzd_module_utils:maybe_normalize_emergency_caller_id_number(Doc)).
 
 -type refresh_type() :: 'user' | 'device' | 'sys_info' | 'account'.
 
