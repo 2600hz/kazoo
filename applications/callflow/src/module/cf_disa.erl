@@ -27,8 +27,7 @@
 %%%-----------------------------------------------------------------------------
 -module(cf_disa).
 
-%% some recursion causes loops in cf_data_usage
-%% -behaviour(gen_cf_action).
+-behaviour(gen_cf_action).
 
 -include("callflow.hrl").
 
