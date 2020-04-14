@@ -12,7 +12,7 @@
 -module(kz_attributes).
 
 -export([temporal_rules/1]).
--export([groups/1, groups/2]).
+-export([groups/1]).
 -export([caller_id_type/1, caller_id/1, caller_id/2]).
 -export([callee_id/2]).
 -export([get_endpoint_cid/2, get_endpoint_cid/4]).
@@ -33,6 +33,7 @@
         ]).
 
 -include("kazoo_endpoint.hrl").
+-include_lib("kazoo_stdlib/include/kz_databases.hrl").
 
 -type cid() :: {kz_term:api_binary(), kz_term:api_binary()}.
 
@@ -43,7 +44,11 @@
 -spec temporal_rules(kapps_call:call()) -> kz_json:objects().
 temporal_rules(Call) ->
     AccountDb = kapps_call:account_db(Call),
-    case kz_datamgr:get_results(AccountDb, <<"attributes/temporal_rules">>, ['include_docs']) of
+    Options = [{'startkey', [<<"temporal_rule">>, <<"by_id">>]}
+              ,{'endkey', [<<"temporal_rule">>, <<"by_id">>, kz_datamgr:view_highest_value()]}
+              ,'include_docs'
+              ],
+    case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, Options) of
         {'ok', JObjs} -> JObjs;
         {'error', _E} ->
             lager:debug("failed to find temporal rules: ~p", [_E]),
@@ -57,12 +62,9 @@ temporal_rules(Call) ->
 
 -spec groups(kapps_call:call()) -> kz_json:objects().
 groups(Call) ->
-    groups(Call, []).
-
--spec groups(kapps_call:call(), kz_term:proplist()) -> kz_json:objects().
-groups(Call, ViewOptions) ->
     AccountDb = kapps_call:account_db(Call),
-    case kz_datamgr:get_results(AccountDb, <<"attributes/groups">>, ViewOptions) of
+    ViewOptions = [{'key', [<<"group">>, <<"by_enpoints">>]}],
+    case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, ViewOptions) of
         {'ok', JObjs} -> JObjs;
         {'error', _} -> []
     end.
@@ -454,13 +456,11 @@ owner_id(Call) ->
 owner_id('undefined', _Call) -> 'undefined';
 owner_id(ObjectId, Call) ->
     AccountDb = kapps_call:account_db(Call),
-    ViewOptions = [{'key', ObjectId}],
-    case kz_datamgr:get_results(AccountDb, <<"attributes/owner">>, ViewOptions) of
-        {'ok', [JObj]} -> kz_json:get_value(<<"value">>, JObj);
+    case get_owner_ids(kz_datamgr:open_doc(AccountDb, ObjectId)) of
         {'ok', []} -> 'undefined';
-        {'ok', [_|_]=JObjs} ->
-            Owners = [kz_json:get_value(<<"value">>, JObj) || JObj <- JObjs],
-            lager:debug("object ~s has multiple owners: ~-500p", [ObjectId, Owners]),
+        {'ok', [OwnerId]} -> OwnerId;
+        {'ok', [_|_]=OwnerIds} ->
+            lager:debug("object ~s has multiple owners: ~-500p", [ObjectId, OwnerIds]),
             'undefined';
         {'error', _R} ->
             lager:warning("unable to find owner for ~s: ~p", [ObjectId, _R]),
@@ -471,16 +471,36 @@ owner_id(ObjectId, Call) ->
 owner_ids('undefined', _Call) -> [];
 owner_ids(ObjectId, Call) ->
     AccountDb = kapps_call:account_db(Call),
-    ViewOptions = [{'key', ObjectId}],
-    case kz_datamgr:get_results(AccountDb, <<"attributes/owner">>, ViewOptions) of
-        {'ok', []} -> [];
-        {'ok', [JObj]} -> [kz_json:get_value(<<"value">>, JObj)];
-        {'ok', [_|_]=JObjs} ->
-            [kz_json:get_value(<<"value">>, JObj) || JObj <- JObjs];
+    case get_owner_ids(kz_datamgr:get_doc(AccountDb, ObjectId)) of
+        {'ok', OwnerIds} -> OwnerIds;
         {'error', _R} ->
             lager:warning("unable to find owner for ~s: ~p", [ObjectId, _R]),
             []
     end.
+
+-spec get_owner_ids(kz_either:either(kazoo_data:data_error(), kz_json:object())) ->
+          kz_either:either(kazoo_data:data_error(), kz_term:ne_binaries()).
+get_owner_ids({'ok', JObj}) ->
+    %% replaces `attributes/owner' view:
+    %%
+    %% "  var has_users = false;",
+    %% "  var o = (doc.hotdesk || {}).users || {};",
+    %% "  for (var p in o) {",
+    %% "    if (o.hasOwnProperty(p)) {",
+    %% "      has_users = true;",
+    %% "      break;",
+    %% "    }",
+    %% "  }",
+    %% "  if (doc.hotdesk && doc.hotdesk.users && has_users) {",
+    %% "    for (owner_id in doc.hotdesk.users) {",
+    %% "      emit(doc._id, owner_id);",
+    %% "    };",
+    %% "  } else if (doc.owner_id) {",
+    %% "    emit(doc._id, doc.owner_id);",
+    %% "  }",
+    kzd_devices:hotdesk_ids(JObj, [kz_json:get_ne_binary_value(<<"owner_id">>, JObj, [])]);
+get_owner_ids({'error', _}=Error) ->
+    Error.
 
 %%------------------------------------------------------------------------------
 %% @doc This function will return the presence id for the endpoint
@@ -509,63 +529,60 @@ presence_id(Endpoint, _Call, Default) ->
 %% @end
 %%------------------------------------------------------------------------------
 
--spec owned_by(kz_term:api_binary(), kapps_call:call()) -> kz_term:api_binaries().
+-spec owned_by(kz_term:api_binary(), kapps_call:call()) -> kz_term:ne_binaries().
 owned_by('undefined', _) -> [];
 owned_by(OwnerId, Call) ->
     AccountDb = kapps_call:account_db(Call),
-    ViewOptions = [{'startkey', [OwnerId]}
-                  ,{'endkey', [OwnerId, kz_json:new()]}
+    ViewOptions = [{'startkey', [<<"by_owner">>, OwnerId]}
+                  ,{'endkey', [<<"by_owner">>, OwnerId, kz_json:new()]}
                   ],
-    case kz_datamgr:get_results(AccountDb, <<"attributes/owned">>, ViewOptions) of
-        {'ok', JObjs} -> [kz_json:get_value(<<"value">>, JObj) || JObj <- JObjs];
-        {'error', _R} ->
-            lager:warning("unable to find documents owned by ~s: ~p", [OwnerId, _R]),
-            []
-    end.
+    owned_by_query(AccountDb, ViewOptions).
 
--spec owned_by(kz_term:api_binary() | kz_term:api_binaries(), kz_term:ne_binary(), kapps_call:call()) -> kz_term:api_binaries().
+-spec owned_by(kz_term:api_binary() | kz_term:api_binaries(), kz_term:ne_binary(), kapps_call:call()) -> kz_term:ne_binaries().
 owned_by('undefined', _, _) -> [];
 owned_by([_|_]=OwnerIds, Type, Call) ->
-    Keys = [[OwnerId, Type] || OwnerId <- OwnerIds],
-    owned_by_query([{'keys', Keys}], Call);
+    Keys = [[<<"by_owner">>, OwnerId, Type] ||
+            OwnerId <- OwnerIds
+           ],
+    owned_by_query(kapps_call:account_db(Call), [{'keys', Keys}]);
 owned_by(OwnerId, Type, Call) ->
-    owned_by_query([{'key', [OwnerId, Type]}], Call).
+    ViewOptions = [{'key', [<<"by_owner">>, OwnerId, Type]}],
+    owned_by_query(kapps_call:account_db(Call), ViewOptions).
 
 -spec owned_by_docs(kz_term:api_binary(), kz_term:ne_binary() | kapps_call:call()) ->
           kz_term:api_objects().
 owned_by_docs('undefined', _) -> [];
-owned_by_docs(OwnerId, ?NE_BINARY=Account) ->
+owned_by_docs(OwnerId, <<Account/binary>>) ->
     AccountDb = kzs_util:format_account_db(Account),
-    ViewOptions = [{'startkey', [OwnerId]}
-                  ,{'endkey', [OwnerId, kz_json:new()]}
+    ViewOptions = [{'startkey', [<<"by_owner">>, OwnerId]}
+                  ,{'endkey', [<<"by_owner">>, OwnerId, kz_datamgr:view_highest_value()]}
                   ,'include_docs'
                   ],
-    case kz_datamgr:get_results(AccountDb, <<"attributes/owned">>, ViewOptions) of
-        {'ok', JObjs} -> [kz_json:get_json_value(<<"doc">>, JObj) || JObj <- JObjs];
-        {'error', _R} ->
-            lager:warning("unable to find documents owned by ~s: ~p", [OwnerId, _R]),
-            []
-    end;
+    owned_by_query(AccountDb, ViewOptions);
 owned_by_docs(OwnerId, Call) ->
     owned_by_docs(OwnerId, kapps_call:account_id(Call)).
 
--spec owned_by_docs(kz_term:api_binary() | kz_term:api_binaries(), kz_term:ne_binary(), kapps_call:call()) -> kz_term:api_objects().
+-spec owned_by_docs(kz_term:api_binary() | kz_term:api_binaries(), kz_term:ne_binary(), kapps_call:call()) -> kz_term:ne_objects().
 owned_by_docs('undefined', _, _) -> [];
 owned_by_docs([_|_]=OwnerIds, Type, Call) ->
-    Keys = [[OwnerId, Type] || OwnerId <- OwnerIds],
-    owned_by_query([{'keys', Keys}, 'include_docs'], Call, <<"doc">>);
+    ViewOptions = [{'keys', [[<<"by_owner">>, OwnerId, Type] || OwnerId <- OwnerIds]}
+                  ,'include_docs'
+                  ],
+    owned_by_query(kapps_call:account_db(Call), ViewOptions);
 owned_by_docs(OwnerId, Type, Call) ->
-    owned_by_query([{'key', [OwnerId, Type]}, 'include_docs'], Call, <<"doc">>).
+    ViewOptions = [{'key', [<<"by_owner">>, OwnerId, Type]}
+                  ,'include_docs'
+                  ],
+    owned_by_query(kapps_call:account_db(Call), ViewOptions).
 
--spec owned_by_query(list(), kapps_call:call()) -> kz_term:api_binaries() | kz_json:objects().
-owned_by_query(ViewOptions, Call) ->
-    owned_by_query(ViewOptions, Call, <<"value">>).
-
--spec owned_by_query(list(), kapps_call:call(), kz_term:ne_binary()) -> kz_term:api_binaries() | kz_json:objects().
-owned_by_query(ViewOptions, Call, ViewKey) ->
-    AccountDb = kapps_call:account_db(Call),
-    case kz_datamgr:get_results(AccountDb, <<"attributes/owned">>, ViewOptions) of
-        {'ok', JObjs} -> [kz_json:get_value(ViewKey, JObj) || JObj <- JObjs];
+-spec owned_by_query(kz_term:ne_binary(), kz_datamgr:view_options()) -> kz_term:ne_binaries() | kz_json:objects().
+owned_by_query(AccountDb, ViewOptions) ->
+    IncludeDocs = props:get_is_true('include_docs', ViewOptions),
+    case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, ViewOptions) of
+        {'ok', JObjs} when IncludeDocs ->
+            [kz_json:get_json_value(<<"doc">>, JObj, kz_json:new()) || JObj <- JObjs];
+        {'ok', JObjs} ->
+            [kz_doc:id(JObj) || JObj <- JObjs];
         {'error', _R} ->
             lager:warning("unable to find owned documents (~p) using ~p", [_R, ViewOptions]),
             []

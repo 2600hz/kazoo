@@ -1981,11 +1981,11 @@ get_mailbox_doc(Db, Id, Data, Call) ->
             kz_datamgr:open_doc(Db, Id);
         'true' when not CGIsEmpty ->
             lager:info("capture group not empty: ~s", [CaptureGroup]),
-            Opts = [{'key', CaptureGroup}
+            Opts = [{'key', [kzd_voicemail_box:type(), <<"by_number">>, CaptureGroup]}
                    ,'include_docs'
                    ,'first_when_multiple'
                    ],
-            case kz_datamgr:get_single_result(Db, <<"attributes/mailbox_number">>, Opts) of
+            case kz_datamgr:get_single_result(Db, ?KZ_VIEW_LIST_UNIFORM, Opts) of
                 {'ok', JObj} ->
                     {'ok', kz_json:get_json_value(<<"doc">>, JObj, kz_json:new())};
                 E -> E

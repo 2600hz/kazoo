@@ -100,10 +100,10 @@ agents_in_queue(AcctDb, QueueId) ->
 
 -spec agent_devices(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:objects().
 agent_devices(AcctDb, AgentId) ->
-    case kz_datamgr:get_results(AcctDb, <<"attributes/owned">>, [{'key', [AgentId, <<"device">>]}
-                                                                ,'include_docs'
-                                                                ])
-    of
+    Options = [{'key', [<<"by_owner">>, AgentId, <<"device">>]}
+              ,'include_docs'
+              ],
+    case kz_datamgr:get_results(AcctDb, ?KZ_VIEW_LIST_UNIFORM, Options) of
         {'ok', Devices} -> [kz_json:get_value(<<"doc">>, Dev) || Dev <- Devices];
         {'error', _} -> []
     end.

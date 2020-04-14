@@ -134,9 +134,9 @@ generate_profile(EndpointId, AccountId, Endpoint, Options) ->
 
 -spec owned_by_query(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_binaries().
 owned_by_query(OwnerId, AccountId) ->
-    ViewOptions = [{'key', [OwnerId, <<"device">>]}],
+    ViewOptions = [{'key', [<<"by_owner">>, OwnerId, <<"device">>]}],
     AccountDb = kzs_util:format_account_db(AccountId),
-    case kz_datamgr:get_results(AccountDb, <<"attributes/owned">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, ViewOptions) of
         {'ok', JObjs} -> [kz_doc:id(JObj) || JObj <- JObjs];
         {'error', _R} -> []
     end.

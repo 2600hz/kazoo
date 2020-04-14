@@ -295,10 +295,10 @@ maybe_get_user_channels(Context, Endpoints) ->
 -spec user_endpoints(cb_context:context(), kz_term:ne_binary()) ->
           endpoints_return().
 user_endpoints(Context, UserId) ->
-    Options = [{'key', [UserId, <<"device">>]}
+    Options = [{'key', [<<"by_owner">>, UserId, <<"device">>]}
               ,'include_docs'
               ],
-    Context1 = crossbar_view:load(Context, <<"attributes/owned">>, Options),
+    Context1 = crossbar_view:load(Context, ?KZ_VIEW_LIST_UNIFORM, Options),
     {cb_context:doc(Context1), Context1}.
 
 -spec group_summary(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().

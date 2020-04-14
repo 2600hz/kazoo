@@ -328,8 +328,8 @@ owner_ids_by_sip_username(AccountDb, Username) ->
           {'ok', kz_term:ne_binaries()} |
           {'error', any()}.
 get_owner_ids_by_sip_username(AccountDb, Username) ->
-    ViewOptions = [{'key', Username}],
-    case kz_datamgr:get_single_result(AccountDb, <<"attributes/sip_username">>, ViewOptions) of
+    ViewOptions = [{'key', [<<"by_sip_username">>, Username]}],
+    case kz_datamgr:get_single_result(AccountDb, ?KZ_VIEW_LIST_UNIFORM, ViewOptions) of
         {'ok', JObj} ->
             EndpointId = kz_doc:id(JObj),
             OwnerIds = kz_json:get_value(<<"value">>, JObj, []),
@@ -360,7 +360,8 @@ endpoint_id_by_sip_username(AccountDb, Username) ->
           {'error', 'not_found'}.
 get_endpoint_id_by_sip_username(AccountDb, Username) ->
     ViewOptions = [{'key', Username}],
-    case kz_datamgr:get_single_result(AccountDb, <<"attributes/sip_username">>, ViewOptions) of
+    ViewOptions = [{'key', [<<"by_sip_username">>, Username]}],
+    case kz_datamgr:get_single_result(AccountDb, ?KZ_VIEW_LIST_UNIFORM, ViewOptions) of
         {'ok', JObj} ->
             EndpointId = kz_doc:id(JObj),
             CacheProps = [{'origin', {'db', AccountDb, EndpointId}}],

@@ -123,13 +123,13 @@ count_by_owner(?MATCH_ACCOUNT_ENCODED(_)=AccountDb, OwnerId) ->
     AccountId = kzs_util:format_account_id(AccountDb),
     count_by_owner(AccountId, OwnerId);
 count_by_owner(AccountId, OwnerId) ->
-    ViewOptions = [{'key', [OwnerId, <<"vmbox">>]}],
-    case kz_datamgr:get_results(kvm_util:get_db(AccountId), <<"attributes/owned">>, ViewOptions) of
+    ViewOptions = [{'key', [<<"by_owner">>, OwnerId, <<"vmbox">>]}],
+    case kz_datamgr:get_results(kvm_util:get_db(AccountId), ?KZ_VIEW_LIST_UNIFORM, ViewOptions) of
         {'ok', []} ->
             lager:info("no voicemail boxes belonging to user ~s found", [OwnerId]),
             {0, 0};
         {'ok', Boxes} ->
-            BoxIds = [kz_json:get_value(<<"value">>, Box) || Box <- Boxes],
+            BoxIds = [kz_doc:id(Box) || Box <- Boxes],
             lager:debug("found ~p voicemail boxes belonging to user ~s", [length(BoxIds), OwnerId]),
             sum_owner_mailboxes(AccountId, BoxIds, {0, 0});
         {'error', _R} ->

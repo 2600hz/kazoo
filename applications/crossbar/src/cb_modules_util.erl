@@ -64,12 +64,10 @@ pass_hashes(Username, Password) ->
 
 -spec get_devices_owned_by(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:objects().
 get_devices_owned_by(OwnerID, DB) ->
-    case kz_datamgr:get_results(DB
-                               ,<<"attributes/owned">>
-                               ,[{'key', [OwnerID, <<"device">>]}
-                                ,'include_docs'
-                                ])
-    of
+    Options = [{'key', [<<"by_owner">>, OwnerID, <<"device">>]}
+              ,'include_docs'
+              ],
+    case kz_datamgr:get_results(DB, ?KZ_VIEW_LIST_UNIFORM, Options) of
         {'ok', JObjs} ->
             lager:debug("found ~b devices owned by ~s", [length(JObjs), OwnerID]),
             [kz_json:get_value(<<"doc">>, JObj) || JObj <- JObjs];

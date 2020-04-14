@@ -1139,10 +1139,10 @@ refresh_fs_xml(Realm, Doc) ->
 -spec get_devices_by_owner(kz_term:ne_binary(), kz_term:api_binary()) -> kz_term:ne_binaries().
 get_devices_by_owner(_AccountDb, 'undefined') -> [];
 get_devices_by_owner(AccountDb, OwnerId) ->
-    ViewOptions = [{'key', [OwnerId, <<"device">>]},
+    ViewOptions = [{'key', [<<"by_owner">>, OwnerId, <<"device">>]},
                    'include_docs'
                   ],
-    case kz_datamgr:get_results(AccountDb, <<"attributes/owned">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, ViewOptions) of
         {'ok', JObjs} -> [kz_json:get_value(<<"doc">>, JObj) || JObj <- JObjs];
         {'error', _R} ->
             lager:warning("unable to find documents owned by ~s: ~p", [OwnerId, _R]),

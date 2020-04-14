@@ -1,6 +1,6 @@
 view_name, view_options, view_file_name
 all_docs, [{keys,[<<"vmbox01">>]},include_docs], all_docs-4e855351c2abdc7d2a0a34547e8ee719.json
 all_docs, [{keys,[<<"vmbox01-msg05-private-media-timestamp">>,<<"vmbox01-msg06-now_s">>,<<"vmbox01-msg07-private-media-timestamp">>,<<"vmbox01-msg08-no_private_media-box_timestamp">>]},include_docs], all_docs-ea31cb9733e3af1e6e78978fc5ddeba5.json
-attributes/owned, [{key,[<<"user0000000000000000000000000001">>,<<"device">>]}], attributes+owned-816e8fb187540d523b97880ab16a0ef7.json
+crossbar_listings/uniform, [{key,[<<"by_owner">>,<<"user0000000000000000000000000001">>,<<"device">>]}], crossbar_listings+uniform-9fd95cc2ccd8c8479bc1dde0b89258f9.json
 crossbar_listings/uniform, [{startkey,[<<"user">>]},{endkey,[<<"user">>,<<"￰">>]},include_docs], crossbar_listings+uniform-904f991749a3cee506cc9b4329527e17.json
 maintenance/listing_by_type, [{key,<<"user">>},include_docs], maintenance+listing_by_type-ba9ee0020a95e519332f16eacf0a3324.json

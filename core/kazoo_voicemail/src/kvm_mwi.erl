@@ -88,32 +88,33 @@ unsolicited_owner_mwi_update(Account, OwnerId) ->
 unsolicited_owner_mwi_update(_AccountDb, _OwnerId, 'false') ->
     lager:debug("unsolicited mwi updated disabled : ~s", [_AccountDb]);
 unsolicited_owner_mwi_update(AccountDb, OwnerId, 'true') ->
-    ViewOptions = [{'key', [OwnerId, <<"device">>]}
+    ViewOptions = [{'key', [<<"by_owner">>, OwnerId, <<"device">>]}
                   ,'include_docs'
                   ],
-    case kz_datamgr:get_results(AccountDb, <<"attributes/owned">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, ViewOptions) of
         {'ok', JObjs} ->
             {New, Saved} = vm_count_by_owner(AccountDb, OwnerId),
             AccountId = kzs_util:format_account_id(AccountDb),
-            lists:foreach(fun(JObj) -> maybe_send_unsolicited_mwi_update(JObj, AccountId, New, Saved) end
+            lists:foreach(fun(JObj) ->
+                                  Doc = kz_json:get_value(<<"doc">>, JObj),
+                                  maybe_send_unsolicited_mwi_update(Doc, AccountId, New, Saved)
+                          end
                          ,JObjs
-                         ),
-            'ok';
+                         );
         {'error', _R} ->
             lager:warning("failed to find devices owned by ~s: ~p", [OwnerId, _R])
     end.
 
 -spec maybe_send_unsolicited_mwi_update(kz_json:object(), kz_term:ne_binary(), integer(), integer()) -> 'ok'.
 maybe_send_unsolicited_mwi_update(JObj, AccountId, New, Saved) ->
-    J = kz_json:get_value(<<"doc">>, JObj),
-    Username = kzd_devices:sip_username(J),
-    Realm = kz_endpoint:get_sip_realm(J, AccountId),
-    OwnerId = get_endpoint_owner(J),
-    case <<"password">> =:= kzd_devices:sip_method(J)
+    Username = kzd_devices:sip_username(JObj),
+    Realm = kz_endpoint:get_sip_realm(JObj, AccountId),
+    OwnerId = get_endpoint_owner(JObj),
+    case <<"password">> =:= kzd_devices:sip_method(JObj)
         andalso 'undefined' =/= Username
         andalso 'undefined' =/= Realm
         andalso 'undefined' =/= OwnerId
-        andalso kzd_devices:mwi_unsolicited_updates(J)
+        andalso kzd_devices:mwi_unsolicited_updates(JObj)
     of
         'true' -> send_unsolicited_mwi_update(New, Saved, Username, Realm);
         'false' -> 'ok'
