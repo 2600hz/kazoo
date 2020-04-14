@@ -1074,28 +1074,24 @@ maybe_normalize_username(_AccountId, _UserId, {Doc, Errors}) ->
 -spec maybe_validate_username_is_unique(kz_term:api_ne_binary(), kz_term:api_ne_binary(), kazoo_documents:doc_validation_acc()) ->
           kazoo_documents:doc_validation_acc().
 maybe_validate_username_is_unique(AccountId, UserId, {Doc, Errors}) ->
-    case username(Doc) of
-        'undefined' -> {Doc, Errors};
-        _Username ->
-            do_validate_username_is_unique(AccountId, UserId, {Doc, Errors})
-    end.
+    Username = username(Doc),
+    CurrentUsername = case fetch(AccountId, UserId) of
+                          {'ok', CurrentDoc} -> username(CurrentDoc);
+                          {'error', _R} -> 'undefined'
+                      end,
 
-%%------------------------------------------------------------------------------
-%% @doc Validate the users username is unique within the account.
-%% @end
-%%------------------------------------------------------------------------------
--spec do_validate_username_is_unique(kz_term:api_ne_binary(), kz_term:api_ne_binary(), kazoo_documents:doc_validation_acc()) ->
-          kazoo_documents:doc_validation_acc().
-do_validate_username_is_unique(AccountId, UserId, {Doc, Errors}) ->
-    case is_username_unique(AccountId, UserId, username(Doc)) of
+    case kz_term:is_empty(Username)
+        orelse Username =:= CurrentUsername
+        orelse is_username_unique(AccountId, UserId, Username)
+    of
         'true' ->
-            lager:debug("username '~p' is unique within account", [username(Doc)]),
+            lager:debug("username '~s' (currently '~s') is unique within account", [Username, CurrentUsername]),
             {Doc, Errors};
         'false' ->
-            lager:error("username '~p' is not unique within account", [username(Doc)]),
+            lager:error("username '~s' (currently '~s') is not unique within account", [Username, CurrentUsername]),
             Msg = kz_json:from_list(
                     [{<<"message">>, <<"Username must be unique within account">>}
-                    ,{<<"cause">>, username(Doc)}
+                    ,{<<"cause">>, Username}
                     ]),
             {Doc, [{[<<"username">>], <<"unique">>, Msg} | Errors]}
     end.
@@ -1210,28 +1206,24 @@ maybe_set_identity_secret(_AccountId, _UserId, ValidateAcc) -> ValidateAcc.
 -spec maybe_validate_hotdesk_id_is_unique(kz_term:api_ne_binary(), kz_term:api_ne_binary(), kazoo_documents:doc_validation_acc()) ->
           kazoo_documents:doc_validation_acc().
 maybe_validate_hotdesk_id_is_unique(AccountId, UserId, {Doc, Errors}) ->
-    case hotdesk_id(Doc) of
-        'undefined' -> {Doc, Errors};
-        _HotdeskId ->
-            do_validate_hotdesk_id_is_unique(AccountId, UserId, {Doc, Errors})
-    end.
+    HotdeskId = hotdesk_id(Doc),
+    CurrentHotdeskId = case fetch(AccountId, UserId) of
+                            {'ok', CurrentDoc} -> hotdesk_id(CurrentDoc);
+                            {'error', _R} -> 'undefined'
+                        end,
 
-%%------------------------------------------------------------------------------
-%% @doc Validate the users hotdesk id is unique within the account.
-%% @end
-%%------------------------------------------------------------------------------
--spec do_validate_hotdesk_id_is_unique(kz_term:api_ne_binary(), kz_term:api_ne_binary(), kazoo_documents:doc_validation_acc()) ->
-          kazoo_documents:doc_validation_acc().
-do_validate_hotdesk_id_is_unique(AccountId, UserId, {Doc, Errors}) ->
-    case is_hotdesk_id_unique(AccountId, UserId, hotdesk_id(Doc)) of
+    case kz_term:is_empty(HotdeskId)
+        orelse HotdeskId =:= CurrentHotdeskId
+        orelse is_hotdesk_id_unique(AccountId, UserId, HotdeskId)
+    of
         'true' ->
-            lager:debug("hotdesk id '~p' is unique within account", [hotdesk_id(Doc)]),
+            lager:debug("hotdesk id '~s' (currently '~s') is unique within account", [HotdeskId, CurrentHotdeskId]),
             {Doc, Errors};
         'false' ->
-            lager:error("hotdesk id '~p' is not unique within account", [hotdesk_id(Doc)]),
+            lager:error("hotdesk id '~s' (currently '~s') is not unique within account", [HotdeskId, CurrentHotdeskId]),
             Msg = kz_json:from_list(
                     [{<<"message">>, <<"Hotdesk ID must be unique within account">>}
-                    ,{<<"cause">>, hotdesk_id(Doc)}
+                    ,{<<"cause">>, HotdeskId}
                     ]),
             {Doc, [{[<<"hotdesk">>, <<"id">>], <<"unique">>, Msg} | Errors]}
     end.
