@@ -31,7 +31,7 @@ Key | Description | Type | Default | Required | Support Level
 TwiML support is limited at the moment; KAZOO JSON is highly encouraged.
 
 !!! note
-    `cdr_url` is only applicable when using the XML (TwiML) format. When using the kazoo format, control is handed off to the Callflows app, with the Pivot process ending (and nothing waiting for the CDR). Instead, please use [webhooks](./webhooks.md) (specifically the CHANNEL_DESTROY event) to receive CDRs.
+    `cdr_url` is only applicable when using the XML (TwiML) format. When using the kazoo format, control is handed off to the Callflows app, with the Pivot process ending (and nothing waiting for the CDR). Instead, please use [webhooks](/applications/webhooks/doc/README.md) (specifically the CHANNEL_DESTROY event) to receive CDRs.
 
 ## Handling failures
 
