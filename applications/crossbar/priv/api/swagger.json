@@ -2287,8 +2287,50 @@
         "callflows.disa": {
             "description": "Validator for the DISA callflow data object",
             "properties": {
+                "enforce_call_restriction": {
+                    "default": false,
+                    "description": "Enforce that callers can't call numbers they wouldn't normally be allowed to call",
+                    "type": "boolean"
+                },
+                "interdigit": {
+                    "description": "Increase to allow more time between DTMF presses",
+                    "type": "integer"
+                },
+                "max_digits": {
+                    "default": 15,
+                    "description": "Maximum digits allowed when collecting destination number",
+                    "type": "integer"
+                },
+                "pin": {
+                    "default": "",
+                    "description": "PIN code to allow caller use this feature",
+                    "type": "string"
+                },
+                "preconnect_audio": {
+                    "default": "dialtone",
+                    "description": "What to play for the caller before collecting the destination number",
+                    "enum": [
+                        "dialtone",
+                        "ringing"
+                    ],
+                    "type": "string"
+                },
+                "retries": {
+                    "default": 3,
+                    "description": "Maximum number of retries to collect PIN and/or destination number",
+                    "type": "integer"
+                },
+                "ring_repeat_count": {
+                    "default": 1,
+                    "description": "How many times to repeat the ringing (if preconnect_audio is used)",
+                    "type": "integer"
+                },
                 "skip_module": {
                     "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
+                },
+                "use_account_caller_id": {
+                    "description": "Whether to override the caller ID with the account's external caller ID settings",
                     "type": "boolean"
                 }
             },

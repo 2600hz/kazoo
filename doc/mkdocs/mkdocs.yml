@@ -1,6 +1,6 @@
 site_name: Dev Reference
 
-pages:
+nav:
 - 'index.md'
 - 'Voice APIs':
   - 'API Basics':
@@ -269,6 +269,7 @@ pages:
     - 'Branch BNumber': 'applications/callflow/doc/branch_bnumber.md'
     - 'Camping': 'applications/callflow/doc/camping_feature.md'
     - 'Custom notifications': 'applications/callflow/doc/notification.md'
+    - 'DISA (Direct Inward System Access)': 'applications/callflow/doc/disa.md'
     - 'Deprecated':
       - 'Offnet': 'applications/callflow/doc/offnet.md'
     - 'Skeleton Callflow Action': 'applications/callflow/doc/skel.md'
