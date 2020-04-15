@@ -6,9 +6,9 @@ Task inputs are CSV, JSON data or nothing at all & generate a CSV output.
 
 ## APIs
 
-Kazoo Tasks has its own Crossbar module implementing a RESTful API over at [cb_tasks](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/doc/tasks.md).
+Kazoo Tasks has its own Crossbar module implementing a RESTful API over at [cb_tasks](/applications/crossbar/doc/tasks.md).
 
-There is also a maintenance module whose entry points are [documented here](./maintenance.md).
+There is also a maintenance module whose entry points are [documented here](/applciations/tasks/doc/maintenance.md).
 
 ## Task discovery
 

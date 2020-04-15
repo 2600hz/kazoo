@@ -75,7 +75,7 @@ Some 2600Hz specifics:
   ```erlang
   -spec foo(any()) -> any(). % is of no use to anyone!
   ```
-  * Run [dialyzer](./dialyzer.md) on any modules you make changes to, plus any modules your new code makes calls to.
+  * Run [dialyzer](/doc/engineering/dialyzer.md) on any modules you make changes to, plus any modules your new code makes calls to.
 * When creating lists or binaries, drop the comma and next element to a new line
   * This includes `-export([...])` directives.
   * No:
