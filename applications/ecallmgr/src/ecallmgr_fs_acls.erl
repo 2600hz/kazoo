@@ -178,12 +178,7 @@ resolve_cidr(CIDR) ->
 
 -spec is_cidr(kz_term:text()) -> boolean().
 is_cidr(Address) ->
-    try inet_cidr:parse(Address, true) of
-        {_Start, _End, _Len} -> 'true'
-    catch
-        'error':{'badmatch', _} -> 'false';
-        'error':'invalid_cidr' -> 'false'
-    end.
+    kz_network_utils:is_cidr(Address, true).
 
 -spec authoritative_acls(atom() | kz_term:ne_binary()) -> acls().
 authoritative_acls(Node) ->
