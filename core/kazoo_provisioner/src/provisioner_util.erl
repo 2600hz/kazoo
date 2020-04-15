@@ -43,8 +43,6 @@
 -define(JSON_HEADERS, [{"content-type", "application/json"} | ?BASE_HEADERS]).
 -define(FORM_HEADERS, [{"content-type", "application/x-www-form-urlencoded"} | ?BASE_HEADERS]).
 
--define(LIST_BY_PRESENCE_ID, <<"devices/listing_by_presence_id">>).
-
 -spec cleanse_mac_address(kz_term:api_ne_binary()) -> kz_term:api_ne_binary().
 cleanse_mac_address('undefined') -> 'undefined';
 cleanse_mac_address(MACAddress) ->
@@ -291,8 +289,10 @@ sync_user(AccountId) ->
 user_devices(AccountId, UserId) ->
     AccountDb = kzs_util:format_account_db(AccountId),
 
-    Options = [{'key', UserId}, 'include_docs'],
-    case kz_datamgr:get_results(AccountDb, ?LIST_BY_PRESENCE_ID, Options) of
+    Options = [{'key', [<<"device">>, <<"by_presence_id">>, UserId]}
+              ,'include_docs'
+              ],
+    case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, Options) of
         {'error', _}=E -> E;
         {'ok', JObjs} ->
             {'ok', [kz_json:get_json_value(<<"doc">>, JObj) || JObj <- JObjs]}

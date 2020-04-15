@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import os
 import sys
+from subprocess import call
 import json
 import jsbeautifier
+import shutil
 
 def print_usage():
     banner = '''
@@ -68,11 +71,34 @@ def read_design():
 js = read_js_file()
 design_doc = read_design()
 
+def couchjs():
+    if 'Object.keys' in js:
+        print('File contains "Object.keys" which is not available until ECMA2015')
+        exit(1)
+    try:
+        # couchjs_exe='~/local/git/apache/couchdb/bin/couchjs' # if couchjs isn't in your path
+        couchjs_exe='couchjs'
+        code = call([couchjs_exe, jsfile])
+        if code != 0:
+            print('couchjs found errors in your code.')
+            exit(1)
+    except Exception as e:
+        print('failed running couchjs')
+        raise e
+
+print('Checking for errors:')
+if (shutil.which('couchjs')):
+    couchjs()
+else:
+    print('    couchjs not found, skipping...')
+
+print('Replacing {}/{}'.format(os.path.splitext(os.path.basename(design_file))[0], view_name))
+
 try:
     design_doc['views'][view_name][view_function] = multiline_view(js)
     data = json.dumps(design_doc, sort_keys=True, indent=4, separators=(",", ": "))
     wrote = open(design_file, 'w').write(data + '\n')
-    print('Wrote {}'.format(wrote))
+    print('Wrote {} bytes'.format(wrote))
 except Exception as e:
     print('failed to repalce javascript for {}/{}'.format(view_name, view_function))
     print(e)

@@ -239,10 +239,10 @@ get_auth_user_in_agg(Username, Realm) ->
           {'ok', kz_json:object()} |
           {'error', 'not_found'}.
 get_auth_user_in_account(Username, Realm, AccountDB) ->
-    ViewOptions = [{'key', Username}
+    ViewOptions = [{'key', [<<"by_sip_credential">>, Username]}
                   ,'include_docs'
                   ],
-    case kz_datamgr:get_results(AccountDB, <<"devices/sip_credentials">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDB, ?KZ_VIEW_LIST_UNIFORM, ViewOptions) of
         {'error', _R} ->
             lager:warning("failed to look up SIP credentials in ~s: ~p", [AccountDB, _R]),
             get_auth_user_in_agg(Username, Realm);

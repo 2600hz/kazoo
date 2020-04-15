@@ -353,8 +353,8 @@ set_device_classifier_action(Action, Classifier, Uri) ->
     [User, Realm] = binary:split(Uri, <<"@">>),
     {'ok', AccountDb} = kapps_util:get_account_by_realm(Realm),
 
-    Options = [{'key', User}],
-    {'ok', [DeviceDoc]} = kz_datamgr:get_results(AccountDb, <<"devices/sip_credentials">>, Options),
+    Options = [{'key', [<<"by_sip_credential">>, User]}],
+    {'ok', [DeviceDoc]} = kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, Options),
     DeviceId = kz_doc:id(DeviceDoc),
 
     Update = [{[<<"call_restriction">>, Classifier, <<"action">>], Action}],

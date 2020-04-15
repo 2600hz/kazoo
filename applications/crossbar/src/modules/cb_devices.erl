@@ -37,9 +37,6 @@
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".devices">>).
 
--define(OWNER_LIST, <<"devices/listing_by_owner">>).
--define(CB_LIST_MAC, <<"devices/listing_by_macaddress">>).
-
 -define(KEY_MAC_ADDRESS, <<"mac_address">>).
 -define(KEY_MDN, [<<"mobile">>, <<"mdn">>]).
 -define(KEY_SIP_REALM, [<<"sip">>, <<"realm">>]).
@@ -255,10 +252,10 @@ load_device_summary(Context) ->
 -spec load_device_summary(cb_context:context(), req_nouns()) ->
           cb_context:context().
 load_device_summary(Context, [{<<"devices">>, []}, {<<"users">>, [UserId]} | _]) ->
-    ViewOptions = [{'key', UserId}
+    ViewOptions = [{'key', [<<"device">>, <<"by_owner">>, UserId]}
                   ,{'mapper', crossbar_view:get_value_fun()}
                   ],
-    crossbar_view:load(Context, ?OWNER_LIST, ViewOptions);
+    crossbar_view:load(Context, ?KZ_VIEW_LIST_UNIFORM, ViewOptions);
 load_device_summary(Context, _ReqNouns) ->
     Options = [{'startkey', [kzd_devices:type(), <<"by_id">>]}
               ,{'endkey', [kzd_devices:type(), <<"by_id">>, kz_datamgr:view_highest_value()]}
@@ -643,8 +640,14 @@ unique_mac_address(MacAddress, Context) ->
 
 -spec get_mac_addresses(kz_term:ne_binary()) -> kz_term:ne_binaries().
 get_mac_addresses(DbName) ->
-    MACs = case kz_datamgr:get_all_results(DbName, ?CB_LIST_MAC) of
-               {'ok', AdJObj} -> kz_datamgr:get_result_keys(AdJObj);
+    Options = [{'startkey', [<<"device">>, <<"by_mac_address">>]}
+              ,{'endkey', [<<"device">>, <<"by_mac_address">>, kz_datamgr:view_highest_value()]}
+              ],
+    MACs = case kz_datamgr:get_all_results(DbName, ?KZ_VIEW_LIST_UNIFORM, Options) of
+               {'ok', AdJObj} ->
+                   [MacAddress
+                    || [<<"device">>, <<"by_mac_address">>, MacAddress] <- kz_datamgr:get_result_keys(AdJObj)
+                   ];
                _ -> []
            end,
     [provisioner_util:cleanse_mac_address(MAC) || MAC <- MACs].
@@ -710,8 +713,8 @@ check_sip_creds_unique(AccountId, Realm, Username, DeviceId) ->
 
 -spec is_creds_locally_unique(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 is_creds_locally_unique(AccountId, Username, DeviceId) ->
-    ViewOptions = [{'key', kz_term:to_lower_binary(Username)}],
-    case kz_datamgr:get_results(AccountId, <<"devices/sip_credentials">>, ViewOptions) of
+    ViewOptions = [{'key', [<<"by_sip_credential">>, kz_term:to_lower_binary(Username)]}],
+    case kz_datamgr:get_results(AccountId, ?KZ_VIEW_LIST_UNIFORM, ViewOptions) of
         {'ok', []} -> 'true';
         {'ok', [JObj]} -> kz_doc:id(JObj) =:= DeviceId;
         {'error', 'not_found'} -> 'true';

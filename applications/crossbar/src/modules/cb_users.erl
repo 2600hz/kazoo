@@ -35,7 +35,6 @@
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".users">>).
 
 -define(LIST_BY_HOTDESK_ID, <<"users/list_by_hotdesk_id">>).
--define(LIST_BY_PRESENCE_ID, <<"devices/listing_by_presence_id">>).
 
 -define(VCARD, <<"vcard">>).
 -define(PHOTO, <<"photo">>).
@@ -372,7 +371,7 @@ maybe_update_devices_presence(Context) ->
 update_devices_presence(Context) ->
     case user_devices(Context) of
         {'error', _R} ->
-            lager:error("failed to query view ~s: ~p", [?LIST_BY_PRESENCE_ID, _R]);
+            lager:error("failed to query device presence ids: ~p", [_R]);
         {'ok', []} ->
             lager:debug("no presence IDs found for user");
         {'ok', DeviceDocs} ->
@@ -392,8 +391,10 @@ user_devices(Context) ->
     UserId = kz_doc:id(cb_context:doc(Context)),
     AccountDb = cb_context:db_name(Context),
 
-    Options = [{'key', UserId}, 'include_docs'],
-    case kz_datamgr:get_results(AccountDb, ?LIST_BY_PRESENCE_ID, Options) of
+    Options = [{'key', [<<"device">>, <<"by_presence_id">>, UserId]}
+              ,'include_docs'
+              ],
+    case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, Options) of
         {'error', _}=E -> E;
         {'ok', JObjs} ->
             {'ok', [kz_json:get_value(<<"doc">>, JObj) || JObj <- JObjs]}
