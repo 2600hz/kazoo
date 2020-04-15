@@ -13,6 +13,8 @@
 
 -export([build/1]).
 
+-include_lib("kazoo_stdlib/include/kz_databases.hrl").
+
 -record(contact, {id :: kz_term:api_ne_binary()
                  ,callflow :: kz_term:api_ne_binary()
                  ,name :: kz_term:api_ne_binary()
@@ -51,11 +53,19 @@ build_contacts(AccountId) ->
                ).
 
 get_extension_contacts(AccountId) ->
-    ViewOptions = [],
-    case kz_datamgr:get_results(AccountId, <<"contact_list/extensions">>, ViewOptions) of
+    ViewOptions = [{'keys', [[<<"contact_list">>, <<"by_extension">>]
+                            ,[<<"contact_list">>, <<"by_custom">>]
+                            ,[<<"contact_list">>, <<"by_featurecode">>]
+                            ]
+                   }
+                  ],
+    case kz_datamgr:get_results(AccountId, ?KZ_VIEW_LIST_UNIFORM, ViewOptions) of
         {'error', _} -> [];
         {'ok', JObjs} ->
-            Includes = get_contact_list_includes(AccountId),
+            %% view key is `[<<"contact_list">>, <<"by_{INCLUDE}">>]'
+            Includes = [[<<"contact_list">>, <<"by_", Include/binary>>]
+                        || Include <- get_contact_list_includes(AccountId)
+                       ],
             lists:foldr(fun(JObj, Contacts) ->
                                 Key = kz_json:get_value(<<"key">>, JObj),
                                 case kz_term:is_empty(Includes)
@@ -82,8 +92,10 @@ get_contact_list_includes(AccountId) ->
     end.
 
 filter_excluded(Contacts, AccountId) ->
-    ViewOptions = [],
-    case kz_datamgr:get_results(AccountId, <<"contact_list/excluded">>, ViewOptions) of
+    ViewOptions = [{'startkey', [<<"contact_list">>, <<"by_excluded">>]}
+                  ,{'endkey', [<<"contact_list">>, <<"by_excluded">>, kz_datamgr:view_highest_value()]}
+                  ],
+    case kz_datamgr:get_results(AccountId, ?KZ_VIEW_LIST_UNIFORM, ViewOptions) of
         {'error', _} -> Contacts;
         {'ok', JObjs} ->
             Ids = [kz_doc:id(JObj) || JObj <- JObjs],
@@ -91,8 +103,8 @@ filter_excluded(Contacts, AccountId) ->
     end.
 
 find_missing_names(Contacts, AccountId) ->
-    ViewOptions = [],
-    case kz_datamgr:get_results(AccountId, <<"contact_list/names">>, ViewOptions) of
+    ViewOptions = [{'key', [<<"contact_list">>, <<"by_names">>]}],
+    case kz_datamgr:get_results(AccountId, ?KZ_VIEW_LIST_UNIFORM, ViewOptions) of
         {'error', _} -> Contacts;
         {'ok', JObjs} -> merge_results(JObjs, Contacts)
     end.
