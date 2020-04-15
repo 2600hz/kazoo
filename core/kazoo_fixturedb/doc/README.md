@@ -10,7 +10,7 @@ FixtureDB acts as a central repository for all fixtures which we simply use duri
 
 When writing your EUnit test you can use [_fixture_ test representation](http://erlang.org/doc/apps/eunit/chapter.html#Fixtures) to setup a your test environment by starting a dummy connection to FixtureDB, and cleanup the connection later.
 
-Below is an example with `setup` and `cleanup` method. In `setup()` function we're starting `kazoo_config` applications to read the default [`config-test.ini`](../../../rel/config-test.init) and then starts the Kazoo data link supervisor. After these steps most of the calls to `kz_datamgr` functions will use FixtureDB (few operations, like view maintenance cleanup, are not implemented).
+Below is an example with `setup` and `cleanup` method. In `setup()` function we're starting `kazoo_config` applications to read the default [`config-test.ini`](../../../rel/config-test.ini) and then starts the Kazoo data link supervisor. After these steps most of the calls to `kz_datamgr` functions will use FixtureDB (few operations, like view maintenance cleanup, are not implemented).
 
 ##### Example EUnit Test Using Setup/Cleanup Method
 
