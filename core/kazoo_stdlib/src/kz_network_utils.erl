@@ -16,7 +16,7 @@
         ,is_ipv6/1
         ,is_ip/1
         ,is_protocol_family_supported/1
-        ,is_cidr/1
+        ,is_cidr/1, is_cidr/2
         ]).
 -export([to_cidr/1
         ,to_cidr/2
@@ -118,7 +118,11 @@ is_ip(Address) ->
 
 -spec is_cidr(kz_term:text()) -> boolean().
 is_cidr(Address) ->
-    try inet_cidr:parse(Address) of
+    is_cidr(Address, false).
+
+-spec is_cidr(kz_term:text(), boolean()) -> boolean().
+is_cidr(Address, Adjust) ->
+    try inet_cidr:parse(Address, Adjust) of
         {_Start, _End, _Len} -> 'true'
     catch
         'error':{'badmatch', _} -> 'false';
