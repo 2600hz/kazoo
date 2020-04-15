@@ -107,7 +107,44 @@ system_config_acls(Node) ->
         {'error', Error} ->
             lager:warning("error getting system acls : ~p", [Error]),
             kz_json:new();
-        JObj -> JObj
+        JObj -> resolve_system_config_acls(JObj)
+    end.
+
+resolve_system_config_acls(JObj) ->
+    kz_json:map(fun resolve_system_config_acls/2, JObj).
+
+resolve_system_config_acls(K, JObj) ->
+    CIDR = kz_json:get_value(<<"cidr">>, JObj),
+    {K, kz_json:set_value(<<"cidr">>, maybe_resolve_cidr(CIDR), JObj)}.
+
+maybe_resolve_cidr(CIDRS)
+  when is_list(CIDRS) ->
+    Existing = lists:filter(fun is_cidr/1, CIDRS),
+    Existing ++ [maybe_resolve_cidr(CIDR) || CIDR <- CIDRS -- Existing];
+    
+maybe_resolve_cidr(CIDR)
+  when is_binary(CIDR) ->
+    case is_cidr(CIDR) of
+        'true' -> CIDR;
+        'false' -> resolve_cidr(CIDR)
+    end.
+
+resolve_cidr(CIDR) ->
+    case kz_network_utils:is_ipv4(CIDR) of
+        true ->
+            kz_network_utils:to_cidr(CIDR);
+        false ->
+            IPs = kz_network_utils:resolve(CIDR),
+            [kz_network_utils:to_cidr(IP) || IP <- IPs]
+    end.
+
+-spec is_cidr(kz_term:text()) -> boolean().
+is_cidr(Address) ->
+    try inet_cidr:parse(Address, true) of
+        {_Start, _End, _Len} -> 'true'
+    catch
+        'error':{'badmatch', _} -> 'false';
+        'error':'invalid_cidr' -> 'false'
     end.
 
 -spec sip_auth_ips(pid()) -> 'ok'.
