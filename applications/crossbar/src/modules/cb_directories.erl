@@ -26,7 +26,6 @@
 -include("crossbar.hrl").
 
 -define(PVT_FUNS, [fun add_pvt_type/2]).
--define(CB_USERS_LIST, <<"directories/users_listing">>).
 
 -type payload() :: {cowboy_req:req(), cb_context:context()}.
 -export_type([payload/0]).
@@ -307,11 +306,11 @@ read_directory(Id, Context) ->
 
 -spec load_directory_users(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_directory_users(Id, Context) ->
-    Options = [{'startkey', [Id]}
-              ,{'endkey', [Id, kz_json:new()]}
+    Options = [{'startkey', [<<"by_directory">>, Id]}
+              ,{'endkey', [<<"by_directory">>, Id, kz_json:new()]}
               ,{'mapper', fun normalize_users_results/2}
               ],
-    Context1 = crossbar_view:load(Context, ?CB_USERS_LIST, Options),
+    Context1 = crossbar_view:load(Context, ?KZ_VIEW_LIST_UNIFORM, Options),
     case cb_context:resp_status(Context1) of
         'success' ->
             Users = cb_context:resp_data(Context1),

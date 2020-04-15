@@ -86,9 +86,10 @@ def couchjs():
         print('failed running couchjs')
         raise e
 
-print('Checking for errors:')
+print('Checking for errors...')
 if (shutil.which('couchjs')):
     couchjs()
+    print('    no error detected!')
 else:
     print('    couchjs not found, skipping...')
 

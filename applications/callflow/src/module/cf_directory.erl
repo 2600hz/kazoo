@@ -76,8 +76,6 @@
 -include_lib("callflow/src/module/cf_directory.hrl").
 -include_lib("callflow/src/callflow.hrl").
 
--define(DIR_DOCS_VIEW, <<"directories/users_listing">>).
-
 -define(FIELDS, [<<"last_name">>, <<"first_name">>]). %% what fields to convert/keep for searching
 -define(DTMF_ACCEPT_MATCH, <<"1">>).
 -define(DTMF_REJECT_MATCH, <<"3">>).
@@ -398,7 +396,11 @@ get_search_fields(_) -> 'last'.
           {'ok', directory_users()} |
           {'error', any()}.
 get_directory_listing(Db, DirId) ->
-    case kz_datamgr:get_results(Db, ?DIR_DOCS_VIEW, [{'startkey', [DirId]}, {'endkey', [DirId, kz_json:new()]}, 'include_docs']) of
+    Options = [{'startkey', [<<"by_directory">>, DirId]}
+              ,{'endkey', [<<"by_directory">>, DirId, kz_datamgr:view_highest_value()]}
+              ,'include_docs'
+              ],
+    case kz_datamgr:get_results(Db, ?KZ_VIEW_LIST_UNIFORM, Options) of
         {'ok', []} ->
             lager:info("no users have been assigned to directory ~s", [DirId]),
             %% play no users in this directory
