@@ -119,9 +119,8 @@ resolve_system_config_acls(K, JObj) ->
 
 maybe_resolve_cidr(CIDRS)
   when is_list(CIDRS) ->
-    Existing = lists:filter(fun is_cidr/1, CIDRS),
-    Existing ++ [maybe_resolve_cidr(CIDR) || CIDR <- CIDRS -- Existing];
-    
+    [maybe_resolve_cidr(CIDR) || CIDR <- CIDRS];
+
 maybe_resolve_cidr(CIDR)
   when is_binary(CIDR) ->
     case is_cidr(CIDR) of
