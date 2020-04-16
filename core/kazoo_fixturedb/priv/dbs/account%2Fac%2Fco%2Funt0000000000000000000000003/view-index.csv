@@ -1,5 +1,4 @@
 view_name, view_options, view_file_name
-crossbar_listings/uniform, [{key,[<<"callflow">>,<<"by_number">>,<<"+13977031887">>]}], crossbar_listings+uniform-cf7357b61842515705604cf93567eb28.json
+crossbar_listings/uniform, [{keys,[[<<"callflow">>,<<"by_number">>,<<"+13977031887">>],[<<"sys_info">>,<<"by_number">>,<<"+13977031887">>]]}], crossbar_listings+uniform-a0f75d067a3404dc2570328f1100e740.json
 crossbar_listings/uniform, [{startkey,[<<"user">>]},{endkey,[<<"user">>,<<"￰">>]},include_docs], crossbar_listings+uniform-904f991749a3cee506cc9b4329527e17.json
 maintenance/listing_by_type, [{key,<<"user">>},include_docs], maintenance+listing_by_type-ba9ee0020a95e519332f16eacf0a3324.json
-trunkstore/lookup_did, [{key,<<"+13977031887">>}], trunkstore+lookup_did-7520c4ed5d2bf66df5646144c8565b8b.json

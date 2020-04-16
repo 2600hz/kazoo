@@ -13,9 +13,6 @@
 
 -define(CACHE_NAME, 'trunkstore_cache').
 
-%% Account views
--define(TS_VIEW_DIDLOOKUP, <<"trunkstore/lookup_did">>).
-
 %% just want to deal with binary K/V pairs
 -type active_calls() :: [{binary(), 'flat_rate' | 'per_min'}].
 

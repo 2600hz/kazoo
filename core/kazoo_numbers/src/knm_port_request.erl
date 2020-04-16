@@ -32,7 +32,6 @@
         ]).
 
 -export([transition_metadata/2, transition_metadata/3, transition_metadata/4]).
--export([app_used_by_portin/2, get_dids_for_app/2]).
 -export_type([transition_metadata/0]).
 
 -compile({'no_auto_import', [get/1]}).
@@ -56,7 +55,6 @@
 -define(ACTIVE_PORT_IN_NUMBERS, <<"port_requests/port_in_numbers">>).
 -define(PORT_NUM_LISTING, <<"port_requests/phone_numbers_listing">>).
 -define(PORT_LISTING_BY_STATE, <<"port_requests/listing_by_state">>).
--define(TRUNKSTORE_LIST, <<"trunkstore/lookup_did">>).
 
 -type transition_response() :: {'ok', kz_json:object()} |
                                {'error', 'invalid_state_transition' | 'user_not_allowed' | kz_json:object()}.
@@ -512,8 +510,8 @@ get_user_name(AuthAccountId, UserId) ->
           {'error', any()}.
 assign_to_app(Number, NewApp, JObj) ->
     Numbers = kzd_port_requests:numbers(JObj),
-    lager:debug("assigning number ~s in port request ~s from ~p to ~s"
-               ,[Number, kz_doc:id(JObj), Numbers, NewApp]
+    lager:debug("assigning number ~s in port request ~s to ~s"
+               ,[Number, kz_doc:id(JObj), NewApp]
                ),
     assign_to_app(Number, NewApp, Numbers, JObj).
 
@@ -574,10 +572,9 @@ migrate() ->
 %%------------------------------------------------------------------------------
 -spec completed_port(kz_json:object()) -> transition_response().
 completed_port(PortReq) ->
-    Numbers = kz_json:get_keys(kzd_port_requests:numbers(PortReq)),
     case transition_numbers(PortReq) of
         {'ok', Save} ->
-            reconcile_app_used_by(Numbers, PortReq),
+            reconcile_app_used_by(PortReq),
             {'ok', Save};
         Error -> Error
     end.
@@ -640,26 +637,31 @@ transition_numbers(PortReq) ->
 %% This may not be a reliable source of used_by comparing to the callflow doc.
 %% @end
 %%------------------------------------------------------------------------------
--spec app_used_by_portin(kz_term:ne_binaries(), kz_json:object()) -> kz_term:proplist().
-app_used_by_portin(Numbers, JObj) ->
-    NumbersObj = kzd_port_requests:numbers(JObj),
-    [{Num, kz_json:get_value([Num, ?USED_BY_KEY], NumbersObj)}
-     || Num <- Numbers,
-        kz_term:is_not_empty(kz_json:get_value([Num, ?USED_BY_KEY], NumbersObj))
+-spec get_portreq_app_usage(kz_json:object()) -> kz_term:proplist().
+get_portreq_app_usage(PortReq) ->
+    Fun = fun(Number, JObj, {CallflowAcc, TrunkAcc}) ->
+                  case kz_json:get_value(?USED_BY_KEY, JObj) of
+                      <<"callflow">> ->
+                          {[Number | CallflowAcc], TrunkAcc};
+                      <<"trunkstore">> ->
+                          {CallflowAcc, [Number | TrunkAcc]};
+                      _ ->
+                          {CallflowAcc, TrunkAcc}
+                  end
+          end,
+    {CallflowNums, TrunkNums} = kz_json:foldl(Fun, {[], []}, kzd_port_requests:numbers(PortReq)),
+    [{<<"callflow">>, CallflowNums}
+    ,{<<"trunkstore">>, TrunkNums}
     ].
 
--spec reconcile_app_used_by(kz_term:ne_binaries(), kz_json:object()) -> 'ok'.
-reconcile_app_used_by(Numbers, JObj) ->
-    AccountId = kz_doc:account_id(JObj),
-    AccountDb = kzs_util:format_account_db(AccountId),
-    PortInUsedBy = app_used_by_portin(Numbers, JObj),
-    {AppUsedBy, NumAppUsage} = get_dids_for_app(AccountDb, Numbers),
-    lager:debug("transitioning numbers ~p to active used by apps ~p portin usage ~p"
-               ,[Numbers, AppUsedBy, PortInUsedBy]
-               ),
-    _ = [log_wrong_app_in_portin(proplists:get_value(N, PortInUsedBy), App, N) || {N, App} <- AppUsedBy],
-
-    %% app used_by carried over to phone_number document
+%% TODO: Test this
+%% FIXME: Test this
+%% previously we would do `kazoo_numbers_maintenance:get_apps_for_dids/2'
+%% and use that to assign apps, because of a bug, port req doc can not
+%% be trusted to have correct app assignment. This has been fixed for a while
+%% and it shouldn't be needed to do this anymore.
+-spec reconcile_app_used_by(kz_json:object()) -> 'ok'.
+reconcile_app_used_by(PortReq) ->
     lists:foreach(
       fun({App, Nums}) ->
               case Nums of
@@ -667,43 +669,8 @@ reconcile_app_used_by(Numbers, JObj) ->
                   Nums -> knm_ops:assign_to_app(Nums, App)
               end
       end
-     , NumAppUsage
+     ,get_portreq_app_usage(PortReq)
      ).
-
--spec log_wrong_app_in_portin(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
-log_wrong_app_in_portin(App, App, _Num) -> 'ok';
-log_wrong_app_in_portin(PortInApp, App, Num) ->
-    lager:debug("port in number ~p has an incorrect app ~p, the correct app is ~p", [Num, PortInApp, App]).
-
-%%------------------------------------------------------------------------------
-%% @doc Get numbers' app used_by from app's database in different format
-%% to be processed 1) detect missing apps in port in number
-%% 2) ensure app used_by carried to phone_number when port in is completed
-%% @end
-%%------------------------------------------------------------------------------
--spec get_dids_for_app(kz_term:ne_binary(), kz_term:ne_binaries()) -> {kz_term:proplist(), kz_term:proplist()}.
-get_dids_for_app(AccountDb, Numbers) ->
-    CfDIDs = get_dids_for_app1(AccountDb, [{'keys', [{kzd_callflows:type(), <<"by_number">>, N} || N <- Numbers]}]),
-    TsDIDs = get_dids_for_app(AccountDb, Numbers, ?TRUNKSTORE_LIST),
-    NumApps = [{N, <<"callflow">>} || N <- CfDIDs] ++ [{N, <<"trunkstore">>} || N <- TsDIDs],
-    {NumApps, [{<<"callflow">>, CfDIDs}, {<<"trunkstore">>, TsDIDs}]}.
-
--spec get_dids_for_app1(kz_term:ne_binary(), kazoo_data:view_options()) ->
-          kz_term:ne_binaries().
-get_dids_for_app1(AccountDb, Options) ->
-    case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, Options) of
-        {'ok', JObjs} ->
-            [kz_json:get_ne_binary_value([<<"value">>, <<"number">>], JObj) || JObj <- JObjs];
-        {'error', _} -> []
-    end.
-
--spec get_dids_for_app(kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary()) ->
-          kz_term:ne_binaries().
-get_dids_for_app(AccountDb, Numbers, View) ->
-    case kz_datamgr:get_result_keys(AccountDb, View, [{'keys', Numbers}]) of
-        {'ok', DIDs} -> DIDs;
-        {'error', _} -> []
-    end.
 
 -spec numbers_not_in_account_nor_in_service(kz_term:ne_binary(), kz_term:ne_binaries()) -> kz_term:ne_binaries().
 numbers_not_in_account_nor_in_service(AccountId, Nums) ->

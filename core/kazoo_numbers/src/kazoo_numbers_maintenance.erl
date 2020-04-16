@@ -12,7 +12,7 @@
 
 -include("knm.hrl").
 
--export([app_using/2]).
+-export([app_using/2, get_apps_for_dids/2]).
 -export([generate_js_classifiers/1]).
 
 -export([carrier_module_usage/0
@@ -1537,22 +1537,13 @@ to_binary_data_error(SomethingElse) ->
 %%------------------------------------------------------------------------------
 -spec get_account_dids_apps(kz_term:ne_binary(), kz_term:ne_binaries()) -> map().
 get_account_dids_apps(Account, Ids) ->
-    ViewOpts= [{'keys', [[kzd_callflows:type(), 'by_number', Id] || Id <- Ids]}],
     ?SUP_LOG_DEBUG("      getting app usage for ~b numbers in account ~s", [length(Ids), Account]),
     AccountDb = kzs_util:format_account_db(Account),
-    case get_dids_for_app(AccountDb, <<"callflow">>, ViewOpts) of
-        {'ok', CallflowDIDs} ->
-            case get_dids_for_app(AccountDb, <<"trunkstore">>, []) of
-                {'ok', TrunkstoreDIDs} ->
-                    handle_dids_app(CallflowDIDs, TrunkstoreDIDs);
-                {'error', _R} ->
-                    ?SUP_LOG_DEBUG("         failed to get trunkstore numbers (~100p), skipping..."
-                                  ,[_R]
-                                  ),
-                    #{}
-            end;
+    case get_apps_for_dids(AccountDb, Ids) of
+        {'ok', {CallflowDIDs, TrunkstoreDIDs}} ->
+            handle_dids_app(CallflowDIDs, TrunkstoreDIDs);
         {'error', _R} ->
-            ?SUP_LOG_DEBUG("         failed to get callflow numbers (~100p), skipping..."
+            ?SUP_LOG_DEBUG("         failed to get apps numbers (~100p), skipping..."
                           ,[_R]
                           ),
             #{}
@@ -1685,47 +1676,52 @@ migrate_unassigned_numbers(NumberDb, Offset) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec get_dids_for_app(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> kazoo_data:get_results_return().
-get_dids_for_app(AccountDb, <<"callflow">>, ViewOptions) ->
-    View = ?KZ_VIEW_LIST_UNIFORM,
+-spec get_apps_for_dids(kz_term:ne_binary(), kz_term:ne_binaries()) ->
+          kz_either:either(kazoo_data:data_error(), {kz_term:ne_binaries(), kz_term:ne_binaries()}).
+get_apps_for_dids(Account, Numbers) ->
+    AccountDb = kzs_util:format_account_db(Account),
+    ViewOptions = [{'keys', [[DocType, <<"by_number">>, Num]
+                             || Num <- Numbers,
+                                DocType <- [kzd_callflows:type()
+                                           ,<<"sys_info">>
+                                           ]
+                            ]
+                   }
+                  ],
     ?SUP_LOG_DEBUG("         getting callflow numbers from ~s", [AccountDb]),
-    kz_datamgr:get_result_keys(AccountDb, View, ViewOptions);
-get_dids_for_app(AccountDb, <<"trunkstore">>, ViewOptions) ->
-    View = <<"trunkstore/lookup_did">>,
-    ?SUP_LOG_DEBUG("         getting trunkstore numbers from ~s", [AccountDb]),
-    kz_datamgr:get_result_keys(AccountDb, View, ViewOptions).
+    case kz_datamgr:get_result_keys(AccountDb, ?KZ_VIEW_LIST_UNIFORM, ViewOptions) of
+        {'ok', JObjs} ->
+            Fun = fun(JObj, {CallflowAcc, TrunkAcc}) ->
+                          case kz_json:get_value(<<"key">>, JObj) of
+                              [<<"callflow">>, <<"by_number">>, Number] ->
+                                  {[Number | CallflowAcc], TrunkAcc};
+                              [<<"sys_info">>, <<"by_number">>, Number] ->
+                                  {CallflowAcc, [Number | TrunkAcc]};
+                              _ ->
+                                  {CallflowAcc, TrunkAcc}
+                          end
+                  end,
+            lists:foldl(Fun, {[], []}, JObjs);
+        {'error', _} = Error ->
+            Error
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--type dids() :: gb_sets:set(kz_term:ne_binary()).
-
--spec get_DIDs_callflow_set(kz_term:ne_binary(), kz_term:proplist()) -> dids().
-get_DIDs_callflow_set(AccountDb, ViewOptions) ->
-    case get_dids_for_app(AccountDb, <<"callflow">>, ViewOptions) of
-        {'ok', DIDs} -> gb_sets:from_list(DIDs);
-        {'error', _R} ->
-            ?SUP_LOG_DEBUG("failed to get callflow DIDs from ~s: ~p", [AccountDb, _R]),
-            gb_sets:new()
-    end.
-
--spec get_DIDs_trunkstore_set(kz_term:ne_binary(), kz_term:proplist()) -> dids().
-get_DIDs_trunkstore_set(AccountDb, ViewOptions) ->
-    case get_dids_for_app(AccountDb, <<"trunkstore">>, ViewOptions) of
-        {'ok', DIDs} -> gb_sets:from_list(DIDs);
-        {'error', _R} ->
-            ?SUP_LOG_DEBUG("failed to get trunkstore DIDs from ~s: ~p", [AccountDb, _R]),
-            gb_sets:new()
-    end.
-
 -spec app_using(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_ne_binary().
 app_using(Num, AccountDb) ->
-    CallflowNums = get_DIDs_callflow_set(AccountDb, [{'key', [kzd_callflows:type(), 'by_number', Num]}]),
-    TrunkstoreNums = get_DIDs_trunkstore_set(AccountDb, [{'key', Num}]),
-    app_using(Num, AccountDb, CallflowNums, TrunkstoreNums).
+    case get_apps_for_dids(AccountDb, [Num]) of
+        {'ok', {CallflowNums, TrunkstoreNums}} ->
+            app_using(Num, AccountDb, gb_sets:from_list(CallflowNums), gb_sets:from_list(TrunkstoreNums));
+        {'error', _Reason} ->
+            lager:debug("failed to apps number for '~s': ~p", [Num, _Reason]),
+            'undefined'
+    end.
 
--spec app_using(kz_term:ne_binary(), kz_term:ne_binary(), dids(), dids()) -> kz_term:api_ne_binary().
+-spec app_using(kz_term:ne_binary(), kz_term:ne_binary(), gb_sets:set(kz_term:ne_binary()), gb_sets:set(kz_term:ne_binary())) ->
+          kz_term:api_ne_binary().
 app_using(Num, _, CallflowNums, TrunkstoreNums) ->
     case gb_sets:is_element(Num, CallflowNums) of
         'true' -> <<"callflow">>;

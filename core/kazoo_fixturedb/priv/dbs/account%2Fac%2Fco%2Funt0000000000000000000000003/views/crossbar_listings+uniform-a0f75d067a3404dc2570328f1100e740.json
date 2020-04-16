@@ -1,7 +1,11 @@
 [
     {
         "id": "402e7e3bb752aa5163f695d088b5a32f",
-        "key": "+13977031887",
+        "key": [
+            "sys_info",
+            "by_number",
+            "+13977031887"
+        ],
         "value": {
             "account": {
                 "auth_realm": "paustu8.sip.2600hz.local"

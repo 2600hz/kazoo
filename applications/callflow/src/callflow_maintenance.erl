@@ -446,14 +446,20 @@ print_devices_level_call_restrictions(DbName) ->
 
 -spec print_trunkstore_call_restrictions(kz_term:ne_binary()) -> 'ok'.
 print_trunkstore_call_restrictions(DbName) ->
-    case kz_datamgr:get_results(DbName, <<"trunkstore/lookup_user_flags">>) of
+    Options = [{'startkey', [<<"sys_info">>, <<"by_user_flags">>]}
+              ,{'endkey', [<<"sys_info">>, <<"by_user_flags">>, kz_datamgr:view_highest_value()]}
+              ],
+    case kz_datamgr:get_results(DbName, ?KZ_VIEW_LIST_UNIFORM, Options) of
         {'ok', JObj} ->
             io:format("\n\nTrunkstore classifiers:\n\n"),
             lists:foreach(fun(UserObj) ->
-                                  io:format("Trunk: ~s@~s\n\n", lists:reverse(kz_json:get_value(<<"key">>,UserObj))),
+                                  [<<"sys_info">>, <<"by_user_flags">>, Realm, User] =
+                                      kz_json:get_value(<<"value">>, UserObj),
+                                  io:format("Trunk: ~s@~s\n\n", [User, Realm]),
                                   print_call_restrictions(DbName, kz_doc:id(UserObj))
-                          end,
-                          JObj);
+                          end
+                         ,JObj
+                         );
         {'error', E} ->
             io:format("An error occurred: ~p", [E])
     end.

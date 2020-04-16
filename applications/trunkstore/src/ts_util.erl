@@ -117,9 +117,9 @@ lookup_did(DID, AccountId) ->
           kz_datamgr:data_error().
 lookup_did_from_db(DID, AccountId) ->
     AccountDb = kzs_util:format_account_db(AccountId),
-    Options = [{'key', DID}],
+    Options = [{'key', [<<"sys_info">>, <<"by_number">>, DID]}],
 
-    case kz_datamgr:get_results(AccountDb, ?TS_VIEW_DIDLOOKUP, Options) of
+    case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, Options) of
         {'ok', []} ->
             lager:info("cache miss for ~s, no results", [DID]),
             {'error', 'no_did_found'};
@@ -197,12 +197,14 @@ lookup_user_flags(Name, Realm, AccountId, _) ->
             lager:info("cache hit for ~s@~s", [Name, Realm]),
             Result;
         {'error', 'not_found'} ->
-            Options = [{'key', [kz_term:to_lower_binary(Realm)
+            Options = [{'key', [<<"sys_info">>
+                               ,<<"by_user_flags">>
+                               ,kz_term:to_lower_binary(Realm)
                                ,kz_term:to_lower_binary(Name)
                                ]
                        }
                       ],
-            case kz_datamgr:get_results(AccountDb, <<"trunkstore/lookup_user_flags">>, Options) of
+            case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, Options) of
                 {'error', _}=E ->
                     lager:info("cache miss for ~s@~s, err: ~p", [Name, Realm, E]),
                     E;
