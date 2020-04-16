@@ -615,9 +615,11 @@ maybe_faxbox_by_owner_email(AccountId, #state{errors=Errors
 
 -spec maybe_faxbox_by_owner_id(kz_term:ne_binary(), kz_term:ne_binary(),state()) -> state().
 maybe_faxbox_by_owner_id(AccountId, OwnerId, #state{errors=Errors, from=From}=State) ->
-    ViewOptions = [{'key', OwnerId}, 'include_docs'],
+    ViewOptions = [{'key', [<<"faxbox">>, <<"by_owner">>, OwnerId]}
+                  ,'include_docs'
+                  ],
     AccountDb = kzs_util:format_account_db(AccountId),
-    case kz_datamgr:get_results(AccountDb, <<"faxbox/list_by_ownerid">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, ViewOptions) of
         {'ok', [JObj]} ->
             State#state{faxbox=kz_json:get_value(<<"doc">>,JObj)
                        ,owner_id=OwnerId
@@ -646,11 +648,13 @@ maybe_faxbox_by_owner_id(AccountId, OwnerId, #state{errors=Errors, from=From}=St
     end.
 
 -spec maybe_faxbox_by_rules(kz_term:ne_binary() | kz_json:objects(), state()) -> state().
-maybe_faxbox_by_rules(AccountId, #state{errors=Errors}=State)
-  when is_binary(AccountId) ->
-    ViewOptions = ['include_docs'],
+maybe_faxbox_by_rules(<<AccountId/binary>>, #state{errors=Errors}=State) ->
+    ViewOptions = [{'startkey', [<<"faxbox">>, <<"by_email_permission">>]}
+                  ,{'endkey', [<<"faxbox">>, <<"by_email_permission">>, kz_datamgr:view_highest_value()]}
+                  ,'include_docs'
+                  ],
     AccountDb = kzs_util:format_account_db(AccountId),
-    case kz_datamgr:get_results(AccountDb, <<"faxbox/email_permissions">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb,?KZ_VIEW_LIST_UNIFORM, ViewOptions) of
         {'ok', []} ->
             Error = <<"no faxboxes for account ", AccountId/binary>>,
             lager:debug(Error),
@@ -669,7 +673,7 @@ maybe_faxbox_by_rules([], #state{account_id=AccountId
     lager:debug(Error),
     State#state{errors=[Error | Errors]};
 maybe_faxbox_by_rules([JObj | JObjs], #state{from=From}=State) ->
-    Key = kz_json:get_value(<<"key">>, JObj),
+    [<<"faxbox">>, <<"by_email_permission">>, Key] = kz_json:get_value(<<"key">>, JObj),
     case match(From, Key) of
         'true' -> State#state{errors=[], faxbox=kz_json:get_value(<<"doc">>, JObj)};
         'false' -> maybe_faxbox_by_rules(JObjs, State)
