@@ -76,10 +76,10 @@ handle(Data, Call) ->
 
 -spec handle(kz_json:object(), kapps_call:call(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> 'ok'.
 handle(Data, Call, <<"list">>, ?NE_BINARY = _CaptureGroup) ->
-    lager:info("using account's lists/entries view to get new cid info"),
+    lager:info("using account's list entries view to get new cid info"),
     handle_list(Data, Call);
 handle(Data, Call, <<"lists">>, ?NE_BINARY = _CaptureGroup) ->
-    lager:info("using account's lists/entries view to get new cid info"),
+    lager:info("using account's list entries view to get new cid info"),
     handle_lists(Data, Call);
 handle(Data, Call, <<"static">>, CaptureGroup) ->
     lager:info("user chose a static caller id for this call"),
@@ -372,7 +372,8 @@ get_caller_id_from_entries(_Call, 'undefined', _KeyDest) ->
     lager:warning("list id is missing"),
     {'error', 'not_found'};
 get_caller_id_from_entries(Call, ListId, KeyDest) ->
-    case kz_datamgr:get_results(kapps_call:account_db(Call), <<"lists/entries">>, [{'key', ListId}]) of
+    Options = [{'key', [<<"list_entry">>, <<"by_list_id">>, ListId]}],
+    case kz_datamgr:get_results(kapps_call:account_db(Call), ?KZ_VIEW_LIST_UNIFORM, Options) of
         {'ok', Entries} ->
             lager:debug("trying to find new caller id from ~b list entries", [length(Entries)]),
             get_new_caller_id(Call, Entries, ListId, KeyDest);

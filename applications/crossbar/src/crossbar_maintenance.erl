@@ -128,7 +128,6 @@ migrate_accounts_data([Account|Accounts]) ->
 migrate_account_data(Account) ->
     _ = cb_clicktocall:maybe_migrate_history(Account),
     _ = cb_vmboxes:migrate(Account),
-    _ = cb_lists:maybe_migrate(Account),
     _ = cb_apps_maintenance:migrate(Account),
     'no_return'.
 

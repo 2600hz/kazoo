@@ -69,11 +69,11 @@ match_prefixes_in_lists(_AccountDb, _Number, []) ->
 -spec match_prefixes_in_list(kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary()) ->
           match_number_result().
 match_prefixes_in_list(AccountDb, Prefixes, ListId) ->
-    Keys = [[ListId, Prefix] || Prefix <- Prefixes],
+    Keys = [[<<"list_entry">>, <<"by_match_prefix_in_list">>, ListId, Prefix] || Prefix <- Prefixes],
     ViewOptions = [{'keys', Keys}
                   ,'include_docs'
                   ],
-    case kz_datamgr:get_results(AccountDb , <<"lists/match_prefix_in_list">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb , ?KZ_VIEW_LIST_UNIFORM, ViewOptions) of
         {'ok', []} ->
             'continue';
         {'ok', Entries} ->
@@ -114,11 +114,11 @@ build_keys(<<>>, _, Acc) -> Acc.
 
 -spec match_regexp_in_list(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
           'continue' | {'stop', kz_term:api_binary()}.
-match_regexp_in_list(AccountDb, Number, ListId) when is_binary(ListId) ->
-    ViewOptions = [{'keys', [ListId]}
+match_regexp_in_list(AccountDb, Number, <<ListId/binary>>) ->
+    ViewOptions = [{'key', [<<"list_entry">>, <<"by_has_pattern">>, ListId]}
                   ,'include_docs'
                   ],
-    case kz_datamgr:get_results(AccountDb, <<"lists/regexps_in_list">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, ViewOptions) of
         {'ok', Entries} ->
             match_regexp(Entries, Number);
         Error ->
@@ -140,16 +140,15 @@ match_regexp_in_lists(_, _, []) ->
           'continue' |
           {'stop', kz_term:api_binary()}.
 match_regexp([Entry | Entries], Number) ->
-    Regex = kz_json:get_ne_binary_value(<<"value">>, Entry),
-    Doc = kz_json:get_value(<<"doc">>, Entry),
+    Regex = kz_json:get_ne_binary_value([<<"value">>, <<"pattern">>], Entry),
     case Regex =/= 'undefined'
         andalso re:run(Number, Regex)
     of
         'false' -> match_regexp(Entries, Number);
         'nomatch' -> match_regexp(Entries, Number);
         {'match', _} ->
-            lager:debug("matched regexp ~p", [kz_doc:id(Doc)]),
-            {'stop', kz_json:get_first_defined([<<"displayname">>, <<"name">>, <<"cid_name">>], Entry)}
+            lager:debug("matched regexp ~p", [kz_doc:id(Entry)]),
+            {'stop', kz_json:get_value([<<"value">>, <<"name">>], Entry)}
     end;
 match_regexp([], _Number) ->
     'continue'.

@@ -54,17 +54,20 @@ handle(Data, Call) ->
 -spec is_matching_prefix(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 is_matching_prefix(AccountDb, ListId, Number) ->
     NumberPrefixes = build_keys(Number),
-    Keys = [[ListId, X] || X <- NumberPrefixes],
-    case kz_datamgr:get_results(AccountDb, <<"lists/match_prefix_in_list">>, [{'keys', Keys}]) of
+    Keys = [[<<"list_entry">>, <<"by_match_prefix_in_list">>, ListId, X]
+            || X <- NumberPrefixes
+           ],
+    case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, [{'keys', Keys}]) of
         {'ok', [_ | _]} -> 'true';
         _ -> 'false'
     end.
 
 -spec is_matching_regexp(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 is_matching_regexp(AccountDb, ListId, Number) ->
-    case kz_datamgr:get_results(AccountDb, <<"lists/regexps_in_list">>, [{'key', ListId}]) of
+    Options = [{'key', [<<"list_entry">>, <<"by_has_pattern">>, ListId]}],
+    case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, Options) of
         {'ok', Regexps} ->
-            Patterns = [kz_json:get_value(<<"value">>, X)
+            Patterns = [kz_json:get_value([<<"value">>, <<"pattern">>], X)
                         || X <- Regexps,
                            X =/= null
                        ],
