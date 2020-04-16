@@ -471,7 +471,7 @@ owner_id(ObjectId, Call) ->
 owner_ids('undefined', _Call) -> [];
 owner_ids(ObjectId, Call) ->
     AccountDb = kapps_call:account_db(Call),
-    case get_owner_ids(kz_datamgr:get_doc(AccountDb, ObjectId)) of
+    case get_owner_ids(kz_datamgr:open_doc(AccountDb, ObjectId)) of
         {'ok', OwnerIds} -> OwnerIds;
         {'error', _R} ->
             lager:warning("unable to find owner for ~s: ~p", [ObjectId, _R]),

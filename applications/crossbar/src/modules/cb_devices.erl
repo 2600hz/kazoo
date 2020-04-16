@@ -643,7 +643,7 @@ get_mac_addresses(DbName) ->
     Options = [{'startkey', [<<"device">>, <<"by_mac_address">>]}
               ,{'endkey', [<<"device">>, <<"by_mac_address">>, kz_datamgr:view_highest_value()]}
               ],
-    MACs = case kz_datamgr:get_all_results(DbName, ?KZ_VIEW_LIST_UNIFORM, Options) of
+    MACs = case kz_datamgr:get_results(DbName, ?KZ_VIEW_LIST_UNIFORM, Options) of
                {'ok', AdJObj} ->
                    [MacAddress
                     || [<<"device">>, <<"by_mac_address">>, MacAddress] <- kz_datamgr:get_result_keys(AdJObj)

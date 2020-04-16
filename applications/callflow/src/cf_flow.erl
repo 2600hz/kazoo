@@ -125,7 +125,7 @@ fetch_patterns(AccountId)->
 load_patterns(AccountId) ->
     Db = kzs_util:format_account_db(AccountId),
     ViewOptions = [{'startkey', [kzd_callflows:type(), <<"by_pattern">>]}
-                  ,{'endkey', [kzd_callflows:thype(), <<"by_pattern">>, kz_datamgr:view_highest_value()]}
+                  ,{'endkey', [kzd_callflows:type(), <<"by_pattern">>, kz_datamgr:view_highest_value()]}
                   ,'include_docs'
                   ],
     case kz_datamgr:get_results(Db, ?KZ_VIEW_LIST_UNIFORM, ViewOptions) of

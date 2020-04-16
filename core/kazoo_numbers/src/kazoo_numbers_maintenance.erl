@@ -1701,7 +1701,7 @@ get_apps_for_dids(Account, Numbers) ->
                                   {CallflowAcc, TrunkAcc}
                           end
                   end,
-            lists:foldl(Fun, {[], []}, JObjs);
+            {'ok', lists:foldl(Fun, {[], []}, JObjs)};
         {'error', _} = Error ->
             Error
     end.

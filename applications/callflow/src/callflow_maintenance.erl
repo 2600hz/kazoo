@@ -481,7 +481,7 @@ update_feature_codes(Account)
 update_feature_codes(Account) ->
     AccountDb = kzs_util:format_account_db(Account),
     Options = [{'startkey', [kzd_callflows:type(), <<"by_pattern">>]}
-              ,{'endkey', [kzd_callflows:thype(), <<"by_pattern">>, kz_datamgr:view_highest_value()]}
+              ,{'endkey', [kzd_callflows:type(), <<"by_pattern">>, kz_datamgr:view_highest_value()]}
               ,'include_docs'
               ],
     case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, Options) of

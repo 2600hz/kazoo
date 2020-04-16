@@ -145,7 +145,7 @@ validate_collected_conference_id(Srv, Conference, Loop, <<>>) ->
 validate_collected_conference_id(Srv, Conference, Loop, Digits) ->
     Call = kapps_conference:call(Conference),
     AccountDb = kapps_call:account_db(Call),
-    ViewOptions = [{'key', [[kzd_conference:type(), <<"by_number">>, DID] || DID <- Digits]}
+    ViewOptions = [{'key', [kzd_conference:type(), <<"by_number">>, Digits]}
                   ,'include_docs'
                   ],
     case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, ViewOptions) of
