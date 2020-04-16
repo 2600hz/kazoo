@@ -1104,8 +1104,8 @@ maybe_validate_username_is_unique(AccountId, UserId, {Doc, Errors}) ->
 -spec is_username_unique(kz_term:api_ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> boolean().
 is_username_unique(AccountId, UserId, Username) ->
     AccountDb = kzs_util:format_account_db(AccountId),
-    ViewOptions = [{'key', Username}],
-    case kz_datamgr:get_results(AccountDb, ?LIST_BY_USERNAME, ViewOptions) of
+    ViewOptions = [{'key', [kzd_users:type(), <<"by_username">>, UserName]}],
+    case kz_datamgr:get_results(AccountId, ?KZ_VIEW_LIST_UNIFORM, ViewOptions) of
         {'ok', []} -> 'true';
         {'ok', [JObj]} -> kz_doc:id(JObj) =:= UserId;
         _Else -> 'false'
@@ -1234,9 +1234,8 @@ maybe_validate_hotdesk_id_is_unique(AccountId, UserId, {Doc, Errors}) ->
 %%------------------------------------------------------------------------------
 -spec is_hotdesk_id_unique(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 is_hotdesk_id_unique(AccountId, UserId, HotdeskId) ->
-    AccountDb = kzs_util:format_account_db(AccountId),
-    ViewOptions = [{'key', HotdeskId}],
-    case kz_datamgr:get_results(AccountDb, ?LIST_BY_HOTDESK_ID, ViewOptions) of
+    ViewOptions = [{'key', [kzd_users:type(), <<"by_hotdesk_id">>, HotdeskId]}],
+    case kz_datamgr:get_results(AccountId, ?KZ_VIEW_LIST_UNIFORM, ViewOptions) of
         {'ok', []} -> 'true';
         {'ok', [JObj]} -> kz_doc:id(JObj) =:= UserId;
         _Else -> 'false'

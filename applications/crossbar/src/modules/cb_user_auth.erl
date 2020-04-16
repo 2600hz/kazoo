@@ -24,10 +24,6 @@
 
 -include("crossbar.hrl").
 
--define(ACCT_MD5_LIST, <<"users/creds_by_md5">>).
--define(ACCT_SHA1_LIST, <<"users/creds_by_sha">>).
--define(LIST_BY_RESET_ID, <<"users/list_by_reset_id">>).
--define(LIST_BY_MTIME, <<"users/list_by_mtime">>).
 -define(DEFAULT_LANGUAGE, <<"en-us">>).
 -define(USER_AUTH_TOKENS, kapps_config:get_integer(?CONFIG_CAT, <<"user_auth_tokens">>, 35)).
 
@@ -312,10 +308,10 @@ maybe_authenticate_user(Context) ->
 -spec maybe_authenticate_user(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
           cb_context:context().
 maybe_authenticate_user(Context, Credentials, <<"md5">>, ?NE_BINARY=Account) ->
-    Options = [{'key', Credentials}
+    Options = [{'key', [kzd_users:type(), <<"by_md5_auth">>, Credentials]}
               ,{'databases', [kzs_util:format_account_db(Account)]}
               ],
-    Context1 = crossbar_view:load(Context, ?ACCT_MD5_LIST, Options),
+    Context1 = crossbar_view:load(Context, ?KZ_VIEW_LIST_UNIFORM, Options),
     case cb_context:resp_status(Context1) of
         'success' -> load_md5_results(Context1, cb_context:doc(Context1), Account);
         _Status ->
@@ -326,10 +322,10 @@ maybe_authenticate_user(Context, Credentials, <<"md5">>, ?NE_BINARY=Account) ->
             cb_context:add_system_error('invalid_credentials', Context1)
     end;
 maybe_authenticate_user(Context, Credentials, <<"sha">>, ?NE_BINARY=Account) ->
-    Options = [{'key', Credentials}
+    Options = [{'key', [kzd_users:type(), <<"by_sha1_auth">>, Credentials]}
               ,{'databases', [kzs_util:format_account_db(Account)]}
               ],
-    Context1 = crossbar_view:load(Context, ?ACCT_SHA1_LIST, Options),
+    Context1 = crossbar_view:load(Context, ?KZ_VIEW_LIST_UNIFORM, Options),
     case cb_context:resp_status(Context1) of
         'success' -> load_sha1_results(Context1, cb_context:doc(Context1), Account);
         _Status ->
@@ -448,10 +444,10 @@ maybe_load_user_doc_by_username(Account, Context) ->
     lager:debug("attempting to lookup user name in db: ~s", [AccountDb]),
     AuthType = <<"user_auth_recovery">>,
     Username = kz_json:get_value(<<"username">>, JObj),
-    ViewOptions = [{'key', Username}
+    ViewOptions = [{'key', [kzd_users:type(), <<"by_username">>, Username]}
                   ,'include_docs'
                   ],
-    case kz_datamgr:get_results(AccountDb, ?LIST_BY_USERNAME, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, ViewOptions) of
         {'ok', [User]} ->
             case kz_json:is_false([<<"doc">>, <<"enabled">>], JObj) of
                 'false' ->

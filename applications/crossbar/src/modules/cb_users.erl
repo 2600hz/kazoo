@@ -34,8 +34,6 @@
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".users">>).
 
--define(LIST_BY_HOTDESK_ID, <<"users/list_by_hotdesk_id">>).
-
 -define(VCARD, <<"vcard">>).
 -define(PHOTO, <<"photo">>).
 

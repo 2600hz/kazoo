@@ -593,9 +593,9 @@ maybe_faxbox_domain(#state{faxbox_email=Domain}=State) ->
 maybe_faxbox_by_owner_email(AccountId, #state{errors=Errors
                                              ,from=From
                                              }=State) ->
-    ViewOptions = [{'key', From}],
+    ViewOptions = [{'key', [kzd_users:type(), <<"by_email_address">>, From]}],
     AccountDb = kzs_util:format_account_db(AccountId),
-    case kz_datamgr:get_results(AccountDb, <<"users/list_by_email">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, ViewOptions) of
         {'ok', []} ->
             Error = kz_term:to_binary(io_lib:format("user ~s does not exist in account ~s, trying by rules",[From, AccountId])),
             lager:debug(Error),

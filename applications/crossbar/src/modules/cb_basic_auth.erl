@@ -26,9 +26,6 @@
 -define(BASIC_AUTH_KEY, <<"basic_auth_type">>).
 -define(BASIC_AUTH_TYPE, kapps_config:get_ne_binary(?AUTH_CONFIG_CAT, ?BASIC_AUTH_KEY, ?DEFAULT_BASIC_AUTH_TYPE)).
 
--define(ACCT_MD5_LIST, <<"users/creds_by_md5">>).
--define(ACCT_SHA1_LIST, <<"users/creds_by_sha">>).
-
 %%%=============================================================================
 %%% API
 %%%=============================================================================
@@ -107,12 +104,12 @@ check_credentials(Context, AccountId, {Username, Password}, _BasicType) ->
     {MD5, _SHA1} = cb_modules_util:pass_hashes(Username, Password),
     check_credentials(Context, AccountId, MD5, <<"md5">>);
 check_credentials(Context, AccountId, Credentials, <<"sha">>) ->
-    case get_credential_doc(AccountId, ?ACCT_SHA1_LIST, Credentials) of
+    case get_credential_doc(AccountId, [kzd_users:type(), <<"by_sha1_auth">>, Credentials]) of
         'undefined' -> 'false';
         JObj -> is_expired(Context, JObj)
     end;
 check_credentials(Context, AccountId, Credentials, <<"md5">>) ->
-    case get_credential_doc(AccountId, ?ACCT_MD5_LIST, Credentials) of
+    case get_credential_doc(AccountId, [kzd_users:type(), <<"by_md5_auth">>, Credentials]) of
         'undefined' -> 'false';
         JObj -> is_expired(Context, JObj)
     end;
@@ -122,11 +119,11 @@ check_credentials(Context, AccountId, Credentials, BasicType) ->
         _ -> 'false'
     end.
 
--spec get_credential_doc(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_object().
-get_credential_doc(AccountId, View, Key) ->
+-spec get_credential_doc(kz_term:ne_binary(), kz_term:ne_binaries()) -> kz_term:api_object().
+get_credential_doc(AccountId, Key) ->
     AccountDb = kzs_util:format_account_db(AccountId),
     Options = [{'key', Key}, 'include_docs'],
-    case kz_datamgr:get_results(AccountDb, View, Options) of
+    case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, Options) of
         {'ok', [JObj]} -> kz_json:get_value(<<"doc">>, JObj);
         _ -> 'undefined'
     end.
