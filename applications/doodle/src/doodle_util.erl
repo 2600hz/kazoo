@@ -20,7 +20,6 @@
        ,{?MODULE, 'sip_endpoint', Realm, User}
        ).
 -define(DEFAULT_INCEPTION, <<"offnet">>).
--define(MDN_VIEW, <<"mobile/listing_by_mdn">>).
 -define(CONVERT_MDN, 'true').
 
 -export([get_inbound_destination/1]).
@@ -78,8 +77,8 @@ fetch_mdn(Num) ->
           {'error', 'not_found'}.
 fetch_mdn_result(AccountId, Num) ->
     AccountDb = kzs_util:format_account_db(AccountId),
-    ViewOptions = [{'key', mdn_from_e164(Num)}],
-    case kz_datamgr:get_single_result(AccountDb, ?MDN_VIEW, ViewOptions) of
+    ViewOptions = [{'key', [kzd_devices:type(), <<"by_mdn">>, mdn_from_e164(Num)]}],
+    case kz_datamgr:get_single_result(AccountDb, ?KZ_VIEW_LIST_UNIFORM, ViewOptions) of
         {'ok', JObj} ->
             Id = kz_doc:id(JObj),
             OwnerId = kz_json:get_value([<<"value">>, <<"owner_id">>], JObj),
