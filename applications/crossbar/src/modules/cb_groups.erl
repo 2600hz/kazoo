@@ -24,8 +24,6 @@
 
 -include("crossbar.hrl").
 
--define(LIST_BY_USER, <<"groups/listing_by_user">>).
-
 %%%=============================================================================
 %%% API
 %%%=============================================================================
@@ -197,8 +195,8 @@ get_view_and_options('undefined') ->
      ]
     };
 get_view_and_options(UserId) ->
-    {?LIST_BY_USER
-    ,[{'key', UserId}
+    {?KZ_VIEW_LIST_UNIFORM
+    ,[{'key', [<<"group">>, <<"by_user">>, UserId]}
      ,{'mapper', crossbar_view:get_value_fun()}
      ]
     }.
