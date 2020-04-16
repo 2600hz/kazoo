@@ -10,10 +10,6 @@
 %%%-----------------------------------------------------------------------------
 -module(kazoo_voicemail_maintenance).
 
--export([migrate/0
-        ,migrate/1
-        ,migrate/2
-        ]).
 -export([recover_messages_all/0
         ,recover_messages_month/2
         ,recover_messages_account/1
@@ -24,42 +20,6 @@
 -include("kz_voicemail.hrl").
 
 -define(VIEW_MISSING_METADATA, <<"mailbox_messages/missing_metadata">>).
-
-%%------------------------------------------------------------------------------
-%% @doc Migrate all messages in vmbox into the new modb format
-%% @end
-%%------------------------------------------------------------------------------
--spec migrate() -> 'ok'.
-migrate() ->
-    _ = process_flag('trap_exit', 'true'),
-    {'ok', Pid} = kvm_migrate_crawler:start(self()),
-    link(Pid),
-    io:format("started and linked to crawler at ~p~n", [Pid]),
-    receive
-        'done' -> io:format("~nmigration finished~n");
-        {'EXIT', Pid, 'normal'} -> io:format("~nmigration finished~n");
-        {'EXIT', Pid, _Reason} ->
-            io:format("~n********** migration process died with reason:~n~p~n", [_Reason])
-    end.
-
--spec migrate(kz_term:ne_binary()) -> 'ok'.
-migrate(?NE_BINARY = AccountId) ->
-    print_migration_stats(kvm_migrate_account:manual_account_migrate(AccountId));
-migrate(AccountJObj) ->
-    migrate(kz_doc:id(AccountJObj)).
-
--spec migrate(kz_term:ne_binary(), kz_term:ne_binary() | kz_term:ne_binaries() | kz_json:object()) -> 'ok'.
-migrate(AccountId, ?NE_BINARY = BoxId) ->
-    migrate(AccountId, [BoxId]);
-migrate(AccountId, BoxIds) when is_list(BoxIds) ->
-    print_migration_stats(kvm_migrate_account:manual_vmbox_migrate(AccountId, BoxIds));
-migrate(AccountId, Box) ->
-    migrate(AccountId, kz_doc:id(Box)).
-
--spec print_migration_stats(kz_term:proplist()) -> 'ok'.
-print_migration_stats(Props) ->
-    _ = [io:format("~s: ~b~n", [K, V]) || {K, V} <- Props],
-    'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc

@@ -187,21 +187,6 @@
                     "description": "Voicemail message retention duration in days",
                     "type": "integer"
                 },
-                "migrate_interaccount_delay_ms": {
-                    "default": 2000,
-                    "description": "callflow migrate interaccount delay in milliseconds",
-                    "type": "integer"
-                },
-                "migrate_max_bulk_insert": {
-                    "default": 2000,
-                    "description": "callflow migrate maximum bulk insert",
-                    "type": "integer"
-                },
-                "migrate_max_worker": {
-                    "default": 10,
-                    "description": "callflow migrate max worker",
-                    "type": "integer"
-                },
                 "min_message_size": {
                     "default": 500,
                     "description": "callflow minimum message size",

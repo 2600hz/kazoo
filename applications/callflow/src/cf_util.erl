@@ -711,25 +711,18 @@ start_task(Fun, Args, Call) ->
 -spec mailbox(kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', kz_json:object()} |
           {'error', any()}.
 mailbox(AccountDb, VMNumber) ->
-    try kz_term:to_integer(VMNumber) of
-        Number -> maybe_cached_mailbox(AccountDb, Number)
-    catch
-        _E:_R ->  {'error', 'not_found'}
-    end.
-
--spec maybe_cached_mailbox(kz_term:ne_binary(), integer()) -> {'ok', kz_json:object()} |
-          {'error', any()}.
-maybe_cached_mailbox(AccountDb, VMNumber) ->
     case kz_cache:peek_local(?CACHE_NAME, ?VM_CACHE_KEY(AccountDb, VMNumber)) of
         {'ok', _}=Ok -> Ok;
         {'error', 'not_found'} -> get_mailbox(AccountDb, VMNumber)
     end.
 
--spec get_mailbox(kz_term:ne_binary(), integer()) -> {'ok', kz_json:object()} |
+-spec get_mailbox(kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', kz_json:object()} |
           {'error', any()}.
 get_mailbox(AccountDb, VMNumber) ->
-    ViewOptions = [{'key', VMNumber}, 'include_docs'],
-    case kz_datamgr:get_single_result(AccountDb, <<"vmboxes/listing_by_mailbox">>, ViewOptions) of
+    ViewOptions = [{'key', [kzd_voicemail_box:type(), <<"by_number">>, VMNumber]}
+                  ,'include_docs'
+                  ],
+    case kz_datamgr:get_single_result(AccountDb, ?KZ_VIEW_LIST_UNIFORM, ViewOptions) of
         {'ok', JObj} ->
             Doc = kz_json:get_value(<<"doc">>, JObj),
             EndpointId = kz_doc:id(Doc),
@@ -737,10 +730,10 @@ get_mailbox(AccountDb, VMNumber) ->
             kz_cache:store_local(?CACHE_NAME, ?VM_CACHE_KEY(AccountDb, VMNumber), Doc, CacheProps),
             {'ok', Doc};
         {'error', 'multiple_results'} ->
-            lager:debug("multiple voicemail boxes with same number (~b)  in account db ~s", [VMNumber, AccountDb]),
+            lager:debug("multiple voicemail boxes with same number (~s)  in account db ~s", [VMNumber, AccountDb]),
             {'error', 'not_found'};
         {'error', _R}=E ->
-            lager:warning("unable to lookup voicemail number ~b in account ~s: ~p", [VMNumber, AccountDb, _R]),
+            lager:warning("unable to lookup voicemail number ~s in account ~s: ~p", [VMNumber, AccountDb, _R]),
             E
     end.
 

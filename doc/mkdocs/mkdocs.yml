@@ -465,7 +465,6 @@ nav:
       - 'core/kazoo_auth/doc/maintenance.md'
     - 'Kazoo Voicemail':
       - 'core/kazoo_voicemail/doc/README.md'
-      - 'core/kazoo_voicemail/doc/maintenance.md'
     - 'Kazoo Bindings':
       - 'core/kazoo_bindings/doc/README.md'
     - 'Kazoo Core':

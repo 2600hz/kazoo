@@ -2,7 +2,7 @@
 
 This library is for accessing and managing all voicemail messages in the system.
 
-Starting with Kazoo 4.0 all new voicemail messages goes into MODB. All Kazoo Administrators need to migrate voicemail messages from Kazoo version 3.22 to MODB to be able to have access to voicemail messages prior to update. The SUP command `kazoo_voicemail_maintenance` exists to do this transition.
+Starting with Kazoo 4.0 all new voicemail messages goes into MODB. All Kazoo Administrators need to migrate voicemail messages from Kazoo version 3.22 to MODB to be able to have access to voicemail messages prior to update.
 
 > **Caution:** Kazoo 4.0 assumes you migrated all voicemail messages to MODB, and it's only using MODBs for accessing and managing messages. If you did not do the migration users can not access to their messages.
 
@@ -38,9 +38,6 @@ Key | Description | Type | Default | Required
 `voicemail.max_message_length` | Maximum message length in seconds | `integer()` | `500` | `false`
 `voicemail.max_pin_length` | Maximum pin number length for mailbox | `integer()` | `6` | `false`
 `voicemail.message_retention_duration` | How many days back are searched when listing voicemails | `integer()` | `93` | `false`
-`voicemail.migrate_interaccount_delay_ms` | Control wait time between processing each account in each iteration | `integer()` | `2000` | `false`
-`voicemail.migrate_max_bulk_insert` | Number of messages should each migration worker reads and write in each cycle | `integer()` | `2000` | `false`
-`voicemail.migrate_max_worker` | Maximum number of workers when migrating voicemail messages to MODB | `integer()` | `10` | `false`
 `voicemail.min_message_size` | Minimum message length in milliseconds a voicemail message must be to consider it to save in database | `integer()` | `500` | `false`
 `voicemail.save_after_notify` | Move the voicemail to save folder after the notification has been sent (This setting will override delete_after_notify) | `boolean()` | `false` | `false`
 `voicemail.vm_message_forward_type` | Enable or disable the ability to prepend a message when forwarding a voicemail message | `string()` | `only_forward` | `false`

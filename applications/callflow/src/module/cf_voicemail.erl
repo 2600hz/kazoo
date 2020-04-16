@@ -349,8 +349,7 @@ find_mailbox(#mailbox{interdigit_timeout=Interdigit}=Box, Call, VmEntryIdMedia, 
             _ = kapps_call_command:b_prompt(<<"menu-invalid_entry">>, Call),
             find_mailbox(Box, Call, VmEntryIdMedia, Loop + 1);
         {'ok', Mailbox} ->
-            BoxNum = try kz_term:to_integer(Mailbox) catch _:_ -> 0 end,
-            case find_mailbox_by_number(BoxNum, Call) of
+            case find_mailbox_by_number(Mailbox, Call) of
                 {'ok', FoundBox} -> {'ok', FoundBox, Loop};
                 {'error', 'not_found'} ->
                     _ = kapps_call_command:b_prompt(<<"menu-invalid_entry">>, Call),
@@ -374,13 +373,13 @@ find_mailbox(#mailbox{interdigit_timeout=Interdigit}=Box, Call, VmEntryIdMedia, 
 %% {@link find_mailbox/4}.</div>
 %% @end
 %%------------------------------------------------------------------------------
--spec find_mailbox_by_number(non_neg_integer(), kapps_call:call()) ->
+-spec find_mailbox_by_number(kz_term:ne_binary(), kapps_call:call()) ->
           {'ok', mailbox()} |
           {'error', any()}.
 find_mailbox_by_number(BoxNum, Call) ->
-    ViewOptions = [{'key', BoxNum}],
+    ViewOptions = [{'key', [kzd_voicemail_box:type(), <<"by_number">>, BoxNum]}],
     AccountDb = kapps_call:account_db(Call),
-    case kz_datamgr:get_single_result(AccountDb, <<"vmboxes/listing_by_mailbox">>, ViewOptions) of
+    case kz_datamgr:get_single_result(AccountDb, ?KZ_VIEW_LIST_UNIFORM, ViewOptions) of
         {'ok', JObj} ->
             lager:info("get profile of ~p", [JObj]),
             case get_mailbox_profile(kz_json:from_list([{<<"id">>, kz_doc:id(JObj)}]), Call) of

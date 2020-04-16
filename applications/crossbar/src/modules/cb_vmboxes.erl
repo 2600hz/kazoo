@@ -1212,23 +1212,17 @@ generate_media_name(CallerId, GregorianSeconds, Ext, Timezone) ->
 
 -spec check_uniqueness(kz_term:api_binary(), cb_context:context()) -> boolean().
 check_uniqueness(VMBoxId, Context) ->
-    try kz_json:get_integer_value(<<"mailbox">>, cb_context:req_data(Context)) of
+    case kz_json:get_ne_binary_value(<<"mailbox">>, cb_context:req_data(Context)) of
+        'undefined' ->
+            'true';
         Mailbox ->
             check_uniqueness(VMBoxId, Context, Mailbox)
-    catch
-        _:_ ->
-            lager:debug("can't convert mailbox number to integer"),
-            'false'
     end.
 
--spec check_uniqueness(kz_term:api_binary(), cb_context:context(), pos_integer()) -> boolean().
+-spec check_uniqueness(kz_term:api_binary(), cb_context:context(), kz_term:ne_binary()) -> boolean().
 check_uniqueness(VMBoxId, Context, Mailbox) ->
-    ViewOptions = [{'key', Mailbox}],
-    case kz_datamgr:get_results(cb_context:db_name(Context)
-                               ,<<"vmboxes/listing_by_mailbox">>
-                               ,ViewOptions
-                               )
-    of
+    ViewOptions = [{'key', [kzd_voicemail_box:type(), <<"by_number">>, kz_term:to_binary(Mailbox)]}],
+    case kz_datamgr:get_results(cb_context:db_name(Context), ?KZ_VIEW_LIST_UNIFORM, ViewOptions) of
         {'ok', []} -> 'true';
         {'ok', [VMBox]} ->
             VMBoxId =:= kz_doc:id(VMBox);
