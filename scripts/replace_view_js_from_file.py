@@ -72,19 +72,26 @@ js = read_js_file()
 design_doc = read_design()
 
 def couchjs():
-    if 'Object.keys' in js:
-        print('File contains "Object.keys" which is not available until ECMA2015')
+    JS = ''.join(js) + '\n'
+    if 'Object.keys' in JS:
+        print(field, 'contains "Object.keys" which is not available until ECMA2015')
         exit(1)
-    try:
-        # couchjs_exe='~/local/git/apache/couchdb/bin/couchjs' # if couchjs isn't in your path
-        couchjs_exe='couchjs'
-        code = call([couchjs_exe, jsfile])
-        if code != 0:
-            print('couchjs found errors in your code.')
-            exit(1)
-    except Exception as e:
-        print('failed running couchjs')
-        raise e
+    TMP = '_'
+    with open(TMP, 'w') as wd:
+        wd.write(JS)
+        wd.close()
+        try:
+            # couchjs_exe='~/local/git/apache/couchdb/bin/couchjs' # if couchjs isn't in your path
+            couchjs_exe='couchjs'
+            code = call([couchjs_exe, TMP])
+            if code != 0:
+                print('couchjs found errors in your code.')
+                exit(1)
+        except Exception as e:
+            print('failed running couchjs')
+            raise e
+        finally:
+            os.remove(TMP)
 
 print('Checking for errors...')
 if (shutil.which('couchjs')):
