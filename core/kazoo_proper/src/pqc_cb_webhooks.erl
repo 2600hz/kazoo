@@ -331,10 +331,7 @@ seq_resp_envelope() ->
     UnAuthdResp = list_available(#{}),
     UnAuthdJObj = kz_json:decode(UnAuthdResp),
     'false' = kz_json:is_defined(<<"version">>, UnAuthdJObj),
-
-    'true' = kz_json:are_equal(kz_json:get_value(<<"data">>, AuthdJObj)
-                              ,kz_json:get_value(<<"data">>, UnAuthdJObj)
-                              ),
+    lager:info("version doesn't appear in un-authenticated request"),
 
     cleanup(API).
 

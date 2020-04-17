@@ -738,7 +738,7 @@ recursive_to_proplist(Else) -> Else.
 
 -spec to_map(object() | objects()) -> map() | list(map()).
 to_map(JObjs) when is_list(JObjs) ->
-    jiffy:decode(encode(JObjs), [return_maps]);
+    jiffy:decode(encode(JObjs), ['return_maps']);
 to_map(JObj) ->
     recursive_to_map(JObj).
 
@@ -1196,7 +1196,7 @@ set_value_options() ->
 %% Figure out how to set the current key among a list of objects
 
 -type set_value_fun() :: {fun((object(), json_term()) -> object()), json_term()} |
-                          fun((object()) -> object()).
+                         fun((object()) -> object()).
 -type set_value_funs() :: [set_value_fun(),...].
 -type set_value_kv() :: {get_key(), api_json_term() | 'null'}.
 -type set_value_kvs() :: [set_value_kv()].
@@ -1286,7 +1286,7 @@ set_value1([Key1|T], Value, ?JSON_WRAPPER(Props), #{'deep' := Deep} = Options) -
             %% replaced so continue looping the keys creating the necessary json as we go
             ?JSON_WRAPPER(lists:keyreplace(Key1, 1, Props, {Key1, set_value1(T, Value, new(), Options)}));
         'false' when Deep
-          andalso is_integer(Key1) ->
+                     andalso is_integer(Key1) ->
             %% If they is an integer we assume its an array
             %% we need to put back the Key and initialize the array
             %% and it will be handled in another clause
@@ -1396,7 +1396,7 @@ prune([K|T], [_|_]=JObjs) ->
     end.
 
 -spec prune_tail(key(), keys(), object() | objects(), object() | objects()) ->
-                        object() | objects().
+          object() | objects().
 prune_tail(K, T, JObj, V) ->
     case prune(T, V) of
         ?EMPTY_JSON_OBJECT -> from_list(lists:keydelete(K, 1, to_proplist(JObj)));
@@ -1455,15 +1455,15 @@ replace_in_list(N, V1, [V | Vs], Acc) ->
 %%------------------------------------------------------------------------------
 
 -spec load_fixture_from_file(atom(), nonempty_string() | kz_term:ne_binary()) ->
-                                    object() |
-                                    {'error', atom()}.
+          object() |
+          {'error', atom()}.
 
 load_fixture_from_file(App, File) ->
     load_fixture_from_file(App, <<"couchdb">>, File).
 
 -spec load_fixture_from_file(atom(), nonempty_string() | kz_term:ne_binary(), iodata()) ->
-                                    object() |
-                                    {'error', atom()}.
+          object() |
+          {'error', atom()}.
 load_fixture_from_file(App, Dir, File) ->
     Path = list_to_binary([code:priv_dir(App), "/", kz_term:to_list(Dir), "/", kz_term:to_list(File)]),
     lager:debug("read fixture for kapp ~s from JSON file: ~s", [App, Path]),
