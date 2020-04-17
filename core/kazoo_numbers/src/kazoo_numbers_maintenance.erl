@@ -1692,9 +1692,9 @@ get_apps_for_dids(Account, Numbers) ->
     case kz_datamgr:get_result_keys(AccountDb, ?KZ_VIEW_LIST_UNIFORM, ViewOptions) of
         {'ok', Keys} ->
             Fun = fun([<<"callflow">>, <<"by_number">>, Number], {CallflowAcc, TrunkAcc}) ->
-                                  {[Number | CallflowAcc], TrunkAcc};
+                          {[Number | CallflowAcc], TrunkAcc};
                      ([<<"sys_info">>, <<"by_number">>, Number], {CallflowAcc, TrunkAcc}) ->
-                                  {CallflowAcc, [Number | TrunkAcc]};
+                          {CallflowAcc, [Number | TrunkAcc]};
                      (_, Acc) ->
                           Acc
                   end,
