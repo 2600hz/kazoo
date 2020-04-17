@@ -1690,18 +1690,15 @@ get_apps_for_dids(Account, Numbers) ->
                   ],
     ?SUP_LOG_DEBUG("         getting callflow numbers from ~s", [AccountDb]),
     case kz_datamgr:get_result_keys(AccountDb, ?KZ_VIEW_LIST_UNIFORM, ViewOptions) of
-        {'ok', JObjs} ->
-            Fun = fun(JObj, {CallflowAcc, TrunkAcc}) ->
-                          case kz_json:get_value(<<"key">>, JObj) of
-                              [<<"callflow">>, <<"by_number">>, Number] ->
+        {'ok', Keys} ->
+            Fun = fun([<<"callflow">>, <<"by_number">>, Number], {CallflowAcc, TrunkAcc}) ->
                                   {[Number | CallflowAcc], TrunkAcc};
-                              [<<"sys_info">>, <<"by_number">>, Number] ->
+                     ([<<"sys_info">>, <<"by_number">>, Number], {CallflowAcc, TrunkAcc}) ->
                                   {CallflowAcc, [Number | TrunkAcc]};
-                              _ ->
-                                  {CallflowAcc, TrunkAcc}
-                          end
+                     (_, Acc) ->
+                          Acc
                   end,
-            {'ok', lists:foldl(Fun, {[], []}, JObjs)};
+            {'ok', lists:foldl(Fun, {[], []}, Keys)};
         {'error', _} = Error ->
             Error
     end.

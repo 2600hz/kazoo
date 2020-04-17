@@ -542,7 +542,7 @@ owned_by(OwnerId, Call) ->
 owned_by('undefined', _, _) -> [];
 owned_by([_|_]=OwnerIds, Type, Call) ->
     Keys = [[<<"by_owner">>, OwnerId, Type] ||
-            OwnerId <- OwnerIds
+               OwnerId <- OwnerIds
            ],
     owned_by_query(kapps_call:account_db(Call), [{'keys', Keys}]);
 owned_by(OwnerId, Type, Call) ->
