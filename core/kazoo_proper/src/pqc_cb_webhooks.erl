@@ -333,6 +333,16 @@ seq_resp_envelope() ->
     'false' = kz_json:is_defined(<<"version">>, UnAuthdJObj),
     lager:info("version doesn't appear in un-authenticated request"),
 
+    AreEqual = kz_json:are_equal(kz_json:get_value(<<"data">>, AuthdJObj)
+                                ,kz_json:get_value(<<"data">>, UnAuthdJObj)
+                                ),
+    (not AreEqual)
+        andalso lager:info("not equal: ~s =/= ~s"
+                          ,[kz_json:get_value(<<"data">>, AuthdJObj)
+                           ,kz_json:get_value(<<"data">>, UnAuthdJObj)
+                           ]),
+    'true' = AreEqual,
+
     cleanup(API).
 
 bad_url_webhook() ->
