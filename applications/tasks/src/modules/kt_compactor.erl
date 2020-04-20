@@ -510,8 +510,10 @@ sort_by_disk_size(DbsSizes) when is_list(DbsSizes) ->
 sort_by_disk_size({_UnencDb1, {DiskSize1, _}}, {_UnencDb2, {DiskSize2, _}}) ->
     DiskSize1 > DiskSize2;
 sort_by_disk_size({_UnencDb1, {_DiskSize1, _}}, {_UnencDb2, _Else}) -> %% Else = 'not_found' | 'undefined'
+    %% Failed to get disk size information for db2.
     'true';
 sort_by_disk_size({_UnencDb1, _Else}, {_UnencDb2, {_DiskSize2, _}}) -> %% Else = 'not_found' | 'undefined'
+    %% Failed to get disk size information for db1.
     'false'.
 
 -spec track_job(kz_term:ne_binary(), function(), [term()]) -> rows().
@@ -563,7 +565,9 @@ browse_dbs_for_triggers(Ref, 'true') ->
     CallId = build_compaction_callid(<<"cleanup_pass">>),
     kz_util:put_callid(CallId),
     lager:info("starting cleanup pass of databases"),
-    Dbs = maybe_list_and_sort_dbs_for_compaction(?COMPACT_AUTOMATICALLY, CallId),
+    'ok' = kt_compaction_reporter:start_tracking_job(self(), node(), CallId),
+    Dbs = list_and_sort_dbs_for_compaction(),
+    'ok' = kt_compaction_reporter:set_job_dbs(CallId, Dbs),
     _Counter = lists:foldl(fun trigger_db_cleanup/2, {length(Dbs), 1}, Dbs),
     'ok' = kt_compaction_reporter:stop_tracking_job(CallId),
     kz_util:put_callid('undefined'), % Reset callid
@@ -592,19 +596,12 @@ trigger_db_cleanup(Db, {TotalDbs, Counter}) ->
     cleanup_pass(Db),
     {TotalDbs, Counter + 1}.
 
--spec maybe_list_and_sort_dbs_for_compaction(boolean(), kz_term:ne_binary()) ->
-          [kz_term:ne_binary()].
-maybe_list_and_sort_dbs_for_compaction('true', CallId) ->
-    lager:debug("auto compaction enabled, getting databases list and sorting them by disk size"),
+-spec list_and_sort_dbs_for_compaction() -> [db_and_sizes()].
+list_and_sort_dbs_for_compaction() ->
+    lager:debug("getting databases list and sorting them by disk size"),
     Sorted = get_all_dbs_and_sort_by_disk(),
     lager:debug("finished listing and sorting databases (~p found)", [length(Sorted)]),
-    'ok' = kt_compaction_reporter:start_tracking_job(self(), node(), CallId, Sorted),
-    Sorted;
-maybe_list_and_sort_dbs_for_compaction('false', _CallId) ->
-    lager:debug("auto compaction disabled, skip sorting dbs by size"),
-    {'ok', Dbs} = kz_datamgr:db_info(),
-    lager:debug("finished listing databases (~p found)", [length(Dbs)]),
-    Dbs.
+    Sorted.
 
 -spec cleanup_pass(kz_term:ne_binary()) -> boolean().
 cleanup_pass(Db) ->
