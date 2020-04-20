@@ -107,6 +107,7 @@
                  ,rtcp_mux = <<>> :: binary()
                  ,caller_id_type = <<"external">> :: kz_term:ne_binary()
                  ,fax_option :: kz_term:ne_binary() | boolean()
+                 ,ccvs :: kz_term:api_object()
                  ,sip_headers :: kz_term:api_object()
                  ,sip_interface :: kz_term:api_binary()
                  ,progress_timeout = 8 :: 1..100
@@ -676,6 +677,7 @@ gateway_to_endpoint(DestinationNumber
                             ,codecs=Codecs
                             ,username=Username
                             ,password=Password
+                            ,ccvs=GatewayCCVs
                             ,sip_headers=SipHeaders
                             ,sip_interface=SipInterface
                             ,endpoint_type=EndpointType
@@ -692,12 +694,14 @@ gateway_to_endpoint(DestinationNumber
 
     RequestorCCVs = kz_json:get_ne_json_value(<<"Requestor-Custom-Channel-Vars">>, OffnetJObj, kz_json:new()),
 
-    CCVs = [{<<"Emergency-Resource">>, IsEmergency}
+    KVs  = [{<<"Emergency-Resource">>, IsEmergency}
            ,{<<"Matched-Number">>, DestinationNumber}
            ,{<<"Resource-Type">>, <<"offnet-termination">>}
            ,{<<"RTCP-MUX">>, RTCP_MUX}
             | gateway_from_uri_settings(Gateway)
            ],
+    CCVs = kz_json:set_values(KVs, GatewayCCVs),
+
     kz_json:from_list(
       props:filter_empty(
         [{<<"Route">>, gateway_dialstring(Gateway, DestinationNumber)}
@@ -715,7 +719,7 @@ gateway_to_endpoint(DestinationNumber
         ,{<<"Endpoint-Type">>, EndpointType}
         ,{<<"Endpoint-Options">>, EndpointOptions}
         ,{<<"Endpoint-Progress-Timeout">>, kz_term:to_binary(ProgressTimeout)}
-        ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
+        ,{<<"Custom-Channel-Vars">>, CCVs}
         ,{<<"Outbound-Caller-ID-Number">>, CIDNumber}
         ,{<<"Outbound-Caller-ID-Name">>, CIDName}
         ,{<<"SIP-Invite-Parameters">>, sip_invite_parameters(Gateway, OffnetJObj)}
@@ -1208,6 +1212,7 @@ gateway_from_jobj(JObj, #resrc{is_emergency=IsEmergency
             ,username = kz_json:get_value(<<"username">>, JObj)
             ,password = kz_json:get_value(<<"password">>, JObj)
             ,sip_headers = kz_custom_sip_headers:outbound(kz_json:get_json_value(<<"custom_sip_headers">>, JObj, kz_json:new()))
+            ,ccvs = gateway_ccvs(JObj)
             ,sip_interface = kz_json:get_ne_value(<<"custom_sip_interface">>, JObj)
             ,invite_format = kz_json:get_value(<<"invite_format">>, JObj, <<"route">>)
             ,format_from_uri = kz_json:is_true(<<"format_from_uri">>, JObj, FormatFrom)
@@ -1230,6 +1235,11 @@ gateway_from_jobj(JObj, #resrc{is_emergency=IsEmergency
             ,privacy_hide_number = kz_privacy:should_hide_name(JObj, HideNumber)
             ,invite_parameters=kz_json:get_ne_value(<<"invite_parameters">>, JObj)
             }.
+
+-spec gateway_ccvs(kz_json:object()) -> kz_json:object().
+gateway_ccvs(JObj) ->
+    CCVs = kz_json:get_json_value(<<"custom_channel_vars">>, JObj, kz_json:new()),
+    kz_custom_sip_headers:outbound(CCVs, kz_json:new()).
 
 -spec gateway_is_emergency(kz_json:object(), boolean()) -> boolean().
 gateway_is_emergency(_, 'true') -> 'true';
