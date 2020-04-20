@@ -206,7 +206,7 @@ parse_query_string('val', <<C, R/binary>>, KeyAcc, ValAcc, RetAcc) ->
 -type password() :: binary().
 -type location() :: host() | {host(), username(), password()}.
 -type resource_path() :: binary().
--type querystring() :: binary().
+-type querystring() :: iodata().
 -type fragment() :: binary().
 
 -spec urlsplit(binary()) -> {scheme(), location(), resource_path(), querystring(), fragment()}.

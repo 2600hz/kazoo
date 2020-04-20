@@ -69,17 +69,17 @@ exec_erase_callbacks(Name, Key) ->
     kz_cache_processes:unmonitor_key(Name, Key),
     try ets:lookup_element(Name, Key, #cache_obj.callback) of
         Fun when is_function(Fun, 3) ->
-            exec_erase_callbacks(Name, Key, Fun),
-            'ok';
+            exec_erase_callbacks(Name, Key, Fun);
         _Else -> 'ok'
     catch
         'error':'badarg' -> 'ok'
     end.
 
--spec exec_erase_callbacks(atom(), any(), callback_fun()) -> pid().
+-spec exec_erase_callbacks(atom(), any(), callback_fun()) -> 'ok'.
 exec_erase_callbacks(Name, Key, Fun) ->
     Value = ets:lookup_element(Name, Key, #cache_obj.value),
-    exec_callback(Fun, [Key, Value, 'erase']).
+    _Callback = exec_callback(Fun, [Key, Value, 'erase']),
+    lager:debug("~s:~p exec erase callback in ~p", [Name, Key, _Callback]).
 
 -spec timed_out(atom(), reference()) -> 'ok'.
 timed_out(MonitorName, MonitorRef) ->

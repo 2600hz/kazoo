@@ -1069,7 +1069,11 @@ fetch_attachment(DbName, DocId, AName) ->
 fetch_attachment(DbName, {DocType, DocId}, AName, Options) when ?VALID_DBNAME(DbName) ->
     fetch_attachment(DbName, DocId, AName, maybe_add_doc_type(DocType, Options));
 fetch_attachment(DbName, DocId, AName, Options) when ?VALID_DBNAME(DbName) ->
-    kzs_attachments:fetch_attachment(kzs_plan:plan(DbName, Options), DbName, DocId, AName, Options);
+    case attachment_options(DbName, DocId, Options) of
+        {'error', _E}=Error -> Error;
+        {'ok', NewOpts} ->
+            kzs_attachments:fetch_attachment(kzs_plan:plan(DbName, NewOpts), DbName, DocId, AName, Options)
+    end;
 fetch_attachment(DbName, DocId, AName, Options) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> fetch_attachment(Db, DocId, AName, Options);
