@@ -29,8 +29,7 @@
         ]).
 
 -ifdef(TEST).
--export([patch_the_doc/2
-        ]).
+-export([patch_the_doc/2]).
 -endif.
 
 -export_type([view_options/0

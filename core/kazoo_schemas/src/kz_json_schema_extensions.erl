@@ -5,8 +5,7 @@
 %%%-----------------------------------------------------------------------------
 -module(kz_json_schema_extensions).
 
--export([extra_validator/3
-        ]).
+-export([extra_validator/3]).
 
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 

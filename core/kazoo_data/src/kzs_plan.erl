@@ -13,7 +13,11 @@
         ,disallow_validation_overrides/0
         ]).
 
--export([init/0, reload/0, reload/1, reload/2, flush/0]).
+-export([init/0
+        ,reload/0, reload/1, reload/2
+        ,flush/0
+        ,handle_created/1, handle_deleted/1
+        ]).
 
 -export([reset_system_dataplan/0]).
 
@@ -353,12 +357,12 @@ cache_callback('system', _V, 'erase') ->
 %% cache_callback({'plan', ?SYSTEM_DATAPLAN}, _V, 'erase') ->
 %%     lager:warning("received dataplan cache update for system plan"),
 %%     reload();
-cache_callback({'plan', {AccountId, StorageId}}, _V, 'erase') ->
-    lager:warning("received dataplan cache update for account ~s/~s", [AccountId, StorageId]),
+cache_callback({'plan', {AccountId, StorageId}}, _V, _Type) ->
+    lager:warning("received dataplan cache '~s' for account ~s/~s", [_Type, AccountId, StorageId]),
     _ = load_dataplan({AccountId, StorageId}, fun fetch_storage_dataplan/1),
     'ok';
-cache_callback({'plan', AccountId}, _V, 'erase') ->
-    lager:warning("received dataplan cache update for account ~s", [AccountId]),
+cache_callback({'plan', AccountId}, _V, _Type) ->
+    lager:warning("received dataplan cache '~s' for account ~s", [_Type, AccountId]),
     load_account(AccountId);
 cache_callback('system', _V, 'flush') ->
     lager:warning("received dataplan cache update for system plan document"),
@@ -366,13 +370,6 @@ cache_callback('system', _V, 'flush') ->
 %% cache_callback({'plan', ?SYSTEM_DATAPLAN}, _V, 'flush') ->
 %%     lager:warning("received flush dataplan cache for system plan"),
 %%     reload();
-cache_callback({'plan', {AccountId, StorageId}}, _V, 'flush') ->
-    lager:warning("received flush dataplan cache for account ~s/~s", [AccountId, StorageId]),
-    _ = load_dataplan({AccountId, StorageId}, fun fetch_storage_dataplan/1),
-    'ok';
-cache_callback({'plan', AccountId}, _V, 'flush') ->
-    lager:warning("received flush dataplan cache for account ~s", [AccountId]),
-    load_account(AccountId);
 cache_callback(_Key, _V, _Action) ->
     lager:warning_unsafe("unhandled cache callback : ~p , ~p , ~p", [_Key, _V, _Action]).
 
@@ -489,31 +486,52 @@ start_connection(Tag, Params) ->
 
 -spec init() -> 'ok'.
 init() ->
+    lager:debug("initializing plans"),
     reload(),
     bind().
 
 -spec bind() -> 'ok'.
 -ifdef(TEST).
 bind() -> 'ok'.
+-spec handle_created(any()) -> 'ok'.
+handle_created(_) -> 'ok'.
+
+-spec handle_deleted(any()) -> 'ok'.
+handle_deleted(_) -> 'ok'.
 -else.
 bind() ->
+    Bindings = [{<<"doc_created">>, 'handle_created'}
+               ,{<<"doc_deleted">>, 'handle_deleted'}
+               ],
+    lists:foreach(fun bind_for/1, Bindings).
+
+bind_for({Type, Fun}) ->
     RK = kz_binary:join([<<"kapi.conf">>
                         ,kz_term:to_binary(?KAZOO_DATA_PLAN_CACHE)
                         ,?KZ_DATA_DB
                         ,<<"storage">>
-                        ,<<"doc_created">>
+                        ,Type
                         ,<<"*">>
-                        ], <<".">>),
-    lager:debug("binding for new storage: ~s", [RK]),
-    kazoo_bindings:bind(RK, fun handle_new/1).
+                        ]
+                       ,<<".">>
+                       ),
+    lager:debug("binding for storage doc events: ~s", [RK]),
+    kazoo_bindings:bind(RK, ?MODULE, Fun).
 
--spec handle_new(kz_json:objects()) -> 'ok'.
-handle_new([JObj]) ->
-    ID = kz_json:get_ne_binary_value(<<"ID">>, JObj),
-    lager:warning("received new storage ~s", [ID]),
-    case kz_datamgr:open_cache_doc(?KZ_DATA_DB, ID) of
-        {'ok', Doc} -> load_account_or_storage(kz_doc:account_id(Doc), ID);
-        {'error', _ERR} -> lager:error("error fetching storage doc ~s", [ID])
+-spec handle_created(kz_term:api_ne_binary() | kz_json:object() | kz_json:objects()) -> 'ok'.
+handle_created('undefined') -> 'ok';
+handle_created(<<Id/binary>>) ->
+    lager:warning("received new storage ~s", [Id]),
+    case kz_datamgr:open_cache_doc(?KZ_DATA_DB, Id) of
+        {'ok', Doc} -> load_account_or_storage(kz_doc:account_id(Doc), Id);
+        {'error', _ERR} -> lager:error("error fetching storage doc ~s", [Id])
+    end;
+handle_created([JObj]) ->
+    handle_created(JObj);
+handle_created(JObj) ->
+    case kz_doc:type(JObj) of
+        <<"storage">> -> load_account_or_storage(kz_doc:account_id(JObj), kz_doc:id(JObj));
+        _Type -> handle_created(kz_json:get_ne_binary_value(<<"ID">>, JObj))
     end.
 
 -spec load_account_or_storage(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
@@ -521,6 +539,18 @@ load_account_or_storage(AccountId, AccountId) ->
     load_account(AccountId);
 load_account_or_storage(AccountId, StorageId) ->
     load_storage(AccountId, StorageId).
+
+-spec handle_deleted(kz_term:api_ne_binary() | kz_json:object() | kz_json:objects()) -> 'ok'.
+handle_deleted('undefined') -> 'ok';
+handle_deleted(<<Id/binary>>) ->
+    kz_cache:erase_local(?KAZOO_DATA_PLAN_CACHE, {'plan', Id});
+handle_deleted([JObj]) ->
+    handle_deleted(JObj);
+handle_deleted(JObj) ->
+    case kz_doc:type(JObj) of
+        <<"storage">> -> handle_deleted(kz_doc:id(JObj));
+        _Type -> handle_deleted(kz_json:get_ne_binary_value(<<"ID">>, JObj))
+    end.
 
 -endif.
 
@@ -576,7 +606,7 @@ load_account_storage(AccountId) ->
     case kz_datamgr:get_result_ids(?KZ_DATA_DB, ?KZS_PLAN_ACCOUNT_VIEW, [{'key', AccountId}]) of
         {'ok', []} -> 'ok';
         {'ok', StorageIds} -> load_account_storage(AccountId, StorageIds);
-        Error -> lager:error_unsafe("error reloading dataplans ~p", [Error])
+        Error -> lager:error("error reloading account ~s dataplan: ~p", [AccountId, Error])
     end.
 
 -spec load_account_storage(kz_term:ne_binary(), kz_term:ne_binaries()) -> 'ok'.
