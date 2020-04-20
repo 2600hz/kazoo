@@ -776,6 +776,9 @@ summary(Services) ->
           kz_services_limits:fetch(Services)
          )
        }
+      ,{<<"im">>
+       ,kz_services_im:fetch(Services)
+       }
       ,{<<"payment_tokens">>
        ,kz_services_payment_tokens:fetch(Services)
        }
