@@ -36,7 +36,7 @@
         ,promote_account/1, demote_account/1
         ,allow_account_number_additions/1, disallow_account_number_additions/1
         ,descendants_count/0, descendants_count/1
-        ,create_account/4
+        ,create_account/4, create_account/5, create_account/6
         ,move_account/2
         ]).
 
@@ -383,19 +383,29 @@ demote_account(AccountId) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec create_account(input_term(), input_term(), input_term(), input_term()) -> 'ok' | 'failed'.
-create_account(AccountName, Realm, Username, Password)
+create_account(AccountName, Realm, Username, Password) ->
+    create_account(AccountName, Realm, Username, Password, kz_datamgr:get_uuid()).
+
+-spec create_account(input_term(), input_term(), input_term(), input_term(), input_term()) -> 'ok' | 'failed'.
+create_account(AccountName, Realm, Username, Password, AccountId) ->
+    create_account(AccountName, Realm, Username, Password, AccountId, kz_datamgr:get_uuid()).
+
+-spec create_account(input_term(), input_term(), input_term(), input_term(), input_term(), input_term()) -> 'ok' | 'failed'.
+create_account(AccountName, Realm, Username, Password, AccountId, UserId)
   when is_binary(AccountName),
        is_binary(Realm),
        is_binary(Username),
-       is_binary(Password) ->
-    Account = kz_json:set_values([{<<"_id">>, kz_datamgr:get_uuid()}
+       is_binary(Password),
+       is_binary(AccountId),
+       is_binary(UserId) ->
+    Account = kz_json:set_values([{<<"_id">>, AccountId}
                                  ,{<<"name">>, AccountName}
                                  ,{<<"realm">>, Realm}
                                  ]
                                 ,kzd_accounts:new()
                                 ),
 
-    User = kz_json:set_values([{<<"_id">>, kz_datamgr:get_uuid()}
+    User = kz_json:set_values([{<<"_id">>, UserId}
                               ,{<<"username">>, Username}
                               ,{<<"password">>, Password}
                               ,{<<"first_name">>, <<"Account">>}
@@ -411,11 +421,13 @@ create_account(AccountName, Realm, Username, Password)
         ?STACKTRACE(Type, Reason, ST)
         log_error(Type, Reason, ST, AccountName)
         end;
-create_account(AccountName, Realm, Username, Password) ->
+create_account(AccountName, Realm, Username, Password, AccountId, UserId) ->
     create_account(kz_term:to_binary(AccountName)
                   ,kz_term:to_binary(Realm)
                   ,kz_term:to_binary(Username)
                   ,kz_term:to_binary(Password)
+                  ,kz_term:to_binary(AccountId)
+                  ,kz_term:to_binary(UserId)
                   ).
 
 log_error(Type, Reason, ST, AccountName) ->
