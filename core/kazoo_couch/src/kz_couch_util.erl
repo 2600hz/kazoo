@@ -180,8 +180,13 @@ add_couch_version(<<"1.6", _/binary>>, 'undefined', #server{options=Options}=Con
     Conn#server{options = props:set_value('driver_version', 'couchdb_1_6', Options)};
 add_couch_version(<<"1.1", _/binary>>, _Bigcouch, #server{options=Options}=Conn) ->
     Conn#server{options = props:set_value('driver_version', 'bigcouch', Options)};
-add_couch_version(_, 'undefined', #server{options=Options}=Conn) ->
+add_couch_version(<<"2", _/binary>>, 'undefined', #server{options=Options}=Conn) ->
     Conn#server{options = props:set_value('driver_version', 'couchdb_2', Options)};
+add_couch_version(<<"3", _/binary>>, 'undefined', #server{options=Options}=Conn) ->
+    Conn#server{options = props:set_value('driver_version', 'couchdb_3', Options)};
+add_couch_version(_Version, 'undefined', #server{options=Options}=Conn) ->
+    lager:error("unrecognized CouchDB version '~p', assuming version 3", [_Version]),
+    Conn#server{options = props:set_value('driver_version', 'couchdb_3', Options)};
 add_couch_version(_, _, #server{options=Options}=Conn) ->
     Conn#server{options = props:set_value('driver_version', 'bigcouch', Options)}.
 
@@ -214,11 +219,14 @@ get_db(Conn, DbName, Driver) ->
 -spec select_conn(server(), kz_term:ne_binary(), couch_version()) -> server().
 select_conn(Conn, DbName, Driver) ->
     case is_admin_db(DbName, Driver) of
-        'true' -> maybe_use_admin_conn(Conn);
+        'true' -> maybe_use_admin_conn(Conn, kazoo_couch:server_version(Conn));
         'false' -> Conn
     end.
 
 -spec is_admin_db(kz_term:ne_binary(), couch_version()) -> boolean().
+is_admin_db(<<"_dbs">>, 'couchdb_3') -> 'true';
+is_admin_db(<<"_users">>, 'couchdb_3') -> 'true';
+is_admin_db(<<"_nodes">>, 'couchdb_3') -> 'true';
 is_admin_db(<<"_dbs">>, 'couchdb_2') -> 'true';
 is_admin_db(<<"_users">>, 'couchdb_2') -> 'true';
 is_admin_db(<<"_nodes">>, 'couchdb_2') -> 'true';
@@ -233,10 +241,12 @@ is_admin_db(_Db, _Driver) -> 'false'.
 %% loads the admin connection if possible
 -spec admin_connection(server()) -> server().
 admin_connection(Conn) ->
-    maybe_use_admin_conn(Conn).
+    maybe_use_admin_conn(Conn, kazoo_couch:server_version(Conn)).
 
--spec maybe_use_admin_conn(server()) -> server().
-maybe_use_admin_conn(#server{options=Options}=Conn) ->
+-spec maybe_use_admin_conn(server(), couch_version()) -> server().
+maybe_use_admin_conn(Conn, 'couchdb_3') ->
+    Conn;
+maybe_use_admin_conn(#server{options=Options}=Conn, _) ->
     case props:get_value('admin_connection', Options) of
         'undefined' -> maybe_use_admin_port(Conn);
         AdminConn -> AdminConn
