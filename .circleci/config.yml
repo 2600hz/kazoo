@@ -195,6 +195,9 @@ jobs:
     docker:
       - image: offical2600hz/circleci:21.3.8.12
       - image: couchdb:3.0
+        environment:
+          COUCHDB_USER: admin
+          COUCHDB_PASSWORD: admin
       - image: 2600hz/rabbitmq
     environment:
       CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
