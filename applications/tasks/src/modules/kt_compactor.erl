@@ -75,7 +75,7 @@ init() ->
 
 -spec init(kazoo_couch:server_version()) -> 'ok'.
 init('couchdb_3') ->
-    lager:debug("CouchDB 3 doesn't need me :(");
+    lager:debug("couchdb 3 does not need compactor, not binding");
 init(_) ->
     AdminNodes = kazoo_couch:get_admin_nodes(),
     %% Refresh `nodes | _nodes' db
