@@ -170,7 +170,8 @@ request_headers(#{'auth_token' := AuthToken
                ],
     [{kz_term:to_list(K), V}
      || {K, V} <- props:unique([{kz_term:to_binary(K), V} || {K, V} <- RequestHeaders ++ Defaults])
-    ].
+    ];
+request_headers(_, RequestHeaders) -> RequestHeaders.
 
 %% Need binary keys to avoid props assuming "foo" is [102, 111, 111] as a nested key
 -spec default_request_headers() -> request_headers().

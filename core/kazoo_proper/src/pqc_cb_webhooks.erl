@@ -22,7 +22,7 @@
 -export([user_webhook/0, user_webhook/1]).
 
 %% Manual test functions
--export([seq/0, seq_recv_events/0
+-export([seq/0, seq_recv_events/0, seq_resp_envelope/0
         ,seq_url/0
         ,cleanup/0
         ]).
@@ -140,7 +140,8 @@ sample_url(SampleId) ->
 seq() ->
     seq_samples(),
     seq_recv_events(),
-    seq_url().
+    seq_url(),
+    seq_resp_envelope().
 
 -spec seq_recv_events() -> 'ok'.
 seq_recv_events() ->
@@ -317,6 +318,22 @@ seq_url() ->
 
     lager:info("COMPLETED SUCCESSFULLY!"),
     _ = cleanup(API).
+
+%% @doc test "version" in auth'd req but not in unauth'd
+-spec seq_resp_envelope() -> 'ok'.
+seq_resp_envelope() ->
+    API = initial_state(),
+
+    AuthdResp = list_available(API),
+    AuthdJObj = kz_json:decode(AuthdResp),
+    'true' = kz_json:is_defined(<<"version">>, AuthdJObj),
+
+    UnAuthdResp = list_available(#{}),
+    UnAuthdJObj = kz_json:decode(UnAuthdResp),
+    'false' = kz_json:is_defined(<<"version">>, UnAuthdJObj),
+    lager:info("version doesn't appear in un-authenticated request"),
+
+    cleanup(API).
 
 bad_url_webhook() ->
     kz_doc:setters(kzd_webhooks:new()

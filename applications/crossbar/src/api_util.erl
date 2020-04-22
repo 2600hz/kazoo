@@ -1700,36 +1700,44 @@ do_create_resp_envelope(Context) ->
 
 -spec create_default_resp_envelope(cb_context:context()) -> kz_json:object().
 create_default_resp_envelope(Context) ->
+    BaseResp = [{<<"auth_token">>, cb_context:auth_token(Context)}
+               ,{<<"tokens">>, get_token_obj(Context)}
+               ,{<<"request_id">>, cb_context:req_id(Context)}
+               ,{<<"node">>, kz_nodes:node_encoded()}
+               ,{<<"timestamp">>, kz_time:iso8601(kz_time:now_s())}
+                | conditional_resp_data(Context)
+               ],
     Resp = case cb_context:response(Context) of
                {'ok', RespData} ->
-                   [{<<"auth_token">>, cb_context:auth_token(Context)}
-                   ,{<<"tokens">>, get_token_obj(Context)}
-                   ,{<<"status">>, <<"success">>}
+                   [{<<"status">>, <<"success">>}
                    ,{<<"request_id">>, cb_context:req_id(Context)}
-                   ,{<<"node">>, kz_nodes:node_encoded()}
-                   ,{<<"version">>, kz_util:kazoo_version()}
-                   ,{<<"timestamp">>, kz_time:iso8601(kz_time:now_s())}
                    ,{<<"revision">>, kz_term:to_api_binary(cb_context:resp_etag(Context))}
                    ,{<<"data">>, RespData}
+                    | BaseResp
                    ];
                {'error', {ErrorCode, ErrorMsg, RespData}} ->
                    lager:debug("generating error ~b ~s response", [ErrorCode, ErrorMsg]),
-                   [{<<"auth_token">>, kz_term:to_binary(cb_context:auth_token(Context))}
-                   ,{<<"tokens">>, get_token_obj(Context)}
-                   ,{<<"request_id">>, cb_context:req_id(Context)}
-                   ,{<<"node">>, kz_nodes:node_encoded()}
-                   ,{<<"version">>, kz_util:kazoo_version()}
-                   ,{<<"timestamp">>, kz_time:iso8601(kz_time:now_s())}
-                   ,{<<"status">>, <<"error">>}
+                   [{<<"status">>, <<"error">>}
                    ,{<<"message">>, ErrorMsg}
                    ,{<<"error">>, kz_term:to_binary(ErrorCode)}
                    ,{<<"data">>, RespData}
+                    | BaseResp
                    ]
            end,
 
     encode_start_keys(kz_json:set_values(Resp, cb_context:resp_envelope(Context))
                      ,cb_context:should_paginate(Context)
                      ).
+
+conditional_resp_data(Context) ->
+    Fs = [fun maybe_add_version/2],
+    lists:foldl(fun(F, Acc) -> F(Context, Acc) end, [], Fs).
+
+maybe_add_version(Context, Acc) ->
+    case cb_context:is_authenticated(Context) of
+        'true' -> [{<<"version">>, kz_util:kazoo_version()} | Acc];
+        'false' -> Acc
+    end.
 
 -spec close_chunk_json_envelope(cowboy_req:req(), cb_context:context()) -> 'ok'.
 close_chunk_json_envelope(Req, Context) ->
