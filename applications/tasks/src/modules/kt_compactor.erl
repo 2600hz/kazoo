@@ -71,6 +71,12 @@
 %%------------------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
+    init(kazoo_couch:server_version()).
+
+-spec init(kazoo_couch:server_version()) -> 'ok'.
+init('couchdb_3') ->
+    lager:debug("couchdb 3 does not need compactor, not binding");
+init(_) ->
     AdminNodes = kazoo_couch:get_admin_nodes(),
     %% Refresh `nodes | _nodes' db
     _ = kapps_maintenance:refresh(AdminNodes),

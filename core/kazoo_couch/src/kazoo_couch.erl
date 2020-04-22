@@ -18,7 +18,7 @@
 %% Server callbacks
 -export([server_info/1
         ,server_url/1
-        ,server_version/1
+        ,server_version/0, server_version/1
         ,get_db/2
         ,get_admin_dbs/0, get_admin_dbs/1
         ,get_admin_nodes/0, get_admin_nodes/1
@@ -169,6 +169,8 @@ db_list(Server, Options) ->
 %%
 %% db specific
 %%
+db_list('couchdb_3', Server, Options) ->
+    kz_couch_db:db_list(Server, Options);
 db_list('couchdb_2', Server, Options) ->
     kz_couch_db:db_list(Server, Options);
 db_list('bigcouch', Server, Options) ->
@@ -300,6 +302,11 @@ show(Server, DbName, DesignDoc, DocId, Options) ->
           couchbeam_error().
 all_docs(Server, DbName, Options) ->
     kz_couch_view:all_docs(Server, DbName, Options).
+
+-spec server_version() -> couch_version().
+server_version() ->
+    #{server := {_App, #server{}=Conn}} = kzs_plan:plan(),
+    server_version(Conn).
 
 -spec server_version(server()) -> couch_version().
 server_version(#server{options=Options}) ->

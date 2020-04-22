@@ -26,7 +26,7 @@ workflows:
       - release:
           requires:
             - build
-    
+
 defaults: &defaults
   docker:
     - image: offical2600hz/circleci:21.3.8.12
@@ -194,7 +194,10 @@ jobs:
     <<: *defaults
     docker:
       - image: offical2600hz/circleci:21.3.8.12
-      - image: couchdb:2.3.1
+      - image: couchdb:3.0
+        environment:
+          COUCHDB_USER: admin
+          COUCHDB_PASSWORD: admin
       - image: 2600hz/rabbitmq
     environment:
       CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
@@ -246,6 +249,6 @@ jobs:
       BUILD_RPMS: "/home/circleci/2600hz/packager/RPMS"
       APP_DIR: "/home/circleci/2600hz/kazoo"
     steps:
-      - run: 
+      - run:
           name: dummy step
-          command: echo ok 
+          command: echo ok
