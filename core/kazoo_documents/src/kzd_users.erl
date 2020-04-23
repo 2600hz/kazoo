@@ -1030,7 +1030,7 @@ validate(AccountId, UserId, ReqJObj) ->
                    ,fun maybe_normalize_emergency_caller_id_number/3
                    ,fun maybe_validate_hotdesk_id_is_unique/3
 
-                   %% validate_user_schema will load and merge the current docs pvt fields
+                    %% validate_user_schema will load and merge the current docs pvt fields
                    ,fun validate_user_schema/3
 
                    ,fun maybe_set_identity_secret/3
@@ -1103,7 +1103,7 @@ maybe_validate_username_is_unique(AccountId, UserId, {Doc, Errors}) ->
 %%------------------------------------------------------------------------------
 -spec is_username_unique(kz_term:api_ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> boolean().
 is_username_unique(AccountId, UserId, Username) ->
-    AccountDb = kzs_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kzs_util:format_account_db(AccountId),
     ViewOptions = [{'key', Username}],
     case kz_datamgr:get_results(AccountDb, ?LIST_BY_USERNAME, ViewOptions) of
         {'ok', []} -> 'true';
@@ -1160,7 +1160,7 @@ validate_user_schema(AccountId, UserId, {Doc, Errors}) ->
           kazoo_documents:doc_validation_acc().
 on_successful_schema_validation(AccountId, 'undefined', {Doc, Errors}) ->
     lager:debug("new user doc passed schema validation"),
-    Props = [{<<"pvt_type">>, kzd_users:type()}],
+    Props = [{<<"pvt_type">>, type()}],
     JObj = kz_json:set_values(Props, Doc),
     maybe_import_credintials(AccountId, 'undefined', {JObj, Errors});
 on_successful_schema_validation(AccountId, UserId, {Doc, Errors}) ->
@@ -1208,9 +1208,9 @@ maybe_set_identity_secret(_AccountId, _UserId, ValidateAcc) -> ValidateAcc.
 maybe_validate_hotdesk_id_is_unique(AccountId, UserId, {Doc, Errors}) ->
     HotdeskId = hotdesk_id(Doc),
     CurrentHotdeskId = case fetch(AccountId, UserId) of
-                            {'ok', CurrentDoc} -> hotdesk_id(CurrentDoc);
-                            {'error', _R} -> 'undefined'
-                        end,
+                           {'ok', CurrentDoc} -> hotdesk_id(CurrentDoc);
+                           {'error', _R} -> 'undefined'
+                       end,
 
     case kz_term:is_empty(HotdeskId)
         orelse HotdeskId =:= CurrentHotdeskId
@@ -1235,7 +1235,7 @@ maybe_validate_hotdesk_id_is_unique(AccountId, UserId, {Doc, Errors}) ->
 %%------------------------------------------------------------------------------
 -spec is_hotdesk_id_unique(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 is_hotdesk_id_unique(AccountId, UserId, HotdeskId) ->
-    AccountDb = kzs_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kzs_util:format_account_db(AccountId),
     ViewOptions = [{'key', HotdeskId}],
     case kz_datamgr:get_results(AccountDb, ?LIST_BY_HOTDESK_ID, ViewOptions) of
         {'ok', []} -> 'true';
