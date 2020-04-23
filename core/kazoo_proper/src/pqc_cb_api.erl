@@ -341,7 +341,9 @@ init_system(AppsToStart, ModulesToStart) ->
     _ = [kapps_controller:start_app(App) ||
             App <- AppsToStart
         ],
-    _ = [crossbar_maintenance:start_module(Mod) ||
+    %% using `crossbat_init:start_mod/1' because it doesn't add
+    %% the module to autostart, and also it doesn't print `module x started'
+    _ = [crossbar_init:start_mod(Mod) ||
             Mod <- ModulesToStart
         ],
 

@@ -11,7 +11,8 @@
 %%%-----------------------------------------------------------------------------
 -module(kazoo_proper_maintenance).
 
--export([run_modules/0
+-export([modules/0
+        ,run_modules/0
         ,run_module/1
         ,run_seq_modules/0
         ,run_seq_module/1
@@ -47,7 +48,13 @@ quickcheck_export(Module, Function) ->
 
 -spec run_seq_modules() -> 'no_return'.
 run_seq_modules() ->
-    _ = [run_seq_module(M) || M <- modules()],
+    _ = [begin
+             ?SUP_LOG_DEBUG(":: Running ~s:seq()", [M]),
+             run_seq_module(M)
+         end
+         || M <- modules(),
+            M =/= pqc_j5_channels
+        ],
     'no_return'.
 
 -spec run_seq_module(atom() | kz_term:ne_binary()) -> 'no_return'.
