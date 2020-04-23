@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2016-, Voxter Communications
 %%% @doc Utility functions for kazoo_documents
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kzd_module_utils).
@@ -92,7 +96,7 @@ validate_schema(SchemaJObj, {Doc, ValidationErrors}, OnSuccess) ->
         lager:error("function clause failure"),
         kz_log:log_stacktrace(ST),
         throw({'system_error', <<"schema validation failed to run on the server">>})
-    end.
+        end.
 
 %%------------------------------------------------------------------------------
 %% @doc Validate a Doc against a defined schema
