@@ -20,6 +20,7 @@
         ,add_system_error/2, add_system_error/3, add_system_error/4
         ,add_validation_error/4
         ,validate_request_data/2, validate_request_data/3, validate_request_data/4
+        ,add_doc_validation_errors/2, update_successfully_validated_request/2
         ,add_content_types_provided/2
         ,add_content_types_accepted/2
         ,add_attachment_content_type/3
@@ -1207,3 +1208,27 @@ system_error(Context, Error) ->
                ]),
     _ = kz_amqp_worker:cast(Notify, fun kapi_notifications:publish_system_alert/1),
     add_system_error(Error, Context).
+
+%%------------------------------------------------------------------------------
+%% @doc Add kazoo_documents validation errors to a context.
+%% @end
+%%------------------------------------------------------------------------------
+-spec add_doc_validation_errors(context(), kazoo_documents:doc_validation_errors()) -> context().
+add_doc_validation_errors(Context, ValidationErrors) ->
+    lists:foldl(fun({Path, Reason, Msg}, C) -> add_validation_error(Path, Reason, Msg, C) end
+               ,Context
+               ,ValidationErrors
+               ).
+
+%%------------------------------------------------------------------------------
+%% @doc After successfull kazoo_documents validation, update the context with
+%% the updated doc and set the response status to `success'
+%% @end
+%%------------------------------------------------------------------------------
+-spec update_successfully_validated_request(context(), kz_doc:doc()) -> context().
+update_successfully_validated_request(Context, Doc) ->
+    Updates = [{fun set_req_data/2, Doc}
+              ,{fun set_doc/2, Doc}
+              ,{fun set_resp_status/2, 'success'}
+              ],
+    setters(Context, Updates).

@@ -465,7 +465,7 @@ validate_patch(UserId, Context) ->
 
 %%------------------------------------------------------------------------------
 %% @doc Validate the request JObj passes all validation checks and add / alter
-%% any required fields
+%% any required fields.
 %% @end
 %%------------------------------------------------------------------------------
 -spec validate_request(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
@@ -476,39 +476,15 @@ validate_request(UserId, Context) ->
     case kzd_users:validate(AccountId, UserId, ReqJObj) of
         {'true', UserJObj} ->
             lager:debug("successfull validated user object"),
-            update_validated_request(Context, UserJObj);
+            cb_context:update_successfully_validated_request(Context, UserJObj);
         {'validation_errors', ValidationErrors} ->
             lager:info("validation errors on user"),
-            add_validation_errors(Context, ValidationErrors);
+            cb_context:add_doc_validation_errors(Context, ValidationErrors);
         {'system_error', Error} ->
             lager:info("system error validating user: ~p", [Error]),
             cb_context:add_system_error(Error, Context)
     end.
 
-%%------------------------------------------------------------------------------
-%% @doc After successfull validation, update the context with success
-%% @end
-%%------------------------------------------------------------------------------
--spec update_validated_request(cb_context:context(), kzd_accounts:doc()) -> cb_context:context().
-update_validated_request(Context, UserJObj) ->
-    Updates = [{fun cb_context:set_req_data/2, UserJObj}
-              ,{fun cb_context:set_doc/2, UserJObj}
-              ,{fun cb_context:set_resp_status/2, 'success'}
-              ],
-    cb_context:setters(Context, Updates).
-
-%%------------------------------------------------------------------------------
-%% @doc After failed validation, update the context with errors.
-%% @end
-%%------------------------------------------------------------------------------
-add_validation_errors(Context, ValidationErrors) ->
-    lists:foldl(fun add_validation_error/2
-               ,Context
-               ,ValidationErrors
-               ).
-
-add_validation_error({Path, Reason, Msg}, Context) ->
-    cb_context:add_validation_error(Path, Reason, Msg, Context).
 
 %%------------------------------------------------------------------------------
 %% @doc Converts context to vcard
