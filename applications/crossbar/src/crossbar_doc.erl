@@ -32,8 +32,7 @@
         ]).
 
 -ifdef(TEST).
--export([patch_the_doc/2
-        ]).
+-export([patch_the_doc/2]).
 -endif.
 
 -include("crossbar.hrl").

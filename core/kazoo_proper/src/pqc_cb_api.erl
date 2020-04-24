@@ -192,7 +192,7 @@ default_request_headers(RequestId) ->
 -spec make_request(expectations(), fun_2(), string(), request_headers()) ->
           response().
 make_request(Expectations, HTTP, URL, RequestHeaders) ->
-    ?INFO("~p(~s, ~p)", [HTTP, URL, RequestHeaders]),
+    ?INFO("~p(~s, ~s)", [HTTP, URL, RequestHeaders]),
     handle_response(Expectations, HTTP(URL, RequestHeaders)).
 
 -spec make_request(expectations(), fun_3(), string(), request_headers(), iodata()) ->

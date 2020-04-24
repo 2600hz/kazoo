@@ -1049,7 +1049,10 @@ load_attachment_from_message(Doc, Context, Timezone) ->
                                   ,filename:extension(AttachmentId)
                                   ,Timezone
                                   ),
-    case kz_datamgr:fetch_attachment(kz_doc:account_db(Doc), MediaId, AttachmentId) of
+
+    Options = ?TYPE_CHECK_OPTION(<<"mailbox_message">>),
+
+    case kz_datamgr:fetch_attachment(kz_doc:account_db(Doc), MediaId, AttachmentId, Options) of
         {'error', Error} ->
             crossbar_doc:handle_datamgr_errors(Error, MediaId, Context);
         {'ok', AttachBin} ->
