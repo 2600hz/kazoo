@@ -800,10 +800,25 @@ returns next release based on branch & tags.
 
 routine to increment a version
 
-## `extract_view_js.py`
-Extract JavaScript inside a view function and save it to a file. Helpful when you're developing the view
-and you want to with the JavaScript comfortably in your editor. (Use `replace_view_js_from_file` do save back the JS code to view)
+## `view_util.py`
+Extract or replace JavaScript inside view to/from file. Helpful when you're developing the view
+and you want to work with the JavaScript comfortably in your editor.
 
-## `replace_view_js_from_file.py`
-Replace JavaScript inside a view function from a file. Helpful when you're developing the view
-and you want to with the JavaScript comfortably in your editor. (Use `extract_view_js` to extract JS code from view)
+This would extract each view inside design file into a Javascript named after design document name, view name and the view function.
+
+For example:
+
+```shell
+## extract map functions
+$ scripts/view_util.py extract core/kazoo_modb/priv/couchdb/views/interactions.json --view-name interaction_listing_by_owner
+using /opt/kazoo/interactions+interaction_listing_by_owner+map.js as js-file
+:: extracting interactions/interaction_listing_by_owner:map
+
+## extract reduce functions
+$ scripts/view_util.py extract core/kazoo_modb/priv/couchdb/views/interactions.json --view-name interaction_listing_by_owner --view-function reduce
+using /opt/kazoo/interactions+interaction_listing_by_owner+reduce.js as js-file
+:: extracting interactions/interaction_listing_by_owner:reduce
+
+$ ls interactions+interaction_listing_by_owner+*
+interactions+interaction_listing_by_owner+map.js    interactions+interaction_listing_by_owner+reduce.js
+```
