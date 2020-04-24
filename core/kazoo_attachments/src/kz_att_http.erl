@@ -44,7 +44,7 @@ put_attachment(Settings, DbName, DocId, AName, Contents, Options) ->
     DefaultContentType = props:get_value('content_type', Options, kz_mime:from_filename(AName)),
 
     {ContentType, Body} = build_req_body(Settings, DbName, DocId, AName, Contents, DefaultContentType),
-    Headers = [{'content_type', ContentType}],
+    Headers = [{"content-type", ContentType}],
 
     case send_request(Url, format_verb(Verb), Headers, Body) of
         {'ok', NewUrl, _Body, _Debug} ->
