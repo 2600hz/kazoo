@@ -58,7 +58,8 @@ pass_hashes(Username, Password) ->
 
 
 %%------------------------------------------------------------------------------
-%% @doc Validate a Doc against a defined schema
+%% @doc Validate a Doc against a defined schema.
+%% OnSuccess function will only be called if the Doc passes schema validation.
 %% @end
 %%------------------------------------------------------------------------------
 -spec validate_schema(kz_term:ne_binary() | kzd_schema:doc(), kazoo_documents:doc_validation_acc()
@@ -73,7 +74,7 @@ validate_schema(<<Schema/binary>>, {Doc, ValidationErrors}, OnSuccess) ->
             lager:error("~p schema not found and is required", [Schema]),
             throw({'system_error', <<"schema '", Schema/binary, "' not found.">>});
         {'error', 'not_found'} ->
-            lager:error("~p schema not found, continuing anyway", [Schema]),
+            lager:error("~p schema not found, assuming schema validation passed, continuing anyway", [Schema]),
             validate_schema_passed({Doc, ValidationErrors}, OnSuccess)
     end;
 validate_schema(SchemaJObj, {Doc, ValidationErrors}, OnSuccess) ->
@@ -83,13 +84,13 @@ validate_schema(SchemaJObj, {Doc, ValidationErrors}, OnSuccess) ->
 
     try kz_json_schema:validate(SchemaJObj, kz_doc:public_fields(Doc), Options) of
         {'ok', JObj} ->
-            lager:debug("validation passed"),
+            lager:debug("schema validation passed"),
             validate_schema_passed({JObj, ValidationErrors}, OnSuccess);
         {'error', SchemaErrors} when Strict ->
-            lager:error("validation errors when strictly validating"),
+            lager:error("schema validation errors when strictly validating"),
             validate_schema_failed({Doc, ValidationErrors}, SchemaErrors);
         {'error', SchemaErrors} ->
-            lager:error("validation errors but not strictly validating, trying to fix request"),
+            lager:error("schema validation errors but not strictly validating, trying to fix request"),
             maybe_fix_js_types({Doc, ValidationErrors}, SchemaErrors, SchemaJObj, OnSuccess)
     catch
         ?STACKTRACE('error', 'function_clause', ST)
