@@ -259,6 +259,7 @@ jobs:
           path: ~/test-results
       - store_artifacts:
           path: ~/test-results/junit/
+
       ## disabling this for now until we figure out why it is crashing, and how to set token
       # - run:
       #     name: Uploading Coverage Report
@@ -345,7 +346,10 @@ jobs:
     <<: *defaults
     docker:
       - image: offical2600hz/circleci:21.3.8.12
-      - image: couchdb:2.3.1
+      - image: couchdb:3.0
+        environment:
+          COUCHDB_USER: admin
+          COUCHDB_PASSWORD: admin
       - image: 2600hz/rabbitmq
     steps:
       - attach_workspace:
