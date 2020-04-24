@@ -105,23 +105,30 @@ fetch_account_cascade(AccountId) ->
 fetch(Database, View, ViewOptions) ->
     case kz_datamgr:get_results(Database, View, ViewOptions) of
         {'ok', JObjs} ->
-            Quantities = [{kz_json:get_value(<<"key">>, JObj)
-                          ,kz_json:get_integer_value(<<"value">>, JObj, 0)
-                          }
-                          || JObj <- JObjs
-                         ],
+            Quantities = fetched_quantities(JObjs),
             fetch_to_json(Quantities);
         {'error', _Message} ->
-            ?SUP_LOG_ERROR("failed to query account quantities: ~s with error: ~p", [Database, _Message]),
+            ?SUP_LOG_WARNING("failed to query account quantities: ~s with error: ~p", [Database, _Message]),
             kz_json:new()
     end.
+
+-spec fetched_quantities(kz_json:objects()) -> quantities_prop().
+fetched_quantities(JObjs) ->
+    [{kz_json:get_value(<<"key">>, JObj)
+     ,kz_json:get_integer_value(<<"value">>, JObj, 0)
+     }
+     || JObj <- JObjs
+    ].
 
 -spec fetch_to_json(quantities_prop()) -> kz_json:object().
 fetch_to_json(Quantities) ->
     SubstituteValues = substitute_values(Quantities),
     lists:foldl(fun(Quantity, JObj) ->
                         fetch_to_json_fold(Quantity, SubstituteValues, JObj)
-                end, kz_json:new(), Quantities).
+                end
+               ,kz_json:new()
+               ,Quantities
+               ).
 
 -spec fetch_to_json_fold(quantity_kv(), kz_term:proplist(), kz_json:object()) -> kz_json:object().
 fetch_to_json_fold({[_, Category, Item], Value}, SubstituteValues, JObj) ->
@@ -340,14 +347,18 @@ calculate_updates(Services, JObj) ->
                        ,fun calculate_conference_updates/2
                        ,fun calculate_port_request_updates/2
                        ],
-            Updates = lists:foldl(fun(F, Updates) ->
-                                          F(JObj, Updates)
-                                  end, [], Routines),
+            Updates = exec_routines(Routines, JObj),
             case has_substitute_values(Updates) of
                 'false' -> Updates;
                 'true' -> substitute_values(Services, Updates)
             end
     end.
+
+exec_routines(Routines, JObj) ->
+    lists:foldl(fun(F, Updates) -> F(JObj, Updates) end
+               ,[]
+               ,Routines
+               ).
 
 -spec sum_updates(kz_term:proplist(), kz_term:proplist()) -> kz_term:proplist().
 sum_updates([], Updates) -> Updates;
@@ -449,34 +460,35 @@ calculate_app_store_updates(JObj, Updates) ->
         'true' ->
             Blacklist = kz_json:get_list_value(<<"blacklist">>, JObj, []),
             Apps = kz_json:get_json_value(<<"apps">>, JObj, kz_json:new()),
-            kz_json:foldl(fun(_K, App, U) ->
-                                  Name = kz_json:get_ne_binary_value(<<"name">>, App),
-                                  AccountKey = [<<"account_apps">>, Name],
-                                  case kz_json:get_ne_value(<<"allowed_users">>, App) of
-                                      <<"all">> ->
-                                          UserKey = [<<"user_apps">>, Name],
-                                          [{UserKey, -1}
-                                          ,{AccountKey, 1}
-                                           | U
-                                          ];
-                                      <<"admins">> ->
-                                          UserKey = [<<"user_apps">>, Name],
-                                          [{UserKey, -2}
-                                          ,{AccountKey, 1}
-                                           | U
-                                          ];
-                                      <<"specific">> ->
-                                          UserKey = [<<"user_apps">>, Name],
-                                          Value = length(kz_json:get_list_value(<<"users">>, App, [])),
-                                          [{UserKey, Value}
-                                          ,{AccountKey, 1}
-                                           | U
-                                          ]
-                                  end
-                          end
+            kz_json:foldl(fun app_store_updates_fold/3
                          ,Updates
                          ,kz_json:delete_keys(Blacklist, Apps)
                          )
+    end.
+
+app_store_updates_fold(_K, App, U) ->
+    Name = kz_json:get_ne_binary_value(<<"name">>, App),
+    AccountKey = [<<"account_apps">>, Name],
+    case kz_json:get_ne_value(<<"allowed_users">>, App) of
+        <<"all">> ->
+            UserKey = [<<"user_apps">>, Name],
+            [{UserKey, -1}
+            ,{AccountKey, 1}
+            | U
+            ];
+        <<"admins">> ->
+            UserKey = [<<"user_apps">>, Name],
+            [{UserKey, -2}
+            ,{AccountKey, 1}
+            | U
+            ];
+        <<"specific">> ->
+            UserKey = [<<"user_apps">>, Name],
+            Value = length(kz_json:get_list_value(<<"users">>, App, [])),
+            [{UserKey, Value}
+            ,{AccountKey, 1}
+            | U
+            ]
     end.
 
 -spec calculate_number_updates(kz_json:object(), kz_term:proplist()) -> kz_term:proplist().
