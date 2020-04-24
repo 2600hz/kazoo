@@ -312,7 +312,7 @@ jobs:
           command: make -C ${KAZOO_ROOT} docs
       - run:
           name: Checking doc states
-          command: ${KAZOO_ROOT}/scripts/state-of-docs.sh || true
+          command: ${KAZOO_ROOT}/scripts/state-of-docs.py || true
       - run:
           name: Validating EDoc states
           command: ${KAZOO_ROOT}/scripts/state-of-edoc.escript

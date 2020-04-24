@@ -165,7 +165,7 @@ jobs:
           command: make docs
       - run:
           name: Checking doc states
-          command: scripts/state-of-docs.sh || true
+          command: scripts/state-of-docs.py || true
       - run:
           name: Validating EDoc states
           command: scripts/state-of-edoc.escript

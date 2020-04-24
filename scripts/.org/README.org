@@ -228,7 +228,7 @@ Starts a VM in the background with name ecallmgr
 ** state-of-docs.sh
 Searches for undocumented APIs and reports percentage of doc coverage.
 #+BEGIN_SRC shell :results none :exports code
-./scripts/state-of-docs.sh
+./scripts/state-of-docs.py
 #+END_SRC
 
 #+BEGIN_EXAMPLE
