@@ -76,24 +76,6 @@ updating carrier module failed for 0:
 > sup kazoo_numbers_maintenance convert_carrier_module knm_bandwidth knm_bandwidth2
 
 ```
-attempt to convert numbers with carrier module knm_bandwidth to knm_bandwidth2 in database numbers%2F%2B1202
-updated carrier module to knm_bandwidth2 for 0:
-updating carrier module failed for 0:
-attempt to convert numbers with carrier module knm_bandwidth to knm_bandwidth2 in database numbers%2F%2B1236
-updated carrier module to knm_bandwidth2 for 0:
-updating carrier module failed for 0:
-attempt to convert numbers with carrier module knm_bandwidth to knm_bandwidth2 in database numbers%2F%2B1248
-updated carrier module to knm_bandwidth2 for 0:
-updating carrier module failed for 0:
-attempt to convert numbers with carrier module knm_bandwidth to knm_bandwidth2 in database numbers%2F%2B1312
-updated carrier module to knm_bandwidth2 for 0:
-updating carrier module failed for 0:
-attempt to convert numbers with carrier module knm_bandwidth to knm_bandwidth2 in database numbers%2F%2B1315
-updated carrier module to knm_bandwidth2 for 0:
-updating carrier module failed for 0:
-attempt to convert numbers with carrier module knm_bandwidth to knm_bandwidth2 in database numbers%2F%2B1318
-updated carrier module to knm_bandwidth2 for 0:
-updating carrier module failed for 0:
 attempt to convert numbers with carrier module knm_bandwidth to knm_bandwidth2 in database numbers%2F%2B1414
 updated carrier module to knm_bandwidth2 for 0:
 updating carrier module failed for 0:
@@ -101,120 +83,6 @@ attempt to convert numbers with carrier module knm_bandwidth to knm_bandwidth2 i
 updated carrier module to knm_bandwidth2 for 2:
 +14152338397
 +14152338421
-updating carrier module failed for 0:
-attempt to convert numbers with carrier module knm_bandwidth to knm_bandwidth2 in database numbers%2F%2B1424
-updated carrier module to knm_bandwidth2 for 0:
-updating carrier module failed for 0:
-attempt to convert numbers with carrier module knm_bandwidth to knm_bandwidth2 in database numbers%2F%2B1425
-updated carrier module to knm_bandwidth2 for 0:
-updating carrier module failed for 0:
-attempt to convert numbers with carrier module knm_bandwidth to knm_bandwidth2 in database numbers%2F%2B1434
-updated carrier module to knm_bandwidth2 for 0:
-updating carrier module failed for 0:
-attempt to convert numbers with carrier module knm_bandwidth to knm_bandwidth2 in database numbers%2F%2B1454
-updated carrier module to knm_bandwidth2 for 0:
-updating carrier module failed for 0:
-attempt to convert numbers with carrier module knm_bandwidth to knm_bandwidth2 in database numbers%2F%2B1464
-updated carrier module to knm_bandwidth2 for 0:
-updating carrier module failed for 0:
-attempt to convert numbers with carrier module knm_bandwidth to knm_bandwidth2 in database numbers%2F%2B1497
-updated carrier module to knm_bandwidth2 for 0:
-updating carrier module failed for 0:
-attempt to convert numbers with carrier module knm_bandwidth to knm_bandwidth2 in database numbers%2F%2B1498
-updated carrier module to knm_bandwidth2 for 0:
-updating carrier module failed for 0:
-attempt to convert numbers with carrier module knm_bandwidth to knm_bandwidth2 in database numbers%2F%2B1499
-updated carrier module to knm_bandwidth2 for 0:
-updating carrier module failed for 0:
-attempt to convert numbers with carrier module knm_bandwidth to knm_bandwidth2 in database numbers%2F%2B1504
-updated carrier module to knm_bandwidth2 for 0:
-updating carrier module failed for 0:
-attempt to convert numbers with carrier module knm_bandwidth to knm_bandwidth2 in database numbers%2F%2B1555
-updated carrier module to knm_bandwidth2 for 0:
-updating carrier module failed for 0:
-attempt to convert numbers with carrier module knm_bandwidth to knm_bandwidth2 in database numbers%2F%2B1665
-updated carrier module to knm_bandwidth2 for 0:
-updating carrier module failed for 0:
-attempt to convert numbers with carrier module knm_bandwidth to knm_bandwidth2 in database numbers%2F%2B1666
-updated carrier module to knm_bandwidth2 for 0:
-updating carrier module failed for 0:
-attempt to convert numbers with carrier module knm_bandwidth to knm_bandwidth2 in database numbers%2F%2B1800
-updated carrier module to knm_bandwidth2 for 0:
-updating carrier module failed for 0:
-attempt to convert numbers with carrier module knm_bandwidth to knm_bandwidth2 in database numbers%2F%2B1937
-updated carrier module to knm_bandwidth2 for 0:
-updating carrier module failed for 0:
-attempt to convert numbers with carrier module knm_bandwidth to knm_bandwidth2 in database numbers%2F%2B3980
-updated carrier module to knm_bandwidth2 for 0:
-updating carrier module failed for 0:
-attempt to convert numbers with carrier module knm_bandwidth to knm_bandwidth2 in database numbers%2F%2B4242
-updated carrier module to knm_bandwidth2 for 0:
-updating carrier module failed for 0:
-attempt to convert numbers with carrier module knm_bandwidth to knm_bandwidth2 in database numbers%2F%2B4252
-updated carrier module to knm_bandwidth2 for 0:
-updating carrier module failed for 0:
-attempt to convert numbers with carrier module knm_bandwidth to knm_bandwidth2 in database numbers%2F%2B4262
-updated carrier module to knm_bandwidth2 for 0:
-updating carrier module failed for 0:
-attempt to convert numbers with carrier module knm_bandwidth to knm_bandwidth2 in database numbers%2F%2B4411
-updated carrier module to knm_bandwidth2 for 0:
-updating carrier module failed for 0:
-attempt to convert numbers with carrier module knm_bandwidth to knm_bandwidth2 in database numbers%2F%2B4412
-updated carrier module to knm_bandwidth2 for 0:
-updating carrier module failed for 0:
-attempt to convert numbers with carrier module knm_bandwidth to knm_bandwidth2 in database numbers%2F%2B4413
-updated carrier module to knm_bandwidth2 for 0:
-updating carrier module failed for 0:
-attempt to convert numbers with carrier module knm_bandwidth to knm_bandwidth2 in database numbers%2F%2B4414
-updated carrier module to knm_bandwidth2 for 0:
-updating carrier module failed for 0:
-attempt to convert numbers with carrier module knm_bandwidth to knm_bandwidth2 in database numbers%2F%2B4415
-updated carrier module to knm_bandwidth2 for 0:
-updating carrier module failed for 0:
-attempt to convert numbers with carrier module knm_bandwidth to knm_bandwidth2 in database numbers%2F%2B4416
-updated carrier module to knm_bandwidth2 for 0:
-updating carrier module failed for 0:
-attempt to convert numbers with carrier module knm_bandwidth to knm_bandwidth2 in database numbers%2F%2B4417
-updated carrier module to knm_bandwidth2 for 0:
-updating carrier module failed for 0:
-attempt to convert numbers with carrier module knm_bandwidth to knm_bandwidth2 in database numbers%2F%2B4418
-updated carrier module to knm_bandwidth2 for 0:
-updating carrier module failed for 0:
-attempt to convert numbers with carrier module knm_bandwidth to knm_bandwidth2 in database numbers%2F%2B4419
-updated carrier module to knm_bandwidth2 for 0:
-updating carrier module failed for 0:
-attempt to convert numbers with carrier module knm_bandwidth to knm_bandwidth2 in database numbers%2F%2B4420
-updated carrier module to knm_bandwidth2 for 0:
-updating carrier module failed for 0:
-attempt to convert numbers with carrier module knm_bandwidth to knm_bandwidth2 in database numbers%2F%2B4423
-updated carrier module to knm_bandwidth2 for 0:
-updating carrier module failed for 0:
-attempt to convert numbers with carrier module knm_bandwidth to knm_bandwidth2 in database numbers%2F%2B4424
-updated carrier module to knm_bandwidth2 for 0:
-updating carrier module failed for 0:
-attempt to convert numbers with carrier module knm_bandwidth to knm_bandwidth2 in database numbers%2F%2B4428
-updated carrier module to knm_bandwidth2 for 0:
-updating carrier module failed for 0:
-attempt to convert numbers with carrier module knm_bandwidth to knm_bandwidth2 in database numbers%2F%2B4429
-updated carrier module to knm_bandwidth2 for 0:
-updating carrier module failed for 0:
-attempt to convert numbers with carrier module knm_bandwidth to knm_bandwidth2 in database numbers%2F%2B4433
-updated carrier module to knm_bandwidth2 for 0:
-updating carrier module failed for 0:
-attempt to convert numbers with carrier module knm_bandwidth to knm_bandwidth2 in database numbers%2F%2B4470
-updated carrier module to knm_bandwidth2 for 0:
-updating carrier module failed for 0:
-attempt to convert numbers with carrier module knm_bandwidth to knm_bandwidth2 in database numbers%2F%2B4480
-updated carrier module to knm_bandwidth2 for 0:
-updating carrier module failed for 0:
-attempt to convert numbers with carrier module knm_bandwidth to knm_bandwidth2 in database numbers%2F%2B4484
-updated carrier module to knm_bandwidth2 for 0:
-updating carrier module failed for 0:
-attempt to convert numbers with carrier module knm_bandwidth to knm_bandwidth2 in database numbers%2F%2B4487
-updated carrier module to knm_bandwidth2 for 0:
-updating carrier module failed for 0:
-attempt to convert numbers with carrier module knm_bandwidth to knm_bandwidth2 in database numbers%2F%2B8835
-updated carrier module to knm_bandwidth2 for 0:
 updating carrier module failed for 0:
 ```
 
@@ -233,7 +101,8 @@ Features allowed on system config document:
 
 These are sets of function operating on all number documents in each database(s) to copy the docs from number databases to account databases or vice versa.
 
-You usually want to run these commands when you're importing account database from another to cluster into the current system and want to sync the numbers in account database to their corresponding number databases (or vice versa  you want to enforce numbers from number databases to their assigned account databases).
+You usually want to run these commands when you're importing account database from another to cluster into the current system and want to sync the numbers in
+account database to their corresponding number databases (or vice versa  you want to enforce numbers from number databases to their assigned account databases).
 
 
 ### Copy all numbers from account database(s) to their corresponding number database(s)
@@ -299,7 +168,8 @@ These commands are their counterpart commands above, but instead of operating on
 
 These commands are attempting to fix mosy common issues with out of sync numbers by doing a series fixes:
 
-* Try to fix numbers assigned to the account in number databases which have wrong applications usage set (wrong `used_by` field), by looking for assigned numbers in account's callflow and trunkstore documents and check `used_by` field of number docs and fix the disparity.
+* Try to fix numbers assigned to the account in number databases which have wrong applications usage set (wrong `used_by` field),
+* by looking for assigned numbers in account's callflow and trunkstore documents and check `used_by` field of number docs and fix the disparity.
 * After fixing app usage, copy all numbers assigned to the account from number databases to the account's database.
 * Remove numbers from account daatasbe that are not belong to the account (have wrong `pvt_assigned_to` field).
 * Reconsile the services (to sync service doc if any number is removed from account database in previous step).
@@ -316,7 +186,8 @@ These commands are attempting to fix mosy common issues with out of sync numbers
 
 ### Fix numbers application usage
 
-These commands try to fix numbers in databases which have wrong applications usage set (wrong `used_by` field), by looking for assigned numbers in assigned account's callflow and trunkstore documents and check `used_by` field of number docs and fix the disparity.
+These commands try to fix numbers in databases which have wrong applications usage set (wrong `used_by` field), by looking for assigned numbers in
+assigned account's callflow and trunkstore documents and check `used_by` field of number docs and fix the disparity.
 
 `sup kazoo_numbers_maintenance fix_apps_for_account_dbs`
 : Fix apps for all numbers in all account databases.
@@ -363,7 +234,8 @@ This check `pvt_assigned_to` field of all numbers in account database(s) and if 
 
 ### Commands to remove numbers if their won't exists in their corsspanding databases
 
-These are handy commands which removing number documents if their are missing from their corsspanding databases. These are intended to cleanup numbers after in your test environment or dev environment. **DO NOT USE THESE COMMANDS IN PRODUCTION SERVERS**.
+These are handy commands which removing number documents if their are missing from their corsspanding databases. These are intended to cleanup numbers after
+in your test environment or dev environment. **DO NOT USE THESE COMMANDS IN PRODUCTION SERVERS**.
 
 !!! Caution
     Use these commands if you really understand what are you doing.

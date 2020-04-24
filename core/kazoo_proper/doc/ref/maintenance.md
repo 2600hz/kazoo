@@ -2,6 +2,7 @@
 
 | Function | Arguments | Description |
 | -------- | --------- | ----------- |
+| `modules/0` |  | |
 | `run_module/1` | `(Module) | (ModuleBin)` | |
 | `run_modules/0` |  | |
 | `run_seq_module/1` | `(Module) | (ModuleBin)` | |

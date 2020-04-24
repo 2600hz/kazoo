@@ -51,6 +51,7 @@
 | `fix_numbers_apps_in_numbdb/1` | `(Numbers)` | |
 | `generate_js_classifiers/1` | `(FunMatchBlock)` | |
 | `generate_numbers/4` | `(Type,AccountId,StartingNumber,Quantity)` | |
+| `get_apps_for_dids/2` | `(Account,Numbers)` | |
 | `init_dbs/0` |  | |
 | `migrate/0` |  | |
 | `migrate_port_requests/0` |  | |
