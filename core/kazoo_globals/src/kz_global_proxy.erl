@@ -79,7 +79,7 @@ code_change(_OldVsn, Global, _Extra) ->
 amqp_send(Global, Message) ->
     Payload = [{<<"Name">>, kz_global:name(Global)}
               ,{<<"Message">>, kapi_globals:encode(Message)}
-               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     Publisher = fun kapi_globals:publish_send/1,
     kz_amqp_worker:cast(Payload, Publisher).
@@ -88,7 +88,7 @@ amqp_send(Global, Message) ->
 amqp_call(Global, Msg) ->
     Payload = [{<<"Name">>, kz_global:name(Global)}
               ,{<<"Message">>, kapi_globals:encode(Msg)}
-               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     Publisher = fun kapi_globals:publish_call/1,
     case kz_amqp_worker:call(Payload, Publisher, fun kapi_globals:reply_msg_v/1) of

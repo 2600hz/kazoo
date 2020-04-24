@@ -62,7 +62,7 @@
 -type appliers() :: [applier()].
 -type setter_fun() :: {fun((collection(), Value) -> collection()), Value}.
 -type setter_funs() :: [setter_fun()
-                        | {fun((collection(), set_failed(), knm_errors:reason()) -> collection()), set_failed(), knm_errors:reason()}
+                       | {fun((collection(), set_failed(), knm_errors:reason()) -> collection()), set_failed(), knm_errors:reason()}
                        ].
 %% }}}
 

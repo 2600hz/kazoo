@@ -162,7 +162,7 @@ remove_e911_options(DID) ->
     [{'qs', [{'did', knm_converters:to_npan(DID)}
             ,{'xml', <<"yes">>}
             ,{'cmd', <<"e911delete">>}
-             | knm_vitelity_util:default_options()
+            | knm_vitelity_util:default_options()
             ]}
     ,{'uri', knm_vitelity_util:api_uri()}
     ].
@@ -176,7 +176,7 @@ get_location_options(DID) ->
     [{'qs', [{'did', knm_converters:to_npan(DID)}
             ,{'xml', <<"yes">>}
             ,{'cmd', <<"e911getinfo">>}
-             | knm_vitelity_util:default_options()
+            | knm_vitelity_util:default_options()
             ]}
     ,{'uri', knm_vitelity_util:api_uri()}
     ].
@@ -216,7 +216,7 @@ e911_options(PN, AddressJObj) ->
               ,{'zip', kz_json:get_value(?E911_ZIP, AddressJObj)}
               ,{'xml', <<"yes">>}
               ,{'cmd', <<"e911send">>}
-               | knm_vitelity_util:default_options()
+              | knm_vitelity_util:default_options()
               ])
      }
     ,{'uri', knm_vitelity_util:api_uri()}
@@ -262,7 +262,7 @@ location_options(AddressJObj) ->
             ,{'zip', kz_json:get_value(?E911_ZIP, AddressJObj)}
             ,{'xml', <<"yes">>}
             ,{'cmd', <<"e911checkaddress">>}
-             | knm_vitelity_util:default_options()
+            | knm_vitelity_util:default_options()
             ]}
     ,{'uri', knm_vitelity_util:api_uri()}
     ].
@@ -306,7 +306,7 @@ process_xml_content_tag(#xmlElement{name='content'
 xml_resp([#xmlElement{name='info'
                      ,content=Content
                      }
-          |_]) ->
+         |_]) ->
     kz_json:from_list(
       knm_vitelity_util:xml_els_to_proplist(
         kz_xml:elements(Content)
@@ -314,7 +314,7 @@ xml_resp([#xmlElement{name='info'
 xml_resp([#xmlElement{name='response'
                      ,content=Content
                      }
-          |_]) ->
+         |_]) ->
     kz_xml:texts_to_binary(Content);
 xml_resp([_|T]) ->
     xml_resp(T).

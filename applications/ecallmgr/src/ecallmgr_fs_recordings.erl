@@ -60,7 +60,7 @@ maybe_store_recording('true', _, JObj, CallId, Node) ->
                     ,{<<"Application-Name">>, <<"store">>}
                     ,{<<"Event-Category">>, <<"call">>}
                     ,{<<"Event-Name">>, <<"command">>}
-                     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                     ]),
             ecallmgr_call_command:exec_cmd(Node, CallId, Cmd, 'undefined')
     end.

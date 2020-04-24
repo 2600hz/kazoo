@@ -28,7 +28,7 @@ handle_acl_req(Reqest, _Props) ->
 -spec send_response(kz_json:object(), kz_json:objects()) -> any().
 send_response(Reqest, Responses) ->
     RespStub = kz_json:from_list([{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, Reqest)}
-                                  | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                                  ]),
     ServerID = kz_json:get_value(<<"Server-ID">>, Reqest),
     {DeviceACLs, RealmACLs} = lists:partition(fun frontier_utils:is_device/1, Responses),

@@ -599,7 +599,7 @@ send(#sign{name = Name, node = Node}, Msg) ->
 send(Route, Msg) when is_binary(Route) ->
     lager:debug("amqp message ~p: ~p", [Msg, Route]),
     Props = [{<<"Message">>, kz_term:to_hex_binary(erlang:term_to_binary(Msg))}
-             | kz_api:default_headers(<<"leader">>, <<"message">>, ?APP_NAME, ?APP_VERSION)
+            | kz_api:default_headers(<<"leader">>, <<"message">>, ?APP_NAME, ?APP_VERSION)
             ],
     kapi_leader:publish_req(Route, Props).
 

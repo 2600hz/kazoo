@@ -309,14 +309,14 @@ build_load_modb_params(Context, View, Options) ->
 build_view_query(Options, Direction, StartKey, EndKey, HasQSFilter) ->
     DeleteKeys = ['startkey', 'endkey'
                  ,'descending', 'limit'
-                  | ?CB_SPECIFIC_VIEW_OPTIONS
+                 | ?CB_SPECIFIC_VIEW_OPTIONS
                  ],
     DefaultOptions =
         props:filter_undefined(
           [{'startkey', StartKey}
           ,{'endkey', EndKey}
           ,Direction
-           | props:delete_keys(DeleteKeys, Options)
+          | props:delete_keys(DeleteKeys, Options)
           ]),
 
     IncludeOptions =
@@ -818,7 +818,7 @@ get_results(#{databases := [Db|RestDbs]
     ViewOptions = props:filter_undefined(
                     [{'limit', LimitWithLast}
                     ,{'startkey', NextStartKey}
-                     | props:delete('startkey', ViewOpts)
+                    | props:delete('startkey', ViewOpts)
                     ]),
 
     lager:debug("kz_datamgr:get_results(~p, ~p, ~p)", [Db, View, ViewOptions]),

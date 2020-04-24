@@ -114,7 +114,7 @@ send_missed_alert(Call, Notify, Emails) ->
               ,{<<"Call-Bridged">>, kapps_call:call_bridged(Call)}
               ,{<<"Message-Left">>, kapps_call:message_left(Call)}
               ,{<<"To">>, Emails}
-               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ]
              ),
     kapps_notify_publisher:cast(Props, fun kapi_notifications:publish_missed_call/1).

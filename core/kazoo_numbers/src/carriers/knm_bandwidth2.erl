@@ -294,7 +294,7 @@ process_peer(Peer) ->
 url(RelativePath) ->
     lists:flatten(
       [io_lib:format("~s/accounts/~s/", [?BW2_BASE_URL, ?BW2_ACCOUNT_ID])
-       | RelativePath
+      | RelativePath
       ]).
 
 -type api_res() :: {'ok', kz_types:xml_el()} | {'error', atom()}.

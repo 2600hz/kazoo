@@ -135,7 +135,7 @@ has_key_gen(QS, Acc, Doc, Filter, Expected) ->
     [{lists:flatten(Desc)
      ,?_assertEqual(Expected, crossbar_filter:filter_doc_by_querystring(Doc, QS))
      }
-     | Acc
+    | Acc
     ].
 
 created(Doc) ->

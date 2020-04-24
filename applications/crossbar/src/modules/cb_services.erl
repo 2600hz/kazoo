@@ -220,7 +220,7 @@ validate(Context, ?AVAILABLE) ->
         end,
     Options = [{'databases', [kzs_util:format_account_db(ResellerId)]}
               ,{'mapper', fun normalize_available_view_results/2}
-               | IncludeDocs
+              | IncludeDocs
               ],
     crossbar_view:load(Context, ?CB_LIST, Options);
 validate(Context, ?SUMMARY) ->
@@ -288,7 +288,7 @@ audit_summary(Context, ViewName, Options) ->
                   ,{'unchunkable', 'true'}
                   ,{'no_filter', 'true'}
                   ,{'should_paginate', 'false'}
-                   | maybe_add_max_range(Context, Options)
+                  | maybe_add_max_range(Context, Options)
                   ],
     crossbar_view:load_modb(Context, ViewName, ViewOptions).
 

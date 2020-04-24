@@ -159,7 +159,7 @@ build_presence_event(UUID, #{payload := JObj}) ->
                 ,{<<"Switch-URI">>, SwitchURI}
                 ,{<<"Expires">>, Expires}
                 ,{<<"Event-Package">>, <<"dialog">>}
-                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                 ]),
     lager:debug("sending presence ~s to ~s/~s in realm ~s", [State, FromUser, ToUser, Realm]),
     _ = maybe_delay(State),

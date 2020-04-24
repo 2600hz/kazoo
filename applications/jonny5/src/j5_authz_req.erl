@@ -232,7 +232,7 @@ send_response(Request) ->
              ,{<<"Msg-ID">>, j5_request:message_id(Request)}
              ,{<<"Call-ID">>, j5_request:call_id(Request)}
              ,{<<"Custom-Channel-Vars">>, CCVs}
-              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     kapi_authz:publish_authz_resp(ServerId, Resp),
     j5_util:maybe_send_system_alert(Request),

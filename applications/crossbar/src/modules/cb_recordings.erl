@@ -144,7 +144,7 @@ summary_doc_fun(View, Acc) ->
                       ,lists:usort(ContentTypes)
                       ,Recording
                       )
-     | Acc
+    | Acc
     ].
 
 -spec attachment_content_type(kz_json:key(), kz_json:object(), kz_term:ne_binaries()) ->

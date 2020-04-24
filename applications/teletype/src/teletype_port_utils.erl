@@ -165,7 +165,7 @@ fix_comments(DataJObj, _TemplateId, PortReqJObj) ->
             Date = kz_json:from_list(teletype_util:fix_timestamp(Timestamp, DataJObj)),
             Props = [{<<"date">>, Date}
                     ,{<<"timestamp">>, kz_json:get_value(<<"local">>, Date)} %% backward compatibility
-                     | get_commenter_info(DataJObj)
+                    | get_commenter_info(DataJObj)
                     ],
             kz_json:set_value(<<"comment">>
                              ,kz_json:set_values(Props, Comment)
@@ -297,7 +297,7 @@ maybe_add_user_data(DataJObj, Author, 'true') ->
             [{<<"author">>, Author}];
         UserDoc ->
             [{<<"author">>, kzd_users:full_name(UserDoc, <<"An agent">>)}
-             | teletype_util:user_params(UserDoc)
+            | teletype_util:user_params(UserDoc)
             ]
     end;
 maybe_add_user_data(DataJObj, Author, 'false') ->
@@ -318,7 +318,7 @@ maybe_add_user_data(DataJObj, Author, 'false') ->
             [{<<"author">>, Author}];
         {'ok', UserDoc} ->
             [{<<"author">>, kzd_users:full_name(UserDoc, <<"An agent">>)}
-             | teletype_util:user_params(UserDoc)
+            | teletype_util:user_params(UserDoc)
             ]
     end.
 

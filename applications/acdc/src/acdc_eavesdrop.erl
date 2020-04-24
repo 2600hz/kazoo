@@ -24,7 +24,7 @@ start(MCall, AcctId, AgentCallId) ->
            ,{<<"Eavesdrop-Call-ID">>, AgentCallId}
            ,{<<"Outbound-Caller-ID-Name">>, kapps_call:caller_id_name(MCall)}
            ,{<<"Outbound-Caller-ID-Number">>, kapps_call:caller_id_number(MCall)}
-            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     eavesdrop_req(Prop).
 

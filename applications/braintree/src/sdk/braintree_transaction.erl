@@ -310,7 +310,7 @@ record_to_xml(#bt_transaction{}=Transaction, ToString) ->
                                     [{'options', [{'store-in-vault', 'true'}]}|P];
                                 Options ->
                                     [{'options', [{'store-in-vault', 'true'}|Options]}
-                                     |props:delete('options', P)
+                                    |props:delete('options', P)
                                     ]
                             end;
                        (_, P) -> P
@@ -321,7 +321,7 @@ record_to_xml(#bt_transaction{}=Transaction, ToString) ->
                                     [{'options', [{'store-in-vault-on-success', 'true'}]}|P];
                                 Options ->
                                     [{'options', [{'store-in-vault-on-success', 'true'}|Options]}
-                                     |props:delete('options', P)
+                                    |props:delete('options', P)
                                     ]
                             end;
                        (_, P) -> P
@@ -332,7 +332,7 @@ record_to_xml(#bt_transaction{}=Transaction, ToString) ->
                                     [{'options', [{'store-shipping-address-in-vault', 'true'}]}|P];
                                 Options ->
                                     [{'options', [{'store-shipping-address-in-vault', 'true'}|Options]}
-                                     |props:delete('options', P)
+                                    |props:delete('options', P)
                                     ]
                             end;
                        (_, P) -> P
@@ -343,7 +343,7 @@ record_to_xml(#bt_transaction{}=Transaction, ToString) ->
                                     [{'options', [{'add-billing-address-to-payment-method', 'true'}]}|P];
                                 Options ->
                                     [{'options', [{'add-billing-address-to-payment-method', 'true'}|Options]}
-                                     |props:delete('options', P)
+                                    |props:delete('options', P)
                                     ]
                             end;
                        (_, P) -> P

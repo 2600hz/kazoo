@@ -95,7 +95,7 @@ do_profile({Mod, Fun, _Arity}, Args, PD) ->
                    ,{'duration', Time}
                    ,{'database', DbName}
                    ,{'from', From}
-                    | MD
+                   | MD
                    ]
                   ,"execution of {~s:~s} in database ~s with args ~p took ~b μs"
                   ,[Mod, Fun, DbName, Others, Time]

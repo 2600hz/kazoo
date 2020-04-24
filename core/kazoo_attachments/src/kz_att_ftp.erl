@@ -47,8 +47,8 @@ put_attachment(Params, DbName, DocId, AName, Contents, Options) ->
             {'ok', url_fields(DocUrlField, Url)};
         Resp ->
             Routines = [{fun kz_att_error:set_req_url/2, Url}
-                        | kz_att_error:put_routines(Params, DbName, DocId, AName,
-                                                    Contents, Options)
+                       | kz_att_error:put_routines(Params, DbName, DocId, AName,
+                                                   Contents, Options)
                        ],
             handle_ftp_error_response(Resp, Routines)
     end.
@@ -69,7 +69,7 @@ fetch_attachment(HandlerProps, DbName, DocId, AName) ->
                     Resp;
                 Resp ->
                     Routines = [{fun kz_att_error:set_req_url/2, Url}
-                                | kz_att_error:fetch_routines(HandlerProps, DbName, DocId, AName)
+                               | kz_att_error:fetch_routines(HandlerProps, DbName, DocId, AName)
                                ],
                     handle_ftp_error_response(Resp, Routines)
             end
@@ -83,8 +83,10 @@ fetch_attachment(HandlerProps, DbName, DocId, AName) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+-type send_error() :: {'error', any()}.
+
 -spec send_request(kz_term:ne_binary(), kz_term:ne_binary()) ->
-          'ok' | {'error', binary(), binary() | atom() | term()}.
+          'ok' | send_error().
 send_request(Url, Contents) ->
     case http_uri:parse(kz_term:to_list(Url)) of
         {'ok',{'ftp', UserPass, Host, Port, FullPath,_Query}} ->
@@ -93,7 +95,7 @@ send_request(Url, Contents) ->
     end.
 
 -spec send_request(string(), integer(), string(), string(), binary()) ->
-          'ok' | {'error', binary() | atom() | term()}.
+          'ok' | send_error().
 send_request(Host, Port, UserPass, FullPath, Contents) ->
     {User, Pass} = case string:tokens(UserPass, ":") of
                        [U, P] -> {U, P};
@@ -124,7 +126,7 @@ send_request(Host, Port, UserPass, FullPath, Contents) ->
             {'error', Err}
     end.
 
--spec ftp_cmds(list()) -> 'ok' | {'error', any()}.
+-spec ftp_cmds(list()) -> 'ok' | send_error().
 ftp_cmds([]) -> 'ok';
 ftp_cmds([Fun|Funs]) ->
     case Fun() of
@@ -170,8 +172,7 @@ handle_fetch(Pid, {'error', _Reason}=Err) ->
     ftp:close(Pid),
     Err.
 
--spec handle_ftp_error_response({'error', binary() | atom() | term()},
-                                kz_att_error:update_routines()) -> kz_att_error:error().
+-spec handle_ftp_error_response(send_error(), kz_att_error:update_routines()) -> kz_att_error:error().
 handle_ftp_error_response({'error', Reason}, Routines)
   when is_atom(Reason); is_binary(Reason) ->
     lager:error("ftp error ~p", [Reason]),

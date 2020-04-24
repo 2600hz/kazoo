@@ -102,7 +102,7 @@ maybe_load_profile(#{auth_provider := #{profile_url := _ProfileURL} = Provider
     Verb = profile_access_verb(Provider),
     {'ok',{_,_, Host, _, _, _}} = http_uri:parse(URL),
     Headers = [{<<"host">>, Host}
-               | profile_authorization_headers(Token, AccessToken)
+              | profile_authorization_headers(Token, AccessToken)
               ],
     lager:debug("getting profile (~s) from ~s", [Verb, URL]),
     case kz_http:req(Verb, URL, Headers, <<>>, Options) of

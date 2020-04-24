@@ -118,7 +118,7 @@ add_function(M, 0, ?HTTP_GET, Functions) ->
       "summary(API, AccountId) ->\n"
       "    pqc_cb_crud:summary(API, ", plural(M), "_url(AccountId)).\n\n"
      ]
-     | Functions
+    | Functions
     ];
 add_function(M, 0, ?HTTP_PUT, Functions) ->
     Singular = kz_binary:ucfirst(singular(M)),
@@ -128,7 +128,7 @@ add_function(M, 0, ?HTTP_PUT, Functions) ->
       "    Envelope = pqc_cb_api:create_envelope(", Singular, "JObj),\n"
       "    pqc_cb_crud:create(API, ", Plural, "_url(AccountId), Envelope).\n\n"
      ]
-     | Functions
+    | Functions
     ];
 add_function(M, 1, ?HTTP_GET, Functions) ->
     Singular = singular(M),
@@ -137,7 +137,7 @@ add_function(M, 1, ?HTTP_GET, Functions) ->
       "fetch(API, AccountId, ", UCSingular, "Id) ->\n"
       "    pqc_cb_crud:fetch(API, ", Singular, "_url(AccountId, ", UCSingular, "Id)).\n\n"
      ]
-     | Functions
+    | Functions
     ];
 add_function(M, 1, ?HTTP_POST, Functions) ->
     Singular = singular(M),
@@ -147,7 +147,7 @@ add_function(M, 1, ?HTTP_POST, Functions) ->
       "    Envelope = pqc_cb_api:create_envelope(", UCSingular, "JObj),\n"
       "    pqc_cb_crud:update(API, ", Singular, "_url(AccountId, kz_doc:id(", UCSingular, "JObj)), Envelope).\n\n"
      ]
-     | Functions
+    | Functions
     ];
 add_function(M, 1, ?HTTP_PATCH, Functions) ->
     Singular = singular(M),
@@ -157,7 +157,7 @@ add_function(M, 1, ?HTTP_PATCH, Functions) ->
       "    Envelope = pqc_cb_api:create_envelope(PatchJObj),\n"
       "    pqc_cb_crud:patch(API, ", Singular, "_url(AccountId, ", UCSingular, "Id), Envelope).\n\n"
      ]
-     | Functions
+    | Functions
     ];
 add_function(M, 1, ?HTTP_DELETE, Functions) ->
     Singular = singular(M),
@@ -166,7 +166,7 @@ add_function(M, 1, ?HTTP_DELETE, Functions) ->
       "delete(API, AccountId, ", UCSingular, "Id) ->\n"
       "    pqc_cb_crud:delete(API, ", Singular, "_url(AccountId, ", UCSingular, "Id)).\n\n"
      ]
-     | Functions
+    | Functions
     ];
 add_function(_M, _Arity, _Verb, Functions) ->
     Functions.

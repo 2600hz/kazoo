@@ -211,7 +211,7 @@ sum_item_totals([ItemJObj|ItemsJObjs], Total) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec create(kz_services:services(), kz_term:ne_binary(), kz_services_plan:plan()) ->
-                    invoice().
+          invoice().
 create(Services, BookkeeperHash, Plan) ->
     lager:debug("generating invoice for bookkeeper ~s", [BookkeeperHash]),
     Items = kz_services_items:create(Services, Plan),

@@ -139,7 +139,7 @@ send_error_resp(JObj, ErrMsg) ->
             ,{<<"Error-Code">>, <<"other">>}
             ,{<<"Error-Msg">>, kz_term:to_binary(ErrMsg)}
             ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
-             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     lager:debug("sending error reply ~s for ~s", [ErrMsg, MediaName]),
     ServerId = kz_json:get_value(<<"Server-ID">>, JObj),
@@ -153,7 +153,7 @@ send_media_resp(JObj, StreamURL) ->
     Resp = [{<<"Media-Name">>, kz_json:get_value(<<"Media-Name">>, JObj)}
            ,{<<"Stream-URL">>, StreamURL}
            ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
-            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     ServerId = kz_json:get_value(<<"Server-ID">>, JObj),
     Publisher = fun(P) -> kapi_media:publish_resp(ServerId, P) end,

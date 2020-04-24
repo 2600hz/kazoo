@@ -60,7 +60,7 @@ macros() ->
       ,?MACRO_VALUE(<<"reseller.timezone">>, <<"reseller_timezone">>, <<"Reseller Account Timezone">>, <<"Reseller Account Timezone">>)
       ,?MACRO_VALUE(<<"timestamp.utc">>, <<"date_called_utc">>, <<"Date (UTC)">>, <<"When was the change happened (UTC)">>)
       ,?MACRO_VALUE(<<"timestamp.local">>, <<"date_called_local">>, <<"Date (Local)">>, <<"When was the changed happened (Local time)">>)
-       | ?USER_MACROS
+      | ?USER_MACROS
        ++ ?SYSTEM_MACROS
       ]).
 

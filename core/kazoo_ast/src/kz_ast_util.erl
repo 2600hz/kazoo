@@ -168,7 +168,7 @@ smash_snake(BaseName, Glue) ->
         [Part] -> format_name_part(Part);
         [H|Parts] ->
             [format_name_part(H)
-             | [[Glue, format_name_part(Part)] || Part <- Parts]
+            | [[Glue, format_name_part(Part)] || Part <- Parts]
             ]
     end.
 
@@ -394,7 +394,7 @@ property_to_row(SchemaJObj, Names, Settings, {Table, Refs}) ->
                                             ,cell_wrap(is_row_required(Names, SchemaJObj))
                                             ,cell_wrap(support_level(Names, SchemaJObj))
                                             )
-                                  | Table
+                                 | Table
                                  ]
                                 ,maybe_add_ref(Refs, Settings)
                                 }
@@ -598,7 +598,7 @@ maybe_sub_properties_to_row(SchemaJObj, <<"array">>, Names, Settings, {Table, Re
                         ,cell_wrap(is_row_required(Names, SchemaJObj))
                         ,cell_wrap(support_level(Names, SchemaJObj))
                         )
-              | Table
+             | Table
              ]
             ,Refs
             };
@@ -645,7 +645,7 @@ array_composite_types(Names, Schemas, {Table, Refs}) ->
                 ,<<" ">>
                 ,<<" ">>
                 )
-      | Table
+     | Table
      ]
     ,Refs
     }.

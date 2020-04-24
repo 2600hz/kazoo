@@ -32,7 +32,7 @@
 -define(DEFAULT_MIGRATE_OPTIONS, [{'allow_old_modb_creation', 'true'}]).
 -define(OVERRIDE_DOCS, ['override_existing_document'
                        ,{'transform', fun(_, B) -> kz_json:set_value(<<"folder">>, <<"outbox">>, B) end}
-                        |?DEFAULT_MIGRATE_OPTIONS
+                       |?DEFAULT_MIGRATE_OPTIONS
                        ]
        ).
 -define(DEFAULT_BATCH_SIZE, 100).

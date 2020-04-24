@@ -72,7 +72,7 @@ exported_fun_to_doc({{Function, Arity}, Args}, Acc) ->
       "| ", args_to_cell(Args), " "
       "| |\n"
      ]
-     | Acc
+    | Acc
     ].
 
 args_to_cell([]) -> <<>>;

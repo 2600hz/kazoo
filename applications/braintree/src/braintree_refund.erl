@@ -35,7 +35,7 @@ validate_request(JObj) ->
           [{?KEY_MSG_ID, kz_api:msg_id(JObj)}
           ,{<<"Transaction-ID">>, kz_json:get_ne_binary_value(<<"Transaction-ID">>, JObj)}
           ,{<<"Transaction-DB">>, kz_json:get_ne_binary_value(<<"Transaction-DB">>, JObj)}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ] ++ Result
          ),
     ServerId = kz_api:server_id(JObj),

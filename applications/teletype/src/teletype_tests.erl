@@ -80,7 +80,7 @@ voicemail_to_email(AccountId, VMBox,  [Message|_]) ->
            ,{<<"Voicemail-Timestamp">>, kz_time:now_s()}
            ,{<<"Voicemail-Length">>, Length}
            ,{<<"Call-ID">>, CallId}
-            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     kz_amqp_worker:call_collect(Prop
                                ,fun kapi_notifications:publish_voicemail_new/1
@@ -117,7 +117,7 @@ skel(AccountId, ?NE_BINARY=UserId) ->
     Req = [{<<"Account-ID">>, AccountId}
           ,{<<"User-ID">>, UserId}
           ,{<<"Preview">>, 'true'}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     kz_amqp_worker:cast(Req, fun kapi_notifications:publish_skel/1).
 
@@ -142,7 +142,7 @@ voicemail_full(AccountId, Box) ->
             ,{<<"Max-Message-Count">>, 1}
             ,{<<"Message-Count">>, 2}
             ,{<<"Preview">>, 'true'}
-             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     Publisher = fun kapi_notifications:publish_voicemail_full/1,
     kz_amqp_worker:call_collect(Props, Publisher, 5 * ?MILLISECONDS_IN_SECOND).
@@ -176,7 +176,7 @@ fax_inbound_to_email(AccountId, Fax) ->
                 ,{<<"Owner-ID">>, kz_json:get_value(<<"owner_id">>, Fax)}
                 ,{<<"FaxBox-ID">>, kz_json:get_value(<<"faxbox_id">>, Fax)}
                 ,{<<"Account-ID">>, AccountId}
-                 | notify_fields(Fax)
+                | notify_fields(Fax)
                 ]),
     lager:debug("publishing fax inbound to email req for ~s/~s", [AccountId, kz_doc:id(Fax)]),
     Publisher = fun kapi_notifications:publish_fax_inbound/1,
@@ -196,5 +196,5 @@ notify_fields(JObj) ->
       ,{<<"Callee-ID-Name">>, <<"Callee-Name">>}
       ,{<<"Call-ID">>, kz_json:get_value(<<"call_id">>, JObj)}
       ,{<<"Fax-Timestamp">>, kz_time:now_s()}
-       | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).

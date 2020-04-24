@@ -32,7 +32,7 @@ read_only_test_() ->
 read_only_fold(Key, Value, {Tests, Leaked}) ->
     {[{"has leaked key " ++ kz_term:to_list(kz_doc:remove_pvt(Key)), ?_assertEqual(Value, kz_json:get_value([<<"_read_only">>, kz_doc:remove_pvt(Key)], Leaked))}
      ,{"doesn't have private key " ++ kz_term:to_list(Key), ?_assert(not kz_json:is_defined(Key, Leaked))}
-      | Tests
+     | Tests
      ]
     ,Leaked
     }.

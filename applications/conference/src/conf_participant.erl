@@ -380,7 +380,7 @@ handle_channel_pivot(JObj, Call) ->
 
             Req = [{<<"Flow">>, kz_json:decode(FlowBin)}
                   ,{<<"Call">>, kapps_call:to_json(Call)}
-                   | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                  | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                   ],
             _ = kz_amqp_worker:cast(Req, fun kapi_callflow:publish_resume/1),
             lager:info("stopping the conf participant"),
@@ -475,7 +475,7 @@ notify_requestor(MyQ, MyId, DiscoveryEvent, ConferenceId) ->
         RequestorQ ->
             Resp = [{<<"Conference-ID">>, ConferenceId}
                    ,{<<"Participant-ID">>, MyId}
-                    | kz_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
+                   | kz_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
                    ],
             Publisher = fun(P) -> kapi_conference:publish_discovery_resp(RequestorQ, P) end,
             kz_amqp_worker:cast(Resp, Publisher)
@@ -497,7 +497,7 @@ bridge_to_conference(Route, Conference, Call, Name) ->
                                   }
                                  ]),
     SIPHeaders = props:filter_undefined([{<<"X-Conf-Flags-Moderator">>, kapps_conference:moderator(Conference)}
-                                         | name_pronounced_headers(Name)
+                                        | name_pronounced_headers(Name)
                                         ]),
     Command = [{<<"Application-Name">>, <<"bridge">>}
               ,{<<"Endpoints">>, [Endpoint]}

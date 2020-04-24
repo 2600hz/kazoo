@@ -76,9 +76,9 @@ query_string_test_() ->
                    ]
                   ,kz_http_util:parse_query_string(<<"foo;bar&baz">>)
                   )
-     | [encode_decode(Decoded, Encoded)
-        || {Decoded, Encoded} <- Tests
-       ]
+    | [encode_decode(Decoded, Encoded)
+       || {Decoded, Encoded} <- Tests
+      ]
     ].
 
 encode_decode(Decoded, Encoded) ->

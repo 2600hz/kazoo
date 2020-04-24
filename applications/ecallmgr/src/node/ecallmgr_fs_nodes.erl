@@ -132,7 +132,7 @@ add(Node, Cookie, Opts) when is_atom(Node) ->
                     ,Node
                     ,Cookie
                     ,[{'cookie', Cookie}
-                      | props:delete('cookie', Opts)
+                     | props:delete('cookie', Opts)
                      ]
                     }
                    ,60 * ?MILLISECONDS_IN_SECOND
@@ -681,7 +681,7 @@ maybe_start_node_handlers(#node{node=NodeName
     try ecallmgr_fs_sup:add_node(NodeName, lists:usort([{'cookie', Cookie}
                                                        ,{'client_version', Version}
                                                        ,{'connect_strategy', Strategy}
-                                                        | Props
+                                                       | Props
                                                        ]))
     of
         {'ok', _} -> initialize_node_connection(Node);

@@ -148,7 +148,7 @@ update([?NE_BINARY|_]=Nums, Routines, Options) ->
     do_update(do_get(Nums, Options), Routines);
 update(Ns, Updates, Options) ->
     Routines = [{fun knm_phone_number:set_dirty/2, 'false'}
-                | knm_options:to_phone_number_setters(Options)
+               | knm_options:to_phone_number_setters(Options)
                 ++ Updates
                ],
     T0 = knm_pipe:new(Options, Ns),

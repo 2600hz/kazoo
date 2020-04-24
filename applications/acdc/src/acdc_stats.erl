@@ -73,7 +73,7 @@ call_waiting(AccountId, QueueId, CallId, CallerIdName, CallerIdNumber, CallerPri
              ,{<<"Caller-ID-Number">>, CallerIdNumber}
              ,{<<"Entered-Timestamp">>, kz_time:now_s()}
              ,{<<"Caller-Priority">>, CallerPriority}
-              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     call_state_change(AccountId, 'waiting', Prop),
     'ok' = kz_amqp_worker:cast(Prop, fun kapi_acdc_stats:publish_call_waiting/1).
@@ -86,7 +86,7 @@ call_abandoned(AccountId, QueueId, CallId, Reason) ->
              ,{<<"Call-ID">>, CallId}
              ,{<<"Abandon-Reason">>, Reason}
              ,{<<"Abandon-Timestamp">>, kz_time:now_s()}
-              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     call_state_change(AccountId, 'abandoned', Prop),
     'ok' = kz_amqp_worker:cast(Prop, fun kapi_acdc_stats:publish_call_abandoned/1).
@@ -99,7 +99,7 @@ call_handled(AccountId, QueueId, CallId, AgentId) ->
              ,{<<"Call-ID">>, CallId}
              ,{<<"Agent-ID">>, AgentId}
              ,{<<"Handled-Timestamp">>, kz_time:now_s()}
-              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     call_state_change(AccountId, 'handled', Prop),
     'ok' = kz_amqp_worker:cast(Prop, fun kapi_acdc_stats:publish_call_handled/1).
@@ -113,7 +113,7 @@ call_missed(AccountId, QueueId, AgentId, CallId, ErrReason) ->
              ,{<<"Agent-ID">>, AgentId}
              ,{<<"Miss-Reason">>, ErrReason}
              ,{<<"Miss-Timestamp">>, kz_time:now_s()}
-              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     call_state_change(AccountId, 'missed', Prop),
     'ok' = kz_amqp_worker:cast(Prop, fun kapi_acdc_stats:publish_call_missed/1).
@@ -127,7 +127,7 @@ call_processed(AccountId, QueueId, AgentId, CallId, Initiator) ->
              ,{<<"Agent-ID">>, AgentId}
              ,{<<"Processed-Timestamp">>, kz_time:now_s()}
              ,{<<"Hung-Up-By">>, Initiator}
-              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     call_state_change(AccountId, 'processed', Prop),
     'ok' = kz_amqp_worker:cast(Prop, fun kapi_acdc_stats:publish_call_processed/1).
@@ -355,7 +355,7 @@ code_change(_OldVsn, State, _Extra) ->
 publish_query_errors(RespQ, MsgId, Errors) ->
     API = [{<<"Error-Reason">>, Errors}
           ,{<<"Msg-ID">>, MsgId}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("responding with errors to req ~s: ~p", [MsgId, Errors]),
     kapi_acdc_stats:publish_current_calls_err(RespQ, API).
@@ -491,7 +491,7 @@ query_calls(RespQ, MsgId, Match, _Limit) ->
             lager:debug("no stats found, sorry ~s", [RespQ]),
             Resp = [{<<"Query-Time">>, kz_time:now_s()}
                    ,{<<"Msg-ID">>, MsgId}
-                    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                   | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
             kapi_acdc_stats:publish_current_calls_resp(RespQ, Resp);
         Stats ->
@@ -508,7 +508,7 @@ query_calls(RespQ, MsgId, Match, _Limit) ->
                    ,{<<"Processed">>, dict:fetch(<<"processed">>, QueryResult)}
                    ,{<<"Query-Time">>, kz_time:now_s()}
                    ,{<<"Msg-ID">>, MsgId}
-                    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                   | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
 
             kapi_acdc_stats:publish_current_calls_resp(RespQ, Resp)
@@ -526,7 +526,7 @@ query_average_wait_time(Match, JObj) ->
     RespQ = kz_json:get_value(<<"Server-ID">>, JObj),
     Resp = [{<<"Average-Wait-Time">>, AverageWaitTime}
            ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
-            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     kapi_acdc_stats:publish_average_wait_time_resp(RespQ, Resp).
 
@@ -926,6 +926,6 @@ update_call_stat(Id, Updates, Props) ->
 call_state_change(AccountId, Status, Prop) ->
     Body = kz_json:normalize(kz_json:from_list([{<<"Event">>, <<"call_status_change">>}
                                                ,{<<"Status">>, kz_term:to_binary(Status)}
-                                                | Prop
+                                               | Prop
                                                ])),
     kz_edr:event(?APP_NAME, ?APP_VERSION, 'ok', 'info', Body, AccountId).

@@ -213,7 +213,7 @@ flush(_QID) -> 'ok'.
 -else.
 flush(QID) ->
     Payload = [{<<"Query-ID">>, QID}
-               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     kz_amqp_worker:cast(Payload, fun kapi_discovery:publish_flush/1).
 -endif.
@@ -235,7 +235,7 @@ do_find(Options, 'false') ->
               ,{<<"Quantity">>, quantity(Options)}
               ,{<<"Offset">>, offset(Options)}
               ,{<<"Account-ID">>, account_id(Options)}
-               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     case kz_amqp_worker:call(Payload
                             ,fun kapi_discovery:publish_req/1
@@ -258,7 +258,7 @@ first(Options) ->
     Opts = [{'quantity', ?MAX_SEARCH}
            ,{'offset', 0}
            ,{'normalized_prefix', normalized_prefix(Options)}
-            | Options
+           | Options
            ],
     lists:foreach(fun(Carrier) -> search_spawn(Self, Carrier, Opts) end, Carriers),
     wait_for_search(length(Carriers)),
@@ -331,7 +331,7 @@ next(Options) ->
 create_discovery(DID=?NE_BINARY, Carrier, Data, Options0) ->
     Options = [{'state', ?NUMBER_STATE_DISCOVERY}
               ,{'module_name', kz_term:to_binary(Carrier)}
-               | Options0
+              | Options0
               ],
     {'ok', PhoneNumber} =
         knm_phone_number:setters(knm_phone_number:from_number_with_options(DID, Options)
@@ -448,7 +448,7 @@ remote_discovery(_Num, _Options) -> {'error', 'not_found'}.
 remote_discovery(Number, Options) ->
     Payload = [{<<"Number">>, Number}
               ,{<<"Account-ID">>, knm_options:account_id(Options)}
-               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     case kz_amqp_worker:call(Payload
                             ,fun kapi_discovery:publish_number_req/1
@@ -500,7 +500,7 @@ handle_search(JObj, 'true') ->
     Payload = [{<<"Msg-ID">>, kz_api:msg_id(JObj)}
               ,{<<"Query-ID">>, QID}
               ,{<<"Results">>, Results}
-               | kz_api:default_headers(kz_api:server_id(JObj), ?APP_NAME, ?APP_VERSION)
+              | kz_api:default_headers(kz_api:server_id(JObj), ?APP_NAME, ?APP_VERSION)
               ],
     Publisher = fun(P) -> kapi_discovery:publish_resp(kz_api:server_id(JObj), P) end,
     kz_amqp_worker:cast(Payload, Publisher).
@@ -514,7 +514,7 @@ handle_number(JObj) ->
         {'ok', PN} ->
             Payload = [{<<"Msg-ID">>, kz_api:msg_id(JObj)}
                       ,{<<"Results">>, knm_phone_number:to_json(PN)}
-                       | kz_api:default_headers(kz_api:server_id(JObj), ?APP_NAME, ?APP_VERSION)
+                      | kz_api:default_headers(kz_api:server_id(JObj), ?APP_NAME, ?APP_VERSION)
                       ],
             Publisher = fun(P) -> kapi_discovery:publish_resp(kz_api:server_id(JObj), P) end,
             kz_amqp_worker:cast(Payload, Publisher)

@@ -301,7 +301,7 @@ conf_discover(ConfDoc, Call) ->
         props:filter_undefined(
           [{<<"Call">>, kapps_call:to_json(Call)}
           ,{<<"Conference-ID">>, kz_doc:id(ConfDoc)}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ]),
     kapi_conference:publish_discovery_req(Command).
 

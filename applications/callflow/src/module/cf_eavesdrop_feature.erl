@@ -96,11 +96,11 @@ build_flow_data(Call, Data, AuthorizingType)
   when AuthorizingType =:= <<"device">>;
        AuthorizingType =:= <<"mobile">> ->
     kz_json:from_list([{<<"approved_device_id">>, kapps_call:authorizing_id(Call)}
-                       | Data
+                      | Data
                       ]);
 build_flow_data(Call, Data, <<"user">>) ->
     kz_json:from_list([{<<"approved_user_id">>, kapps_call:authorizing_id(Call)}
-                       | Data
+                      | Data
                       ]);
 build_flow_data(_Call, Data, _AuthorizingType) ->
     lager:debug("unhandled authorizing type ~s", [_AuthorizingType]),

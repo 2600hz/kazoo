@@ -265,7 +265,7 @@ maybe_add_iso8601_ms_suffix_test_() ->
     lists:foldl(fun({ISO8601WithMS, ISO8601WithoutMS}, Tests) ->
                         [?_assertEqual(kz_time:maybe_add_iso8601_ms_suffix(ISO8601WithoutMS), ISO8601WithMS)
                         ,?_assertEqual(kz_time:maybe_add_iso8601_ms_suffix(ISO8601WithMS), ISO8601WithMS)
-                         | Tests
+                        | Tests
                         ]
                 end
                ,[]

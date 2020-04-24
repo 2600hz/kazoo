@@ -140,7 +140,7 @@ enforce_closed_groups(EndpointJObj, Call) ->
 get_caller_groups(Groups, EndpointJObj, Call) ->
     Ids = [kapps_call:authorizing_id(Call)
           ,kz_json:get_ne_binary_value(<<"owner_id">>, EndpointJObj)
-           | kz_json:get_keys([<<"hotdesk">>, <<"users">>], EndpointJObj)
+          | kz_json:get_keys([<<"hotdesk">>, <<"users">>], EndpointJObj)
           ],
     lists:foldl(fun('undefined', Set) -> Set;
                    (Id, Set) -> get_group_associations(Id, Groups, Set)

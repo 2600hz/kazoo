@@ -202,7 +202,7 @@ find_channels(DeviceIds) ->
     lager:debug("finding channels for devices ids ~p", [DeviceIds]),
     Req = [{<<"Authorizing-IDs">>, DeviceIds}
           ,{<<"Active-Only">>, 'false'}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case kz_amqp_worker:call_collect(Req
                                     ,fun kapi_call:publish_query_user_channels_req/1

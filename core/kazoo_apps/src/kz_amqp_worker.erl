@@ -154,7 +154,7 @@ start_link(Args) ->
                             ,{'queue_name', maybe_queuename(Args)}
                             ,{'queue_options', ?QUEUE_OPTIONS}
                             ,{'consume_options', ?CONSUME_OPTIONS}
-                             | maybe_broker(Args)
+                            | maybe_broker(Args)
                              ++ maybe_exchanges(Args)
                              ++ maybe_server_confirms(Args)
                             ]

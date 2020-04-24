@@ -308,10 +308,10 @@ write_index_file(_, _, {'error', _}=Error) ->
 write_index_file(Path, NewLine, {'ok', IndexLines}) ->
     [Header|Lines] = binary:split(IndexLines, <<"\n">>, ['global']),
     ToWrite = [<<Header/binary, "\n">>
-                   | [<<L/binary, "\n">>
-                          || L <- lists:usort(Lines),
-                             kz_term:is_not_empty(L)
-                     ]
+              | [<<L/binary, "\n">>
+                     || L <- lists:usort(Lines),
+                        kz_term:is_not_empty(L)
+                ]
               ],
     case file:write_file(Path, ToWrite) of
         'ok' -> {'ok', NewLine};

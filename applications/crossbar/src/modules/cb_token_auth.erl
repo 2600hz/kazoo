@@ -269,7 +269,7 @@ set_auth_doc(Context, JObj) ->
     cb_context:setters(Context
                       ,[{fun cb_context:set_auth_doc/2, JObj}
                        ,{fun cb_context:set_auth_account_id/2, AuthAccountId}
-                        | maybe_add_is_admins(AuthAccountId, OwnerId)
+                       | maybe_add_is_admins(AuthAccountId, OwnerId)
                        ]).
 
 -spec maybe_add_is_admins(kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> cb_context:setters().

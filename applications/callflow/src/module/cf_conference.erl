@@ -35,7 +35,7 @@ handle(Data, Call) ->
           ,{<<"Conference-Doc">>, kz_json:get_json_value(<<"config">>, Data)}
           ,{<<"Play-Exit-Tone">>, kz_json:get_ne_value([<<"play_exit_tone">>], Data)}
           ,{<<"Play-Entry-Tone">>, kz_json:get_ne_value([<<"play_entry_tone">>], Data)}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ]),
     kapi_conference:publish_discovery_req(Command),
     cf_exe:control_usurped(Call).

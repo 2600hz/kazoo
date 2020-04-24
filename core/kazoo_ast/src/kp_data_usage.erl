@@ -494,7 +494,7 @@ arg_list_has_data_var(DataName, Aliases, [?MOD_FUN_ARGS('kz_json'
                                                        ,'set_value'
                                                        ,Args
                                                        )
-                                          | T
+                                         | T
                                          ]) ->
     ?DEBUG("  checking set_value for Data: ~p~n", [Args]),
     case arg_list_has_data_var(DataName, Aliases, Args) of
@@ -506,7 +506,7 @@ arg_list_has_data_var(DataName, Aliases, [?MOD_FUN_ARGS('kz_json'
                                                        ,'set_values'
                                                        ,Args
                                                        )
-                                          | T
+                                         | T
                                          ]) ->
     ?DEBUG("  checking set_values for Data: ~p~n", [Args]),
     case arg_list_has_data_var(DataName, Aliases, Args) of
@@ -812,7 +812,7 @@ data_index(DataName
           ,[?MOD_FUN_ARGS('kz_json', 'set_value'
                          ,Args
                          )
-            | As
+           | As
            ]
           ,Index
           ) ->
@@ -824,7 +824,7 @@ data_index(DataName
           ,[?MOD_FUN_ARGS('kz_json', 'set_values'
                          ,Args
                          )
-            | As
+           | As
            ]
           ,Index
           ) ->

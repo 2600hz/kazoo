@@ -220,7 +220,7 @@ add_location(Number, Location, CallerName) ->
                      ,{'callername', [kz_term:to_list(CallerName)]}
                      ]
              }
-             | Location
+            | Location
             ],
     case emergency_provisioning_request('addLocation', Props) of
         {'ok', Response} -> parse_response(Response);

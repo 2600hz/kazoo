@@ -43,7 +43,7 @@
 -define(FAX_FILE_TYPE, <<"tiff">>).
 
 -define(ACCEPTED_MIME_TYPES, [{<<"image">>, <<"tiff">>, '*'}
-                              | ?MULTIPART_CONTENT_TYPES
+                             | ?MULTIPART_CONTENT_TYPES
                               ++ ?PDF_CONTENT_TYPES
                               ++ ?JSON_CONTENT_TYPES
                              ]).
@@ -525,7 +525,7 @@ on_success(Context) ->
                                           ,{<<"pvt_account_id">>, cb_context:account_id(Context)}
                                           ,{<<"pvt_account_db">>, AccountDb}
                                           ,{<<"pvt_reseller_id">>, ResellerId}
-                                           | maybe_add_timezone(Context)
+                                          | maybe_add_timezone(Context)
                                           ]
                                          ,cb_context:doc(Context)
                                          )
@@ -564,7 +564,7 @@ fax_modb_summary(Context, Folder) ->
     {ViewName, Opts} = get_view_and_filter(Context, get_filter_doc(Context), Folder),
     Options = [{'mapper', fun normalize_modb_view_results/2}
               ,'include_docs'
-               | Opts
+              | Opts
               ],
     crossbar_view:load_modb(Context, ViewName, Options).
 
@@ -712,7 +712,7 @@ outgoing_summary(Context) ->
     Options = [{'mapper', crossbar_view:get_value_fun()}
               ,{'databases', [?KZ_FAXES_DB]}
               ,'include_docs'
-               | Opts
+              | Opts
               ],
     crossbar_view:load(Context, ViewName, Options).
 

@@ -534,7 +534,7 @@ record_to_xml(#bt_subscription{}=Subscription, ToString) ->
                                     [{'trial-duration', S#bt_subscription.trial_duration}
                                     ,{'trial-duration-unit', S#bt_subscription.trial_duration_unit}
                                     ,{'trial-period', S#bt_subscription.trial_period}
-                                     | P
+                                    | P
                                     ]
                             end
                     end
@@ -610,7 +610,7 @@ update_options(Key, Value, Props) ->
             [{'options', [{Key, Value}]}|Props];
         Options ->
             [{'options', [{Key, Value}|Options]}
-             |props:delete('options', Props)
+            |props:delete('options', Props)
             ]
     end.
 

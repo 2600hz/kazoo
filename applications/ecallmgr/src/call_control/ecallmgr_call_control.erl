@@ -429,7 +429,7 @@ publish_usurp(CallId, FetchId, Node) ->
             ,{<<"Fetch-ID">>, FetchId}
             ,{<<"Reason">>, <<"Route-Win">>}
             ,{<<"Media-Node">>, kz_term:to_binary(Node)}
-             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     lager:debug("sending control usurp for fetch-id ~s(~s)", [FetchId, CallId]),
     kapi_call:publish_usurp_control(CallId, Usurp),
@@ -446,7 +446,7 @@ publish_route_win(#state{call_id=CallId
           ,{<<"Call-ID">>, CallId}
           ,{<<"Control-Queue">>, kapi:encode_pid(Q)}
           ,{<<"Custom-Channel-Vars">>, CCVs}
-           | kz_api:default_headers(Q, <<"dialplan">>, <<"route_win">>, ?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(Q, <<"dialplan">>, <<"route_win">>, ?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("sending route_win to ~s", [ControllerQ]),
     kapi_route:publish_win(ControllerQ, Win).
@@ -1156,7 +1156,7 @@ publish_error_resp(#{cmd := Cmd
            ,{<<"Channel-Call-State">>, CallState}
            ,{<<"Request">>, kz_api:remove_defaults(Cmd)}
            ,{<<"Call-ID">>, CallId}
-            | kz_api:default_headers(<<>>, <<"error">>, <<"dialplan">>, ?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(<<>>, <<"error">>, <<"dialplan">>, ?APP_NAME, ?APP_VERSION)
            ],
     lager:debug("sending execution error: ~p", [Resp]),
     kapi_dialplan:publish_error(CallId, Resp).

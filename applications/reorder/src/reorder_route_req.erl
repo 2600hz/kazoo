@@ -63,7 +63,7 @@ send_response(JObj, ControllerQ, Reconcilable, Code, Message) ->
            ,{<<"Route-Error-Code">>, Code}
            ,{<<"Route-Error-Message">>, Message}
            ,{<<"Defer-Response">>, (not Reconcilable)}
-            | kz_api:default_headers(ControllerQ, ?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(ControllerQ, ?APP_NAME, ?APP_VERSION)
            ],
     kapi_route:publish_resp(kz_json:get_value(<<"Server-ID">>, JObj), Resp).
 
@@ -85,7 +85,7 @@ send_transfer(JObj, ControllerQ, Reconcilable, Number) ->
            ,{<<"Method">>, <<"bridge">>}
            ,{<<"Routes">>, [Route]}
            ,{<<"Defer-Response">>, (not Reconcilable)}
-            | kz_api:default_headers(ControllerQ, ?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(ControllerQ, ?APP_NAME, ?APP_VERSION)
            ],
     kapi_route:publish_resp(kz_json:get_value(<<"Server-ID">>, JObj), Resp).
 
@@ -111,7 +111,7 @@ send_bridge(JObj, ControllerQ, Reconcilable, _Type, {'ok', Routes}) ->
            ,{<<"Method">>, <<"bridge">>}
            ,{<<"Routes">>, Routes}
            ,{<<"Defer-Response">>, (not Reconcilable)}
-            | kz_api:default_headers(ControllerQ, ?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(ControllerQ, ?APP_NAME, ?APP_VERSION)
            ],
     kapi_route:publish_resp(kz_json:get_value(<<"Server-ID">>, JObj), Resp);
 send_bridge(JObj, ControllerQ, Type, Reconcilable, _) ->

@@ -163,13 +163,13 @@ getter_name(Property) ->
 add_exports(Property, Exports) ->
     Getter = getter_name(Property),
     [["-export([", Getter, "/1, ", Getter, "/2, set_", Getter, "/2]).\n"]
-     | Exports
+    | Exports
     ].
 
 add_pattern_exports(Property, Key, Exports) ->
     Getter = getter_name(Property, Key),
     [["-export([", Getter, "/2, ", Getter, "/3, set_", Getter, "/3]).\n"]
-     | Exports
+    | Exports
     ].
 
 add_accessors(Property, Schema, Accessors) ->
@@ -193,7 +193,7 @@ add_accessors(Property, Schema, Accessors) ->
      ,"set_", Getter, "(Doc, ", SetVar, ") ->\n"
      ,"    kz_json:set_value(", JSONPath, ", ", SetVar, ", Doc).\n"
      ]
-     | Accessors
+    | Accessors
     ].
 
 add_pattern_accessors(ParentProperty, Key, Schema, Accessors) ->
@@ -218,7 +218,7 @@ add_pattern_accessors(ParentProperty, Key, Schema, Accessors) ->
      ,"set_", Getter, "(Doc, ", GetterKey, ", ", SetVar, ") ->\n"
      ,"    kz_json:set_value(", JSONPath, ", ", SetVar, ", Doc).\n"
      ]
-     | Accessors
+    | Accessors
     ].
 
 json_path([], Var) ->

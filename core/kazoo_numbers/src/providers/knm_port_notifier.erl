@@ -94,7 +94,7 @@ publish_port_update(PhoneNumber, Port) ->
              ,{<<"Number">>, knm_phone_number:number(PhoneNumber)}
              ,{<<"Authorized-By">>, knm_phone_number:auth_by(PhoneNumber)}
              ,{<<"Port">>, Port}
-              | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
+             | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
              ],
     kapps_notify_publisher:cast(Notify, fun kapi_notifications:publish_port_request/1).
 
@@ -110,6 +110,6 @@ publish_ported(PhoneNumber, Port) ->
              ,{<<"Number">>, knm_phone_number:number(PhoneNumber)}
              ,{<<"Authorized-By">>, knm_phone_number:auth_by(PhoneNumber)}
              ,{<<"Port">>, Port}
-              | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
+             | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
              ],
     kapps_notify_publisher:cast(Notify, fun kapi_notifications:publish_ported/1).

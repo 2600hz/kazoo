@@ -276,7 +276,7 @@ change_folder(Folder, Message, AccountId, BoxId) ->
                         Functions::update_funs().
 change_folder(Folder, Message, AccountId, BoxId, Funs0) ->
     Funs = [fun(J) -> kzd_box_message:apply_folder(Folder, J) end
-            | Funs0
+           | Funs0
            ],
     case update(AccountId, BoxId, Message, Funs) of
         {'ok', JObj} ->
@@ -640,7 +640,7 @@ create_forward_message_doc(Call, Metadata, SrcBoxId, Props) ->
                                                            ,kz_doc:id(JObj)
                                                            ),
     Updates = [fun(M) -> kz_json:set_value(<<"length">>, props:get_value(<<"Length">>, Props), M) end
-               | VMChangeFuns
+              | VMChangeFuns
               ],
     MsgJObj = lists:foldl(fun(F, J) -> F(J) end, JObj, Updates),
 
@@ -967,7 +967,7 @@ send_system_alert('undefined', AccountId, Subject, Msg) ->
     Notify = [{<<"Message">>, Msg}
              ,{<<"Subject">>, <<"System Alert: ", Subject/binary>>}
              ,{<<"Account-ID">>, AccountId}
-              | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
+             | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
              ],
     kz_amqp_worker:cast(Notify, fun kapi_notifications:publish_system_alert/1);
 send_system_alert(Call, AccountId, Subject, Msg) ->
@@ -975,6 +975,6 @@ send_system_alert(Call, AccountId, Subject, Msg) ->
              ,{<<"Subject">>, <<"System Alert: ", Subject/binary>>}
              ,{<<"Details">>, kapps_call:to_json(Call)}
              ,{<<"Account-ID">>, AccountId}
-              | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
+             | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
              ],
     kz_amqp_worker:cast(Notify, fun kapi_notifications:publish_system_alert/1).

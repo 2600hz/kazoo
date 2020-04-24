@@ -77,7 +77,7 @@ start_link(WorkerSup, _, AccountId, QueueId) ->
                            ,[{'bindings', ?SHARED_QUEUE_BINDINGS(AccountId, QueueId)}
                             ,{'responders', ?RESPONDERS}
                             ,{'queue_name', kapi_acdc_queue:shared_queue_name(AccountId, QueueId)}
-                             | ?SHARED_BINDING_OPTIONS(Priority)
+                            | ?SHARED_BINDING_OPTIONS(Priority)
                             ]
                            ,[WorkerSup]
                            ).

@@ -130,7 +130,7 @@ process_module(Module, Config0) ->
 -spec fold_over_module(atom(), config(), [{fun((ast_functions(), config()) -> config()), ast_functions()} |
                                           {fun((ast_records(), config()) -> config()), ast_records()}
                                          ]) ->
-                              config().
+          config().
 fold_over_module(Module, Config0, Routines) ->
     maybe_fold_over_module(Module, Routines, callback_module(Module, Config0)).
 

@@ -160,7 +160,7 @@ handle_cast('hangup_parked_call', #state{parked_call=ParkedCall
     Hangup = [{<<"Application-Name">>, <<"hangup">>}
              ,{<<"Insert-At">>, <<"now">>}
              ,{<<"Call-ID">>, ParkedCall}
-              | kz_api:default_headers(Queue, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+             | kz_api:default_headers(Queue, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
              ],
     kapi_dialplan:publish_command(CtrlQ, props:filter_undefined(Hangup)),
     {'noreply', State#state{parked_call = 'undefined'}};
@@ -173,7 +173,7 @@ handle_cast({'parked', <<_/binary>> = CallId}, #state{moh=MOH
            ,{<<"Insert-At">>, <<"now">>}
            ,{<<"Hold-Media">>, MOH}
            ,{<<"Call-ID">>, CallId}
-            | kz_api:default_headers(Queue, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(Queue, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
            ],
     kapi_dialplan:publish_command(CtrlQ, props:filter_undefined(Hold)),
     Req = build_bridge_request(CallId, Call, Queue),
@@ -297,7 +297,7 @@ build_bridge_request(ParkedCallId, Call, Q) ->
                            ,{<<"Account-Realm">>, kapps_call:from_realm(Call)}
                            ,{<<"Timeout">>, 10 * ?MILLISECONDS_IN_SECOND}
                            ,{<<"From-URI-Realm">>, kapps_call:from_realm(Call)}
-                            | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
+                           | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
                            ]).
 
 -spec originate_park(kz_term:ne_binary(), kapps_call:call(), kz_term:ne_binary()) -> 'ok'.
@@ -317,7 +317,7 @@ handle_originate_ready(JObj, Props) ->
             CtrlQ = kz_json:get_value(<<"Control-Queue">>, JObj),
             Prop = [{<<"Call-ID">>, CallId}
                    ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
-                    | kz_api:default_headers(gen_listener:queue_name(Srv), ?APP_NAME, ?APP_VERSION)
+                   | kz_api:default_headers(gen_listener:queue_name(Srv), ?APP_NAME, ?APP_VERSION)
                    ],
             gen_listener:cast(Srv, {'offnet_ctl_queue', CtrlQ}),
             gen_listener:add_binding(Srv, {'call', ?MK_CALL_BINDING(CallId)}),
@@ -348,5 +348,5 @@ build_offnet_request(Exten, Call, Q) ->
                            ,{<<"To-DID">>, Exten}
                            ,{<<"Format-From-URI">>, <<"true">>}
                            ,{<<"From-URI-Realm">>, kapps_call:from_realm(Call)}
-                            | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
+                           | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
                            ]).

@@ -133,7 +133,7 @@ create_template_props(Event, Docs, Account) ->
                  ,{<<"fax_id">>, kz_json:get_value(<<"Fax-ID">>, Event)}
                  ,{<<"fax_media">>, kz_json:get_value(<<"Fax-Name">>, Event)}
                  ,{<<"call_id">>, kz_json:get_value(<<"Call-ID">>, Event)}
-                  | fax_values(kz_json:get_value(<<"Fax-Info">>, Event))
+                 | fax_values(kz_json:get_value(<<"Fax-Info">>, Event))
                  ]}
     ,{<<"error">>, [{<<"call_info">>, kz_json:get_value(<<"Fax-Error">>, Event)}
                    ,{<<"fax_info">>, kz_json:get_value([<<"Fax-Info">>,<<"Fax-Result-Text">>], Event)}

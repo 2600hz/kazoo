@@ -21,7 +21,7 @@
        ,[{'out_dir', 'false'}
         ,'return'
         ,'report'
-         | Options
+        | Options
         ]).
 
 -type template() :: nonempty_string() | kz_term:ne_binary().

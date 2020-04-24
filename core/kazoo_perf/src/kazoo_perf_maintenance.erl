@@ -32,7 +32,7 @@ graphite_metrics(Account, Cluster, Zone) ->
 json_metrics() ->
     JObj = kz_json:from_list_recursive(
              [{<<"timestamp">>, get(timestamp)}
-              | [{Metric, to_props(Metric, Measure)} || {Metric, Measure} <- collect()]
+             | [{Metric, to_props(Metric, Measure)} || {Metric, Measure} <- collect()]
              ]),
     io:format("~s\n", [kz_json:encode(JObj)]),
     no_return.

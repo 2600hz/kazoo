@@ -29,7 +29,7 @@ handle(Action, Data, Call) ->
           ,{<<"Data">>, Data}
           ,{<<"Call-ID">>, kapps_call:call_id_direct(Call)}
           ,{?KEY_MSG_ID, ActionId}
-           | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
           ],
     kapi_callflow:publish_action_execute(kz_term:to_binary(Action), API),
     wait_for_msg(ActionId, Call).

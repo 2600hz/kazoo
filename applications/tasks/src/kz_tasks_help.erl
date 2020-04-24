@@ -77,7 +77,7 @@ handle_lookup_req(JObj, _Props) ->
     Resp = kz_json:from_list(
              [{<<"Help">>, Help}
              ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
-              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]
             ),
     kapi_tasks:publish_lookup_resp(kz_api:server_id(JObj), Resp).

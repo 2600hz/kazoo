@@ -1903,7 +1903,7 @@ notify(Url, 'get', Data) ->
 notify(Uri, Headers, Method, Body, Opts) ->
     Options = [{'connect_timeout', 200}
               ,{'timeout', 1000}
-               | Opts
+              | Opts
               ],
     URI = kz_term:to_list(Uri),
     case kz_http:req(Method, URI, Headers, Body, Options) of

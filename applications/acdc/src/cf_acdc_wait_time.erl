@@ -41,7 +41,7 @@ handle(Data, Call) ->
             [{<<"Account-ID">>, AccountId}
             ,{<<"Queue-ID">>, QueueId}
             ,{<<"Window">>, Window}
-             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ]),
     case kz_amqp_worker:call(Req
                             ,fun kapi_acdc_stats:publish_average_wait_time_req/1

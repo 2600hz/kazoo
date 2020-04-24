@@ -104,7 +104,7 @@ find_other() ->
 find_no_phonebook(Options0) ->
     Prefix = <<"415">>,
     Options = [{prefix, Prefix}
-               |Options0
+              |Options0
               ],
     [{"Verify no phonebook url yields no results"
      ,?_assertEqual([], knm_search:find(Options))
@@ -119,7 +119,7 @@ find_blocks(Options0) ->
               ,{'account_id', ?RESELLER_ACCOUNT_ID}
               ,{'quantity', Limit}
               ,{prefix, Prefix}
-               | Options0
+              | Options0
               ],
 
     {'bulk', [StartNumber, EndNumber]=Numbers} = knm_other:find_numbers(Prefix, Limit, Options),
@@ -141,7 +141,7 @@ find_numbers(Options0) ->
               ,{'account_id', ?MASTER_ACCOUNT_ID}
               ,{'quantity', 10}
               ,{'prefix', Prefix}
-               | Options0
+              | Options0
               ],
 
     Results = knm_search:find(Options),
@@ -149,7 +149,7 @@ find_numbers(Options0) ->
     [{"Verify results returned is the expected amount"
      ,?_assertEqual(Limit, length(Results))
      }
-     | verify_number_results(Results)
+    | verify_number_results(Results)
     ].
 
 verify_number_results(Results) ->
@@ -162,7 +162,7 @@ verify_number_result(Result, {Tests, N}) ->
                     ,kz_json:get_value(<<"number">>, Result)
                     )
       }
-      | Tests
+     | Tests
      ]
     ,N+1
     }.

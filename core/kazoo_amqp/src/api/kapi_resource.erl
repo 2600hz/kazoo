@@ -144,7 +144,7 @@ originate_req_definition() ->
                                                             ,<<"Outbound-Call-ID">>
                                                             ,<<"Simplify-Loopback">> %% loopback_bowout flag
                                                             ,<<"Start-Control-Process">>
-                                                                 | kapi_dialplan:optional_bridge_req_headers()
+                                                            | kapi_dialplan:optional_bridge_req_headers()
                                                             ]}
               ,{fun kapi_definition:set_values/2
                ,[{<<"Application-Name">>, [<<"bridge">>
@@ -156,7 +156,7 @@ originate_req_definition() ->
                 ,{<<"Dial-Endpoint-Method">>, [<<"single">>, <<"simultaneous">>]}
                 ,?EAVESDROP_MODE
                 ,{<<"Media">>, [<<"process">>, <<"bypass">>, <<"auto">>]}
-                 | kapi_definition:event_type_headers(Category, EventName)
+                | kapi_definition:event_type_headers(Category, EventName)
                 ]
                }
               ,{fun kapi_definition:set_types/2
@@ -185,7 +185,7 @@ originate_resp_definition() ->
               ,{fun kapi_definition:set_required_headers/2, [<<"Call-ID">>]}
               ,{fun kapi_definition:set_optional_headers/2
                ,[<<"Channel-Call-State">>
-                     | kapi_call:optional_call_event_headers()
+                | kapi_call:optional_call_event_headers()
                 ]
                }
               ,{fun kapi_definition:set_values/2
@@ -213,7 +213,7 @@ originate_started_definition() ->
               ,{fun kapi_definition:set_required_headers/2, [<<"Call-ID">>]}
               ,{fun kapi_definition:set_optional_headers/2
                ,[<<"Channel-Call-State">>
-                     | kapi_call:optional_call_event_headers()
+                | kapi_call:optional_call_event_headers()
                 ]
                }
               ,{fun kapi_definition:set_values/2
@@ -266,12 +266,12 @@ eavesdrop_req_definition() ->
                ,[<<"Eavesdrop-Call-ID">>
                 ,<<"Eavesdrop-Group-ID">>
                 ,<<"Eavesdrop-Mode">>
-                     | kapi_definition:required_headers(originate_req_definition())
+                | kapi_definition:required_headers(originate_req_definition())
                 ]
                }
               ,{fun kapi_definition:set_values/2
                ,[?EAVESDROP_MODE
-                 | kapi_definition:event_type_headers(Category, EventName)
+                | kapi_definition:event_type_headers(Category, EventName)
                 ]
                }
               ,{fun kapi_definition:set_types/2, []}
@@ -295,7 +295,7 @@ eavesdrop_resp_definition() ->
                                                             ]}
               ,{fun kapi_definition:set_values/2
                ,[{<<"Status">>, [<<"started">>, <<"error">>]}
-                 | kapi_definition:event_type_headers(Category, EventName)
+                | kapi_definition:event_type_headers(Category, EventName)
                 ]
                }
               ,{fun kapi_definition:set_types/2, []}

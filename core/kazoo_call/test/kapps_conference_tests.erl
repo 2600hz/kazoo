@@ -43,5 +43,5 @@ tests(C, Tests, ConfDoc) ->
     ,{"same wait_for_moderator", ?_assertEqual(kzd_conferences:wait_for_moderator(ConfDoc), kapps_conference:wait_for_moderator(C))}
     ,{"same profile_name", ?_assertEqual(kzd_conferences:profile_name(ConfDoc), kapps_conference:profile_name(C))}
     ,{"same profile", ?_assertEqual({kzd_conferences:profile_name(ConfDoc), kzd_conferences:profile(ConfDoc)}, kapps_conference:profile(C))}
-     | Tests
+    | Tests
     ].

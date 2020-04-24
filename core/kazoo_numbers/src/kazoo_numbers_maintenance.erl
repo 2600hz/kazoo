@@ -523,7 +523,7 @@ fix_apps_for_account(State, AccountDb) ->
 -spec fix_apps_for_account(loop_state(), kz_term:ne_binary(), kz_term:proplist()) -> loop_state().
 fix_apps_for_account(State, AccountDb, ViewOpts) ->
     ViewOptions = [{'limit', kz_datamgr:max_bulk_read()}
-                   | ViewOpts
+                  | ViewOpts
                   ],
     View = <<"numbers/list_by_app">>,
     Funs = [fun check_app_usage/2
@@ -563,7 +563,7 @@ fix_apps_for_number_db(State, NumberDb) ->
 -spec fix_apps_for_number_db(loop_state(), kz_term:ne_binary(), kz_term:proplist()) -> loop_state().
 fix_apps_for_number_db(State, NumberDb, ViewOpts) ->
     ViewOptions = [{'limit', kz_datamgr:max_bulk_read()}
-                   | ViewOpts
+                  | ViewOpts
                   ],
     View = <<"numbers/list_assigned_and_app">>,
     Funs = [fun split_by_list_assigned_and_app/2

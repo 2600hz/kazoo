@@ -53,7 +53,7 @@ logout_agent(AccountId, AgentId) ->
     Update = props:filter_undefined(
                [{<<"Account-ID">>, AccountId}
                ,{<<"Agent-ID">>, AgentId}
-                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                ]),
     kz_amqp_worker:cast(Update, fun kapi_acdc_agent:publish_logout/1).
 
@@ -122,7 +122,7 @@ log_current_agent(QueueSup) ->
 -spec current_calls(kz_term:ne_binary()) -> 'ok'.
 current_calls(AccountId) ->
     Req = [{<<"Account-ID">>, AccountId}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     get_and_show(AccountId, <<"all">>, Req).
 
@@ -130,12 +130,12 @@ current_calls(AccountId) ->
 current_calls(AccountId, QueueId) when is_binary(QueueId) ->
     Req = [{<<"Account-ID">>, AccountId}
           ,{<<"Queue-ID">>, QueueId}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     get_and_show(AccountId, QueueId, Req);
 current_calls(AccountId, Props) ->
     Req = [{<<"Account-ID">>, AccountId}
-           | Props ++ kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | Props ++ kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     get_and_show(AccountId, <<"custom">>, Req).
 
@@ -461,7 +461,7 @@ agent_login(AcctId, AgentId) ->
     Update = props:filter_undefined(
                [{<<"Account-ID">>, AcctId}
                ,{<<"Agent-ID">>, AgentId}
-                |  kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+               |  kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                ]),
     _ = kz_amqp_worker:cast(Update, fun kapi_acdc_agent:publish_login/1),
     lager:info("published login update for agent").
@@ -472,7 +472,7 @@ agent_logout(AcctId, AgentId) ->
     Update = props:filter_undefined(
                [{<<"Account-ID">>, AcctId}
                ,{<<"Agent-ID">>, AgentId}
-                |  kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+               |  kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                ]),
     _ = kz_amqp_worker:cast(Update, fun kapi_acdc_agent:publish_logout/1),
     lager:info("published logout update for agent").
@@ -489,7 +489,7 @@ agent_pause(AcctId, AgentId, Timeout) ->
                [{<<"Account-ID">>, AcctId}
                ,{<<"Agent-ID">>, AgentId}
                ,{<<"Timeout">>, kz_term:to_integer(Timeout)}
-                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                ]),
     _ = kz_amqp_worker:cast(Update, fun kapi_acdc_agent:publish_pause/1),
     lager:info("published pause for agent").
@@ -500,7 +500,7 @@ agent_resume(AcctId, AgentId) ->
     Update = props:filter_undefined(
                [{<<"Account-ID">>, AcctId}
                ,{<<"Agent-ID">>, AgentId}
-                |  kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+               |  kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                ]),
     _ = kz_amqp_worker:cast(Update, fun kapi_acdc_agent:publish_resume/1),
     lager:info("published resume for agent").
@@ -512,7 +512,7 @@ agent_queue_login(AcctId, AgentId, QueueId) ->
                [{<<"Account-ID">>, AcctId}
                ,{<<"Agent-ID">>, AgentId}
                ,{<<"Queue-ID">>, QueueId}
-                |  kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+               |  kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                ]),
     _ = kz_amqp_worker:cast(Update, fun kapi_acdc_agent:publish_login_queue/1),
     lager:info("published login update for agent").
@@ -524,7 +524,7 @@ agent_queue_logout(AcctId, AgentId, QueueId) ->
                [{<<"Account-ID">>, AcctId}
                ,{<<"Agent-ID">>, AgentId}
                ,{<<"Queue-ID">>, QueueId}
-                |  kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+               |  kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                ]),
     _ = kz_amqp_worker:cast(Update, fun kapi_acdc_agent:publish_logout_queue/1),
     lager:info("published logout update for agent").

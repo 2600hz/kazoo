@@ -35,7 +35,7 @@ base() ->
 transition_port_from_port_in() ->
     Options = [{'auth_by', ?MASTER_ACCOUNT_ID}
               ,{'ported_in', 'true'}
-               |base()
+              |base()
               ],
     [PN] = knm_pipe:succeeded(knm_ops:create([?TEST_PORT_IN_NUM], Options)),
     [?_assert(knm_phone_number:is_dirty(PN))
@@ -65,7 +65,7 @@ transition_port_from_port_in() ->
 transition_port_from_port_in_with_different_module_configured() ->
     Options = [{'auth_by', ?MASTER_ACCOUNT_ID}
               ,{'ported_in', 'true'}
-               | base()
+              | base()
               ],
     [PN] = knm_pipe:succeeded(knm_ops:create([?TEST_PORT_IN2_NUM], Options)),
     [?_assert(knm_phone_number:is_dirty(PN))
@@ -99,7 +99,7 @@ transition_port_from_port_in_with_different_module_configured() ->
 transition_port_from_available() ->
     Options = [{'auth_by', ?MASTER_ACCOUNT_ID}
               ,{'ported_in', 'true'}
-               | base()
+              | base()
               ],
     [PN] = knm_pipe:succeeded(knm_ops:create([?TEST_AVAILABLE_NUM], Options)),
     [?_assert(knm_phone_number:is_dirty(PN))
@@ -151,7 +151,7 @@ transition_port_from_available_not_specifying() ->
 transition_port_from_not_found() ->
     Options = [{'auth_by', ?MASTER_ACCOUNT_ID}
               ,{'ported_in', 'true'}
-               |base()
+              |base()
               ],
     [PN] = knm_pipe:succeeded(knm_ops:create([?TEST_NEW_PORT_IN_NUM], Options)),
     [?_assert(knm_phone_number:is_dirty(PN))

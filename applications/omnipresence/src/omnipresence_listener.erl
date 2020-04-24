@@ -188,6 +188,6 @@ maybe_sync_subscriptions('false', _) -> 'ok';
 maybe_sync_subscriptions('true', Queue) ->
     Payload = kz_json:from_list(
                 [{<<"Action">>, <<"Request">>}
-                 | kz_api:default_headers(Queue, ?APP_NAME, ?APP_VERSION)
+                | kz_api:default_headers(Queue, ?APP_NAME, ?APP_VERSION)
                 ]),
     kapi_presence:publish_sync(Payload).

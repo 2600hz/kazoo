@@ -95,9 +95,9 @@ send_park(#ts_callflow_state{route_req_jobj=JObj
            ,{<<"From-Realm">>, kzd_accounts:fetch_realm(AccountId)}
            ,{<<"Custom-Channel-Vars">>, kz_json:get_json_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new())}
            ,{<<"Custom-Application-Vars">>, kz_json:get_json_value(<<"Custom-Application-Vars">>, JObj)}
-            | kz_api:default_headers(get_worker_queue(State)
-                                    ,?APP_NAME, ?APP_VERSION
-                                    )
+           | kz_api:default_headers(get_worker_queue(State)
+                                   ,?APP_NAME, ?APP_VERSION
+                                   )
            ],
     lager:info("trunkstore knows how to route this call, sending park route response"),
     _ = kz_amqp_worker:cast(Resp
@@ -281,10 +281,10 @@ send_hangup(#ts_callflow_state{callctl_q=CtlQ
     Command = [{<<"Application-Name">>, <<"hangup">>}
               ,{<<"Call-ID">>, CallID}
               ,{<<"Insert-At">>, <<"now">>}
-               | kz_api:default_headers(get_worker_queue(State)
-                                       ,<<"call">>, <<"command">>
-                                       ,?APP_NAME, ?APP_VERSION
-                                       )
+              | kz_api:default_headers(get_worker_queue(State)
+                                      ,<<"call">>, <<"command">>
+                                      ,?APP_NAME, ?APP_VERSION
+                                      )
               ],
     lager:info("sending hangup to ~s: ~p", [CtlQ, Command]),
     'ok' = kz_amqp_worker:cast(Command

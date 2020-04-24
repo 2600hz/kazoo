@@ -239,7 +239,7 @@ publish_action(Context, AgentId) ->
               [{<<"Account-ID">>, cb_context:account_id(Context)}
               ,{<<"Agent-ID">>, AgentId}
               ,{<<"Queue-ID">>, cb_context:req_value(Context, <<"queue_id">>)}
-               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ]),
 
     kz_amqp_worker:cast(Props, Publisher).
@@ -252,7 +252,7 @@ publish_update(Context, AgentId, PubFun) ->
                ,{<<"Time-Limit">>, cb_context:req_value(Context, <<"timeout">>)}
                ,{<<"Presence-ID">>, cb_context:req_value(Context, <<"presence_id">>)}
                ,{<<"Presence-State">>, cb_context:req_value(Context, <<"presence_state">>)}
-                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                ]),
     kz_amqp_worker:cast(Update, PubFun).
 
@@ -311,7 +311,7 @@ fetch_all_current_stats(Context, AgentId) ->
             ,{<<"Agent-ID">>, AgentId}
             ,{<<"Start-Range">>, From}
             ,{<<"End-Range">>, Now}
-             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ]),
     fetch_stats_from_amqp(Context, Req).
 
@@ -324,7 +324,7 @@ fetch_current_status(Context, AgentId, 'true') ->
             [{<<"Account-ID">>, cb_context:account_id(Context)}
             ,{<<"Agent-ID">>, AgentId}
             ,{<<"Limit">>, 1}
-             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ]),
     case kz_amqp_worker:call(Req
                             ,fun kapi_acdc_stats:publish_status_req/1
@@ -402,7 +402,7 @@ fetch_ranged_agent_stats(Context, From, To, 'true') ->
             ,{<<"Agent-ID">>, cb_context:req_value(Context, <<"agent_id">>)}
             ,{<<"Start-Range">>, From}
             ,{<<"End-Range">>, To}
-             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ]),
     fetch_stats_from_amqp(Context, Req);
 fetch_ranged_agent_stats(Context, From, To, 'false') ->
@@ -457,7 +457,7 @@ format_stats_fold(Stat, Acc) ->
             maybe_add_misses(Stat
                             ,kz_json:set_values([{TotalsK, Totals + 1}
                                                 ,{QTotalsK, QTotals + 1}
-                                                 | AnsweredData
+                                                | AnsweredData
                                                 ]
                                                ,Acc
                                                )
@@ -553,7 +553,7 @@ normalize_view_results(JObj, Acc) ->
                       ,kz_doc:id(JObj)
                       ,kz_json:get_value(<<"value">>, JObj)
                       )
-     | Acc
+    | Acc
     ].
 
 -spec validate_status_change(cb_context:context()) -> cb_context:context().

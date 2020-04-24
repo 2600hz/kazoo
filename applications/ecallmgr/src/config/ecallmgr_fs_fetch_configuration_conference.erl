@@ -107,7 +107,7 @@ fetch_conference_params(Node, _Id, <<"request-controls">>, ConfName, JObj, Ctx) 
           ,{<<"Controls">>, Controls}
           ,{<<"Call-ID">>, kzd_fetch:call_id(JObj)}
           ,{<<"Account-ID">>, kzd_fetch:account_id(JObj)}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     Resp = kz_amqp_worker:call(Cmd
                               ,fun kapi_conference:publish_config_req/1
@@ -151,7 +151,7 @@ fetch_conference_profile(Node, _Id, Profile, Conference, AccountId, Ctx) ->
           ,{<<"Profile">>, Profile}
           ,{<<"Conference-ID">>, Conference}
           ,{<<"Account-ID">>, AccountId}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     Variables = [{<<"Conference-Account-ID">>, AccountId}
                 ,{<<"Conference-Node">>, kz_term:to_binary(node())}

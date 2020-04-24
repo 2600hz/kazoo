@@ -112,7 +112,7 @@ get_sources_total(Account, Options) ->
     ViewOptions = ['reduce'
                   ,{'group_level', 1}
                   ,'missing_as_error'
-                   | Options
+                  | Options
                   ],
     case kazoo_modb:get_results(Account, View, ViewOptions) of
         {'ok', []} ->
@@ -251,7 +251,7 @@ get_ranged(View, Options) ->
             ViewOptions = props:filter_undefined([{'group', 'true'}
                                                  ,{'group_level', 0}
                                                  ,{'reduce', 'true'}
-                                                  | props:delete('databases', Options)
+                                                 | props:delete('databases', Options)
                                                  ]),
             lager:debug("getting ledgers starting from ~p to ~p from dbs: ~p"
                        ,[props:get_value('startkey', ViewOptions)

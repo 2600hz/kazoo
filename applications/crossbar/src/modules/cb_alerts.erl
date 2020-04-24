@@ -691,7 +691,7 @@ view_keys(Context) ->
     Routines = [fun(K) ->
                         [[<<"all">>, <<"all">>]
                         ,[<<"all">>, <<"users">>]
-                         |K
+                        |K
                         ]
                 end
                ,fun(K) -> [[AccountId, <<"all">>], [AccountId, <<"users">>]|K] end
@@ -708,7 +708,7 @@ view_keys(Context) ->
                         [[<<"all">>, <<"admins">>]
                         ,[AccountId, <<"admins">>]
                         ,[<<"resellers">>, <<"admins">>]
-                         |K
+                        |K
                         ];
                    (K) -> K
                 end
@@ -731,11 +731,11 @@ view_keys(Context) ->
 add_descendants(Descendant, 'false', Keys) ->
     [[<<"descendants">>, [Descendant, <<"all">>]]
     ,[<<"descendants">>, [Descendant, <<"users">>]]
-     | Keys
+    | Keys
     ];
 add_descendants(Descendant, 'true', Keys) ->
     [[<<"descendants">>, [Descendant, <<"all">>]]
     ,[<<"descendants">>, [Descendant, <<"users">>]]
     ,[<<"descendants">>, [Descendant, <<"admins">>]]
-     | Keys
+    | Keys
     ].

@@ -101,7 +101,7 @@ load_chunk_view(Context, ViewName, Options0) ->
               ,{'chunk_size', ?MAX_BULK}
               ,{'mapper', fun(JObjs) -> cdrs_listing_mapper(Context, JObjs) end}
               ,'include_docs'
-               | Options0
+              | Options0
               ],
     crossbar_view:load_modb(cb_cdrs:fix_qs_filter_keys(C1), ViewName, Options).
 
@@ -125,7 +125,7 @@ validate(Context, CallId) ->
 -spec inspect_call_id(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 inspect_call_id(CallId, Context) ->
     Req = [{<<"Call-ID">>, CallId}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case kz_amqp_worker:call_collect(Req
                                     ,fun kapi_inspector:publish_lookup_req/1
@@ -206,7 +206,7 @@ cdrs_listing_mapper(Context, JObjs) ->
 filter_callids([]) -> {'ok', []};
 filter_callids(CallIds) ->
     Req = [{<<"Call-IDs">>, CallIds}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case kz_amqp_worker:call_collect(Req
                                     ,fun kapi_inspector:publish_filter_req/1

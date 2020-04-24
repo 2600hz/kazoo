@@ -61,11 +61,11 @@ set_account_id(#{ccvs := CCVs, profile := Profile, number := #{account_id := Acc
                  ,{<<"Account-Realm">>, Realm}
                  ,{<<"Realm">>, Realm}
                  ,{<<"Reseller-ID">>, ResellerId}
-                  | CCVs
+                 | CCVs
                  ]
         ,profile => [{<<"Account-ID">>, AccountId}
                     ,{<<"Reseller-ID">>, ResellerId}
-                     | Profile
+                    | Profile
                     ]
         ,account_id => AccountId
         ,master_id => MasterAccountId
@@ -114,11 +114,11 @@ set_resource_id(#{resource := {'ok', Resource}, ccvs := CCVs, profile := Profile
     Map#{ccvs => [{<<"Resource-ID">>, kz_doc:id(Resource)}
                  ,{<<"Global-Resource">>, kz_json:is_true(<<"Is-Global">>, Resource)}
                  ,{<<"Authorizing-Type">>, <<"resource">>}
-                  | CCVs
+                 | CCVs
                  ]
         ,profile => [{<<"Resource-ID">>, kz_doc:id(Resource)}
                     ,{<<"Resource-Formatters">>, kzd_resources:formatters(Resource)}
-                     | Profile
+                    | Profile
                     ]
         };
 set_resource_id(#{resource := {'error', _}
@@ -131,10 +131,10 @@ set_resource_id(#{resource := {'error', _}
     Map#{ccvs => [{<<"Resource-ID">>, EndpointId}
                  ,{<<"Global-Resource">>, 'true'}
                  ,{<<"Authorizing-Type">>, <<"resource">>}
-                  | CCVs
+                 | CCVs
                  ]
         ,profile => [{<<"Resource-ID">>, EndpointId}
-                     | Profile
+                    | Profile
                     ]
         };
 set_resource_id(Map) -> Map.
@@ -234,7 +234,7 @@ set_cid_number(#{is_anonymous := 'true'
                 } = Map) ->
     Map#{profile => [{<<CIDType/binary,"-ID-Number">>, CIDNumber}
                     ,{<<"Endpoint-Caller-ID-Number">>, CIDNumber}
-                     | Profile
+                    | Profile
                     ]};
 set_cid_number(#{caller_id_number := CIDNumber
                 ,cid_type := CIDType
@@ -242,7 +242,7 @@ set_cid_number(#{caller_id_number := CIDNumber
                 } = Map) ->
     Map#{profile => [{<<CIDType/binary,"-ID-Number">>, CIDNumber}
                     ,{<<"Endpoint-Caller-ID-Number">>, CIDNumber}
-                     | Profile
+                    | Profile
                     ]}.
 
 -spec set_cid_name(resource_context()) -> resource_context().
@@ -253,7 +253,7 @@ set_cid_name(#{is_anonymous := 'true'
               } = Map) ->
     Map#{profile => [{<<CIDType/binary,"-ID-Name">>, CIDName}
                     ,{<<"Endpoint-Caller-ID-Name">>, CIDName}
-                     | Profile
+                    | Profile
                     ]};
 set_cid_name(#{caller_id_name := CIDName
               ,cid_type := CIDType
@@ -261,7 +261,7 @@ set_cid_name(#{caller_id_name := CIDName
               } = Map) ->
     Map#{profile => [{<<CIDType/binary,"-ID-Name">>, CIDName}
                     ,{<<"Endpoint-Caller-ID-Name">>, CIDName}
-                     | Profile
+                    | Profile
                     ]};
 set_cid_name(#{caller_id_number := CIDName
               ,cid_type := CIDType
@@ -269,7 +269,7 @@ set_cid_name(#{caller_id_number := CIDName
               } = Map) ->
     Map#{profile => [{<<CIDType/binary,"-ID-Name">>, CIDName}
                     ,{<<"Endpoint-Caller-ID-Name">>, CIDName}
-                     | Profile
+                    | Profile
                     ]}.
 
 -spec maybe_transition_port_in(knm_options:extra_options()) -> 'ok' | pid().

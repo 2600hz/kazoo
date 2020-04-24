@@ -122,7 +122,7 @@ create_call_from_context(Context) ->
                       ,{fun kapps_call:set_account_id/2, cb_context:account_id(Context)}
                       ,{fun kapps_call:set_resource_type/2, <<"audio">>}
                       ,{fun kapps_call:set_owner_id/2, kz_json:get_ne_binary_value(<<"owner_id">>, cb_context:doc(Context))}
-                       | request_specific_extraction_funs(Context)
+                      | request_specific_extraction_funs(Context)
                       ],
             'undefined' =/= V
         ],
@@ -224,7 +224,7 @@ originate_quickcall(Endpoints, Call, Context) ->
            ,{<<"Inherit-Codec">>, <<"false">>}
            ,{<<"Authorizing-Type">>, kapps_call:authorizing_type(Call)}
            ,{<<"Authorizing-ID">>, kapps_call:authorizing_id(Call)}
-            | maybe_retain_cid(Context)
+           | maybe_retain_cid(Context)
            ],
 
     CAVs = cb_modules_util:cavs_from_context(Context),
@@ -270,7 +270,7 @@ originate_quickcall(Endpoints, Call, Context) ->
           ,{<<"Outbound-Caller-ID-Name">>, <<"Device QuickCall">>}
           ,{<<"Outbound-Caller-ID-Number">>, kapps_call:request_user(Call)}
           ,{<<"Timeout">>, CallTimeoutS}
-           | kz_api:default_headers(<<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(<<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
           ]),
 
     originate(Request, Context, cb_context:req_verb(Context), CallTimeoutS).

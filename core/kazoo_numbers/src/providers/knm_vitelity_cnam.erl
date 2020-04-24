@@ -111,7 +111,7 @@ outbound_cnam_options(DID, NewCNAM) ->
             ,{'did', knm_converters:to_npan(DID)}
             ,{'name', NewCNAM}
             ,{'xml', <<"yes">>}
-             | knm_vitelity_util:default_options()
+            | knm_vitelity_util:default_options()
             ]}
     ,{'uri', knm_vitelity_util:api_uri()}
     ].
@@ -223,7 +223,7 @@ remove_inbound_options(PN) ->
     [{'qs', [{'did', knm_converters:to_npan(PN)}
             ,{'cmd', <<"cnamdisable">>}
             ,{'xml', <<"yes">>}
-             | knm_vitelity_util:default_options()
+            | knm_vitelity_util:default_options()
             ]}
     ,{'uri', knm_vitelity_util:api_uri()}
     ].
@@ -257,7 +257,7 @@ inbound_options(DID) ->
     [{'qs', [{'did', knm_converters:to_npan(DID)}
             ,{'cmd', <<"cnamenable">>}
             ,{'xml', <<"yes">>}
-             | knm_vitelity_util:default_options()
+            | knm_vitelity_util:default_options()
             ]}
     ,{'uri', knm_vitelity_util:api_uri()}
     ].
@@ -309,6 +309,6 @@ publish_cnam_update(PN) ->
              ,{<<"Number">>, knm_util:pretty_print(knm_phone_number:number(PN))}
              ,{<<"Acquired-For">>, knm_phone_number:auth_by(PN)}
              ,{<<"Cnam">>, case Feature of 'undefined' -> kz_json:new(); _ -> Feature end}
-              | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
+             | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
              ],
     kapps_notify_publisher:cast(Notify, fun kapi_notifications:publish_cnam_request/1).

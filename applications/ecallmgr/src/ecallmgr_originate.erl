@@ -674,7 +674,7 @@ publish_error(Error, UUID, Request, ServerId) ->
         ,{<<"Call-ID">>, UUID}
         ,{<<"Request">>, Request}
         ,{<<"Error-Message">>, cleanup_error(Error)}
-         | kz_api:default_headers(<<"error">>, <<"originate_resp">>, ?APP_NAME, ?APP_VERSION)
+        | kz_api:default_headers(<<"error">>, <<"originate_resp">>, ?APP_NAME, ?APP_VERSION)
         ],
     kz_api:publish_error(ServerId, props:filter_undefined(E)).
 
@@ -690,7 +690,7 @@ publish_originate_ready(CtrlQ, UUID, Request, Q, ServerId) ->
     Props = [{<<"Msg-ID">>, kz_api:msg_id(Request, UUID)}
             ,{<<"Call-ID">>, UUID}
             ,{<<"Control-Queue">>, CtrlQ}
-             | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
+            | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
             ],
     kapi_dialplan:publish_originate_ready(ServerId, Props).
 
@@ -723,7 +723,7 @@ publish_originate_started(ServerId, CallId, JObj, CtrlQ) ->
              [{<<"Call-ID">>, CallId}
              ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
              ,{<<"Control-Queue">>, CtrlQ}
-              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     kapi_resource:publish_originate_started(ServerId, Resp).
 
@@ -734,7 +734,7 @@ publish_originate_uuid(ServerId, UUID, JObj, CtrlQueue) ->
              [{<<"Outbound-Call-ID">>, UUID}
              ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
              ,{<<"Outbound-Call-Control-Queue">>, CtrlQueue}
-              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     lager:debug("sent originate_uuid to ~s", [ServerId]),
     kapi_resource:publish_originate_uuid(ServerId, Resp).

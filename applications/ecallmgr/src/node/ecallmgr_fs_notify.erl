@@ -111,7 +111,7 @@ resp_to_probe(State, User, Realm) ->
                      ,{<<"To">>, <<"sip:", PresenceId/binary>>}
                      ,{<<"State">>, State}
                      ,{<<"Call-ID">>, kz_term:to_hex_binary(crypto:hash(md5, PresenceId))}
-                      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                      ],
     kz_amqp_worker:cast(PresenceUpdate, fun kapi_presence:publish_update/1).
 

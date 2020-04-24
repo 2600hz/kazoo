@@ -819,7 +819,7 @@ set_command(ChannelVars) ->
               ,{<<"Custom-Call-Vars">>, kz_json:new()}
               ,{<<"Call-ID">>, kz_binary:rand_hex(16)}
               ,{<<"Msg-ID">>, kz_binary:rand_hex(16)}
-               | kz_api:default_headers(<<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+              | kz_api:default_headers(<<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
     kz_json:from_list(Command).
 
@@ -938,7 +938,7 @@ update_presence(State, Slot) ->
                 ,{<<"Expires">>, Expires}
                 ,{<<"Event-Package">>, <<"dialog">>}
 
-                 | kz_api:default_headers(?PARKING_APP_NAME, ?APP_VERSION)
+                | kz_api:default_headers(?PARKING_APP_NAME, ?APP_VERSION)
                 ]),
     lager:info("update presence-id '~s' with state: ~s", [PresenceId, State]),
     kz_amqp_worker:cast(Command, fun kapi_presence:publish_dialog/1).
@@ -981,7 +981,7 @@ publish_event(Call, SlotNumber, Event) ->
           ,{<<"Custom-Channel-Vars">>, custom_channel_vars(Call)}
           ,{<<"Event-Name">>, Event}
           ,{<<"Parking-Slot">>, kz_term:to_binary(SlotNumber)}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     kapi_call:publish_event(Cmd).
 

@@ -331,7 +331,7 @@ channel_status_resp_definition() ->
                                                             ]}
               ,{fun kapi_definition:set_values/2
                ,[{<<"Status">>, [<<"active">>, <<"tmpdown">>, <<"terminated">>]}
-                 | kapi_definition:event_type_headers(Category, EventName)
+                | kapi_definition:event_type_headers(Category, EventName)
                 ]
                }
               ,{fun kapi_definition:set_types/2

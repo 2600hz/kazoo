@@ -125,7 +125,7 @@ login_resp(JObj, Status) ->
         {ServerID, MsgId} ->
             Prop = [{<<"Status">>, Status}
                    ,{<<"Msg-ID">>, MsgId}
-                    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                   | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
             kapi_acdc_agent:publish_login_resp(ServerID, Prop)
     end.
@@ -467,7 +467,7 @@ send_probe(JObj, State) ->
         [{<<"State">>, State}
         ,{<<"Presence-ID">>, To}
         ,{<<"Call-ID">>, kz_term:to_hex_binary(crypto:hash('md5', To))}
-         | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
         ],
     kapi_presence:publish_update(PresenceUpdate).
 

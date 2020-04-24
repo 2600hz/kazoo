@@ -370,5 +370,5 @@ normalize_users_results(JObj, Acc) ->
     [kz_json:from_list([{<<"user_id">>, kz_doc:id(JObj)}
                        ,{<<"callflow_id">>, kz_json:get_ne_binary_value(<<"value">>, JObj)}
                        ])
-     | Acc
+    | Acc
     ].

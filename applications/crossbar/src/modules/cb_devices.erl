@@ -333,7 +333,7 @@ load_device_status(Context) ->
 lookup_regs(AccountRealm) ->
     Req = [{<<"Realm">>, AccountRealm}
           ,{<<"Fields">>, [<<"Authorizing-ID">>]}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case kz_amqp_worker:call_collect(Req
                                     ,fun kapi_registration:publish_query_req/1
@@ -384,7 +384,7 @@ put_action(Context, DeviceId, <<"notify">>) ->
             ,{<<"Msg-ID">>, cb_context:req_id(Context)}
             ,{<<"Realm">>, Realm}
             ,{<<"Username">>, Username}
-             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ]),
     kapi_switch:publish_notify(Req),
     crossbar_util:response_202(<<"NOTIFY sent">>, Context).
@@ -938,7 +938,7 @@ add_mdn(MDN, Context) ->
     Options = [{'assign_to', cb_context:account_id(Context)}
               ,{'public_fields', PublicFields}
               ,{'module_name', ?CARRIER_MDN}
-               |knm_options:mdn_options()
+              |knm_options:mdn_options()
               ],
     case knm_numbers:create(MDN, Options) of
         {'ok', [_JObj]} ->

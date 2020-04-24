@@ -246,5 +246,5 @@ no_resources(OffnetReq) ->
       ,{<<"Error-Message">>, <<"no available resources">>}
       ,{?KEY_CALL_ID, kapi_offnet_resource:call_id(OffnetReq)}
       ,{?KEY_MSG_ID, kapi_offnet_resource:msg_id(OffnetReq)}
-       | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).

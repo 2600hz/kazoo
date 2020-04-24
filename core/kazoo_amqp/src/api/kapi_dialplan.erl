@@ -1117,7 +1117,7 @@ error_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop
                    ,?DP_ERROR_RESP_HEADERS
                    ,[{<<"Event-Name">>, <<"dialplan">>}
-                     | ?ERROR_RESP_VALUES
+                    | ?ERROR_RESP_VALUES
                     ]
                    ,?ERROR_RESP_TYPES
                    );
@@ -1184,7 +1184,7 @@ publish_error(CallID, JObj) ->
 -spec publish_error(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_error(CallID, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, [{<<"Event-Name">>, <<"dialplan">>}
-                                                       | ?ERROR_RESP_VALUES
+                                                      | ?ERROR_RESP_VALUES
                                                       ], fun error/1),
     kz_amqp_util:callevt_publish(kapi_call:event_routing_key(<<"dialplan">>, CallID), Payload, ContentType).
 

@@ -86,7 +86,7 @@ send_eavesdrop(JObj, EPs, AccountId) ->
              ,{<<"Eavesdrop-Call-ID">>, CallId}
              ,{<<"Eavesdrop-Group-ID">>, GroupId}
              ,{<<"Eavesdrop-Mode">>, kz_json:get_value(<<"Eavesdrop-Mode">>, JObj)}
-              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
 
     lager:debug("sending eavesdrop request for ~s:~s", [CallerIdName, CallerIdNumber]),
@@ -120,7 +120,7 @@ respond_success(JObj, OrigJObj) ->
     respond(ServerId, [{<<"Status">>, <<"started">>}
                       ,{<<"Eavesdropper-Call-ID">>, EavesdropCallId}
                       ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
-                       | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                       ]).
 
 -spec respond_error(kz_json:object(), kz_term:ne_binary()) -> 'ok'.
@@ -128,7 +128,7 @@ respond_error(JObj, E) ->
     ServerId = kz_json:get_value(<<"Server-ID">>, JObj),
     respond(ServerId, [{<<"Status">>, <<"error">>}
                       ,{<<"Error-Msg">>, E}
-                       | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                       ]).
 
 -spec respond(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
@@ -140,7 +140,7 @@ respond(ServerId, Props) ->
 send_originate_execute(JObj, Q) ->
     Prop = [{<<"Call-ID">>, kz_json:get_value(<<"Call-ID">>, JObj)}
            ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
-            | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
            ],
     kapi_dialplan:publish_originate_execute(kz_json:get_value(<<"Server-ID">>, JObj), Prop).
 

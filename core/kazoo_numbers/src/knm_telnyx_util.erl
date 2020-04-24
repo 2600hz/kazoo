@@ -130,7 +130,7 @@ http_headers(BodyJObj) ->
     ,{"x-api-user", binary_to_list(?USER)}
     ,{"x-api-token", binary_to_list(?TOKEN)}
     ,{"User-Agent", ?KNM_USER_AGENT}
-     | [{"Content-Type", "application/json"} || not kz_json:is_empty(BodyJObj)]
+    | [{"Content-Type", "application/json"} || not kz_json:is_empty(BodyJObj)]
     ].
 
 http_options() ->

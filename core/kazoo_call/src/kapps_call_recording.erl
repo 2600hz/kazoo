@@ -145,6 +145,6 @@ record_call_command(Data, Call) ->
             ,{<<"Recording-Variables">>, kz_json:from_list(Vars)}
             ,{<<"Call-ID">>, CallId}
             ,{<<"Msg-ID">>, kz_binary:rand_hex(16)}
-             | kz_api:default_headers(<<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+            | kz_api:default_headers(<<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
             ],
     kz_json:from_list(Media).

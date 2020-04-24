@@ -1071,7 +1071,7 @@ callback_handle_event(JObj
             ,{'basic', Basic}
             ,{'deliver', Deliver}
             ,{'other_queues', props:get_keys(OtherQueues)}
-             | NewProps
+            | NewProps
             ];
         {'reply', NewProps, NewModuleState} when is_list(Props) ->
             {[{'server', Self}
@@ -1079,7 +1079,7 @@ callback_handle_event(JObj
              ,{'basic', Basic}
              ,{'deliver', Deliver}
              ,{'other_queues', props:get_keys(OtherQueues)}
-              | NewProps
+             | NewProps
              ]
             ,NewModuleState
             };
@@ -1207,7 +1207,7 @@ add_other_queue(QueueName, QueueProps, Bindings, #state{other_queues=OtherQueues
             {Q, State#state{other_queues=[{Q, {Bindings, QueueProps}}|OtherQueues]}};
         OldBindings ->
             {Q, State#state{other_queues=[{Q, {Bindings ++ OldBindings, QueueProps}}
-                                          | props:delete(QueueName, OtherQueues)
+                                         | props:delete(QueueName, OtherQueues)
                                          ]}}
     end.
 

@@ -83,7 +83,7 @@ process_rules(Temporal
                     ,id=Id
                     ,name=Name
                     }
-               | Rules
+              | Rules
               ]
              ,Call
              ) ->
@@ -94,7 +94,7 @@ process_rules(_Temporal
                     ,id=Id
                     ,name=Name
                     }
-               | _Rules
+              | _Rules
               ]
              ,_Call
              ) ->
@@ -105,7 +105,7 @@ process_rules(Temporal
                     ,name=Name
                     ,cycle = <<>>
                     }
-               | Rules
+              | Rules
               ]
              ,Call
              ) ->
@@ -120,7 +120,7 @@ process_rules(#temporal{local_sec=LSec
                     ,wtime_start=TStart
                     ,wtime_stop=TStop
                     }=Rule
-               | Rules
+              | Rules
               ]
              ,Call
              ) ->

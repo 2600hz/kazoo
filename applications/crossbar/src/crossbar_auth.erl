@@ -79,7 +79,7 @@ create_auth_token(Context, Method, JObj) ->
                ,{<<"method">>, Method}
                ,{<<"exp">>, Expiration}
                ,{<<"mfa_resp">>, kz_json:get_ne_value(<<"multi_factor_response">>, Data)}
-                | kz_json:to_proplist(kz_json:get_value(<<"Claims">>, JObj, kz_json:new()))
+               | kz_json:to_proplist(kz_json:get_value(<<"Claims">>, JObj, kz_json:new()))
                ]),
 
     IsMultiFactor = is_multi_factor_enabled(Claims, AuthConfig),
@@ -138,7 +138,7 @@ maybe_create_token(Context, Claims, AuthConfig, Method, 'true') ->
     MultiFactorOpts = kz_json:get_json_value(method_config_path(Method, <<"multi_factor">>), AuthConfig),
     NewClaims = props:filter_undefined(
                   [{<<"mfa_options">>, MultiFactorOpts}
-                   | Claims
+                  | Claims
                   ]),
 
     case kz_mfa_auth:authenticate(NewClaims) of

@@ -166,7 +166,7 @@ notify_of_low_balance(AccountJObj, AvailableUnits) ->
 
     Req = [{<<"Account-ID">>, AccountId}
           ,{<<"Current-Balance">>, AvailableUnits}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_low_balance/1),
 

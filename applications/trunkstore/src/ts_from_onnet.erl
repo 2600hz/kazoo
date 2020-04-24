@@ -120,19 +120,19 @@ onnet_data(CallID, AccountId, FromUser, ToDID, Options, State) ->
                         ValidCID = ts_util:maybe_ensure_cid_valid('external', OriginalCIdNumber, FromUser, AccountId, CustomSIPHeaders),
                         [{?KEY_OUTBOUND_CALLER_ID_NUMBER, ValidCID}
                         ,{?KEY_OUTBOUND_CALLER_ID_NAME, OriginalCIdName}
-                         | EmergencyCallerID
+                        | EmergencyCallerID
                         ];
                     'false' ->
                         [{?KEY_OUTBOUND_CALLER_ID_NUMBER, OriginalCIdNumber}
                         ,{?KEY_OUTBOUND_CALLER_ID_NAME, OriginalCIdName}
-                         | EmergencyCallerID
+                        | EmergencyCallerID
                         ]
                 end;
             {CIDName, CIDNum} ->
                 [{?KEY_OUTBOUND_CALLER_ID_NAME, CIDName}
                 ,{?KEY_OUTBOUND_CALLER_ID_NUMBER
                  ,ts_util:maybe_ensure_cid_valid('external', CIDNum, FromUser, AccountId, CustomSIPHeaders)}
-                 | EmergencyCallerID
+                | EmergencyCallerID
                 ]
         end,
 
@@ -154,9 +154,9 @@ onnet_data(CallID, AccountId, FromUser, ToDID, Options, State) ->
                          ,{?KEY_CCVS, kz_json:from_list([{<<"Account-ID">>, AccountId}])}
                          ,{?KEY_REQUESTOR_CCVS, ts_callflow:get_custom_channel_vars(State)}
                          ,{?KEY_REQUESTOR_CSHS, CustomSIPHeaders}
-                          | kz_api:default_headers(ts_callflow:get_worker_queue(State)
-                                                  ,?APP_NAME, ?APP_VERSION
-                                                  )
+                         | kz_api:default_headers(ts_callflow:get_worker_queue(State)
+                                                 ,?APP_NAME, ?APP_VERSION
+                                                 )
                          ],
                   V =/= 'undefined',
                   V =/= <<>>
@@ -220,7 +220,7 @@ send_offnet(State, Command) ->
     CtlQ = ts_callflow:get_control_queue(State),
     ts_callflow:send_command(State
                             ,[{<<"Control-Queue">>, CtlQ}
-                              |Command
+                             |Command
                              ]
                             ,fun kapi_offnet_resource:publish_req/1
                             ),

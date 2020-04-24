@@ -144,7 +144,7 @@ req_definition() ->
                                        ,<<"metaflow">>
                                        ]}
                 ,{<<"Media">>, [<<"process">>, <<"proxy">>, <<"bypass">>]}
-                 | kapi_definition:event_type_headers(Category, EventName)
+                | kapi_definition:event_type_headers(Category, EventName)
                 ]
                }
               ,{fun kapi_definition:set_types/2
@@ -201,7 +201,7 @@ resp_definition() ->
                                 ]
                  }
                 ,{<<"Pre-Park">>, [<<"none">>, <<"ring_ready">>, <<"answer">>]}
-                 | kapi_definition:event_type_headers(Category, EventName)
+                | kapi_definition:event_type_headers(Category, EventName)
                 ]
                }
               ,{fun kapi_definition:set_types/2

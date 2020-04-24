@@ -217,7 +217,7 @@ copy_doc(#server{}=Conn, CopySpec, CopyFun, Options) ->
     case open_doc(Conn, SourceDbName, SourceDocId, Options) of
         {'ok', SourceDoc} ->
             Props = [{<<"_id">>, DestDocId}
-                     | maybe_set_account_db(kz_doc:account_db(SourceDoc), SourceDbName, DestDbName)
+                    | maybe_set_account_db(kz_doc:account_db(SourceDoc), SourceDbName, DestDbName)
                     ],
             DestinationDoc = kz_json:set_values(Props, kz_json:delete_keys(?DELETE_KEYS, SourceDoc)),
             case CopyFun(Conn, DestDbName, DestinationDoc, Options) of

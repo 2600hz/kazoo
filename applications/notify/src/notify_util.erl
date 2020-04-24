@@ -84,7 +84,7 @@ send_update(RespQ, MsgId, Status, Msg) ->
              [{<<"Status">>, Status}
              ,{<<"Failure-Message">>, Msg}
              ,{<<"Msg-ID">>, MsgId}
-              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     lager:debug("notification update (~s) sending to ~s", [Status, RespQ]),
     kz_amqp_worker:cast(Prop, fun(P) -> kapi_notifications:publish_notify_update(RespQ, P) end).
@@ -352,7 +352,7 @@ find_admin([AcctId|Tree]) ->
     end;
 find_admin(Account) ->
     find_admin([kz_doc:account_id(Account)
-                | lists:reverse(kzd_accounts:tree(Account))
+               | lists:reverse(kzd_accounts:tree(Account))
                ]).
 
 %%------------------------------------------------------------------------------

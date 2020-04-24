@@ -583,17 +583,17 @@ attachment_content_type(JObj, AName, Default) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec attachment_property(doc(), kz_term:ne_binary(), kz_json:get_key()) ->
-                                 kz_json:api_json_term().
+          kz_json:api_json_term().
 attachment_property(JObj, AName, Key) ->
     attachment_property(JObj, AName, Key, 'undefined').
 
 -spec attachment_property(doc(), kz_term:ne_binary(), kz_json:get_key(), Default) ->
-                                 Default | kz_json:json_term().
+          Default | kz_json:json_term().
 attachment_property(JObj, AName, Key, Default) ->
     attachment_property(JObj, AName, Key, Default, fun kz_json:get_value/3).
 
 -spec attachment_property(doc(), kz_term:ne_binary(), kz_json:get_key(), Default, fun((kz_json:get_key(), doc(), Default) -> Default | kz_json:json_term())) ->
-                                 Default | kz_json:json_term().
+          Default | kz_json:json_term().
 attachment_property(JObj, AName, Key, Default, Get) when is_function(Get, 3) ->
     Get(Key, attachment(JObj, AName, kz_json:new()), Default).
 
@@ -611,18 +611,18 @@ delete_attachment(JObj, AName) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec update_pvt_parameters(doc(), kz_term:api_binary()) ->
-                                   doc().
+          doc().
 update_pvt_parameters(JObj0, DBName) ->
     update_pvt_parameters(JObj0, DBName, []).
 
 -spec update_pvt_parameters(doc(), kz_term:api_ne_binary(), kz_term:proplist()) ->
-                                   doc().
+          doc().
 update_pvt_parameters(JObj, DbName, Options) ->
     Updates = get_pvt_updates(JObj, DbName, Options),
     kz_json:set_values(Updates, JObj).
 
 -spec get_pvt_updates(kz_json:object(), kz_term:api_ne_binary(), kz_term:proplist()) ->
-                             kz_term:proplist().
+          kz_term:proplist().
 get_pvt_updates(JObj, DbName, Options) ->
     Opts = props:insert_value('now', kz_time:now_s(), Options),
     lists:foldl(fun(Fun, Acc) -> Fun(Acc, JObj, DbName, Opts) end, [], ?PVT_FUNS).
@@ -718,12 +718,12 @@ update_pvt_modified(JObj) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec public_fields(doc() | kz_json:objects()) ->
-                           doc() | kz_json:objects().
+          doc() | kz_json:objects().
 public_fields(Thing) ->
     public_fields(Thing, 'true').
 
 -spec public_fields(doc() | kz_json:objects(), boolean()) ->
-                           doc() | kz_json:objects().
+          doc() | kz_json:objects().
 public_fields(JObjs, IncludeId) when is_list(JObjs) ->
     [public_fields(J, IncludeId) || J <- JObjs];
 public_fields(JObj, 'true') ->
@@ -751,7 +751,7 @@ get_public_keys(JObj) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec private_fields(doc() | kz_json:objects()) ->
-                            doc() | kz_json:objects().
+          doc() | kz_json:objects().
 private_fields(JObjs) when is_list(JObjs) ->
     [private_fields(JObj) || JObj <- JObjs];
 private_fields(JObj) ->

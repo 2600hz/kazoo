@@ -358,7 +358,7 @@ map_tranform_cdrs(AccountId, [VR|VRs], Map) ->
     map_tranform_cdrs(AccountId, VRs, NewMap).
 
 -spec do_move_cdrs(kz_term:ne_binary(), kz_json:objects(), kz_term:ne_binaries()) ->
-                          kz_term:ne_binaries().
+          kz_term:ne_binaries().
 do_move_cdrs(MODB, Docs, MovedAcc) ->
     _AccountId = kzs_util:format_account_id(MODB),
     case kz_datamgr:save_docs(MODB, Docs) of

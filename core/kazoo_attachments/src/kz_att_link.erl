@@ -103,7 +103,7 @@ handle_fetch_attachment_resp({'error', {Code, Body}} = _E, Routines) ->
     lager:debug("error fetching attachment: ~p", [_E]),
     NewRoutines = [{fun kz_att_error:set_resp_code/2, Code}
                   ,{fun kz_att_error:set_resp_body/2, Body}
-                   | Routines
+                  | Routines
                   ],
     kz_att_error:new('request_error', NewRoutines);
 handle_fetch_attachment_resp(_E, Routines) ->

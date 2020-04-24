@@ -341,7 +341,7 @@ seq_kzoo_61() ->
              ,{<<"reseller_id">>, pqc_cb_api:auth_account_id(API)}
              ,{<<"superduper_admin">>, 'false'}
              ,{<<"wnm_allow_additions">>, fun kz_term:is_boolean/1}
-              | Required
+             | Required
              ],
     'true' = lists:all(fun(Field) -> response_has_field(Field, AccountJObj) end
                       ,Fields

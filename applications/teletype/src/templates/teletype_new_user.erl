@@ -31,7 +31,7 @@ id() -> <<"new_user">>.
 macros() ->
     kz_json:from_list(
       [?MACRO_VALUE(<<"user.password">>, <<"password">>, <<"Password">>, <<"Password">>)
-       | ?USER_MACROS
+      | ?USER_MACROS
        ++ ?COMMON_TEMPLATE_MACROS
       ]).
 

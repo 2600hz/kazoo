@@ -364,7 +364,7 @@ change_folder(Folder, Msgs, AccountId, BoxId, Funs) ->
     Fun = [fun(JObj) ->
                    kzd_box_message:apply_folder(Folder, JObj)
            end
-           | Funs
+          | Funs
           ],
     update(AccountId, BoxId, Msgs, Fun).
 
@@ -486,7 +486,7 @@ maybe_add_range_to_keys(From, To, ViewOpts) ->
     [{'startkey', add_timestamp_if_defined('startkey', To, ViewOpts)}
     ,{'endkey', add_timestamp_if_defined('endkey', From, ViewOpts)}
     ,'descending'
-     | props:delete_keys(['startkey', 'endkey'], ViewOpts)
+    | props:delete_keys(['startkey', 'endkey'], ViewOpts)
     ].
 
 -spec add_timestamp_if_defined('startkey' | 'endkey', kz_time:gregorian_seconds(), kz_term:proplist()) -> kz_json:path().
@@ -549,7 +549,7 @@ normalize_bulk_results(#{succeeded := Succeeded
                      case Method of
                          <<"fetch">> ->
                              ResultMap#{succeeded => [kvm_util:enforce_retention(kz_json:get_value(<<"doc">>, JObj), 'true')
-                                                      | Succeeded
+                                                     | Succeeded
                                                      ]
                                        };
                          <<"update">> ->

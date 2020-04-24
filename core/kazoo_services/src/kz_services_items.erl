@@ -236,7 +236,7 @@ do_annotate([{CurrentItem, ProposedItem}|TentativeItems], Reason, Items) ->
     do_annotate(TentativeItems, Reason, [Item|Items]).
 
 -spec maybe_annotate(kz_term:ne_binary(), kz_term:api_object(), kz_term:api_binary(), kz_services_item:item()) ->
-                            kz_services_item:item().
+          kz_services_item:item().
 maybe_annotate(Type, Difference, Reason, Item) ->
     case kz_json:is_empty(Difference) of
         'true' -> Item;

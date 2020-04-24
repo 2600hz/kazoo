@@ -322,27 +322,27 @@ self_list_seq(State, AccountName, Resp) ->
     [[{"account '"++ kz_term:to_list(AccountName) ++ "' has ports"
       ,?_assert(kz_term:is_not_empty(kz_json:get_list_value(<<"port_requests">>, hd(AccountList), [])))
       }
-      | [{"has port for '" ++ kz_term:to_list(Num) ++ "'"
-         ,?_assert(kz_term:is_not_empty([N || A <- AccountList,
-                                              Ps <- kz_json:get_value(<<"port_requests">>, A),
-                                              N <- kz_json:get_keys(kzd_port_requests:numbers(Ps, kz_json:new())),
-                                              N =:= Num
-                                        ])
-                  )
-         }
-         || Num <- PortNumbers
-        ]
-     ]
-     | [[{"authority id '" ++ kz_term:to_list(AuthorityId) ++ "'"
-         ,?_assertEqual(AuthorityId, kz_json:get_value([<<"_read_only">>, <<"port_authority">>], Port))
-         }
-        ,{"authority name '" ++ kz_term:to_list(AuthorityName) ++ "'"
-         ,?_assertEqual(AuthorityName, kz_json:get_value([<<"_read_only">>, <<"port_authority_name">>], Port))
-         }
-        ]
-        || AccountPorts <- JObj,
-           Port <- kz_json:get_list_value(<<"port_requests">>, AccountPorts, [])
+     | [{"has port for '" ++ kz_term:to_list(Num) ++ "'"
+        ,?_assert(kz_term:is_not_empty([N || A <- AccountList,
+                                             Ps <- kz_json:get_value(<<"port_requests">>, A),
+                                             N <- kz_json:get_keys(kzd_port_requests:numbers(Ps, kz_json:new())),
+                                             N =:= Num
+                                       ])
+                 )
+        }
+        || Num <- PortNumbers
        ]
+     ]
+    | [[{"authority id '" ++ kz_term:to_list(AuthorityId) ++ "'"
+        ,?_assertEqual(AuthorityId, kz_json:get_value([<<"_read_only">>, <<"port_authority">>], Port))
+        }
+       ,{"authority name '" ++ kz_term:to_list(AuthorityName) ++ "'"
+        ,?_assertEqual(AuthorityName, kz_json:get_value([<<"_read_only">>, <<"port_authority_name">>], Port))
+        }
+       ]
+       || AccountPorts <- JObj,
+          Port <- kz_json:get_list_value(<<"port_requests">>, AccountPorts, [])
+      ]
     ].
 
 -spec port_account_seq(state()) -> term().

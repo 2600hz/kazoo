@@ -43,7 +43,7 @@ put_attachment(Settings, DbName, DocId, AName, Contents, Options) ->
     AzureOptions = [{content_type, kz_term:to_list(CT)}, return_headers],
     Url = lists:concat([Container, "/", Name]),
     Routines = [{fun kz_att_error:set_req_url/2, Url}
-                | kz_att_error:put_routines(Settings, DbName, DocId, AName, Contents, Options)
+               | kz_att_error:put_routines(Settings, DbName, DocId, AName, Contents, Options)
                ],
     try
         case erlazure:put_block_blob(Pid, Container, Name, Contents, AzureOptions) of

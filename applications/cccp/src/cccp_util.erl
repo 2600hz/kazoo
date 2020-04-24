@@ -238,7 +238,7 @@ build_request(CallId, ToDID, AuthorizingId, Q, CtrlQ, AccountId, Action, RetainC
       ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
       ,{<<"Custom-SIP-Headers">>,  kz_json:from_list(Diversions)}
       ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>, <<"Retain-CID">>, <<"Authorizing-ID">>, <<"Authorizing-Type">>]}
-       | kz_api:default_headers(Q, <<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
+      | kz_api:default_headers(Q, <<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
       ]).
 
 -spec bridge(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), binary(), binary()) -> 'ok'.
@@ -308,7 +308,7 @@ current_account_channels(AccountId) ->
           ,{<<"Usernames">>, []}
           ,{<<"Account-ID">>, AccountId}
           ,{<<"Active-Only">>, 'false'}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case kz_amqp_worker:call_collect(Req
                                     ,fun kapi_call:publish_query_account_channels_req/1

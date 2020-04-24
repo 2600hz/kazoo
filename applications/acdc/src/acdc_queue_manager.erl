@@ -521,7 +521,7 @@ handle_cast({'reject_member_call', Call, JObj}, #state{account_id=AccountId
            ,{<<"Account-ID">>, AccountId}
            ,{<<"Queue-ID">>, QueueId}
            ,{<<"Failure-Reason">>, <<"no agents">>}
-            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     Q = kz_json:get_value(<<"Server-ID">>, JObj),
     catch kapi_acdc_queue:publish_member_call_failure(Q, Prop),
@@ -670,7 +670,7 @@ publish_queue_member_add(AccountId, QueueId, Call) ->
     Prop = [{<<"Account-ID">>, AccountId}
            ,{<<"Queue-ID">>, QueueId}
            ,{<<"Call">>, kapps_call:to_json(Call)}
-            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     kapi_acdc_queue:publish_queue_member_add(Prop).
 
@@ -679,7 +679,7 @@ publish_queue_member_remove(AccountId, QueueId, CallId) ->
     Prop = [{<<"Account-ID">>, AccountId}
            ,{<<"Queue-ID">>, QueueId}
            ,{<<"Call-ID">>, CallId}
-            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     kapi_acdc_queue:publish_queue_member_remove(Prop).
 

@@ -313,7 +313,7 @@ rate_for_number(Phonenumber, Context) ->
                 ,{<<"Direction">>, cb_context:req_value(Context, <<"direction">>)}
                 ,{<<"From-DID">>, cb_context:req_value(Context, <<"caller_id_number">>)}
                 ,{<<"Resource-ID">>, cb_context:req_value(Context, <<"resource_id">>)}
-                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                 ]
                ),
     case kz_amqp_worker:call(Request

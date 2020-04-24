@@ -140,7 +140,7 @@ action_definition() ->
                                 ,<<"tts">>
                                 ,<<"unpark">>
                                 ]}
-                 | kapi_definition:event_type_headers(Category, EventName)
+                | kapi_definition:event_type_headers(Category, EventName)
                 ]
                }
               ,{fun kapi_definition:set_types/2, []}
@@ -203,7 +203,7 @@ binding_definition() ->
                                    ,<<"peer">>
                                    ,<<"self">>
                                    ]}
-                 | kapi_definition:event_type_headers(Category, EventName)
+                | kapi_definition:event_type_headers(Category, EventName)
                 ]
                }
               ,{fun kapi_definition:set_types/2

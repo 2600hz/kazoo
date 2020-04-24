@@ -42,7 +42,7 @@ search(Conference) ->
     AppVersion = kapps_conference:application_version(Conference),
     ConferenceId = kapps_conference:id(Conference),
     Req = [{<<"Conference-ID">>, ConferenceId}
-           | kz_api:default_headers(AppName, AppVersion)
+          | kz_api:default_headers(AppName, AppVersion)
           ],
     ReqResp = kz_amqp_worker:call_collect(Req
                                          ,fun kapi_conference:publish_search_req/1
@@ -241,7 +241,7 @@ dial(Endpoints, CallerIdNumber, CallerIdName, CCVs, ConferenceId)
               ,{<<"Caller-ID-Number">>, CallerIdNumber}
               ,{<<"Custom-Channel-Vars">>, CCVs}
               ,{<<"Conference-ID">>, ConferenceId}
-               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     'ok' = kz_amqp_worker:cast(Command, fun(P) -> kapi_conference:publish_dial(ConferenceId, P) end);
 dial(Endpoints, CallerIdNumber, CallerIdName, CCVs, Conference) ->
@@ -255,7 +255,7 @@ send_command([_|_]=Command, Conference) ->
     AppVersion = kapps_conference:application_version(Conference),
     Focus = kapps_conference:focus(Conference),
     Prop = Command ++ [{<<"Conference-ID">>, ConferenceId}
-                       | kz_api:default_headers(Q, <<"conference">>, <<"command">>, AppName, AppVersion)
+                      | kz_api:default_headers(Q, <<"conference">>, <<"command">>, AppName, AppVersion)
                       ],
     case kz_term:is_empty(Focus) of
         'true' -> kz_amqp_worker:cast(Prop, fun(P) -> kapi_conference:publish_command(ConferenceId, P) end);
@@ -269,10 +269,10 @@ play_macro(Macro, Conference) ->
              ,{<<"Event-Name">>, <<"command">>}
              ,{<<"Conference-ID">>, kapps_conference:id(Conference)}
              ,{<<"Msg-ID">>, kz_binary:rand_hex(16)}
-              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ],
     Prop = [{<<"Application-Name">>, <<"play_macro">>}
            ,{<<"Media-Macro">>, Macro}
-            | Values
+           | Values
            ],
     send_command(Prop, Conference).

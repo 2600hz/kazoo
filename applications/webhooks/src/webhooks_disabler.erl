@@ -197,6 +197,6 @@ filter_cache(AccountId, HookId) ->
 send_notification(AccountId, HookId) ->
     API = [{<<"Account-ID">>, AccountId}
           ,{<<"Hook-ID">>, HookId}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     kapps_notify_publisher:cast(API, fun kapi_notifications:publish_webhook_disabled/1).

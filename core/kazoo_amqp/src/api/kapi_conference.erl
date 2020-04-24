@@ -585,11 +585,11 @@ focus_queue_name(Focus) -> <<(kz_term:to_binary(Focus))/binary, "_conference">>.
 %%------------------------------------------------------------------------------
 -define(CONF_SAY_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
                              ,{<<"Application-Name">>, [<<"say">>, <<"tts">>]}
-                              | props:delete_keys([<<"Event-Category">>
-                                                  ,<<"Application-Name">>
-                                                  ]
-                                                 ,?TONES_REQ_VALUES
-                                                 )
+                             | props:delete_keys([<<"Event-Category">>
+                                                 ,<<"Application-Name">>
+                                                 ]
+                                                ,?TONES_REQ_VALUES
+                                                )
                              ]).
 -spec say(kz_term:api_terms()) -> api_formatter_return() .
 say(Prop) when is_list(Prop) ->
@@ -617,7 +617,7 @@ tts_v(API) -> say_v(API).
 %%------------------------------------------------------------------------------
 
 -define(CONF_TONES_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
-                                | props:delete(<<"Event-Category">>, ?TONES_REQ_VALUES)
+                               | props:delete(<<"Event-Category">>, ?TONES_REQ_VALUES)
                                ]).
 -spec tones(kz_term:api_terms()) -> api_formatter_return() .
 tones(Prop) when is_list(Prop) ->

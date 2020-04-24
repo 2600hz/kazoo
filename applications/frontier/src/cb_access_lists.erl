@@ -210,6 +210,6 @@ after_delete(Context, _RespStatus) ->
 flush_acl(Doc) ->
     Cmd = props:filter_undefined([{<<"Realm">>, kzd_accounts:fetch_realm(kz_doc:account_id(Doc))}
                                  ,{<<"Device">>, kz_json:get_value([<<"sip">>,<<"username">>], Doc)}
-                                  | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                                  ]),
     kz_amqp_worker:cast(Cmd, fun kapi_frontier:publish_flush/1).

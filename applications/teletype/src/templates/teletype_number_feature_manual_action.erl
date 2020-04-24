@@ -25,7 +25,7 @@
           ,?MACRO_VALUE(<<"feature.action">>, <<"feature_action">>, <<"Action">>, <<"What manual action is required">>)
           ,?MACRO_VALUE(<<"feature.name">>, <<"feature_name">>, <<"Feature">>, <<"Feature for which the manual action is required">>)
           ,?MACRO_VALUE(<<"feature.provider">>, <<"feature_provider">>, <<"Provider">>, <<"Provider where manual action for the feature must be done">>)
-           | ?USER_MACROS
+          | ?USER_MACROS
            ++ ?COMMON_TEMPLATE_MACROS
           ]
          )

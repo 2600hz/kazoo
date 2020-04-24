@@ -154,7 +154,7 @@ publish_cnam_update(PN) ->
              ,{<<"Number">>, knm_util:pretty_print(knm_phone_number:number(PN))}
              ,{<<"Acquired-For">>, knm_phone_number:auth_by(PN)}
              ,{<<"Cnam">>, case Feature of 'undefined' -> kz_json:new(); _ -> Feature end}
-              | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
+             | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
              ],
     kapps_notify_publisher:cast(Notify, fun kapi_notifications:publish_cnam_request/1).
 -else.

@@ -125,7 +125,7 @@ get_subscription(PlanId, #bt_customer{subscriptions=Subscriptions}) ->
 get_subscription(_, []) ->
     braintree_util:error_not_found(<<"Subscription">>);
 get_subscription(PlanId, [#bt_subscription{plan_id=PlanId, status=Status}=Subscription
-                          |Subscriptions
+                         |Subscriptions
                          ]) ->
     case lists:member(Status, ?BT_ACTIVE_STATUSES) of
         'true' -> Subscription;
@@ -208,7 +208,7 @@ maybe_add_card_nonce(Customer) ->
 -spec update_card(customer(), bt_card()) -> customer().
 update_card(Customer, Card) ->
     Cards = [braintree_card:make_default(Card, 'false')
-             | lists:delete(Card, get_cards(Customer))
+            | lists:delete(Card, get_cards(Customer))
             ],
     %% Add new credit card, not setting it as default yet.
     UpdatedCustomer = do_update(Customer#bt_customer{credit_cards = Cards}),
@@ -346,7 +346,7 @@ record_to_xml(Customer, ToString) ->
             ,{'fax', Customer#bt_customer.fax}
             ,{'website', Customer#bt_customer.website}
             ,{'payment-method-nonce', Customer#bt_customer.payment_method_nonce}
-             |
+            |
              [{'credit-card', braintree_card:record_to_xml(Card)}
               || Card <- Customer#bt_customer.credit_cards, Card =/= 'undefined'
              ]

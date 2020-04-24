@@ -33,7 +33,7 @@ handle(Data, Im) ->
           ,{<<"To">>, get_to_did(Data, Im)}
           ,{<<"Account-ID">>, kapps_im:account_id(Im)}
           ,{<<"Route-Type">>, <<"offnet">>}
-           | kz_api:default_headers(<<"sms">>, <<"outbound">>, ?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(<<"sms">>, <<"outbound">>, ?APP_NAME, ?APP_VERSION)
           ],
     kapi_im:publish_outbound(API),
     tf_exe:stop(Im, 'offnet').

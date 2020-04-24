@@ -33,7 +33,7 @@ send_authn_resp(Password, JObj) ->
              [{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
              ,{<<"Auth-Password">>, Password}
              ,{<<"Auth-Method">>, <<"password">>}
-              | kz_api:default_headers(<<"directory">>, <<"authn_resp">>, ?APP_NAME, ?APP_VERSION)
+             | kz_api:default_headers(<<"directory">>, <<"authn_resp">>, ?APP_NAME, ?APP_VERSION)
              ]),
     lager:debug("sending SIP authentication reply, with credentials"),
     kapi_authn:publish_resp(kz_json:get_value(<<"Server-ID">>, JObj), Resp).

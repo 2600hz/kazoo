@@ -35,7 +35,7 @@ fetch(Services) ->
     Limits = kz_json:merge(PlansLimits, AccountLimits),
 
     Origins = [{'db', ?KZ_SERVICES_DB, kz_services:account_id(Services)}
-               | CacheOrigins ++ AccountOrigin
+              | CacheOrigins ++ AccountOrigin
               ],
     kz_json:set_value(<<"pvt_cache_origins">>
                      ,lists:usort(Origins)

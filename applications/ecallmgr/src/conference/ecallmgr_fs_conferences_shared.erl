@@ -270,7 +270,7 @@ error_resp(EndpointId, Error) ->
 publish_resp(JObj, BaseResps) ->
     Resp = [{<<"Msg-ID">>, kz_api:msg_id(JObj)}
            ,{<<"Endpoint-Responses">>, BaseResps}
-            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     kz_amqp_worker:cast(Resp
                        ,fun(P) -> kapi_conference:publish_dial_resp(kz_api:server_id(JObj), P) end
@@ -341,7 +341,7 @@ query_cluster_for_call(CallId) ->
     Req = [{<<"Call-ID">>, CallId}
           ,{<<"Fields">>, <<"all">>}
           ,{<<"Active-Only">>, 'true'}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
 
     kz_amqp_worker:call_collect(Req

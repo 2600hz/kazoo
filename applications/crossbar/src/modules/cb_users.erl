@@ -435,7 +435,7 @@ send_email(Context) ->
     Req = [{<<"Account-ID">>, cb_context:account_id(Context)}
           ,{<<"User-ID">>, kz_doc:id(Doc)}
           ,{<<"Password">>, kz_json:get_value(<<"password">>, ReqData)}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_new_user/1).
 

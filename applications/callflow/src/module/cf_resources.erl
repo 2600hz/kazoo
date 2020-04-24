@@ -155,7 +155,7 @@ build_offnet_request(Data, Call) ->
       ,{?KEY_PRIVACY_METHOD, props:get_value(?KEY_PRIVACY_METHOD, PrivacyFlags)}
       ,{?KEY_PRIVACY_HIDE_NAME, props:get_value(?KEY_PRIVACY_HIDE_NAME, PrivacyFlags)}
       ,{?KEY_PRIVACY_HIDE_NUMBER, props:get_value(?KEY_PRIVACY_HIDE_NUMBER, PrivacyFlags)}
-       | add_headers(Data, Call)
+      | add_headers(Data, Call)
       ]).
 
 -spec add_headers(kz_json:object(), kapps_call:call()) -> kz_term:proplist().
@@ -207,7 +207,7 @@ maybe_call_forward(Call, Acc) ->
         'true' -> [{<<"Authorizing-ID">>, kapps_call:authorizing_id(Call)}
                   ,{<<"Authorizing-Type">>, kapps_call:authorizing_type(Call)}
                   ,{<<"Application-Other-Leg-UUID">>, kapps_call:custom_channel_var(<<"Call-Forward-For-UUID">>, Call)}
-                   | Acc
+                  | Acc
                   ];
         'false' -> Acc
     end.

@@ -48,7 +48,7 @@ handle(Data, Call) ->
                    ,{<<"Queue-ID">>, QueueId}
                    ,{<<"Call">>, kapps_call:to_json(Call)}
                    ,{<<"Member-Priority">>, Priority}
-                    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                   | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ]),
 
     lager:info("loading ACDc queue: ~s", [QueueId]),
@@ -197,7 +197,7 @@ cancel_member_call(Call, Reason) ->
             ,{<<"Queue-ID">>, QueueId}
             ,{<<"Call-ID">>, CallId}
             ,{<<"Reason">>, Reason}
-             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ]),
     kapi_acdc_queue:publish_member_call_cancel(Req).
 

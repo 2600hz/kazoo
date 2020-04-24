@@ -325,7 +325,7 @@ publish_saved_notify(MediaId, BoxId, Call, Length, Props) ->
                  ,{<<"Voicemail-Length">>, Length}
                  ,{<<"Voicemail-Transcription">>, Transcription}
                  ,{<<"Call-ID">>, kapps_call:call_id_direct(Call)}
-                  | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                  ],
 
     lager:debug("sending voicemail_new notification"),
@@ -350,7 +350,7 @@ publish_voicemail_saved(Length, BoxId, Call, MediaId, Timestamp) ->
            ,{<<"Voicemail-Timestamp">>, Timestamp}
            ,{<<"Voicemail-Length">>, Length}
            ,{<<"Call-ID">>, kapps_call:call_id_direct(Call)}
-            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     _ = kz_amqp_worker:cast(Prop, fun kapi_notifications:publish_voicemail_saved/1),
     lager:debug("published voicemail_saved for ~s", [BoxId]).
@@ -382,7 +382,7 @@ publish_voicemail_deleted(BoxId, Msg, Reason) ->
            ,{<<"Voicemail-Timestamp">>, kz_json:get_ne_binary_value(<<"timestamp">>, Metadata)}
            ,{<<"Voicemail-Length">>, kz_json:get_ne_binary_value(<<"length">>, Metadata)}
            ,{<<"Call-ID">>, kz_json:get_ne_binary_value(<<"call_id">>, Metadata)}
-            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
 
     case ?SEND_DELETE_NOTIFY_AMPQ of

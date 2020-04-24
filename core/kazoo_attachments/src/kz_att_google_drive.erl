@@ -76,13 +76,11 @@ do_put_attachment({'error', _}, Settings, DbName, DocId, AName, Contents, Option
     Routines = kz_att_error:put_routines(Settings, DbName, DocId, AName, Contents, Options),
     kz_att_error:new('oauth_failure', Routines).
 
--spec handle_put_attachment_resp({'error', kz_term:ne_binary(), kz_http:ret() | atom()} |
-                                 gen_attachment:put_response()
-                                ,kz_att_error:update_routines()
-                                ) -> gen_attachment:put_response().
+-spec handle_put_attachment_resp(send_resp(), kz_att_error:update_routines()) ->
+          gen_attachment:put_response().
 handle_put_attachment_resp({'error', Url, Resp}, Routines) ->
     NewRoutines = [{fun kz_att_error:set_req_url/2, Url}
-                   | Routines
+                  | Routines
                   ],
     handle_http_error_response(Resp, NewRoutines);
 handle_put_attachment_resp(Resp, _) -> Resp.
@@ -112,14 +110,14 @@ fetch_attachment(HandlerProps, DbName, DocId, AName) ->
                          ) -> gen_attachment:fetch_response().
 do_fetch_attachment({'ok', #{'token' := #{'authorization' := Authorization}}}
                    ,ContentId, HandlerProps, DbName, DocId, AName) ->
-    Headers = [{<<"Authorization">>, Authorization}],
+    Headers = [{"Authorization", kz_term:to_list(Authorization)}],
     Url = <<?DRV_BASE_FETCH_URL, "/", ContentId/binary, "?alt=media">>,
     case kz_http:get(Url, Headers) of
         {'ok', 200, _ResponseHeaders, ResponseBody} ->
             {'ok', ResponseBody};
         Resp ->
             Routines = [{fun kz_att_error:set_req_url/2, Url}
-                        | kz_att_error:fetch_routines(HandlerProps, DbName, DocId, AName)
+                       | kz_att_error:fetch_routines(HandlerProps, DbName, DocId, AName)
                        ],
             handle_http_error_response(Resp, Routines)
     end;
@@ -138,7 +136,7 @@ do_fetch_attachment({'error', Reason}, _, HandlerProps, DbName, DocId, AName) ->
 %%------------------------------------------------------------------------------
 -spec get_json_from_url(kz_term:ne_binary(), kz_term:proplist()) -> {'ok', kz_json:object()} | {'error', any()}.
 get_json_from_url(Url, ReqHeaders) ->
-    case kz_http:get(kz_term:to_list(Url), ReqHeaders, [{'ssl', [{'versions', ['tlsv1.2']}]}]) of
+    case kz_http:get(Url, ReqHeaders, [{'ssl', [{'versions', ['tlsv1.2']}]}]) of
         {'ok', 200, _RespHeaders, Body} ->
             JObj = kz_json:decode(Body),
             case kz_term:is_empty(JObj) of
@@ -155,8 +153,8 @@ get_json_from_url(Url, ReqHeaders) ->
 
 -spec create_folder(binary(), binary(), binary()) -> gen_attachment:fetch_response().
 create_folder(Name, Parent, Authorization) ->
-    Headers = [{<<"Authorization">>, Authorization}
-              ,{<<"Content-Type">>, <<"application/json">>}
+    Headers = [{"Authorization", kz_term:to_list(Authorization)}
+              ,{"Content-Type", <<"application/json">>}
               ],
     Fields = [{<<"mimeType">>, ?DRV_FOLDER_CT}
              ,{<<"name">>, Name}
@@ -168,7 +166,9 @@ create_folder(Name, Parent, Authorization) ->
         Else -> Else
     end.
 
--spec resolve_id(binary(), binary(), binary()) -> {ok, binary()} | {error, not_found}.
+-spec resolve_id(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
+          {'ok', kz_term:ne_binary()} |
+          {'error', 'not_found'}.
 resolve_id(Name, Parent, Authorization) ->
     Params = ["\"", Parent, "\" in parents"
              ," and name = \"", Name, "\""
@@ -176,7 +176,7 @@ resolve_id(Name, Parent, Authorization) ->
              ],
     Q = kz_http_util:urlencode(list_to_binary(Params)),
     Url = <<?DRV_BASE_FETCH_URL, "?q=", Q/binary>>,
-    case get_json_from_url(Url, [{<<"Authorization">>, Authorization}]) of
+    case get_json_from_url(Url, [{"Authorization", kz_term:to_list(Authorization)}]) of
         {'ok', JObj} ->
             case kz_json:get_list_value(<<"files">>, JObj, []) of
                 [] -> {'error', 'not_found'};
@@ -186,7 +186,7 @@ resolve_id(Name, Parent, Authorization) ->
     end.
 
 
--spec resolve_ids(kz_term:binaries(), kz_term:binaries(), binary()) -> kz_term:binaries().
+-spec resolve_ids(kz_term:binaries(), kz_term:binaries(), kz_term:ne_binary()) -> kz_term:binaries().
 resolve_ids([], Acc, _Authorization) ->
     lists:reverse(Acc);
 resolve_ids([Id | Ids], [Parent | _]=Acc, Authorization) ->
@@ -199,7 +199,7 @@ resolve_ids([Id | Ids], [Parent | _]=Acc, Authorization) ->
             end
     end.
 
--spec resolve_folder(map(), kz_term:ne_binaries(), binary()) -> kz_term:ne_binaries().
+-spec resolve_folder(map(), kz_term:ne_binaries(), kz_term:ne_binary()) -> kz_term:ne_binaries().
 resolve_folder(Settings, PathTokens, Authorization) ->
     case maps:get('folder_id', Settings, 'undefined') of
         'undefined' ->
@@ -208,7 +208,7 @@ resolve_folder(Settings, PathTokens, Authorization) ->
         Path -> [Path]
     end.
 
--spec resolve_path(map(), attachment_info(), binary()) -> {kz_term:ne_binaries(), kz_term:ne_binary()}.
+-spec resolve_path(map(), attachment_info(), kz_term:ne_binary()) -> {kz_term:ne_binaries(), kz_term:ne_binary()}.
 resolve_path(Settings, AttInfo, Authorization) ->
     Url = gdrive_format_url(Settings, AttInfo),
     PathTokens = binary:split(Url, <<"/">>, ['global', 'trim_all']),
@@ -228,7 +228,7 @@ gdrive_default_fields() ->
 gdrive_format_url(Map, AttInfo) ->
     kz_att_util:format_url(Map, AttInfo, gdrive_default_fields()).
 
--spec gdrive_post(binary(), kz_term:proplist(), binary()) ->
+-spec gdrive_post(kz_term:ne_binary(), kz_term:proplist(), binary()) ->
           {'ok', kz_term:ne_binary(), kz_term:proplist()} |
           {'error', kz_term:ne_binary(), kz_http:ret() | atom()}.
 gdrive_post(Url, Headers, Body) ->
@@ -242,9 +242,10 @@ gdrive_post(Url, Headers, Body) ->
         Resp -> {'error', Url, Resp}
     end.
 
--spec send_attachment(binary(), kz_term:binaries(), binary(), binary(), binary(), kz_term:proplist(), binary()) ->
-          {'ok', kz_term:ne_binary(), kz_term:proplist()} |
-          {'error', kz_term:ne_binary(), kz_http:ret() | atom()}.
+-type send_resp() :: {'ok', kz_term:ne_binary(), kz_term:proplist()} |
+                     {'error', kz_term:ne_binary(), kz_http:ret() | atom()}.
+
+-spec send_attachment(kz_term:ne_binary(), kz_term:binaries(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), gen_attachment:options(), gen_attachment:contents()) -> send_resp().
 send_attachment(Authorization, Folder, TokenDocId, AName, CT, Options, Contents) ->
     JObj = kz_json:from_list(
              props:filter_empty(
@@ -270,8 +271,8 @@ send_attachment(Authorization, Folder, TokenDocId, AName, CT, Options, Contents)
 
     Body = kz_http_util:encode_multipart([JsonPart, FilePart], Boundary),
     ContentType = kz_term:to_list(<<"multipart/related; boundary=", Boundary/binary>>),
-    Headers = [{<<"Authorization">>, Authorization}
-              ,{<<"Content-Type">>, ContentType}
+    Headers = [{"Authorization", kz_term:to_list(Authorization)}
+              ,{"Content-Type", kz_term:to_list(ContentType)}
               ],
     case gdrive_post(?DRV_MULTIPART_FILE_URL, Headers, Body) of
         {'ok', ContentId, ResponseHeaders} ->
@@ -290,7 +291,7 @@ handle_http_error_response({'ok', RespCode, RespHeaders, RespBody} = _E, Routine
     NewRoutines = [{fun kz_att_error:set_resp_code/2, RespCode}
                   ,{fun kz_att_error:set_resp_headers/2, RespHeaders}
                   ,{fun kz_att_error:set_resp_body/2, RespBody}
-                   | Routines
+                  | Routines
                   ],
     lager:error("google drive error: ~p (code: ~p)", [_E, RespCode]),
     kz_att_error:new(Reason, NewRoutines);

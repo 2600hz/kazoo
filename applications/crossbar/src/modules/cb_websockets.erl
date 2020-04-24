@@ -207,7 +207,7 @@ read_success_resp(Context, _RespData) -> Context.
 websockets_req(Context, Props) ->
     Req = [{<<"Msg-ID">>, cb_context:req_id(Context)}
           ,{<<"Account-ID">>, cb_context:account_id(Context)}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case kz_amqp_worker:call_collect(Req ++ Props
                                     ,fun kapi_websockets:publish_get_req/1

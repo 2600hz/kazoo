@@ -1081,7 +1081,7 @@ originate_to_extension(Extension, TransferorLeg, Call) ->
                 ,{<<"Resource-Type">>, <<"originate">>}
                 ,{<<"Originate-Immediate">>, 'true'}
                 ,{<<"Simplify-Loopback">>, 'true'}
-                 | kz_api:default_headers(konami_event_listener:queue_name(), ?APP_NAME, ?APP_VERSION)
+                | kz_api:default_headers(konami_event_listener:queue_name(), ?APP_NAME, ?APP_VERSION)
                 ]),
     ?WSD_NOTE(TargetCallId, 'right', <<"originating to target ", Extension/binary>>),
     konami_event_listener:originate(Request),
@@ -1160,7 +1160,7 @@ connect(Flags, Call) ->
     Command = [{<<"Application-Name">>, <<"connect_leg">>}
               ,{<<"Call-ID">>, kapps_call:call_id(Call)}
               ,{<<"Insert-At">>, <<"now">>}
-               | Flags
+              | Flags
               ],
     ?WSD_EVT(props:get_value(<<"Call-ID">>, Command)
             ,props:get_value(<<"Target-Call-ID">>, Command)
@@ -1351,7 +1351,7 @@ issue_transferee_event(Target, Call) ->
       ,{<<"Other-Leg-Call-ID">>, kapps_call:other_leg_call_id(Call)}
       ,{<<"Custom-Channel-Vars">>, kapps_call:custom_channel_vars(Call)}
       ,{<<"Target-Call-ID">>, Target}
-       | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).
 
 %% We need to figure out which kapps call to issue the connect_leg against

@@ -142,7 +142,7 @@ build_originate(Endpoints, CallId, Call) ->
       ,{<<"Callee-ID-Name">>, kapps_call:callee_id_name(Call)}
       ,{<<"Callee-ID-Number">>, kapps_call:callee_id_number(Call)}
 
-       | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]
      ).
 
@@ -177,7 +177,7 @@ is_originate_uuid(JObj, CallId) ->
 find_device_id_for_leg(CallId) ->
     case kz_amqp_worker:call([{<<"Fields">>, [<<"Authorizing-ID">>]}
                              ,{<<"Call-ID">>, CallId}
-                              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                              ]
                             ,fun kapi_call:publish_query_channels_req/1
                             ,fun kapi_call:query_channels_resp_v/1

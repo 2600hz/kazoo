@@ -109,7 +109,7 @@ unconfirmed_port_reminder(AccountId, UnfinishedPorts) ->
 send_port_unconfirmed_notification(?NE_BINARY = AccountId, Id) ->
     Req = [{<<"Account-ID">>, AccountId}
           ,{<<"Port-Request-ID">>, Id}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_port_unconfirmed/1).
 

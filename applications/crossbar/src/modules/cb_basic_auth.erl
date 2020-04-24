@@ -163,7 +163,7 @@ set_auth_doc(Context, JObj) ->
     OwnerId = kz_doc:id(JObj),
     Setters = [{fun cb_context:set_auth_doc/2, auth_doc(JObj)}
               ,{fun cb_context:set_auth_account_id/2, AuthAccountId}
-               | maybe_add_is_admins(AuthAccountId, OwnerId)
+              | maybe_add_is_admins(AuthAccountId, OwnerId)
               ],
     cb_context:setters(Context, Setters).
 

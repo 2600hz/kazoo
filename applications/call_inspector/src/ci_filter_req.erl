@@ -23,6 +23,6 @@ handle_req(JObj, _Props) ->
     Data = kz_json:from_list(
              [{<<"Call-IDs">>, CallIds}
              ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
-              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     kapi_inspector:publish_filter_resp(kz_api:server_id(JObj), Data).

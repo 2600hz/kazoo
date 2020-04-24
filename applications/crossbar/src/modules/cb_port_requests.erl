@@ -46,7 +46,7 @@
 
 -define(ATTACHMENT_MIME_TYPES, [{<<"application">>, <<"octet-stream">>, '*'}
                                ,{<<"text">>, <<"plain">>, '*'}
-                                | ?PDF_CONTENT_TYPES
+                               | ?PDF_CONTENT_TYPES
                                ]).
 
 -define(ACCOUNTS_BY_SIMPLE_ID, <<"accounts/listing_by_simple_id">>).
@@ -790,7 +790,7 @@ add_commentors_info(Context, NewComments) ->
 -spec update_comment(cb_context:context(), kz_json:object()) -> kz_json:object().
 update_comment(Context, Comment) ->
     Setters = [{fun kzd_comment:set_is_private/2, kzd_comment:is_private_legacy(Comment)}
-               | get_commentor_info(Context, cb_context:auth_doc(Context))
+              | get_commentor_info(Context, cb_context:auth_doc(Context))
               ],
     kz_doc:setters(kz_json:delete_key(kzd_comment:superduper_comment_path(), Comment), Setters).
 
@@ -965,7 +965,7 @@ load_summary_by_type(Context, Type) ->
               ,{'unchunkable', 'true'}
               ,{'should_paginate', 'false'}
               ,'include_docs'
-               | by_types_view_options(Context, Type, IsRanged, AuthorityType)
+              | by_types_view_options(Context, Type, IsRanged, AuthorityType)
               ],
     case IsRanged of
         'true' -> crossbar_view:load_time_range(Context, View, Options);
@@ -1150,7 +1150,7 @@ run_comment_filter(Comments, Filters) ->
           kz_json:objects().
 normalize_view_results(Res, Acc) ->
     [leak_pvt_fields(Res, knm_port_request:public_fields(kz_json:get_value(<<"doc">>, Res)))
-     | Acc
+    | Acc
     ].
 
 -spec leak_pvt_fields(kz_json:object(), kz_json:object()) -> kz_json:object().
@@ -1452,7 +1452,7 @@ port_state_change_notify(Context, Id, State) ->
             ,{<<"Port-Request-ID">>, Id}
             ,{<<"Reason">>, state_change_reason(Context, cb_context:req_value(Context, ?REQ_TRANSITION))}
             ,{<<"Version">>, cb_context:api_version(Context)}
-             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ]),
     try
         lager:debug("sending port ~s notification for port request ~s", [State, Id]),
@@ -1544,7 +1544,7 @@ send_port_comment_notification(NewComment, {Context, Id, TotalNew, Index}) ->
           ,{<<"Authorized-By">>, cb_context:auth_account_id(Context)}
           ,{<<"Port-Request-ID">>, Id}
           ,{<<"Comment">>, Comment}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("sending port comment notification ~b/~b", [Index, TotalNew]),
     try kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_port_comment/1) of

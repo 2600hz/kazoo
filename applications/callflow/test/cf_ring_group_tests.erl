@@ -28,7 +28,7 @@ weighted_random_sort_test_() ->
     ?debugFmt("~ninit: ~p~nafter: ~p~n", [EndpointsInt, Endpoints]),
 
     [?_assertEqual(length(EndpointsInt), length(Endpoints))
-     |
+    |
      [?_assertEqual('true', lists:member(X, EndpointsInt))
       || X <- Endpoints
      ]

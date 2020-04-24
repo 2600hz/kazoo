@@ -15,8 +15,8 @@
 
 -record(request, {account_id :: kz_term:ne_binary()
                  ,request_jobj :: kz_json:object()
-                 ,customer :: braintree_customer:customer()
-                 ,card :: bt_card()
+                 ,customer :: braintree_customer:customer() | 'undefined'
+                 ,card :: bt_card() | 'undefined'
                  }
        ).
 
@@ -165,7 +165,7 @@ reply(#request{request_jobj=JObj}, Reply) ->
     MessageId = kz_json:get_value(<<"Msg-ID">>, JObj),
     Response = kz_json:from_list(
                  [{<<"Msg-ID">>, MessageId}
-                  | Reply
+                 | Reply
                  ] ++ kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                 ),
     RespQ = kz_json:get_value(<<"Server-ID">>, JObj),

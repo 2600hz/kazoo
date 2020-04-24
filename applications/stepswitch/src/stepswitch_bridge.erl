@@ -463,7 +463,7 @@ build_bridge(#state{endpoints=Endpoints
       ,{<<"B-Leg-Events">>, kapi_offnet_resource:b_leg_events(OffnetReq, [])}
       ,{<<"Endpoints">>, FmtEndpoints}
       ,{<<"Bridge-Actions">>, kapi_offnet_resource:outbound_actions(OffnetReq)}
-       | kz_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+      | kz_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
       ]).
 
 -type emergency_override() :: {boolean(), kz_term:api_binary(), kz_term:api_binary()}.
@@ -596,7 +596,7 @@ bridge_timeout(OffnetReq) ->
     ,{<<"Response-Code">>, <<"sip:500">>}
     ,{<<"Error-Message">>, <<"bridge request timed out">>}
     ,{<<"To-DID">>, kapi_offnet_resource:to_did(OffnetReq)}
-     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
 -spec bridge_error(kz_call_event:doc(), kapi_offnet_resource:req()) -> kz_term:proplist().
@@ -609,7 +609,7 @@ bridge_error(CallEvt, OffnetReq) ->
     ,{<<"Response-Code">>, <<"sip:500">>}
     ,{<<"Error-Message">>, kz_call_event:error_message(CallEvt, <<"failed to process request">>)}
     ,{<<"To-DID">>, kapi_offnet_resource:to_did(OffnetReq)}
-     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
 -spec bridge_success(kz_call_event:doc(), kapi_offnet_resource:req()) -> kz_term:proplist().
@@ -620,7 +620,7 @@ bridge_success(CallEvt, OffnetReq) ->
     ,{<<"Response-Message">>, <<"SUCCESS">>}
     ,{<<"Response-Code">>, <<"sip:200">>}
     ,{<<"Resource-Response">>, CallEvt}
-     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
 -spec bridge_failure(kz_call_event:doc(), kapi_offnet_resource:req()) -> kz_term:proplist().
@@ -633,7 +633,7 @@ bridge_failure(CallEvt, OffnetReq) ->
     ,{<<"Response-Message">>, response_message(CallEvt)}
     ,{<<"Response-Code">>, kz_call_event:hangup_code(CallEvt)}
     ,{<<"Resource-Response">>, CallEvt}
-     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
 -spec response_message(kz_call_event:doc()) -> kz_term:api_ne_binary().
@@ -651,7 +651,7 @@ bridge_not_configured(OffnetReq) ->
     ,{<<"Response-Code">>, <<"sip:403">>}
     ,{<<"Error-Message">>, <<"services not configured">>}
     ,{<<"To-DID">>, kapi_offnet_resource:to_did(OffnetReq)}
-     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
 -spec deny_emergency_bridge(state()) -> 'ok'.
@@ -673,7 +673,7 @@ send_deny_emergency_notification(OffnetReq) ->
         ,{?KEY_E_CALLER_ID_NAME, kapi_offnet_resource:emergency_caller_id_name(OffnetReq)}
         ,{?KEY_OUTBOUND_CALLER_ID_NUMBER, kapi_offnet_resource:outbound_caller_id_number(OffnetReq)}
         ,{?KEY_OUTBOUND_CALLER_ID_NAME, kapi_offnet_resource:outbound_caller_id_name(OffnetReq)}
-         | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
         ],
     kapps_notify_publisher:cast(Props, fun kapi_notifications:publish_denied_emergency_bridge/1).
 

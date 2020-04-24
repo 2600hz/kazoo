@@ -43,7 +43,7 @@
 -define(BIN_DATA, <<"raw">>).
 
 -define(UPLOAD_MIME_TYPES, [{<<"application">>, <<"octet-stream">>, '*'}
-                            | ?AUDIO_CONTENT_TYPES
+                           | ?AUDIO_CONTENT_TYPES
                             ++ ?MULTIPART_CONTENT_TYPES
                             ++ ?JSON_CONTENT_TYPES
                            ]).
@@ -539,7 +539,7 @@ save_attachment(Context, Filename, FileJObj) ->
     CT = kz_json:get_ne_binary_value([<<"headers">>, <<"content_type">>], FileJObj),
     Opts = [{'content_type', CT}
            ,{'rev', kz_doc:revision(JObj)}
-            | ?TYPE_CHECK_OPTION(<<"mailbox_message">>)
+           | ?TYPE_CHECK_OPTION(<<"mailbox_message">>)
            ],
     AttName = cb_modules_util:attachment_name(Filename, CT),
     C1 = crossbar_doc:save_attachment(BoxId, AttName, Contents, Context, Opts),
@@ -881,7 +881,7 @@ load_message_summary(BoxId, Context, ViewName, Options) ->
 
     ViewOptions = [{'mapper', Mapper}
                   ,{'max_range', MaxRange}
-                   | Options
+                  | Options
                   ],
     crossbar_view:load_modb(prefix_qs_filter_keys(Context), ViewName, ViewOptions).
 
@@ -916,11 +916,11 @@ message_summary_normalizer('undefined', JObj, Acc, RetentionTimestamp) ->
         ,kvm_util:enforce_retention(kz_json:get_json_value(<<"value">>, JObj), RetentionTimestamp)
         }
        ])
-     | Acc
+    | Acc
     ];
 message_summary_normalizer(_BoxId, JObj, Acc, RetentionTimestamp) ->
     [kvm_util:enforce_retention(kz_json:get_json_value(<<"value">>, JObj), RetentionTimestamp)
-     | Acc
+    | Acc
     ].
 
 %%------------------------------------------------------------------------------

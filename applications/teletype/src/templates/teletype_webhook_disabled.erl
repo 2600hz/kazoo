@@ -26,7 +26,7 @@
           ,?MACRO_VALUE(<<"hook.uri">>, <<"hook_uri">>, <<"Hook URI">>, <<"Hook URI">>)
           ,?MACRO_VALUE(<<"hook.event">>, <<"hook_event">>, <<"Hook Event">>, <<"Hook Event">>)
           ,?MACRO_VALUE(<<"hook.disable_reason">>, <<"hook_disable_reason">>, <<"Disable Reason">>, <<"Why the hook was disabled">>)
-           | ?COMMON_TEMPLATE_MACROS
+          | ?COMMON_TEMPLATE_MACROS
           ]
          )
        ).

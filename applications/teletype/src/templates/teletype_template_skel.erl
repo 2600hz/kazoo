@@ -75,7 +75,7 @@ handle_req(JObj, 'true') ->
 process_req(DataJObj) ->
     Macros = [{<<"system">>, teletype_util:system_params()}
              ,{<<"account">>, teletype_util:account_params(DataJObj)}
-              | build_macro_data(DataJObj)
+             | build_macro_data(DataJObj)
              ],
 
     RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),

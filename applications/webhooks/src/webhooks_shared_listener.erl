@@ -125,7 +125,7 @@ handle_doc_type_update(JObj, _Props) ->
                         ,{<<"Event-Category">>, <<"configuration">>}
                         ,{<<"Event-Name">>, <<"doc_type_updated">>}
                         ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
-                         | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                         ]
                        ,fun(P) -> kapi_self:publish_message(ServerId, P) end
                        ).

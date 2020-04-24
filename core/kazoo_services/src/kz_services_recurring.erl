@@ -235,7 +235,7 @@ collect_bookkeeper(Invoice, Services, DueTimestamp) ->
               ,{<<"Call-ID">>, kz_log:get_callid()}
               ,{<<"Due-Timestamp">>, DueTimestamp}
               ,{<<"Vendor-ID">>, kz_services_invoice:bookkeeper_vendor_id(Invoice)}
-               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     kz_amqp_worker:call(Request
                        ,fun kapi_bookkeepers:publish_collect_recurring_req/1
@@ -307,7 +307,7 @@ do_notify_reseller(AccountId, Services, Invoice, DueTimestamp) ->
                )
              }
             ,{<<"Timestamp">>, kz_time:now_s()}
-             | maybe_add_payment_token(Services, Invoice)
+            | maybe_add_payment_token(Services, Invoice)
              ++ kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     kapps_notify_publisher:cast(props:filter_undefined(Props), fun kapi_notifications:publish_bill_reminder/1).

@@ -179,7 +179,7 @@ handle_fs_reg(Node, FSJObj) ->
                       end
                      ,[{<<"Event-Timestamp">>, round(kz_time:now_s())}
                       ,{<<"FreeSWITCH-Nodename">>, kz_term:to_binary(Node)}
-                       | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                       ]
                      ,kapi_registration:success_keys()
                      ),
@@ -238,7 +238,7 @@ contact_vars_fold({<<"Proxy-Protocol">>, Proto}, Props) ->
         <<"ws", _/binary>> ->
             [{<<"Media-Webrtc">>, 'true'}
             ,{<<"RTCP-MUX">>, 'true'}
-             | Props
+            | Props
             ];
         _ -> Props
     end;
@@ -573,7 +573,7 @@ fetch_registration(Username, Realm) ->
     Reg = [{<<"Username">>, Username}
           ,{<<"Realm">>, Realm}
           ,{<<"Fields">>, []} % will fetch all fields
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case query_for_registration(Reg) of
         {'ok', JObjs} ->
@@ -705,7 +705,7 @@ maybe_resp_to_query(JObj, RegistrarAge) ->
         'true' ->
             Resp = [{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
                    ,{<<"Registrar-Age">>,  RegistrarAge}
-                    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                   | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
             kapi_registration:publish_query_err(kz_json:get_value(<<"Server-ID">>, JObj), Resp)
     end.
@@ -762,7 +762,7 @@ resp_to_query(JObj, RegistrarAge) ->
         [] ->
             Resp = [{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
                    ,{<<"Registrar-Age">>, RegistrarAge}
-                    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                   | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
             kapi_registration:publish_query_err(kz_json:get_value(<<"Server-ID">>, JObj), Resp);
         [_|_]=Registrations ->
@@ -772,7 +772,7 @@ resp_to_query(JObj, RegistrarAge) ->
                                     || Registration <- Registrations
                                    ]
                     }
-                    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                   | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
             kapi_registration:publish_query_resp(kz_json:get_value(<<"Server-ID">>, JObj), Resp);
         Count when is_integer(Count) ->
@@ -780,7 +780,7 @@ resp_to_query(JObj, RegistrarAge) ->
                    ,{<<"Registrar-Age">>, RegistrarAge}
                    ,{<<"Fields">>, []}
                    ,{<<"Count">>, Count}
-                    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                   | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
             kapi_registration:publish_query_resp(kz_json:get_value(<<"Server-ID">>, JObj), Resp)
     end.
@@ -1040,7 +1040,7 @@ fetch_authn(#registration{username=Username
           ,{<<"Media-Server">>, kz_term:to_binary(Node)}
           ,{<<"Method">>, <<"REGISTER">>}
           ,{<<"Call-ID">>, CallId}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     ReqResp = kz_amqp_worker:call(props:filter_undefined(Req)
                                  ,fun kapi_authn:publish_req/1
@@ -1071,7 +1071,7 @@ update_from_authn_response(#registration{username=Username
         [{'origin',
           [{'db', AccountDb, AuthorizingId}
           ,{'db', AccountDb, AccountId}
-           | OwnerIdProp
+          | OwnerIdProp
           ]
          }
         ],
@@ -1179,7 +1179,7 @@ registration_notify(#registration{previous_contact=PrevContact
               ,{<<"Contact">>, Contact}
               ,{<<"Username">>, Username}
               ,{<<"Realm">>, Realm}
-               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ]),
     kapi_presence:publish_register_overwrite(Props).
 

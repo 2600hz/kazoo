@@ -46,7 +46,7 @@ macros() ->
       ,?MACRO_VALUE(<<"last_registration.contact">>, <<"last_registration_contact">>, <<"SIP Contact">>, <<"SIP Contact">>)
       ,?MACRO_VALUE(<<"last_registration.expires">>, <<"last_registration_expires">>, <<"Expires">>, <<"Expires">>)
       ,?MACRO_VALUE(<<"last_registration.authorizing_id">>, <<"last_registration_authorizing_id">>, <<"Authorizing ID">>, <<"Authorizing ID">>)
-       | ?COMMON_TEMPLATE_MACROS
+      | ?COMMON_TEMPLATE_MACROS
       ]).
 
 -spec subject() -> kz_term:ne_binary().

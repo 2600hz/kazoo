@@ -404,7 +404,7 @@ finish_record_call(Call, Props, MediaName) ->
 
                 kapps_call_command:store(MediaName, StoreUrl, Call),
                 [{fun kzt_util:set_recording_url/2, StoreUrl}
-                 | Setters
+                | Setters
                 ];
             {'true', 'other', Url} ->
                 StoreUrl = kapi_dialplan:offsite_store_url(Url, MediaName),
@@ -413,7 +413,7 @@ finish_record_call(Call, Props, MediaName) ->
 
                 kapps_call_command:store(MediaName, StoreUrl, Call),
                 [{fun kzt_util:set_recording_url/2, StoreUrl}
-                 | Setters]
+                | Setters]
         end,
     {'request', lists:foldl(fun({F, V}, C) -> F(V, C) end, Call, Setters1)}.
 

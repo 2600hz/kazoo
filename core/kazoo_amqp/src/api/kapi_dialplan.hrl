@@ -959,11 +959,11 @@
 -define(DP_ERROR_RESP_HEADERS, [<<"Dialplan-Error">>
                                ,<<"Channel-State">>
                                ,<<"Channel-Call-State">>
-                                    | ?ERROR_RESP_HEADERS
+                               | ?ERROR_RESP_HEADERS
                                ]).
 
 -define(OPTIONAL_DP_ERROR_RESP_HEADERS, [<<"Custom-Channel-Vars">>
-                                             | ?OPTIONAL_ERROR_RESP_HEADERS
+                                        | ?OPTIONAL_ERROR_RESP_HEADERS
                                         ]).
 
 -define(KAPI_DIALPLAN_HRL, 'true').

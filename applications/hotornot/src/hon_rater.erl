@@ -49,7 +49,7 @@ publish_no_rate_found(RateReq) ->
     ServerId = kz_api:server_id(RateReq),
 
     Resp = [{<<"Msg-ID">>, MsgId}
-            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     lager:debug("publishing empty ~srate resp for ~s(~s)", [maybe_empty_mobile_log(RateReq), ServerId, MsgId]),
     kapi_rate:publish_resp(ServerId, Resp).
@@ -178,7 +178,7 @@ rate_resp(Rate, RateReq) ->
     ,{<<"Update-Callee-ID">>, ShouldUpdateCalleeId}
     ,{<<"Rate-Version">>, kzd_rates:rate_version(Rate)}
     ,{<<"Ratedeck-ID">>, kzd_rates:ratedeck_id(Rate)}
-     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
 -spec should_update_callee_id(kz_term:ne_binary() | kapi_rate:req()) -> boolean().

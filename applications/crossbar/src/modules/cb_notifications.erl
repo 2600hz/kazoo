@@ -464,7 +464,7 @@ build_customer_update_payload(Context) ->
       ,{<<"BCC">>, cb_context:req_value(Context, <<"bcc">>)}
       ,{<<"HTML">>, cb_context:req_value(Context, <<"html">>)}
       ,{<<"Text">>, cb_context:req_value(Context, <<"plain">>)}
-       | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).
 
 -spec build_preview_payload(cb_context:context(), kz_json:object()) -> kz_term:proplist().
@@ -484,7 +484,7 @@ build_preview_payload(Context, Notification) ->
       ,{<<"Msg-ID">>, cb_context:req_id(Context)}
       ,{<<"Call-ID">>, cb_context:req_id(Context)}
       ,{<<"Preview">>, 'true'}
-       | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).
 
 -spec handle_preview_response(cb_context:context(), kz_json:object()) -> cb_context:context().
@@ -1003,7 +1003,7 @@ maybe_set_teletype_as_default(Context, AccountDoc) ->
 -spec set_teletype_as_default(cb_context:context(), kzd_accounts:doc()) -> 'ok'.
 set_teletype_as_default(Context, AccountDoc) ->
     Updates = [{kzd_accounts:path_notification_preference(), <<"teletype">>}
-               | crossbar_doc:pvt_updates(AccountDoc, Context)
+              | crossbar_doc:pvt_updates(AccountDoc, Context)
               ],
 
     case kzd_accounts:update(cb_context:account_id(Context), Updates) of

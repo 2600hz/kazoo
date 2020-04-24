@@ -145,6 +145,6 @@ get_system_config_document_schema(Id) ->
     {'ok', SysConfigSchema} = load_system_config_schema(),
     Patterns = kz_json:get_keys(<<"patternProperties">>, SysConfigSchema),
     Values = [{[<<"properties">>, <<"default">>, <<"$ref">>], SchemaName}
-              | [{[<<"patternProperties">>, Pattern, <<"$ref">>], SchemaName} || Pattern <- Patterns]
+             | [{[<<"patternProperties">>, Pattern, <<"$ref">>], SchemaName} || Pattern <- Patterns]
              ],
     kz_json:set_values(Values, kz_doc:public_fields(SysConfigSchema)).

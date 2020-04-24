@@ -43,7 +43,7 @@ request(Acc) ->
     ,{'channels', ecallmgr_fs_channels:count()}
     ,{'conferences', ecallmgr_fs_conferences:count()}
     ,{'registrations', ecallmgr_registrar:count()}
-     | Acc
+    | Acc
     ].
 
 -spec node_info(atom(), kz_time:gregorian_seconds()) -> kz_term:api_object().

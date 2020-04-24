@@ -38,7 +38,7 @@ macros() ->
       ,?MACRO_VALUE(<<"voicemail.file_type">>, <<"voicemail_file_type">>, <<"Voicemail File Type">>, <<"Type of the voicemail file">>)
       ,?MACRO_VALUE(<<"voicemail.file_size">>, <<"voicemail_file_size">>, <<"Voicemail File Size">>, <<"Size of the voicemail file in bytes">>)
       ,?MACRO_VALUE(<<"reason">>, <<"voicemail_delete_reason">>, <<"Voicemail Delete Reason">>, <<"Why the voicemail was deleted">>)
-       | ?DEFAULT_CALL_MACROS
+      | ?DEFAULT_CALL_MACROS
        ++ ?USER_MACROS
        ++ ?COMMON_TEMPLATE_MACROS
       ]).
@@ -190,7 +190,7 @@ macros(DataJObj) ->
 -spec template_data(kz_json:object()) -> kz_term:proplist().
 template_data(DataJObj) ->
     [{<<"system">>, teletype_util:system_params()}
-     | build_template_data(DataJObj)
+    | build_template_data(DataJObj)
     ].
 
 -spec email_attachments(kz_json:object(), kz_term:proplist()) -> attachments().
@@ -270,7 +270,7 @@ build_template_data(DataJObj) ->
     ,{<<"user">>, teletype_util:user_params(kz_json:get_value(<<"user">>, DataJObj))}
     ,{<<"owner">>, teletype_util:user_params(kz_json:get_value(<<"user">>, DataJObj))}
     ,{<<"reason">>, render_vm_delete_reason(DataJObj)}
-     | teletype_util:build_call_data(DataJObj, Timezone)
+    | teletype_util:build_call_data(DataJObj, Timezone)
     ].
 
 -spec build_voicemail_data(kz_json:object()) -> kz_term:proplist().

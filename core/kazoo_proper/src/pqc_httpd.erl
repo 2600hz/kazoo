@@ -94,14 +94,14 @@ get_req(Path) ->
 
 %% @doc waits until the request can be fulfilled then returns the value, leaving in state
 -spec wait_for_req(kz_json:path()) -> kz_json:api_json_term() |
-                                      {'error', 'timeout'}.
+          {'error', 'timeout'}.
 wait_for_req(Path) ->
     wait_for_req(Path, 5 * ?MILLISECONDS_IN_SECOND).
 
 %% @doc waits until the request can be fulfilled then returns the value, leaving in state
 -spec wait_for_req(kz_json:path(), pos_integer()) ->
-                          kz_json:api_json_term() |
-                          {'error', 'timeout'}.
+          kz_json:api_json_term() |
+          {'error', 'timeout'}.
 wait_for_req([_|_]=Path, TimeoutMs) when is_integer(TimeoutMs), TimeoutMs > 0 ->
     gen_server:call(?MODULE, {'wait_for_req', Path, TimeoutMs}, TimeoutMs + 100).
 

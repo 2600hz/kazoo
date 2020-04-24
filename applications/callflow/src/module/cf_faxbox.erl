@@ -37,7 +37,7 @@ handle(Data, Call) ->
                                  ,{<<"Action">>, <<"receive">>}
                                  ,{<<"FaxBox-ID">>, FaxboxId}
                                  ,{<<"Fax-T38-Option">>, lookup_fax_option(Call, Data)}
-                                  | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                                  ])),
     kapi_fax:publish_req(Props),
     cf_exe:control_usurped(Call).

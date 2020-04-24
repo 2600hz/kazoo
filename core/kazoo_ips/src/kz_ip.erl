@@ -134,7 +134,7 @@ maybe_save_in_account(AccountId, {'ok', JObj}=Ok) ->
             E;
         {'ok', CurrentJObj} ->
             Update = [{kz_doc:path_revision(), kz_doc:revision(CurrentJObj)}
-                      | kz_json:to_proplist(JObj)
+                     | kz_json:to_proplist(JObj)
                      ],
             UpdateOptions = [{'update', Update}
                             ,{'ensure_saved', 'true'}

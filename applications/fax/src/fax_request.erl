@@ -611,7 +611,7 @@ notify_fields(Call, JObj) ->
       ,{<<"Callee-ID-Name">>, kapps_call:callee_id_name(Call)}
       ,{<<"Call-ID">>, kapps_call:call_id(Call)}
       ,{<<"Fax-Timestamp">>, kz_time:now_s()}
-       | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).
 
 -spec notify_failure(kz_json:object(), state()) -> 'ok'.
@@ -642,7 +642,7 @@ notify_failure(JObj, Reason, #state{call=Call
                 ,{<<"Account-ID">>, AccountId}
                 ,{<<"Account-DB">>, FaxDb}
                 ,{<<"Fax-Notifications">>,  Notify}
-                 | notify_fields(Call, JObj)
+                | notify_fields(Call, JObj)
                 ]),
     kapps_notify_publisher:cast(Message, fun kapi_notifications:publish_fax_inbound_error/1).
 
@@ -666,7 +666,7 @@ notify_success(#state{call=Call
                 ,{<<"Account-ID">>, AccountId}
                 ,{<<"Account-DB">>, FaxDb}
                 ,{<<"Fax-Notifications">>, Notify}
-                 | notify_fields(Call, JObj)
+                | notify_fields(Call, JObj)
                 ]),
     kapps_notify_publisher:cast(Message, fun kapi_notifications:publish_fax_inbound/1).
 
@@ -700,7 +700,7 @@ send_status(#state{call=Call
                 ,{<<"Caller-ID-Name">>, kapps_call:caller_id_name(Call)}
                 ,{<<"Callee-ID-Number">>, kapps_call:callee_id_number(Call)}
                 ,{<<"Callee-ID-Name">>, kapps_call:callee_id_name(Call)}
-                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                 ]),
     kapi_fax:publish_status(Payload).
 

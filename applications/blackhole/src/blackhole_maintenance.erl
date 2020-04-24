@@ -34,7 +34,7 @@ start_module(ModuleBin, Persist) ->
     Req = [{<<"Module">>, ModuleBin}
           ,{<<"Action">>, <<"start">>}
           ,{<<"Persist">>, kz_term:to_boolean(Persist)}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case kz_amqp_worker:call_collect(Req
                                     ,fun kapi_websockets:publish_module_req/1
@@ -65,7 +65,7 @@ stop_module(ModuleBin, Persist) ->
     Req = [{<<"Module">>, ModuleBin}
           ,{<<"Action">>, <<"stop">>}
           ,{<<"Persist">>, kz_term:to_boolean(Persist)}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case kz_amqp_worker:call_collect(Req
                                     ,fun kapi_websockets:publish_module_req/1

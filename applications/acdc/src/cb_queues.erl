@@ -387,7 +387,7 @@ put(Context) ->
           cb_context:context().
 put(Context, ?EAVESDROP_PATH_TOKEN) ->
     Prop = [{<<"Eavesdrop-Call-ID">>, cb_context:req_value(Context, <<"call_id">>)}
-            | default_eavesdrop_req(Context)
+           | default_eavesdrop_req(Context)
            ],
     eavesdrop_req(Context, Prop).
 
@@ -395,7 +395,7 @@ put(Context, ?EAVESDROP_PATH_TOKEN) ->
           cb_context:context().
 put(Context, QID, ?EAVESDROP_PATH_TOKEN) ->
     Prop = [{<<"Eavesdrop-Group-ID">>, QID}
-            | default_eavesdrop_req(Context)
+           | default_eavesdrop_req(Context)
            ],
     eavesdrop_req(Context, Prop).
 
@@ -407,7 +407,7 @@ default_eavesdrop_req(Context) ->
     ,{<<"Endpoint-Timeout">>, kz_term:to_integer(cb_context:req_value(Context, <<"timeout">>, 20))}
     ,{<<"Outbound-Caller-ID-Name">>, cb_context:req_value(Context, <<"caller_id_name">>)}
     ,{<<"Outbound-Caller-ID-Number">>, cb_context:req_value(Context, <<"caller_id_number">>)}
-     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
 -spec eavesdrop_req(cb_context:context(), kz_term:proplist()) -> cb_context:context().
@@ -667,7 +667,7 @@ fetch_all_current_queue_stats(Context) ->
             ,{<<"Agent-ID">>, cb_context:req_value(Context, <<"agent_id">>)}
             ,{<<"Start-Range">>, From}
             ,{<<"End-Range">>, Now}
-             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ]),
     fetch_from_amqp(Context, Req).
 
@@ -715,7 +715,7 @@ fetch_ranged_queue_stats(Context, From, To, 'true') ->
             ,{<<"Agent-ID">>, cb_context:req_value(Context, <<"agent_id">>)}
             ,{<<"Start-Range">>, From}
             ,{<<"End-Range">>, To}
-             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ]),
     fetch_from_amqp(Context, Req);
 fetch_ranged_queue_stats(Context, From, To, 'false') ->

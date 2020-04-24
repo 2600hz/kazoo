@@ -142,7 +142,7 @@ tollfree_options(Quantity, Options) ->
     TollFreeOptions = [{'qs', [{'cmd', <<"listtollfree">>}
                               ,{'limit', Quantity}
                               ,{'xml', <<"yes">>}
-                               | knm_vitelity_util:default_options(Options)
+                              | knm_vitelity_util:default_options(Options)
                               ]}
                       ,{'uri', knm_vitelity_util:api_uri()}
                       ],
@@ -163,7 +163,7 @@ local_options(Prefix, Options) when byte_size(Prefix) =< 3 ->
                            ,{'provider', knm_vitelity_util:get_query_value(<<"provider">>, Options)}
                            ,{'xml', <<"yes">>}
                            ,{'cnam', knm_vitelity_util:get_query_value(<<"cnam">>, Options)}
-                            | knm_vitelity_util:default_options(Options)
+                           | knm_vitelity_util:default_options(Options)
                            ]}
                    ,{'uri', knm_vitelity_util:api_uri()}
                    ],
@@ -178,7 +178,7 @@ local_options(Prefix, Options) ->
                            ,{'provider', knm_vitelity_util:get_query_value(<<"provider">>, Options)}
                            ,{'xml', <<"yes">>}
                            ,{'cnam', knm_vitelity_util:get_query_value(<<"cnam">>, Options)}
-                            | knm_vitelity_util:default_options(Options)
+                           | knm_vitelity_util:default_options(Options)
                            ]}
                    ,{'uri', knm_vitelity_util:api_uri()}
                    ],
@@ -297,7 +297,7 @@ process_xml_numbers(_Prefix, 0, _Els, Acc) ->
 process_xml_numbers(_Prefix, _Quantity, [#xmlElement{name='response'
                                                     ,content=Reason
                                                     }
-                                         |_], _Acc) ->
+                                        |_], _Acc) ->
     {'error', kz_xml:texts_to_binary(Reason)};
 process_xml_numbers(_Prefix, _Quantity, [], Acc) ->
     {'ok', kz_json:from_list(Acc)};
@@ -366,7 +366,7 @@ purchase_local_options(DID) ->
             ,{'cmd', <<"getlocaldid">>}
             ,{'xml', <<"yes">>}
             ,{'routesip', knm_vitelity_util:get_routesip()}
-             | knm_vitelity_util:default_options()
+            | knm_vitelity_util:default_options()
             ]}
     ,{'uri', knm_vitelity_util:api_uri()}
     ].
@@ -381,7 +381,7 @@ purchase_tollfree_options(DID) ->
             ,{'cmd', <<"gettollfree">>}
             ,{'xml', <<"yes">>}
             ,{'routesip', knm_vitelity_util:get_routesip()}
-             | knm_vitelity_util:default_options()
+            | knm_vitelity_util:default_options()
             ]}
     ,{'uri', knm_vitelity_util:api_uri()}
     ].
@@ -449,7 +449,7 @@ release_did_options(DID) ->
     [{'qs', [{'did', knm_converters:to_npan(DID)}
             ,{'cmd', <<"removedid">>}
             ,{'xml', <<"yes">>}
-             | knm_vitelity_util:default_options()
+            | knm_vitelity_util:default_options()
             ]}
     ,{'uri', knm_vitelity_util:api_uri()}
     ].

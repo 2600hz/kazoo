@@ -369,7 +369,7 @@ settings_advanced(Device) ->
 
     kz_json:from_list(
       [{<<"expire">>, kzd_devices:sip_expire_seconds(Device)}
-       | [{M, 'true'} || M <- EncryptionMethods]
+      | [{M, 'true'} || M <- EncryptionMethods]
       ]).
 
 -spec settings_datetime(kzd_devices:doc()) -> kz_json:object().

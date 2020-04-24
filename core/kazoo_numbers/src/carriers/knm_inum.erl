@@ -175,7 +175,7 @@ update_doc(PN, UpdateProps) ->
     Num = knm_phone_number:number(PN),
 
     Updates = [{kzd_phone_numbers:pvt_module_name_path(), kz_term:to_binary(?MODULE)}
-               | UpdateProps
+              | UpdateProps
               ],
     UpdateOptions = [{'update', Updates}],
 

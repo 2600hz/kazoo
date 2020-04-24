@@ -57,7 +57,7 @@ get_all_acl_ips() ->
           ,{<<"Node">>, <<"all">>}
           ,{<<"Default">>, kz_json:new()}
           ,{<<"Msg-ID">>, kz_binary:rand_hex(16)}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     Resp = kz_amqp_worker:call(props:filter_undefined(Req)
                               ,fun kapi_sysconf:publish_get_req/1
@@ -83,6 +83,6 @@ extract_ip(_Key, Value, Acc) ->
             [kz_json:from_list([{<<"ip">>, CIDR}
                                ,{?AUTHZ_ID, kz_json:get_value(?AUTHZ_ID, Value)}
                                ])
-             |Acc
+            |Acc
             ]
     end.

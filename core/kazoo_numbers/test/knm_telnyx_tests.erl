@@ -54,7 +54,7 @@ find_numbers(Options0) ->
                            ],
         Options <- [[{quantity, Limit}
                     ,{prefix, Prefix}
-                     | Options0
+                    | Options0
                     ]],
         Results <- [knm_search:find(Options)]
     ].
@@ -73,7 +73,7 @@ find_international_numbers(Options0) ->
         Options <- [[{country, Country}
                     ,{quantity, Limit}
                     ,{prefix, Prefix}
-                     | Options0
+                    | Options0
                     ]],
         Results <- [knm_search:find(Options)]
     ].

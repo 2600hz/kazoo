@@ -418,7 +418,7 @@ ledger_type(#ledger{ledger_type=LedgerType}) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec set_ledger_type(ledger(), kz_currency:units() | kz_currency:dollars() | kz_term:ne_binary()) ->
-                             ledger().
+          ledger().
 set_ledger_type(Ledger, Amount)
   when is_float(Amount), Amount > 0 ->
     set_ledger_type(Ledger, kzd_ledgers:type_credit());
@@ -453,7 +453,7 @@ set_modb(Ledger, MODb) ->
     Ledger#ledger{modb=MODb}.
 
 -spec set_modb(ledger(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                      ledger().
+          ledger().
 set_modb(Ledger, Account, Year, Month) ->
     MODb = kazoo_modb:get_modb(Account, Year, Month),
     set_modb(Ledger, MODb).
@@ -594,7 +594,7 @@ to_json(#ledger{private_fields=PrivateFields}=Ledger) ->
             ,{kz_doc:path_created(), get_created_timestamp(LedgerJObj)}
             ,{kz_doc:path_modified(), kz_time:now_s()}
             ,{kz_doc:path_account_id(), account_id(Ledger)}
-             | maybe_add_id(LedgerJObj)
+            | maybe_add_id(LedgerJObj)
             ],
     kz_json:set_values(Props, LedgerJObj).
 
@@ -662,14 +662,14 @@ from_json(JObj) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec fetch(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                   {'ok', ledger()} |
-                   {'error', any()}.
+          {'ok', ledger()} |
+          {'error', any()}.
 fetch(Account, ?MATCH_MODB_PREFIX(Year, Month, Id)) ->
     fetch(Account, Id, Year, Month).
 
 -spec fetch(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                   {'ok', ledger()} |
-                   {'error', any()}.
+          {'ok', ledger()} |
+          {'error', any()}.
 fetch(Account, Id, Year, Month) ->
     case kazoo_modb:open_doc(Account, Id, Year, Month) of
         {'error', _Reason} = Error -> Error;
@@ -711,7 +711,7 @@ save(Ledger, Account) ->
     save(set_modb(Ledger, MODb)).
 
 -spec save(ledger(), kz_term:ne_binary(), kz_time:year(), kz_time:month()) ->
-                  {'ok', ledger()} | {'error', any()}.
+          {'ok', ledger()} | {'error', any()}.
 save(Ledger, Account, Year, Month) ->
     MODb = kazoo_modb:get_modb(Account, Year, Month),
     save(set_modb(Ledger, MODb)).

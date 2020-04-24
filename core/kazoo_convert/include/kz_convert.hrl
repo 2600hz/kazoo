@@ -19,7 +19,8 @@
         )).
 
 -define(TMP_DIR
-       ,kapps_config:get_binary(?CONFIG_CAT, <<"file_cache_path">>, <<"/tmp/">>)).
+       ,kapps_config:get_binary(?CONFIG_CAT, <<"file_cache_path">>, <<"/tmp/">>)
+       ).
 
 -define(KZ_CONVERT_HRL, 'true').
 -endif.

@@ -110,7 +110,7 @@ release_in_service(Num, Options, PreHistory) ->
     ,?_assertEqual([?FEATURE_LOCAL], knm_phone_number:features_list(PN0))
     ,?_assert(knm_phone_number:is_dirty(PN))
     ,?_assertEqual([?FEATURE_LOCAL], knm_phone_number:features_list(PN))
-     |
+    |
      case PreHistory of
          [?RESELLER_ACCOUNT_ID] ->
              [{"verify number state is changed"

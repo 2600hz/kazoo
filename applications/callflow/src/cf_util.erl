@@ -594,7 +594,7 @@ find_channels(Usernames, Call) ->
     lager:debug("finding channels for realm ~p, usernames ~p", [Realm, Usernames]),
     Req = [{<<"Realm">>, Realm}
           ,{<<"Usernames">>, Usernames}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case kz_amqp_worker:call(Req
                             ,fun kapi_call:publish_query_user_channels_req/1
@@ -753,7 +753,7 @@ flush_control_queue(Call) ->
               ,{<<"Msg-ID">>, NoopId}
               ,{<<"Insert-At">>, <<"flush">>}
               ,{<<"Call-ID">>, CallId}
-               | kz_api:default_headers(<<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+              | kz_api:default_headers(<<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
     lager:debug("flushing with ~p", [Command]),
     kz_amqp_worker:cast(Command, fun(C) -> kapi_dialplan:publish_command(ControlQueue, C) end).

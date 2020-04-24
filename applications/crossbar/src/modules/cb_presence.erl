@@ -201,7 +201,7 @@ search_req(Context, SearchType, Username) ->
           ,{<<"Event-Package">>, cb_context:req_param(Context, <<"event">>)}
           ,{<<"System-Log-ID">>, cb_context:req_id(Context)}
           ,{<<"Msg-ID">>, kz_binary:rand_hex(16)}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     Count = kz_nodes:node_role_count(<<"Presence">>, 'true'),
     lager:debug("requesting presence ~s from ~B servers", [SearchType, Count]),
@@ -379,7 +379,7 @@ publish_presence_reset(Context, PresenceId) ->
     API = [{<<"Realm">>, Realm}
           ,{<<"Username">>, PresenceId}
           ,{<<"Msg-ID">>, kz_log:get_callid()}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     kz_amqp_worker:cast(API, fun kapi_presence:publish_reset/1).
 

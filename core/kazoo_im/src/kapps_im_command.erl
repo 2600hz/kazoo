@@ -138,7 +138,7 @@ lookup_reg(Username, Realm) ->
     Req = [{<<"Realm">>, Realm}
           ,{<<"Username">>, Username}
           ,{<<"Fields">>, [<<"Registrar-Node">>]}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case kz_amqp_worker:call_collect(Req
                                     ,fun kapi_registration:publish_query_req/1

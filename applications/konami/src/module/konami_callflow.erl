@@ -28,7 +28,7 @@ handle(Data, Call) ->
     Flow = kz_json:get_value(<<"flow">>, CallflowJObj),
     API = [{<<"Call">>, kapps_call:to_json(Call)}
           ,{<<"Flow">>, Flow}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     kapi_callflow:publish_resume(API),
     {'stop', Call}.

@@ -84,7 +84,7 @@ lookup_methods(JObj) ->
 -spec send_response(kz_json:object(), kz_json:object()) -> 'ok'.
 send_response(Limits, Reqest) ->
     RespStub = kz_json:from_list([{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, Reqest)}
-                                  | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                                  ]),
     Srv = kz_json:get_value(<<"Server-ID">>, Reqest),
     kapi_frontier:publish_ratelimits_resp(Srv, kz_json:merge_jobjs(Limits, RespStub)).

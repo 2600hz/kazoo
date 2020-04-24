@@ -32,7 +32,7 @@ macros() ->
     kz_json:from_list(
       [?MACRO_VALUE(<<"current_balance">>, <<"current_balance">>, <<"Current Balance">>, <<"Account's Current Credit Balance">>)
       ,?MACRO_VALUE(<<"threshold">>, <<"threshold">>, <<"Threshold">>, <<"Account's Low Credit Balance Threshold">>)
-       | ?COMMON_TEMPLATE_MACROS
+      | ?COMMON_TEMPLATE_MACROS
       ]).
 
 -spec subject() -> kz_term:ne_binary().
@@ -109,7 +109,7 @@ macros(DataJObj) ->
     ,{<<"account">>, teletype_util:account_params(DataJObj)}
     ,{<<"current_balance">>, get_current_balance(DataJObj)}
     ,{<<"threshold">>, get_balance_threshold(DataJObj)}
-     | build_macro_data(DataJObj)
+    | build_macro_data(DataJObj)
     ].
 
 -spec get_current_balance(kz_json:object()) -> kz_term:ne_binary().

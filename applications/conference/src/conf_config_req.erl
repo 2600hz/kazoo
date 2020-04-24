@@ -62,7 +62,7 @@ handle_profile_request(JObj, Conference) ->
            ,{<<"Advertise">>, advertise(ProfileName)}
            ,{<<"Chat-Permissions">>, chat_permissions(ProfileName)}
            ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
-            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     lager:debug("returning conference profile ~s", [ProfileName]),
     lager:debug("~s", [kz_json:encode(kz_json:from_list(Resp))]),
@@ -228,7 +228,7 @@ handle_controls_request(JObj, Conference) ->
     ServerId = kz_api:server_id(JObj),
     Resp = [{<<"Caller-Controls">>, controls(ControlsType, Controls)}
            ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
-            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     lager:debug("returning ~s (~s) controls profile for ~s"
                ,[ControlsName, ControlsType, ProfileName]

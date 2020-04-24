@@ -22,7 +22,7 @@
 -define(TEMPLATE_MACROS
        ,kz_json:from_list(
           [?MACRO_VALUE(<<"balance">>, <<"balance">>, <<"Balance">>, <<"The Resulting Account Balance">>)
-           | ?TRANSACTION_MACROS
+          | ?TRANSACTION_MACROS
            ++ ?USER_MACROS
            ++ ?COMMON_TEMPLATE_MACROS
           ]

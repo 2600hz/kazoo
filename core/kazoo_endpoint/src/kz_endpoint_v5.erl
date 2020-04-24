@@ -204,7 +204,7 @@ cache_origin(JObj, EndpointId, AccountDb) ->
     Routines = [fun(P) -> [{'db', AccountDb, EndpointId} | P] end
                ,fun(P) ->
                         [{'db', AccountDb, kzs_util:format_account_id(AccountDb)}
-                         | P
+                        | P
                         ]
                 end
                ,fun(P) -> maybe_cached_owner_id(P, JObj, AccountDb) end
@@ -723,11 +723,11 @@ flush(Db, Id) ->
         ,{<<"Database">>, Db}
         ,{<<"Rev">>, Rev}
         ,{<<"Type">>, kzd_devices:type()}
-         | kz_api:default_headers(<<"configuration">>
-                                 ,?DOC_EDITED
-                                 ,?APP_NAME
-                                 ,?APP_VERSION
-                                 )
+        | kz_api:default_headers(<<"configuration">>
+                                ,?DOC_EDITED
+                                ,?APP_NAME
+                                ,?APP_VERSION
+                                )
         ],
     Fun = fun(P) ->
                   kapi_conf:publish_doc_update('edited', Db, kzd_devices:type(), Id, P)
@@ -1014,7 +1014,7 @@ maybe_start_metaflow(Call, Endpoint) ->
                     ,{<<"Binding-Digit">>, kzd_metaflows:binding_digit(Metaflow)}
                     ,{<<"Digit-Timeout">>, kzd_metaflows:digit_timeout(Metaflow)}
                     ,{<<"Listen-On">>, kzd_metaflows:listen_on(Metaflow, <<"self">>)}
-                     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                     ]),
             lager:debug("sending metaflow for endpoint: ~s: ~s"
                        ,[Id, kzd_metaflows:listen_on(Metaflow, <<"self">>)]
@@ -1249,7 +1249,7 @@ create_sip_endpoint(Endpoint, Properties, #clid{}=Clid, Call) ->
                     ,{<<"Flags">>, get_outbound_flags(Endpoint)}
                     ,{<<"Metaflows">>, kz_json:get_json_value(<<"metaflows">>, Endpoint)}
                     ,{<<"Endpoint-Actions">>, endpoint_actions(Endpoint, Call)}
-                     | maybe_get_t38(Endpoint, Call)
+                    | maybe_get_t38(Endpoint, Call)
                     ]),
     maybe_format_endpoint(SIPEndpoint, kz_json:get_json_value(<<"formatters">>, Endpoint)).
 
@@ -1707,7 +1707,7 @@ maybe_set_call_forward({Endpoint, Call, CallFwd, CCVs}) ->
                         ,{<<"Require-Ignore-Early-Media">>, <<"true">>}
                         ,{<<"Loopback-Request-URI">>, LoopBackUri}
                         ,{<<"Ignore-Early-Media">>, <<"true">>}
-                         | bowout_settings('undefined' =:= kapps_call:call_id_direct(Call))
+                        | bowout_settings('undefined' =:= kapps_call:call_id_direct(Call))
                         ]
                        ,CCVs
                        )

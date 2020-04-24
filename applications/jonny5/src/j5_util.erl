@@ -36,7 +36,7 @@ maybe_send_system_alert('true', Request) ->
                         ,{<<"Reseller-ID">>, ResellerId}
                         ,{<<"Reseller-Billing">>, j5_request:reseller_billing(Request)}
                         ,{<<"Soft-Limit">>, j5_request:soft_limit(Request)}
-                         | P
+                        | P
                         ]
                 end
                ,fun(P) -> add_limit_details(AccountId, <<"Account">>, P) end
@@ -68,7 +68,7 @@ add_limit_details(Account, Prefix, Props) ->
     ,{<<Prefix/binary, "-Balance">>, kz_term:to_binary(available_dollars(AccountId))}
     ,{<<Prefix/binary, "-Allow-Postpay">>, kz_term:to_binary(j5_limits:allow_postpay(Limits))}
     ,{<<Prefix/binary, "-Max-Postpay">>, kz_term:to_binary(max_postpay(Limits))}
-     | Props
+    | Props
     ].
 
 resource(AccountId, Limits) ->

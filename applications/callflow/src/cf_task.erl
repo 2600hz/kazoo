@@ -31,11 +31,11 @@
 
 -record(state, {call :: kapps_call:call()
                ,callback :: fun()
-               ,args :: list()
-               ,pid :: kz_term:api_pid()
-               ,ref :: kz_term:api_reference()
-               ,queue :: kz_term:api_binary()
-               }).
+                               ,args :: list()
+                               ,pid :: kz_term:api_pid()
+                               ,ref :: kz_term:api_reference()
+                               ,queue :: kz_term:api_binary()
+                               }).
 -type state() :: #state{}.
 
 %% By convention, we put the options here in macros, but not required.

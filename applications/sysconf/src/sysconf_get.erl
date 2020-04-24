@@ -43,7 +43,7 @@ handle_req(ApiJObj, _Props) ->
            ,{<<"Key">>, Key}
            ,{<<"Value">>, maybe_fix_undefined(Value)}
            ,{<<"Msg-ID">>, kz_api:msg_id(ApiJObj)}
-            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     maybe_publish_resp(RespQ, Resp).
 

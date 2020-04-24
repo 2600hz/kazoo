@@ -447,5 +447,5 @@ maybe_requesting_csv(Context) ->
 -spec convert_numbers_to_list(kz_term:ne_binary(), kz_json:object(), kz_json:object()) -> kz_json:objects().
 convert_numbers_to_list(Key, Value, JObj) ->
     [kz_json:from_list([{<<"number">>, Key} | kz_json:recursive_to_proplist(Value)])
-     | JObj
+    | JObj
     ].

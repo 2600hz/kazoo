@@ -78,7 +78,7 @@ continue_processing(JObj, AccountDb, VMBox, Emails) ->
     Timezone = kzd_voicemail_box:timezone(VMBox, <<"UTC">>),
 
     Props = [{<<"email_address">>, Emails}
-             | create_template_props(JObj, Timezone, AccountJObj)
+            | create_template_props(JObj, Timezone, AccountJObj)
             ],
 
     CustomTxtTemplate = kz_json:get_value(?EMAIL_TXT_TEMPLATE_KEY, AccountJObj),

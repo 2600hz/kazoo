@@ -38,7 +38,7 @@ macros() ->
       ,?MACRO_VALUE(<<"voicemail.file_name">>, <<"voicemail_file_name">>, <<"Voicemail File Name">>, <<"Name of the voicemail file">>)
       ,?MACRO_VALUE(<<"voicemail.file_type">>, <<"voicemail_file_type">>, <<"Voicemail File Type">>, <<"Type of the voicemail file">>)
       ,?MACRO_VALUE(<<"voicemail.file_size">>, <<"voicemail_file_size">>, <<"Voicemail File Size">>, <<"Size of the voicemail file in bytes">>)
-       | ?DEFAULT_CALL_MACROS
+      | ?DEFAULT_CALL_MACROS
        ++ ?USER_MACROS
        ++ ?COMMON_TEMPLATE_MACROS
       ]).
@@ -182,7 +182,7 @@ macros(DataJObj) ->
 -spec template_data(kz_json:object()) -> kz_term:proplist().
 template_data(DataJObj) ->
     [{<<"system">>, teletype_util:system_params()}
-     | build_template_data(DataJObj)
+    | build_template_data(DataJObj)
     ].
 
 -spec maybe_email_attachments(kz_json:object(), kz_term:proplist()) -> attachments().
@@ -269,7 +269,7 @@ build_template_data(DataJObj) ->
     ,{<<"account">>, teletype_util:account_params(DataJObj)}
     ,{<<"user">>, teletype_util:user_params(kz_json:get_value(<<"user">>, DataJObj))}
     ,{<<"owner">>, teletype_util:user_params(kz_json:get_value(<<"user">>, DataJObj))}
-     | teletype_util:build_call_data(DataJObj, Timezone)
+    | teletype_util:build_call_data(DataJObj, Timezone)
     ].
 
 -spec build_voicemail_data(kz_json:object()) -> kz_term:proplist().

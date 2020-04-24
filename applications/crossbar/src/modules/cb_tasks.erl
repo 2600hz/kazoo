@@ -365,7 +365,7 @@ task_account_id(Context) ->
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
 patch(Context, TaskId) ->
     Req = [{<<"Task-ID">>, TaskId}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     {'ok', Resp} =
         kz_amqp_worker:call(Req
@@ -385,7 +385,7 @@ patch(Context, TaskId) ->
 -spec patch(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 patch(Context, TaskId, ?PATH_STOP) ->
     Req = [{<<"Task-ID">>, TaskId}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     {ok, Resp} = kz_amqp_worker:call(Req
                                     ,fun kapi_tasks:publish_stop_req/1
@@ -408,7 +408,7 @@ patch(Context, TaskId, ?PATH_STOP) ->
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, TaskId) ->
     Req = [{<<"Task-ID">>, TaskId}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     {'ok', Resp} =
         kz_amqp_worker:call(Req
@@ -607,7 +607,7 @@ help(Context) ->
     Req = props:filter_undefined(
             [{<<"Category">>, Category}
             ,{<<"Action">>, Action}
-             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ]),
     case kz_amqp_worker:call(Req
                             ,fun kapi_tasks:publish_lookup_req/1

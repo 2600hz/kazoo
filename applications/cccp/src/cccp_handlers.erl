@@ -40,7 +40,7 @@ park_call(JObj, Props, Call) ->
     Q = props:get_value('queue', Props),
     Resp = props:filter_undefined([{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
                                   ,{<<"Method">>, <<"park">>}
-                                   | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
+                                  | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
                                   ]),
     ServerId = kz_json:get_value(<<"Server-ID">>, JObj),
     Publisher = fun(P) -> kapi_route:publish_resp(ServerId, P) end,

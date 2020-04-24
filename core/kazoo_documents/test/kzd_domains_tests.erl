@@ -113,7 +113,7 @@ cname(#state{domains=DomainsSchema
                    ,Hosts
                    )
      }
-     | validate_cname_hosts(CNAME, Hosts)
+    | validate_cname_hosts(CNAME, Hosts)
     ].
 
 validate_cname_hosts(CNAME, Hosts) ->
@@ -194,7 +194,7 @@ a_record(#state{domains=DomainsSchema
                    ,Hosts
                    )
      }
-     | validate_a_record_hosts(A_RECORD, Hosts)
+    | validate_a_record_hosts(A_RECORD, Hosts)
     ].
 
 validate_a_record_hosts(A_RECORD, Hosts) ->
@@ -236,7 +236,7 @@ naptr(#state{domains=DomainsSchema
                    ,Hosts
                    )
      }
-     | validate_naptr_hosts(NAPTR, Hosts)
+    | validate_naptr_hosts(NAPTR, Hosts)
     ].
 
 validate_naptr_hosts(NAPTR, Hosts) ->
@@ -252,7 +252,7 @@ validate_naptr_host(NAPTR, Host) ->
     [{"Verify naptr whitelabel host"
      ,?_assertEqual('true', 'nomatch' =/= binary:match(WhitelabelHost, ?DOMAIN))
      }
-     | validate_naptr_host_mappings(NAPTR, Host)
+    | validate_naptr_host_mappings(NAPTR, Host)
     ].
 
 validate_naptr_host_mappings(NAPTR, Host) ->
@@ -286,7 +286,7 @@ srv(#state{domains=DomainsSchema
                    ,Hosts
                    )
      }
-     | validate_srv_hosts(SRV, Hosts)
+    | validate_srv_hosts(SRV, Hosts)
     ].
 
 validate_srv_hosts(SRV, Hosts) ->
@@ -302,7 +302,7 @@ validate_srv_host(SRV, Host) ->
     [{label("Verify srv whitelabel host '~s' -> '~s'", [Host, WhitelabelHost])
      ,?_assert('nomatch' =/= binary:match(WhitelabelHost, ?DOMAIN))
      }
-     | validate_srv_host_mappings(SRV, Host)
+    | validate_srv_host_mappings(SRV, Host)
     ].
 
 validate_srv_host_mappings(SRV, Host) ->

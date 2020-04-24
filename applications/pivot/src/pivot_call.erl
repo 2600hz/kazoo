@@ -220,7 +220,7 @@ handle_cast({'request', Uri, Method, Params}
             };
         _ ->
             kapi_pivot:publish_failed(Q, [{<<"Call-ID">>, kapps_call:call_id(Call)}
-                                          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                                         | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                                          ]),
             {'stop', 'normal', State}
     end;
@@ -553,7 +553,7 @@ process_resp(RequesterQ, Call, CT, RespBody) ->
 publish_failed(Call, RequesterQ) ->
     PubFun = fun(P) -> kapi_pivot:publish_failed(RequesterQ, P) end,
     kz_amqp_worker:cast([{<<"Call-ID">>, kapps_call:call_id(Call)}
-                         | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                         ]
                        ,PubFun
                        ).

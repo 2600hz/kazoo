@@ -215,7 +215,7 @@ build_originate_req(#args{callback_number = CallbackNumber
                                           ,<<"Authorizing-Type">>
                                           ,<<"Owner-ID">>
                                           ]}
-       | kz_api:default_headers(<<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
+      | kz_api:default_headers(<<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
       ]).
 
 -spec get_first_defined([{kz_term:ne_binary(), kz_json:object()}]) -> kz_term:api_binary().

@@ -1705,7 +1705,7 @@ create_default_resp_envelope(Context) ->
                ,{<<"request_id">>, cb_context:req_id(Context)}
                ,{<<"node">>, kz_nodes:node_encoded()}
                ,{<<"timestamp">>, kz_time:iso8601(kz_time:now_s())}
-                | conditional_resp_data(Context)
+               | conditional_resp_data(Context)
                ],
     Resp = case cb_context:response(Context) of
                {'ok', RespData} ->
@@ -1713,7 +1713,7 @@ create_default_resp_envelope(Context) ->
                    ,{<<"request_id">>, cb_context:req_id(Context)}
                    ,{<<"revision">>, kz_term:to_api_binary(cb_context:resp_etag(Context))}
                    ,{<<"data">>, RespData}
-                    | BaseResp
+                   | BaseResp
                    ];
                {'error', {ErrorCode, ErrorMsg, RespData}} ->
                    lager:debug("generating error ~b ~s response", [ErrorCode, ErrorMsg]),
@@ -1721,7 +1721,7 @@ create_default_resp_envelope(Context) ->
                    ,{<<"message">>, ErrorMsg}
                    ,{<<"error">>, kz_term:to_binary(ErrorCode)}
                    ,{<<"data">>, RespData}
-                    | BaseResp
+                   | BaseResp
                    ]
            end,
 

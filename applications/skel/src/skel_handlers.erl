@@ -34,7 +34,7 @@ handle_route_req(JObj, Props) ->
     %% Create a response that will just park the call
     Resp = props:filter_undefined([{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
                                   ,{<<"Method">>, <<"park">>}
-                                   | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
+                                  | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
                                   ]),
 
     %% Find who to send the response back to
@@ -42,7 +42,7 @@ handle_route_req(JObj, Props) ->
     Publisher = fun(P) -> kapi_route:publish_resp(ServerId, P) end,
 
     %% Use an AMQP worker to send the response
-    kz_amqp_worker:cast(Resp, Publisher),
+    _ = kz_amqp_worker:cast(Resp, Publisher),
 
     %% now we can cache the kapps_call record in case we receive the route_win
     %% we pass along APP_NAME to namespace our call from other apps in the same VM

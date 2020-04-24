@@ -58,7 +58,7 @@ send_auth_resp(JObj, Props) ->
              ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
              ,{<<"Auth-Password">>, props:get_value('password', Props)}
              ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
-              | kz_api:default_headers(Category, <<"authn_resp">>, ?APP_NAME, ?APP_VERSION)
+             | kz_api:default_headers(Category, <<"authn_resp">>, ?APP_NAME, ?APP_VERSION)
              ]),
     lager:debug("sending SIP authentication reply, with credentials"),
     kapi_authn:publish_resp(kz_json:get_value(<<"Server-ID">>, JObj), Resp).

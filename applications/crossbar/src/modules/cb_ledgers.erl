@@ -305,7 +305,7 @@ fetch_summary(Context, View, Options) ->
                   ,{'unchunkable', 'true'}
                   ,{'no_filter', 'true'}
                   ,{'should_paginate', 'false'}
-                   | Options
+                  | Options
                   ],
     Context1 = crossbar_view:load_modb(Context, View, ViewOptions),
     case cb_context:resp_status(Context1) of
@@ -327,7 +327,7 @@ summary(Context) ->
 summary(Context, Options) ->
     ViewOptions = [{'group_level', 0}
                   ,{'mapper', crossbar_view:get_value_fun()}
-                   | Options
+                  | Options
                   ],
 
     fetch_summary(Context, ?VIEW_BY_TIMESTAMP, ViewOptions).

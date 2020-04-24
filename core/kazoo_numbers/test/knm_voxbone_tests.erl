@@ -35,7 +35,7 @@ find_numbers(Options) ->
                               ,{'prefix',   Prefix}
                               ,{'query_id', <<"QID-", Prefix/binary>>}
                               ,{'country',  <<"US">>}
-                               | Options
+                              | Options
                               ]),
     MatchPrefix =
         fun (JObj) ->

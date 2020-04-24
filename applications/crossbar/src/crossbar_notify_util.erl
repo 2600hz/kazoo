@@ -38,7 +38,7 @@ notify_account_change(AccountId, {<<"zones">>, Zones}, _Context) ->
     lager:info("publishing zone change notification for ~p, zones: ~p", [AccountId, Zones]),
     Props = [{<<"Account-ID">>, AccountId}
             ,{<<"Zones">>, Zones}
-             | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
+            | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
             ],
     kapps_notify_publisher:cast(Props, fun kapi_notifications:publish_account_zone_change/1);
 

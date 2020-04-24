@@ -668,7 +668,7 @@ prepare_app_via_amqp(Node, UUID, JObj, TargetCallId) ->
 -spec get_channel_status(kz_term:ne_binary()) -> kz_amqp_worker:request_return().
 get_channel_status(TargetCallId) ->
     kz_amqp_worker:call_collect([{<<"Call-ID">>, TargetCallId}
-                                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                                 ]
                                ,fun kapi_call:publish_channel_status_req/1
                                ,{'ecallmgr', 'true'}
@@ -737,13 +737,13 @@ prepare_app_usurpers(Node, UUID) ->
     ControlUsurp = [{<<"Call-ID">>, UUID}
                    ,{<<"Reason">>, <<"redirect">>}
                    ,{<<"Fetch-ID">>, kz_binary:rand_hex(4)}
-                    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                   | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
     PublishUsurp = [{<<"Call-ID">>, UUID}
                    ,{<<"Reference">>, kz_binary:rand_hex(4)}
                    ,{<<"Media-Node">>, kz_term:to_binary(Node)}
                    ,{<<"Reason">>, <<"redirect">>}
-                    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                   | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
 
     _ = kz_amqp_worker:cast(ControlUsurp
@@ -769,13 +769,13 @@ get_call_pickup_app(Node, UUID, JObj, Target, Command) ->
              ],
 
     Exports = [{<<"failure_causes">>, <<"NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH">>}
-               | build_set_args(ExportsApi, JObj)
+              | build_set_args(ExportsApi, JObj)
               ],
 
     ControlUsurp = [{<<"Call-ID">>, Target}
                    ,{<<"Reason">>, <<"redirect">>}
                    ,{<<"Fetch-ID">>, kz_binary:rand_hex(4)}
-                    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                   | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
 
     case kz_json:is_true(<<"Publish-Usurp">>, JObj, 'true') of
@@ -812,13 +812,13 @@ get_eavesdrop_app(Node, UUID, JObj, Target) ->
              ],
 
     Exports = [{<<"failure_causes">>, <<"NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH">>}
-               | build_set_args(ExportsApi, JObj)
+              | build_set_args(ExportsApi, JObj)
               ],
 
     ControlUsurp = [{<<"Call-ID">>, Target}
                    ,{<<"Reason">>, <<"redirect">>}
                    ,{<<"Fetch-ID">>, kz_binary:rand_hex(4)}
-                    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                   | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
     _ = kz_amqp_worker:cast(ControlUsurp
                            ,fun(C) -> kapi_call:publish_usurp_control(Target, C) end
@@ -970,12 +970,12 @@ execute_exten_handle_ccvs(DP, _Node, UUID, JObj) ->
 
 execute_exten_pre_exec(DP, _Node, _UUID, _JObj) ->
     [{"application", <<"set ", ?CHANNEL_VAR_PREFIX, "Executing-Extension=true">>}
-     | DP
+    | DP
     ].
 
 execute_exten_create_command(DP, _Node, _UUID, JObj) ->
     [{"application", <<"execute_extension ", (kz_json:get_value(<<"Extension">>, JObj))/binary>>}
-     |DP
+    |DP
     ].
 
 execute_exten_post_exec(DP, _Node, _UUID, _JObj) ->
@@ -984,7 +984,7 @@ execute_exten_post_exec(DP, _Node, _UUID, _JObj) ->
                                                           ,<<"CHANNEL_EXECUTE_COMPLETE">>
                                                           )}
     ,{"application", "park "}
-     |DP
+    |DP
     ].
 
 -spec tts(atom(), kz_term:ne_binary(), kz_json:object()) ->
@@ -1236,7 +1236,7 @@ record_call_args(JObj) ->
            ,{<<"ID">>, kz_json:get_ne_binary_value(<<"Media-Recording-ID">>, JObj)}
            ,{<<"Endpoint-ID">>, kz_json:get_ne_binary_value(<<"Media-Recording-Endpoint-ID">>, JObj)}
            ,{<<"Origin">>, kz_json:get_ne_binary_value(<<"Media-Recording-Origin">>, JObj)}
-            | kz_json:to_proplist(<<"Recording-Variables">>, JObj)
+           | kz_json:to_proplist(<<"Recording-Variables">>, JObj)
            ],
     Args = [<<K/binary,"='", (kz_term:to_binary(V))/binary, "'">> || {K,V} <- props:filter_undefined(Vars)],
     ecallmgr_util:fs_args_to_binary(Args).
@@ -1402,7 +1402,7 @@ set_page_conference_vars(Dialplan, PageId) ->
     ,{"application", <<"set conference_auto_outcall_profile=page">>}
     ,{"application", <<"set conference_auto_outcall_skip_member_beep=true">>}
     ,{"application", <<"set conference_auto_outcall_delimiter=|">>}
-     | Dialplan
+    | Dialplan
     ].
 
 -spec maybe_set_page_two_way_audio(kz_term:proplist(), kz_json:object()) -> kz_term:proplist().
@@ -1411,7 +1411,7 @@ maybe_set_page_two_way_audio(Dialplan, JObj) ->
         'true' -> Dialplan;
         'false' ->
             [{"application", <<"set conference_utils_auto_outcall_flags=mute">>}
-             | Dialplan
+            | Dialplan
             ]
     end.
 
@@ -1422,14 +1422,14 @@ set_page_caller_id(Dialplan, JObj) ->
 
     [{"application", <<"set conference_auto_outcall_caller_id_name=", CIDName/binary>>}
     ,{"application", <<"set conference_auto_outcall_caller_id_number=", CIDNumber/binary>>}
-     |Dialplan
+    |Dialplan
     ].
 
 -spec set_page_timeout(kz_term:proplist(), kz_json:object()) -> kz_term:proplist().
 set_page_timeout(Dialplan, JObj) ->
     Timeout = kz_json:get_binary_value(<<"Timeout">>, JObj, <<"5">>),
     [{"application", <<"set conference_auto_outcall_timeout=", Timeout/binary>>}
-     |Dialplan
+    |Dialplan
     ].
 
 -spec set_page_endpoints(kz_term:proplist(), node(), kz_term:ne_binary(), kz_json:object(), kz_json:objects()) -> kz_term:proplist().
@@ -1449,13 +1449,13 @@ set_page_endpoints(Dialplan, Node, UUID, JObj, Endpoints) ->
     Channels = [<<AutoAnswer/binary, Channel/binary>> || Channel <- ecallmgr_util:build_bridge_channels(EPs)],
     OutCall = kz_binary:join(Channels, <<"|">>),
     [{"application", <<"conference_set_auto_outcall ", OutCall/binary>>}
-     | Dialplan
+    | Dialplan
     ].
 
 -spec add_page_conference_app(kz_term:proplist(), kz_term:ne_binary()) -> kz_term:proplist().
 add_page_conference_app(Dialplan, ConferenceName) ->
     [{"application", <<"conference ", ConferenceName/binary>>}
-     | Dialplan
+    | Dialplan
     ].
 
 -spec add_page_exports(kz_term:proplist()) -> kz_term:proplist().
@@ -1465,7 +1465,7 @@ add_page_exports(DP) ->
               ],
     ExportVars = kz_binary:join([K || {K, _V} <- Exports], <<",">>),
     [{"application", <<"set conference_auto_outcall_export_vars=", ExportVars/binary>>}
-     |DP
+    |DP
     ].
 
 -type ep_actions() :: kz_term:ne_binaries().

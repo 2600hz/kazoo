@@ -676,7 +676,7 @@ normalize_prompt_results(JObj, Acc) ->
        [{<<"id">>, kz_doc:id(JObj)}
        ,{<<"has_attachments">>, HasAttachments}
        ])
-     | Acc
+    | Acc
     ].
 
 %%------------------------------------------------------------------------------
@@ -708,7 +708,7 @@ validate_request(MediaId, Context) ->
 on_successful_validation('undefined', Context) ->
     Doc = cb_context:doc(Context),
     Props = [{<<"pvt_type">>, kzd_media:type()}
-             | maybe_add_prompt_fields(Context)
+            | maybe_add_prompt_fields(Context)
             ],
     cb_context:set_doc(Context, kz_json:set_values(Props, Doc));
 on_successful_validation(MediaId, Context) ->

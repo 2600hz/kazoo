@@ -269,7 +269,7 @@ build_originate(#state{endpoints=Endpoints
       ,{<<"Ringback">>, kz_json:get_value(<<"Ringback">>, OffnetReq)}
       ,{<<"Simplify-Loopback">>, kz_json:get_value(<<"Simplify-Loopback">>, OffnetReq)}
       ,{<<"Timeout">>, kz_json:get_value(<<"Timeout">>, OffnetReq)}
-       | kz_api:default_headers(Q, <<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
+      | kz_api:default_headers(Q, <<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
       ]).
 
 -spec originate_from_uri(kz_term:ne_binary(), kz_json:object()) -> kz_term:api_binary().
@@ -309,7 +309,7 @@ originate_timeout(Request) ->
     ,{<<"Response-Code">>, <<"sip:500">>}
     ,{<<"Error-Message">>, <<"originate request timed out">>}
     ,{<<"To-DID">>, kz_json:get_value(<<"To-DID">>, Request)}
-     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
 -spec originate_error(kz_json:object(), kz_json:object()) -> kz_term:proplist().
@@ -321,7 +321,7 @@ originate_error(JObj, OffnetReq) ->
     ,{<<"Response-Code">>, <<"sip:500">>}
     ,{<<"Error-Message">>, kz_json:get_value(<<"Error-Message">>, JObj, <<"failed to process request">>)}
     ,{<<"To-DID">>, kz_json:get_value(<<"To-DID">>, OffnetReq)}
-     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
 -spec originate_success(kz_json:object(), kz_json:object()) -> kz_term:proplist().
@@ -332,7 +332,7 @@ originate_success(JObj, OffnetReq) ->
     ,{<<"Response-Message">>, <<"SUCCESS">>}
     ,{<<"Response-Code">>, <<"sip:200">>}
     ,{<<"Resource-Response">>, JObj}
-     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
 -spec originate_failure(kz_json:object(), kz_json:object()) -> kz_term:proplist().
@@ -345,7 +345,7 @@ originate_failure(JObj, OffnetReq) ->
                                                         ], JObj)}
     ,{<<"Response-Code">>, kz_json:get_value(<<"Hangup-Code">>, JObj)}
     ,{<<"Resource-Response">>, JObj}
-     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
 -spec originate_ready(kz_json:object(), kz_json:object()) -> kz_term:proplist().
@@ -356,5 +356,5 @@ originate_ready(JObj, OffnetReq) ->
     ,{<<"Control-Queue">>, kz_json:get_value(<<"Control-Queue">>, JObj)}
     ,{<<"Response-Message">>, <<"READY">>}
     ,{<<"Resource-Response">>, JObj}
-     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].

@@ -67,7 +67,7 @@ proceed_with_endpoint(State, Endpoint, RouteReq) ->
               ,{<<"Dial-Endpoint-Method">>, <<"single">>}
               ,{<<"Call-ID">>, CallID}
               ,{<<"Custom-Channel-Vars">>, kz_json:from_list([{<<"Trunkstore-ID">>, Id}])}
-               | default_command_headers(State)
+              | default_command_headers(State)
               ],
     State1 = ts_callflow:set_failover(State, kz_json:get_json_value(<<"Failover">>, Endpoint, kz_json:new())),
     State2 = ts_callflow:set_endpoint_data(State1, Endpoint),
@@ -140,7 +140,7 @@ send_privacy(State) ->
     Command = [{<<"Application-Name">>, <<"privacy">>}
               ,{<<"Privacy-Mode">>, <<"full">>}
               ,{<<"Call-ID">>, CallID}
-               | default_command_headers(State)
+              | default_command_headers(State)
               ],
     ts_callflow:send_command(State
                             ,Command
@@ -201,7 +201,7 @@ try_failover_sip(State, SIPUri) ->
     Command = [{<<"Call-ID">>, CallID}
               ,{<<"Application-Name">>, <<"bridge">>}
               ,{<<"Endpoints">>, [EndPoint]}
-               | default_command_headers(State)
+              | default_command_headers(State)
               ],
     ts_callflow:send_command(State
                             ,Command
@@ -241,9 +241,9 @@ try_failover_e164(State, ToDID) ->
           ,{<<"Custom-SIP-Headers">>, ts_callflow:get_custom_sip_headers(State)}
           ,{<<"Inception">>,  kz_json:get_ne_binary_value(<<"Inception">>, CCVs)}
           ,{<<"Custom-Channel-Vars">>, kz_json:from_list([{<<"Account-ID">>, AccountId}])}
-           | kz_api:default_headers(ts_callflow:get_worker_queue(State)
-                                   ,?APP_NAME, ?APP_VERSION
-                                   )
+          | kz_api:default_headers(ts_callflow:get_worker_queue(State)
+                                  ,?APP_NAME, ?APP_VERSION
+                                  )
           ],
     lager:info("sending offnet request for DID ~s", [ToDID]),
     ts_callflow:send_command(State
@@ -459,5 +459,5 @@ maybe_anonymize_caller_id(State, {Name, Number}, CidFormat) ->
     CCVs = ts_callflow:get_custom_channel_vars(State),
     [{<<"Outbound-Caller-ID-Number">>, kapps_call:maybe_format_caller_id_str(Number, CidFormat)}
     ,{<<"Outbound-Caller-ID-Name">>, Name}
-     | kz_privacy:flags(CCVs)
+    | kz_privacy:flags(CCVs)
     ].

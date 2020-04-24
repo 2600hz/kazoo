@@ -1519,14 +1519,14 @@ cache(#kapps_call{call_id=CallId}=Call, AppName, Expires) ->
     kz_cache:store_local(?KAPPS_CALL_CACHE, {?MODULE, 'call', AppName, CallId}, Call, CacheProps).
 
 -spec retrieve(kz_term:ne_binary()) ->
-                      {'ok', call()} |
-                      {'error', 'not_found'}.
+          {'ok', call()} |
+          {'error', 'not_found'}.
 retrieve(CallId) ->
     retrieve(CallId, 'undefined').
 
 -spec retrieve(kz_term:ne_binary(), kz_term:api_binary()) ->
-                      {'ok', call()} |
-                      {'error', 'not_found'}.
+          {'ok', call()} |
+          {'error', 'not_found'}.
 retrieve(CallId, AppName) ->
     kz_cache:fetch_local(?KAPPS_CALL_CACHE, {?MODULE, 'call', AppName, CallId}).
 

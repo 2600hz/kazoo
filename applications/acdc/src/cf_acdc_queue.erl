@@ -36,7 +36,7 @@ handle(Data, Call) ->
                 QueueId = kz_json:get_ne_binary_value(<<"id">>, Data),
                 Status = cf_acdc_agent:find_agent_status(Call, AgentId),
 
-                update_queues(Call, AgentId, QueueId, Action),
+                _ = update_queues(Call, AgentId, QueueId, Action),
                 maybe_update_status(Call, AgentId, QueueId, Status, Action);
             {'error', 'multiple_owners'} ->
                 lager:info("too many owners of device ~s, not logging in", [kapps_call:authorizing_id(Call)]),
@@ -76,7 +76,7 @@ send_agent_message(Call, AgentId, QueueId, PubFun) ->
              [{<<"Account-ID">>, kapps_call:account_id(Call)}
              ,{<<"Agent-ID">>, AgentId}
              ,{<<"Queue-ID">>, QueueId}
-              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     PubFun(Prop).
 

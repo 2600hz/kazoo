@@ -190,7 +190,7 @@ search_prefix('npa', NPA, 'undefined') ->
     [{<<"npa">>, NPA}];
 search_prefix('npa', NPA, NXX) ->
     [{<<"nxx">>, NXX}
-     |search_prefix('npa', NPA, 'undefined')
+    |search_prefix('npa', NPA, 'undefined')
     ].
 
 %%% End of Module

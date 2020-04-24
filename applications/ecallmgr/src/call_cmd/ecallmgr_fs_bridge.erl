@@ -134,7 +134,7 @@ handle_ringback(DP, Node, UUID, _Channel, JObj) ->
             Exports = ecallmgr_util:process_fs_kv(Node, UUID, Props, 'export'),
             Args = ecallmgr_util:fs_args_to_binary(Exports),
             [{"application", <<"kz_export ", Args/binary>>}
-             |DP
+            |DP
             ];
         Media ->
             Stream = ecallmgr_util:media_path(Media, 'extant', UUID, JObj),
@@ -143,7 +143,7 @@ handle_ringback(DP, Node, UUID, _Channel, JObj) ->
             Exports = ecallmgr_util:process_fs_kv(Node, UUID, Props, 'export'),
             Args = ecallmgr_util:fs_args_to_binary(Exports),
             [{"application", <<"kz_export ", Args/binary>>}
-             |DP
+            |DP
             ]
     end.
 
@@ -167,7 +167,7 @@ handle_hold_media(DP, _Node, UUID, _Channel, JObj) ->
                     lager:debug("bridge has custom music-on-hold in channel vars: ~s", [Stream]),
                     [{"application", <<"set hold_music=", Stream/binary>>}
                     ,{"application", <<"set transfer_ringback=", Stream/binary>>}
-                     |DP
+                    |DP
                     ]
             end;
         Media ->
@@ -175,7 +175,7 @@ handle_hold_media(DP, _Node, UUID, _Channel, JObj) ->
             lager:debug("bridge has custom music-on-hold: ~s", [Stream]),
             [{"application", <<"set hold_music=", Stream/binary>>}
             ,{"application", <<"set transfer_ringback=", Stream/binary>>}
-             |DP
+            |DP
             ]
     end.
 
@@ -295,7 +295,7 @@ pre_exec(DP, _Node, _UUID, _Channel, JObj) ->
     [{"application", "export sip_redirect_context=context_2"}
     ,{"application", list_to_binary(["set continue_on_fail=", continue_on_fail(JObj)])}
     ,{"application", list_to_binary(["set hangup_after_bridge=", hangup_after_bridge(JObj)])}
-     |DP
+    |DP
     ].
 
 -spec post_exec(kz_term:proplist(), kz_term:ne_binary()) -> kz_term:proplist().
@@ -304,7 +304,7 @@ post_exec(DP, AppUUID) ->
     Event = ecallmgr_util:create_masquerade_event(<<"bridge">>, <<"CHANNEL_EXECUTE_COMPLETE">>, Props),
     [{"application", Event}
     ,{"application", "park"}
-     |DP
+    |DP
     ].
 
 -spec create_command(kz_term:proplist(), atom(), kz_term:ne_binary(), channel(), kz_json:object()) -> kz_term:proplist().

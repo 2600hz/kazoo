@@ -183,7 +183,7 @@ acquire_and_provision_number(PN) ->
             ,{'extRefID', [binary_to_list(AuthBy)]}
             ,{'numberIDs', [{'id', [Id]}]}
             ,{'subscriber', [kz_term:to_list(AcquireFor)]}
-             | Hosts
+            | Hosts
             ],
     case make_numbers_request('basicNumberOrder', Props) of
         {'error', Error} ->
@@ -239,7 +239,7 @@ make_numbers_request('areaCodeNumberSearch', _Props) ->
 make_numbers_request(Verb, Props) ->
     lager:debug("making ~s request to bandwidth.com ~s", [Verb, ?BW_NUMBER_URL]),
     Request = [{'developerKey', [?BW_DEVELOPER_KEY]}
-               | Props
+              | Props
               ],
     Body = unicode:characters_to_binary(
              xmerl:export_simple([{Verb, ?BW_XML_NAMESPACE, Request}]

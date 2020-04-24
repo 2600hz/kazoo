@@ -643,15 +643,15 @@ maybe_set_discounts(Item, ItemPlan) ->
                ).
 
 -spec maybe_set_discounts_fold(kzd_item_plan:doc()) ->
-                                      fun((discount_routine(), item()) ->
-                                                 item()).
+          fun((discount_routine(), item()) ->
+                     item()).
 maybe_set_discounts_fold(ItemPlan) ->
     fun(Routine, Item) ->
             Routine(Item, ItemPlan)
     end.
 
 -spec maybe_set_single_discount(item(), kzd_item_plan:doc()) ->
-                                       item().
+          item().
 maybe_set_single_discount(Item, ItemPlan) ->
     DiscountPlan = kzd_item_plan:single_discount(ItemPlan),
     case should_set_discount(Item, DiscountPlan) of

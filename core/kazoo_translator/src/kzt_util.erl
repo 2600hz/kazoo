@@ -107,7 +107,7 @@ offnet_req(Data, Call) ->
           ,{<<"Outbound-Caller-ID-Number">>, CIDNum}
           ,{<<"Presence-ID">>, kz_attributes:presence_id(Call)}
           ,{<<"Ringback">>, props:get_value(<<"ringback">>, Data)}
-           | kz_api:default_headers(kapps_call:controller_queue(Call), ?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(kapps_call:controller_queue(Call), ?APP_NAME, ?APP_VERSION)
           ] ++ Data,
 
     kz_amqp_worker:cast(Req, fun kapi_offnet_resource:publish_req/1).

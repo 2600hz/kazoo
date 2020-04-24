@@ -57,7 +57,7 @@ get_numbers() ->
                     ,'succeeded' := [_]
                     }
                   ,knm_ops:get([?TEST_AVAILABLE_NUM, ?NOT_NUM
-                                   ,?TEST_AVAILABLE_NUM, ?NOT_NUM])
+                               ,?TEST_AVAILABLE_NUM, ?NOT_NUM])
                   )
     ,?_assertMatch(#{'failed' := #{?NOT_NUM := 'not_reconcilable'
                                   ,?TEST_CREATE_NUM := not_found
@@ -65,8 +65,8 @@ get_numbers() ->
                     ,'succeeded' := [_]
                     }
                   ,knm_ops:get([?TEST_AVAILABLE_NUM, ?NOT_NUM
-                                   ,?TEST_AVAILABLE_NUM, ?NOT_NUM
-                                   ,?TEST_CREATE_NUM])
+                               ,?TEST_AVAILABLE_NUM, ?NOT_NUM
+                               ,?TEST_CREATE_NUM])
                   )
     ].
 
@@ -207,10 +207,10 @@ error_assign_to_undefined() ->
 reserve() ->
     AssignToChild = [{assign_to, ?CHILD_ACCOUNT_ID} | knm_options:default()],
     Ret1 = knm_ops:reserve([?NOT_NUM, ?TEST_AVAILABLE_NUM]
-                              ,[{assign_to,?RESELLER_ACCOUNT_ID}, {auth_by,?MASTER_ACCOUNT_ID}]),
+                          ,[{assign_to,?RESELLER_ACCOUNT_ID}, {auth_by,?MASTER_ACCOUNT_ID}]),
     Ret2b = knm_ops:reserve([?NOT_NUM, ?TEST_IN_SERVICE_NUM], knm_options:default()),
     Ret2 = knm_ops:reserve([?NOT_NUM, ?TEST_IN_SERVICE_NUM]
-                              ,[{assign_to,?RESELLER_ACCOUNT_ID} | knm_options:default()]),
+                          ,[{assign_to,?RESELLER_ACCOUNT_ID} | knm_options:default()]),
     Ret3 = knm_ops:reserve([?NOT_NUM, ?TEST_IN_SERVICE_NUM], AssignToChild),
     [?_assertEqual(#{?NOT_NUM => 'not_reconcilable'}, maps:get('failed', Ret1))
     ,?_assertMatch([_], maps:get('succeeded', Ret1))

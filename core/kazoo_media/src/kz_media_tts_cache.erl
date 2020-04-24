@@ -320,7 +320,7 @@ publish_doc_update(Id) ->
         ,{<<"Type">>, Type = <<"media">>}
         ,{<<"Database">>, Db = <<"tts">>}
         ,{<<"Rev">>, <<"0">>}
-         | kz_api:default_headers(<<"configuration">>, ?DOC_DELETED, ?APP_NAME, ?APP_VERSION)
+        | kz_api:default_headers(<<"configuration">>, ?DOC_DELETED, ?APP_NAME, ?APP_VERSION)
         ],
     kz_amqp_worker:cast(API
                        ,fun(P) -> kapi_conf:publish_doc_update('deleted', Db, Type, Id, P) end

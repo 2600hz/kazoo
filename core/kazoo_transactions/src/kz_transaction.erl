@@ -134,7 +134,7 @@ set_account(Transaction, Account) ->
     AccountId = kzs_util:format_account_id(Account),
     Setters = [{fun set_account_id/2, AccountId}
               ,{fun set_account_name/2, kzd_accounts:fetch_name(AccountId)}
-               | set_bookkeeper(Account)
+              | set_bookkeeper(Account)
               ],
     setters(Transaction, Setters).
 
@@ -447,7 +447,7 @@ transaction_type(#transaction{transaction_type=TransactionType}) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec set_transaction_type(transaction(), kz_currency:units() | kz_currency:dollars() | kz_term:ne_binary()) ->
-                                  transaction().
+          transaction().
 set_transaction_type(Transaction, Amount)
   when is_float(Amount), Amount > 0 ->
     set_transaction_type(Transaction, kzd_transactions:type_sale());
@@ -586,7 +586,7 @@ to_json(#transaction{private_fields=PrivateFields}=Transaction) ->
             ,{<<"pvt_created">>, get_created_timestamp(TransactionJObj)}
             ,{<<"pvt_modified">>, kz_time:now_s()}
             ,{<<"pvt_account_id">>, account_id(Transaction)}
-             | maybe_add_id(TransactionJObj)
+            | maybe_add_id(TransactionJObj)
             ],
     kz_json:set_values(Props, TransactionJObj).
 
@@ -637,12 +637,12 @@ from_json(JObj) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec fetch(kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', transaction()} |
-                                                         kz_datamgr:data_error().
+          kz_datamgr:data_error().
 fetch(Account, ?MATCH_MODB_PREFIX(Year, Month, _)=Id) ->
     fetch(Account, Id, Year, Month).
 
 -spec fetch(kz_term:ne_binary(), kz_term:ne_binary(), kz_time:year()|kz_term:ne_binary(), kz_time:month()|kz_term:ne_binary()) ->
-                   {'ok', transaction()} | {'error', any()}.
+          {'ok', transaction()} | {'error', any()}.
 fetch(Account, Id, Year, Month) ->
     case kazoo_modb:open_doc(Account, Id, Year, Month) of
         {'error', _Reason} = Error -> Error;
@@ -684,7 +684,7 @@ save(Transaction, Account) ->
     save(set_modb(Transaction, MODb)).
 
 -spec save(transaction(), kz_term:ne_binary(), kz_time:year(), kz_time:month()) ->
-                  {'ok', transaction()} | {'error', any()}.
+          {'ok', transaction()} | {'error', any()}.
 save(Transaction, Account, Year, Month) ->
     MODb = kazoo_modb:get_modb(Account, Year, Month),
     save(set_modb(Transaction, MODb)).
@@ -756,7 +756,7 @@ attempt_bookkeeper_sale(Transaction) ->
               ,{<<"Transaction-ID">>, id(Transaction)}
               ,{<<"Transaction-DB">>, modb(Transaction)}
               ,{<<"Amount">>, unit_amount(Transaction)}
-               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     Result = kz_amqp_worker:call(Request
                                 ,fun kapi_bookkeepers:publish_sale_req/1
@@ -773,7 +773,7 @@ attempt_bookkeeper_refund(Transaction) ->
               ,{<<"Transaction-ID">>, id(Transaction)}
               ,{<<"Transaction-DB">>, modb(Transaction)}
               ,{<<"Amount">>, unit_amount(Transaction)}
-               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     Result = kz_amqp_worker:call(Request
                                 ,fun kapi_bookkeepers:publish_refund_req/1
@@ -782,8 +782,8 @@ attempt_bookkeeper_refund(Transaction) ->
     handle_bookkeeper_result(Transaction, Result).
 
 -spec handle_bookkeeper_result(transaction(), kz_amqp_worker:request_return()) ->
-                                      {'ok', transaction()} |
-                                      {'error', any()}.
+          {'ok', transaction()} |
+          {'error', any()}.
 handle_bookkeeper_result(Transaction, {'ok', Result}) ->
     RemoveKeys = [<<"Transaction-ID">>
                  ,<<"Transaction-DB">>
@@ -855,7 +855,7 @@ send_notification(Transaction) ->
         ,{<<"ID">>, id(Transaction)}
         ,{<<"Purchase-Order">>, kz_json:get_value(<<"purchase_order">>, Details)}
         ,{<<"Tax-Amount">>, kz_json:get_value(<<"tax_amount">>, Details)}
-         | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
         ],
     kz_amqp_worker:cast(Notification, fun kapi_notifications:publish_transaction/1).
 

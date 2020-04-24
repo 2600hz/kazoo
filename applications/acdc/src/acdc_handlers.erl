@@ -53,7 +53,7 @@ send_route_response(ReqJObj, Call, AccountId, Id, Type) ->
            ,{<<"Method">>, <<"park">>}
            ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
            ,{<<"From-Realm">>, kzd_accounts:fetch_realm(AccountId)}
-            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     ServerId = kz_api:server_id(ReqJObj),
     Publisher = fun(P) -> kapi_route:publish_resp(ServerId, P) end,
@@ -175,7 +175,7 @@ send_new_status(AcctId, AgentId, PubFun) ->
     Update = props:filter_undefined(
                [{<<"Account-ID">>, AcctId}
                ,{<<"Agent-ID">>, AgentId}
-                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                ]),
     PubFun(Update).
 

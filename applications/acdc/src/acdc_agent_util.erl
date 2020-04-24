@@ -39,7 +39,7 @@ update_status(?NE_BINARY = AccountId, AgentId, Status, Options) ->
           ,{<<"Agent-ID">>, AgentId}
           ,{<<"Status">>, Status}
           ,{<<"Timestamp">>, kz_time:now_s()}
-           | Options ++ kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | Options ++ kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     kz_amqp_worker:cast(API, fun kapi_acdc_stats:publish_status_update/1).
 
@@ -192,7 +192,7 @@ most_recent_ets_statuses(AccountId, AgentId, Options) ->
     API = props:filter_undefined(
             [{<<"Account-ID">>, AccountId}
             ,{<<"Agent-ID">>, AgentId}
-             | kz_api:default_headers(?APP_NAME, ?APP_VERSION) ++ Options
+            | kz_api:default_headers(?APP_NAME, ?APP_VERSION) ++ Options
             ]),
     case kz_amqp_worker:call_collect(API
                                     ,fun kapi_acdc_stats:publish_status_req/1
@@ -289,7 +289,7 @@ constrain_agent_view_options(AgentId, ViewOptions) ->
             Past = Now - Window,
             [{'startkey', [AgentId, Now]}
             ,{'endkey', [AgentId, Past]}
-             | ViewOptions
+            | ViewOptions
             ];
         {'undefined', [AgentId, Past]} ->
             %% constrain how far forward we look

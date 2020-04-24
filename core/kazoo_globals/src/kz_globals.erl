@@ -436,7 +436,7 @@ amqp_register(Global, From) ->
 do_amqp_register(Global) ->
     Payload = [{<<"Name">>, kz_global:name(Global)}
               ,{<<"State">>, kz_global:state(Global)}
-               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     case ?AMQP_CALL_COLLECT(Payload, ?AMQP_REGISTER_FUN) of
         {'error', Error} ->
@@ -521,7 +521,7 @@ advertise_register(Global) ->
     Payload = [{<<"Name">>, kz_global:name(Global)}
               ,{<<"State">>, 'registered'}
               ,{<<"Timestamp">>, kz_global:timestamp(Global)}
-               | kz_api:default_headers(kz_global:server(Global), ?APP_NAME, ?APP_VERSION)
+              | kz_api:default_headers(kz_global:server(Global), ?APP_NAME, ?APP_VERSION)
               ],
     kz_amqp_worker:cast(Payload, ?AMQP_REGISTER_FUN).
 
@@ -579,7 +579,7 @@ do_amqp_unregister(Global, Reason) ->
     Name = kz_global:name(Global),
     Payload = [{<<"Name">>, Name}
               ,{<<"Reason">>, kapi_globals:encode(Reason)}
-               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     lager:debug("deleting ~p", [Name]),
     ets:delete(?TAB_NAME, Name),
@@ -595,7 +595,7 @@ maybe_amqp_query(Name, From) ->
 -spec amqp_query(kz_global:name(), term()) -> 'ok'.
 amqp_query(Name, From) ->
     Payload = [{<<"Name">>, Name}
-               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
 
     case ?AMQP_CALL_COLLECT(Payload, ?AMQP_QUERY_FUN) of
@@ -649,7 +649,7 @@ amqp_reply(JObj, Result) ->
     Payload = [{<<"Name">>, kapi_globals:name(JObj)}
               ,{<<"Reply">>, kapi_globals:encode(Result)}
               ,{?KEY_MSG_ID, kz_api:msg_id(JObj)}
-               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     ServerId = kz_api:server_id(JObj),
     Publisher = fun(P) -> kapi_globals:publish_reply_msg(ServerId, P) end,
@@ -698,7 +698,7 @@ amqp_query_empty_reply(JObj) ->
     Payload = [{<<"Name">>, kapi_globals:name(JObj)}
               ,{<<"State">>, 'none'}
               ,{?KEY_MSG_ID, kz_api:msg_id(JObj)}
-               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     ServerId = kz_api:server_id(JObj),
     Publisher = fun(P) -> kapi_globals:publish_query_resp(ServerId, P) end,
@@ -710,7 +710,7 @@ amqp_query_reply(JObj, Global) ->
               ,{<<"State">>, kz_global:state(Global)}
               ,{<<"Timestamp">>, kz_global:timestamp(Global)}
               ,{?KEY_MSG_ID, kz_api:msg_id(JObj)}
-               | kz_api:default_headers(kz_global:server(Global), ?APP_NAME, ?APP_VERSION)
+              | kz_api:default_headers(kz_global:server(Global), ?APP_NAME, ?APP_VERSION)
               ],
     ServerId = kz_api:server_id(JObj),
     Publisher = fun(P) -> kapi_globals:publish_query_resp(ServerId, P) end,
@@ -739,7 +739,7 @@ amqp_register_reply(JObj) ->
     Payload = [{<<"Name">>, kapi_globals:name(JObj)}
               ,{<<"State">>, 'none'}
               ,{?KEY_MSG_ID, kz_api:msg_id(JObj)}
-               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     ServerId = kz_api:server_id(JObj),
     Publisher = fun(P) -> kapi_globals:publish_register_resp(ServerId, P) end,
@@ -760,7 +760,7 @@ amqp_register_reply(JObj, Global) ->
               ,{<<"State">>, kz_global:state(Global)}
               ,{<<"Timestamp">>, kz_global:timestamp(Global)}
               ,{?KEY_MSG_ID, kz_api:msg_id(JObj)}
-               | kz_api:default_headers(kz_global:server(Global), ?APP_NAME, ?APP_VERSION)
+              | kz_api:default_headers(kz_global:server(Global), ?APP_NAME, ?APP_VERSION)
               ],
     ServerId = kz_api:server_id(JObj),
     Publisher = fun(P) -> kapi_globals:publish_register_resp(ServerId, P) end,

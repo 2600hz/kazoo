@@ -308,7 +308,7 @@ generate_number_summary(#{id := _CartId, query_id := QueryId}=Cart, [Order | Res
             generate_number_summary(Cart, Rest, Acc);
         'true' ->
             Options = [{'orderReference', kz_json:get_value(<<"orderReference">>, Order)}
-                       | knm_voxbone_util:required_params()
+                      | knm_voxbone_util:required_params()
                       ],
             {'ok', DIDs} = knm_voxbone_util:voxbone_request('get', <<"inventory/did">>, Options),
             KNMs = order_to_search_result(QueryId, DIDs),
@@ -373,7 +373,7 @@ maybe_destroy_cart(#{id := CartId, query_id := _QueryId}=_Cart) ->
 -spec fetch_did(knm_phone_number:record()) -> {'ok', kz_json:object()} | {'error', any()}.
 fetch_did(PN) ->
     Options = [{'e164Pattern', knm_voxbone_util:to_voxbone_pattern(knm_phone_number:number(PN))}
-               | knm_voxbone_util:required_params()
+              | knm_voxbone_util:required_params()
               ],
     case knm_voxbone_util:voxbone_request('get', <<"inventory/did">>, Options) of
         {'error', _Msg} -> knm_errors:by_carrier(?MODULE, "there was an error fetching metadata for number ", PN);

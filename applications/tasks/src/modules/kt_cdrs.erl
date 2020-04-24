@@ -126,7 +126,7 @@ get_page(AccountDb, NextStartKey) ->
 query(AccountDb, ViewOptions) ->
     Options = ['include_docs'
               ,'descending'
-               | ViewOptions
+              | ViewOptions
               ],
     lager:info("kz_datamgr:paginate_results(~p, ~p, ~p)."
               ,[AccountDb, <<"cdrs/crossbar_listing">>, Options]

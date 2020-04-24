@@ -66,7 +66,7 @@ handle_req(JObj, _Props) ->
 -spec reply(request()) -> 'ok'.
 reply(#request{results=Results}=Request) ->
     Reply = [{<<"Details">>, Results}
-             | results_reply(Results, 'false')
+            | results_reply(Results, 'false')
             ],
     reply(Request, Reply).
 
@@ -98,7 +98,7 @@ reply(#request{request_jobj=JObj}, Reply) ->
     MessageId = kz_json:get_value(<<"Msg-ID">>, JObj),
     Response = kz_json:from_list_recursive(
                  [{<<"Msg-ID">>, MessageId}
-                  | Reply
+                 | Reply
                  ] ++ kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                 ),
     RespQ = kz_json:get_value(<<"Server-ID">>, JObj),
@@ -299,7 +299,7 @@ update_subscription(Subscription) ->
     catch
         'throw':Error ->
             [{<<"Subscription-ID">>, SubscriptionId}
-             | braintree_util:error_to_props(Error)
+            | braintree_util:error_to_props(Error)
             ]
     end.
 

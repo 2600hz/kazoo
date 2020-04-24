@@ -42,7 +42,7 @@ no_filter_when_callfwd() ->
 
     %% SIP device4 and call-fwd device5
     [?_assertEqual(2, length(Channels))
-     | find_needles(Needles, Channels)
+    | find_needles(Needles, Channels)
     ].
 
 filter_when_unreged() ->
@@ -55,7 +55,7 @@ filter_when_unreged() ->
     Channels = build_channels(Endpoints),
 
     [?_assertEqual(1, length(Channels))
-     | find_needles(Needles, Channels)
+    | find_needles(Needles, Channels)
     ].
 
 filter_when_unreged_dedup() ->
@@ -68,7 +68,7 @@ filter_when_unreged_dedup() ->
     Channels = build_channels(Endpoints),
 
     [?_assertEqual(1, length(Channels))
-     | find_needles(Needles, Channels)
+    | find_needles(Needles, Channels)
     ].
 
 filter_endpoints_10722() ->
@@ -99,7 +99,7 @@ filter_endpoints_10722() ->
 
     [?_assertEqual(1, length(FailoverChannels))
     ,?_assertEqual(4, length(Channels))
-     | find_needles(RegedNeedles, Channels)
+    | find_needles(RegedNeedles, Channels)
      ++ find_needles(UnregedNeedles, FailoverChannels)
     ].
 

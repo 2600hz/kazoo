@@ -44,7 +44,7 @@ handle(Data, Call) ->
              ,{<<"Request-Format">>, kz_json:get_ne_binary_value(<<"req_format">>, Data)}
              ,{<<"Request-Timeout">>, kz_json:get_integer_value(<<"req_timeout_ms">>, Data)}
              ,{<<"Voice-URI">>, kz_json:get_ne_binary_value(<<"voice_url">>, Data)}
-              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     kapi_pivot:publish_req(Prop),
     lager:info("published pivot request"),

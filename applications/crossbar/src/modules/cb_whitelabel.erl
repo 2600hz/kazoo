@@ -41,7 +41,7 @@
                                     ,{<<"image">>, <<"vnd.microsoft.icon">>, '*'}
                                     ,{<<"image">>, <<"x-icon">>, '*'}
                                     ,{<<"image">>, <<"icon">>, '*'}
-                                     | ?WHITELABEL_MIME_TYPES
+                                    | ?WHITELABEL_MIME_TYPES
                                     ]).
 
 -define(WHITELABEL_WELCOME_MIME_TYPES, [{<<"text">>, <<"html">>, '*'}]).

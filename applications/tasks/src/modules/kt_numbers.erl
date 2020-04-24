@@ -567,7 +567,7 @@ import(#{'account_id' := Account
               ,{'module_name', import_module_name(AuthAccountId, Carrier)}
               ,{'ported_in', PortedIn =:= <<"true">>}
               ,{'public_fields', public_fields(Args)}
-               | import_state(AuthAccountId, State)
+              | import_state(AuthAccountId, State)
               ],
     %% FIXME: use knm_numbers, update list_number/1 to use kzd_phone_number
     Row = handle_result(Args, knm_ops:create(E164, Options)),

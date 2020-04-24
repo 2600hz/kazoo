@@ -133,7 +133,7 @@ login_agent(Call, AgentId, Data) ->
                ,{<<"Agent-ID">>, AgentId}
                ,{<<"Presence-ID">>, presence_id(Data)}
                ,{<<"Presence-State">>, presence_state(Data)}
-                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                ]),
     case kz_amqp_worker:call(Update
                             ,fun kapi_acdc_agent:publish_login/1
@@ -182,7 +182,7 @@ send_new_status(Call, AgentId, Data, PubFun, Timeout) ->
                ,{<<"Time-Limit">>, Timeout}
                ,{<<"Presence-ID">>, presence_id(Data)}
                ,{<<"Presence-State">>, presence_state(Data)}
-                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                ]),
     PubFun(Update).
 

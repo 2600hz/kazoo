@@ -166,7 +166,7 @@ request_headers(#{'auth_token' := AuthToken
                ) ->
     lager:md([{'request_id', RequestId}]),
     Defaults = [{<<"x-auth-token">>, kz_term:to_list(AuthToken)}
-                | default_request_headers(RequestId)
+               | default_request_headers(RequestId)
                ],
     [{kz_term:to_list(K), V}
      || {K, V} <- props:unique([{kz_term:to_binary(K), V} || {K, V} <- RequestHeaders ++ Defaults])
@@ -186,7 +186,7 @@ default_request_headers(RequestId) ->
     APIRequestID = kz_term:to_list(RequestId) ++ "-" ++ integer_to_list(NowMS),
     lager:debug("request id ~s", [APIRequestID]),
     [{<<"x-request-id">>, APIRequestID}
-     | default_request_headers()
+    | default_request_headers()
     ].
 
 -spec make_request(expectations(), fun_2(), string(), request_headers()) ->

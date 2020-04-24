@@ -95,7 +95,7 @@ send_notification(Call, Notify, Data, TemplateId) ->
               ,{<<"To">>, Emails}
               ,{<<"To-Realm">>, kapps_call:to_realm(Call)}
               ,{<<"To-User">>, kapps_call:to_user(Call)}
-               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ]
              ),
     kapps_notify_publisher:cast(Props, fun kapi_notifications:publish_cf_notification/1).

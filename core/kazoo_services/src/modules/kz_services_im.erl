@@ -136,5 +136,5 @@ cache(AccountId, Caches, Plan) ->
 
 cache_origin(AccountId, Caches) ->
     [{'db', ?KZ_SERVICES_DB, AccountId}
-     | [{'db', DB, Id}|| {DB, Id} <- lists:usort(Caches)]
+    | [{'db', DB, Id}|| {DB, Id} <- lists:usort(Caches)]
     ].

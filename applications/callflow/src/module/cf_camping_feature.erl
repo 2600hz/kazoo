@@ -213,7 +213,7 @@ no_channels(#state{type = <<"offnet">>
                  ,{<<"Try-Interval">>, kz_json:get_value(<<"try_interval">>, CFG)}
                  ]),
     JObj = kz_json:from_list([{<<"Delegate-Message">>, kz_json:from_list(MsgProps)}
-                              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                              ]),
     kapi_delegate:publish_delegate(<<"camper">>, JObj, <<"offnet">>),
     just('accepted').
@@ -234,7 +234,7 @@ has_channels(#state{id = TargetId
                  ,{<<"Timeout">>, kz_json:get_value(<<"timeout">>, CFG)}
                  ]),
     JObj = kz_json:from_list([{<<"Delegate-Message">>, kz_json:from_list(MsgProps)}
-                              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                              ]),
     kapi_delegate:publish_delegate(<<"camper">>, JObj, <<"onnet">>),
     just('accepted').

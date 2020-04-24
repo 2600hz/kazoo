@@ -323,7 +323,7 @@ send_check_sync(Username, Realm, MsgId) ->
     publish_check_sync(MsgId, [{<<"Event">>, <<"check-sync">>}
                               ,{<<"Realm">>, Realm}
                               ,{<<"Username">>, Username}
-                               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                               ]).
 
 -spec publish_check_sync(kz_term:api_binary(), kz_term:proplist()) -> 'ok'.

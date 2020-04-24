@@ -785,7 +785,7 @@ handle_cast('call_status_req', #state{call=Call, my_q=Q}=State) ->
 
     Command = [{<<"Call-ID">>, CallId}
               ,{<<"Server-ID">>, Q}
-               | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
+              | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
               ],
 
     _ = kapi_call:publish_channel_status_req(Command),
@@ -794,7 +794,7 @@ handle_cast('call_status_req', #state{call=Call, my_q=Q}=State) ->
 handle_cast({'call_status_req', CallId}, #state{my_q=Q}=State) when is_binary(CallId) ->
     Command = [{<<"Call-ID">>, CallId}
               ,{<<"Server-ID">>, Q}
-               | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
+              | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
               ],
     _ = kapi_call:publish_channel_status_req(Command),
     {'noreply', State};
@@ -810,7 +810,7 @@ handle_cast('logout_agent', #state{acct_id=AcctId
     Update = props:filter_undefined(
                [{<<"Account-ID">>, AcctId}
                ,{<<"Agent-ID">>, AgentId}
-                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                ]),
 
     kapi_acdc_agent:publish_logout(Update),
@@ -937,7 +937,7 @@ send_member_connect_resp(JObj, MyQ, AgentId, MyId, LastConn) ->
              ,{<<"Idle-Time">>, IdleTime}
              ,{<<"Process-ID">>, MyId}
              ,{<<"Server-ID">>, MyQ}
-              | kz_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
+             | kz_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
              ]),
     lager:debug("sending connect_resp to ~s for ~s: ~s", [Queue, call_id(JObj), MyId]),
     kapi_acdc_queue:publish_member_connect_resp(Queue, Resp).
@@ -958,7 +958,7 @@ send_member_connect_retry(Queue, CallId, MyId, AgentId) ->
              [{<<"Process-ID">>, MyId}
              ,{<<"Call-ID">>, CallId}
              ,{<<"Agent-ID">>, AgentId}
-              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     kapi_acdc_queue:publish_member_connect_retry(Queue, Resp).
 
@@ -968,7 +968,7 @@ send_member_connect_accepted(Queue, CallId, AcctId, AgentId, MyId) ->
                                   ,{<<"Account-ID">>, AcctId}
                                   ,{<<"Agent-ID">>, AgentId}
                                   ,{<<"Process-ID">>, MyId}
-                                   | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                                  | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                                   ]),
     kapi_acdc_queue:publish_member_connect_accepted(Queue, Resp).
 
@@ -976,7 +976,7 @@ send_member_connect_accepted(Queue, CallId, AcctId, AgentId, MyId) ->
 send_originate_execute(JObj, Q) ->
     Prop = [{<<"Call-ID">>, kz_api:call_id(JObj)}
            ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
-            | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
            ],
     kapi_dialplan:publish_originate_execute(kz_api:server_id(JObj), Prop).
 
@@ -985,7 +985,7 @@ send_sync_request(AcctId, AgentId, MyId, MyQ) ->
     Prop = [{<<"Account-ID">>, AcctId}
            ,{<<"Agent-ID">>, AgentId}
            ,{<<"Process-ID">>, MyId}
-            | kz_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
            ],
     kapi_acdc_agent:publish_sync_req(Prop).
 
@@ -995,7 +995,7 @@ send_sync_response(ReqJObj, AcctId, AgentId, MyId, MyQ, Status, Options) ->
            ,{<<"Process-ID">>, MyId}
            ,{<<"Status">>, kz_term:to_binary(Status)}
            ,{<<"Msg-ID">>, kz_api:msg_id(ReqJObj)}
-            | Options ++ kz_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
+           | Options ++ kz_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
            ],
     Q = kz_api:server_id(ReqJObj),
     lager:debug("sending sync resp to ~s", [Q]),
@@ -1005,7 +1005,7 @@ send_status_update(AcctId, AgentId, 'resume') ->
     Update = props:filter_undefined(
                [{<<"Account-ID">>, AcctId}
                ,{<<"Agent-ID">>, AgentId}
-                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                ]),
     kapi_acdc_agent:publish_resume(Update).
 
@@ -1056,7 +1056,7 @@ maybe_connect_to_agent(MyQ, EPs, Call, Timeout, AgentId, _CdrUrl) ->
                                                                      ,{<<"Outbound-Call-ID">>, ACallId}
                                                                      ,{<<"Existing-Call-ID">>, kapps_call:call_id(Call)}
                                                                      ], EP)
-                                                  | Es
+                                                 | Es
                                                  ]}
                                         end, {[], []}, EPs),
 
@@ -1079,7 +1079,7 @@ maybe_connect_to_agent(MyQ, EPs, Call, Timeout, AgentId, _CdrUrl) ->
              ,{<<"Outbound-Caller-ID-Number">>, kapps_call:caller_id_number(Call)}
              ,{<<"Existing-Call-ID">>, kapps_call:call_id(Call)}
              ,{<<"Dial-Endpoint-Method">>, <<"simultaneous">>}
-              | kz_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
+             | kz_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
              ]),
 
     lager:debug("sending originate request with agent call-ids ~p", [ACallIds]),
@@ -1141,7 +1141,7 @@ send_agent_available(AcctId, AgentId, QueueId) ->
            ,{<<"Agent-ID">>, AgentId}
            ,{<<"Queue-ID">>, QueueId}
            ,{<<"Change">>, <<"available">>}
-            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     kapi_acdc_queue:publish_agent_change(Prop).
 
@@ -1151,7 +1151,7 @@ send_agent_busy(AcctId, AgentId, QueueId) ->
            ,{<<"Agent-ID">>, AgentId}
            ,{<<"Queue-ID">>, QueueId}
            ,{<<"Change">>, <<"busy">>}
-            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     kapi_acdc_queue:publish_agent_change(Prop).
 
@@ -1161,7 +1161,7 @@ send_agent_unavailable(AcctId, AgentId, QueueId) ->
            ,{<<"Agent-ID">>, AgentId}
            ,{<<"Queue-ID">>, QueueId}
            ,{<<"Change">>, <<"unavailable">>}
-            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     kapi_acdc_queue:publish_agent_change(Prop).
 
@@ -1169,7 +1169,7 @@ update_my_queues_of_change(AcctId, AgentId, Qs) ->
     Props = [{<<"Account-ID">>, AcctId}
             ,{<<"Agent-ID">>, AgentId}
             ,{<<"Change">>, <<"ringing">>}
-             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     _ = [kapi_acdc_queue:publish_agent_change([{<<"Queue-ID">>, QueueId} | Props])
          || QueueId <- Qs
@@ -1240,7 +1240,7 @@ stop_agent_leg(ACallId, ACtrlQ) ->
     Command = [{<<"Application-Name">>, <<"hangup">>}
               ,{<<"Insert-At">>, <<"now">>}
               ,{<<"Call-ID">>, ACallId}
-               | kz_api:default_headers(<<>>, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+              | kz_api:default_headers(<<>>, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
     lager:debug("sending hangup to ~s: ~s", [ACallId, ACtrlQ]),
     kapi_dialplan:publish_command(ACtrlQ, Command).

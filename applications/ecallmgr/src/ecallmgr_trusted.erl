@@ -129,7 +129,7 @@ handle_query(JObj, _Props) ->
     ServerId = kz_api:server_id(JObj),
     Reply = [{<<"Trusted">>, ecallmgr_fs_acls:edge()}
             ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
-             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     lager:debug("sending trust reply to ~s", [ServerId]),
     kapi_trusted:publish_reply(ServerId, Reply).

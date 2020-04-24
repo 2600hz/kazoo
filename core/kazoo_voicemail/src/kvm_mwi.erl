@@ -59,7 +59,7 @@ send_mwi_update(Account, BoxId) ->
               ,{<<"Messages-Saved">>, Saved}
               ,{<<"Extended-Presence-ID">>, extended_presence_id(AccountId, BoxJObj)}
               ,{<<"Call-ID">>, ?FAKE_CALLID(To)}
-               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     kz_amqp_worker:cast(Command, fun kapi_presence:publish_mwi_update/1).
 
@@ -175,7 +175,7 @@ send_unsolicited_mwi_update(New, Saved, Username, Realm, JObj) ->
               ,{<<"Messages-New">>, New}
               ,{<<"Messages-Saved">>, Saved}
               ,{<<"Call-ID">>, kz_json:get_value(<<"Call-ID">>, JObj)}
-               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     lager:debug("sending unsolicited mwi update for ~s@~s (~p/~p)", [Username, Realm, New, Saved]),
     kz_amqp_worker:cast(Command, fun kapi_presence:publish_unsolicited_mwi_update/1).

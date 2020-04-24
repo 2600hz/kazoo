@@ -22,7 +22,7 @@
 -define(TEMPLATE_MACROS
        ,kz_json:from_list(
           [?MACRO_VALUE(<<"event">>, <<"event">>, <<"Event">>, <<"Event">>)
-           | ?USER_MACROS
+          | ?USER_MACROS
            ++ ?COMMON_TEMPLATE_MACROS
           ]
          )

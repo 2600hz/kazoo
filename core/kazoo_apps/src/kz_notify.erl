@@ -28,7 +28,7 @@ system_alert(Subject, Msg, Headers)
 system_alert(Subject, Msg, Headers) ->
     Notify= [{<<"Message">>, Msg}
             ,{<<"Subject">>, <<"System Alert: ", Subject/binary>>}
-             | Headers ++ kz_api:default_headers(?APP_VERSION, ?APP_NAME)
+            | Headers ++ kz_api:default_headers(?APP_VERSION, ?APP_NAME)
             ],
     kz_amqp_worker:cast(Notify, fun kapi_notifications:publish_system_alert/1).
 
@@ -51,7 +51,7 @@ detailed_alert(Subject, Msg, Props, Headers) ->
     Notify = [{<<"Message">>, Msg}
              ,{<<"Subject">>, <<"System Alert: ", Subject/binary>>}
              ,{<<"Details">>, kz_json:from_list_recursive(Props)}
-              | Headers ++ kz_api:default_headers(?APP_VERSION, ?APP_NAME)
+             | Headers ++ kz_api:default_headers(?APP_VERSION, ?APP_NAME)
              ],
     kz_amqp_worker:cast(Notify, fun kapi_notifications:publish_system_alert/1).
 
@@ -64,6 +64,6 @@ detailed_alert(Subject, Format, Args, Props, Headers) ->
 generic_alert(Subject, Msg) ->
     Notify= [{<<"Message">>, kz_term:to_binary(Msg)}
             ,{<<"Subject">>, <<"System Alert: ", (kz_term:to_binary(Subject))/binary>>}
-             | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
+            | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
             ],
     kz_amqp_worker:cast(Notify, fun kapi_notifications:publish_system_alert/1).

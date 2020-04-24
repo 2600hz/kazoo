@@ -38,7 +38,7 @@ exec(RequesterQ, Call, CT, Cmds) ->
 publish_processing(RequesterQ, Call) ->
     PubFun = fun(P) -> kapi_pivot:publish_processing(RequesterQ, P) end,
     kz_amqp_worker:cast([{<<"Call-ID">>, kapps_call:call_id(Call)}
-                         | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                         ]
                        ,PubFun
                        ).

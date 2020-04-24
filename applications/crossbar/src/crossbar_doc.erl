@@ -858,7 +858,7 @@ add_pvt_auth(_JObj, Updates, Context) ->
             ,{<<"pvt_auth_user_id">>, cb_context:auth_user_id(Context)}
             ,{<<"pvt_original_auth_account_id">>, kz_json:get_value(<<"original_account_id">>, AuthDoc)}
             ,{<<"pvt_original_auth_owner_id">>, kz_json:get_value(<<"original_owner_id">>, AuthDoc)}
-             | Updates
+            | Updates
             ]
     end.
 
@@ -885,7 +885,7 @@ add_pvt_alphanum_name(_JObj, Updates, _Context, 'undefined', _Type) ->
 add_pvt_alphanum_name(_JObj, Updates, _Context, Name, _Type)
   when is_binary(Name) ->
     [{<<"pvt_alphanum_name">>, cb_modules_util:normalize_alphanum_name(Name)}
-     | Updates
+    | Updates
     ];
 add_pvt_alphanum_name(_JObj, Updates, _Context, _Name, _Type) ->
     Updates.

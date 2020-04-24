@@ -114,10 +114,10 @@ put(Context) ->
     Payload = cb_context:doc(Context),
     Ctx = case kz_im:route_type(Payload) of
               <<"onnet">> ->
-                  kz_amqp_worker:cast(Payload, fun kapi_im:publish_inbound/1),
+                  _ = kz_amqp_worker:cast(Payload, fun kapi_im:publish_inbound/1),
                   Context;
               <<"offnet">> ->
-                  kz_amqp_worker:cast(Payload, fun kapi_im:publish_outbound/1),
+                  _ = kz_amqp_worker:cast(Payload, fun kapi_im:publish_outbound/1),
                   AccountId = cb_context:account_id(Context),
                   Rate = kz_services_im:flat_rate(AccountId, 'sms', 'outbound'),
                   Charges = kz_json:from_list([{<<"charges">>, Rate}]),
@@ -218,7 +218,7 @@ create_request(Context) ->
           ,{<<"Custom-Vars">>, kz_json:from_list(CCVs)}
           ,{<<"Route-Type">>, Type}
           ,{<<"Event-Category">>, <<"sms">>}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
 
     cb_context:set_doc(Context, kz_json:from_list(KVs)).
@@ -333,7 +333,7 @@ summary(Context) ->
     {ViewName, Opts} =
         build_view_name_range_keys(cb_context:device_id(Context), cb_context:user_id(Context)),
     Options = [{'mapper', fun normalize_view_results/2}
-               | Opts
+              | Opts
               ],
     crossbar_view:load_modb(Context, ViewName, Options).
 

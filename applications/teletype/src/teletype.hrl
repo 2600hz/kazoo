@@ -216,7 +216,7 @@
 
 -define(DEFAULT_CALL_MACROS
        ,[?MACRO_VALUE(<<"call_id">>, <<"call_id">>, <<"Call ID">>, <<"Call ID of the caller">>)
-         | ?CALLER_ID_MACROS
+        | ?CALLER_ID_MACROS
          ++ ?CALLEE_ID_MACROS
          ++ ?DATE_CALLED_MACROS
          ++ ?FROM_MACROS

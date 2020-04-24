@@ -60,7 +60,7 @@ send(CallId, CtrlQ, Code, Cause, Media) ->
                                   ,{<<"Msg-ID">>, NoopId}
                                   ,{<<"Call-ID">>, CallId}
                                   ])
-                | SpecifcCommands
+               | SpecifcCommands
                ],
     do_send(CallId, CtrlQ, Commands),
     {'ok', NoopId}.
@@ -109,7 +109,7 @@ do_send(CallId, CtrlQ, Commands) ->
               ,{<<"Call-ID">>, CallId}
               ,{<<"Commands">>, Commands}
               ,{<<"Msg-ID">>, kz_binary:rand_hex(6)}
-               | kz_api:default_headers(<<"call">>, <<"command">>, <<"call_response">>, <<"0.1.0">>)
+              | kz_api:default_headers(<<"call">>, <<"command">>, <<"call_response">>, <<"0.1.0">>)
               ],
     kz_amqp_worker:cast(Command
                        ,fun(C) ->

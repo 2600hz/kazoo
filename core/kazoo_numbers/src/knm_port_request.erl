@@ -444,7 +444,7 @@ transition_metadata_jobj(FromState, ToState, #{auth_account_id := AuthAccountId
                              ,{<<"account">>, [{<<"id">>, AuthAccountId}
                                               ,{<<"name">>, AuthAccountName}
                                               ]}
-                              | maybe_user(Metadata)
+                             | maybe_user(Metadata)
                              ]}
       ]).
 
@@ -970,7 +970,7 @@ rename_to_is_private(Comment, {Acc, IsUpdated}) ->
             {[kzd_comment:set_is_private(kz_json:delete_key(<<"superduper_comment">>, Comment)
                                         ,Boolean
                                         )
-              | Acc
+             | Acc
              ]
             ,'true'
             }

@@ -324,7 +324,7 @@ classified_number(Context, Number, Classifier) ->
     ClassifierJObj = kz_json:get_value(Classifier, knm_converters:available_classifiers()),
     BaseData = base_classified_number(Context, Number),
     RespData = kz_json:set_values([{<<"name">>, Classifier}
-                                   | BaseData
+                                  | BaseData
                                   ]
                                  ,ClassifierJObj
                                  ),
@@ -350,7 +350,7 @@ post(Context, ?CHECK) ->
 post(Context, ?COLLECTION) ->
     {Numbers, ReqData} = take_collection_numbers(Context),
     Options = [{'assign_to', cb_context:account_id(Context)}
-               | default_knm_options(Context)
+              | default_knm_options(Context)
               ],
     Results = knm_numbers:update(Numbers, [{fun knm_phone_number:reset_doc/2, ReqData}], Options),
     CB = fun() -> ?MODULE:post(cb_context:set_accepting_charges(Context), ?COLLECTION) end,
@@ -359,7 +359,7 @@ post(Context, ?LOCALITY) ->
     fetch_locality(Context);
 post(Context, Number) ->
     Options = [{'assign_to', cb_context:account_id(Context)}
-               | default_knm_options(Context)
+              | default_knm_options(Context)
               ],
     JObj = cb_context:doc(Context),
     Result = knm_numbers:update(Number, [{fun knm_phone_number:reset_doc/2, JObj}], Options),
@@ -372,7 +372,7 @@ put(Context, ?COLLECTION) ->
     {Numbers, ReqData} = take_collection_numbers(Context),
     Options = [{'assign_to', cb_context:account_id(Context)}
               ,{'public_fields', kz_json:delete_key(?PUBLIC_FIELDS_STATE, ReqData)}
-               | maybe_ask_for_state(kz_json:get_ne_binary_value(?PUBLIC_FIELDS_STATE, ReqData))
+              | maybe_ask_for_state(kz_json:get_ne_binary_value(?PUBLIC_FIELDS_STATE, ReqData))
                ++ default_knm_options(Context)
               ],
     Results = knm_numbers:create(Numbers, Options),
@@ -382,7 +382,7 @@ put(Context, Number) ->
     Doc = cb_context:doc(Context),
     Options = [{'assign_to', cb_context:account_id(Context)}
               ,{'public_fields', kz_json:delete_key(?PUBLIC_FIELDS_STATE, Doc)}
-               | maybe_ask_for_state(kz_json:get_ne_binary_value(?PUBLIC_FIELDS_STATE, Doc))
+              | maybe_ask_for_state(kz_json:get_ne_binary_value(?PUBLIC_FIELDS_STATE, Doc))
                ++ default_knm_options(Context)
               ],
     Result = knm_numbers:create(Number, Options),
@@ -393,14 +393,14 @@ put(Context, Number) ->
 put(Context, ?COLLECTION, ?ACTIVATE) ->
     {Numbers, _} = take_collection_numbers(Context),
     Options = [{'public_fields', cb_context:req_data(Context)}
-               | default_knm_options(Context)
+              | default_knm_options(Context)
               ],
     Results = knm_numbers:move(Numbers, cb_context:account_id(Context), Options),
     CB = fun() -> ?MODULE:put(cb_context:set_accepting_charges(Context), ?COLLECTION, ?ACTIVATE) end,
     set_response(Results, Context, CB);
 put(Context, <<Number/binary>>, ?ACTIVATE) ->
     Options = [{'public_fields', cb_context:doc(Context)}
-               | default_knm_options(Context)
+              | default_knm_options(Context)
               ],
     Result = knm_numbers:move(Number, cb_context:account_id(Context), Options),
     CB = fun() -> ?MODULE:put(cb_context:set_accepting_charges(Context), Number, ?ACTIVATE) end,
@@ -408,7 +408,7 @@ put(Context, <<Number/binary>>, ?ACTIVATE) ->
 put(Context, Number, ?RESERVE) ->
     Options = [{'assign_to', cb_context:account_id(Context)}
               ,{'public_fields', cb_context:doc(Context)}
-               | default_knm_options(Context)
+              | default_knm_options(Context)
               ],
     Result = knm_numbers:reserve(Number, Options),
     CB = fun() -> ?MODULE:put(cb_context:set_accepting_charges(Context), Number, ?RESERVE) end,
@@ -417,7 +417,7 @@ put(Context, Number, ?PORT) ->
     Options = [{'assign_to', cb_context:account_id(Context)}
               ,{'public_fields', cb_context:doc(Context)}
               ,{'state', ?NUMBER_STATE_PORT_IN}
-               | default_knm_options(Context)
+              | default_knm_options(Context)
               ],
     Result = knm_numbers:create(Number, Options),
     CB = fun() -> ?MODULE:put(cb_context:set_accepting_charges(Context), Number, ?PORT) end,
@@ -427,14 +427,14 @@ put(Context, Number, ?PORT) ->
 patch(Context, ?COLLECTION) ->
     {Numbers, ReqData} = take_collection_numbers(Context),
     Options = [{'assign_to', cb_context:account_id(Context)}
-               | default_knm_options(Context)
+              | default_knm_options(Context)
               ],
     Results = knm_numbers:update(Numbers, [{fun knm_phone_number:update_doc/2, ReqData}], Options),
     CB = fun() -> ?MODULE:patch(cb_context:set_accepting_charges(Context), ?COLLECTION) end,
     set_response(Results, Context, CB);
 patch(Context, Number) ->
     Options = [{'assign_to', cb_context:account_id(Context)}
-               | default_knm_options(Context)
+              | default_knm_options(Context)
               ],
     JObj = cb_context:doc(Context),
     Result = knm_numbers:update(Number, [{fun knm_phone_number:update_doc/2, JObj}], Options),

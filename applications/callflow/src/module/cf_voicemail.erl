@@ -525,7 +525,7 @@ handle_full_mailbox(#mailbox{mailbox_id=VMBId
             ,{<<"Voicemail-Box">>, VMBId}
             ,{<<"Max-Message-Count">>, MaxCount}
             ,{<<"Message-Count">>, Count}
-             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     kapps_notify_publisher:cast(Props, fun kapi_notifications:publish_voicemail_full/1),
 

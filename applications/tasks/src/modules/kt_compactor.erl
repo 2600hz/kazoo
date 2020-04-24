@@ -354,7 +354,7 @@ do_compact_node_db(Compactor) ->
     AfterCols = db_usage_cols(Conn, Database),
     [kt_compactor_worker:compactor_node(Compactor)
     ,Database
-     | BeforeCols
+    | BeforeCols
     ] ++ AfterCols.
 
 -spec do_compact_db(kz_term:ne_binary()) -> rows().

@@ -36,7 +36,7 @@ change_in_servers_test_() ->
     [{"Verifying multiple changes results in a change required"
      ,assert_changed(change_server_keys(Keys, Servers), Servers)
      }
-     |
+    |
      [{iolist_to_binary(
          io_lib:format("Verifying changing ~s results in a change required", [kz_binary:join(K)])
         )

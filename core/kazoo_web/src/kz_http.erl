@@ -246,7 +246,7 @@ async_req(Pid, Method, Url, Hdrs, Body, Opts) ->
     NewOptions = [{'receiver', Pid}
                  ,{'sync', 'false'}
                  ,{'stream', 'self'}
-                  | Options
+                 | Options
                  ],
     execute_request(Method, Request, NewOptions).
 

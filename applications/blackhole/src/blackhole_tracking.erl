@@ -140,7 +140,7 @@ to_resp_data(Context) ->
 error_resp(GetReq) ->
     Resp = [{<<"Data">>, []}
            ,{<<"Msg-ID">>, kz_api:msg_id(GetReq)}
-            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     RespQ = kz_api:server_id(GetReq),
     kapi_websockets:publish_get_resp(RespQ, Resp).
@@ -150,7 +150,7 @@ success_resp(GetReq, Data) ->
     RespQ = kz_api:server_id(GetReq),
     Resp = [{<<"Data">>, Data}
            ,{<<"Msg-ID">>, kz_api:msg_id(GetReq)}
-            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     kapi_websockets:publish_get_resp(RespQ, Resp).
 

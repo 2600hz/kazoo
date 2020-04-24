@@ -192,7 +192,7 @@ query_registrar(Realm, Username, Node, Id, Method, JObj) ->
           ,{<<"User-Agent">>, kzd_fetch:user_agent(JObj)}
           ,{<<"Media-Server">>, kz_term:to_binary(Node)}
           ,{<<"Call-ID">>, kzd_fetch:call_id(JObj)}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     ReqResp = kz_amqp_worker:call(props:filter_undefined(Req)
                                  ,fun kapi_authn:publish_req/1
@@ -222,7 +222,7 @@ maybe_defered_error(Realm, Username, JObj) ->
                           end,
             CacheProps = [{'origin', [{'db', AccountDb, AuthorizingId}
                                      ,{'db', AccountDb, AccountId}
-                                      | OwnerIdProp
+                                     | OwnerIdProp
                                      ]}
                          ],
             kz_cache:store_local(?ECALLMGR_AUTH_CACHE, ?CREDS_KEY(Realm, Username), JObj, CacheProps),

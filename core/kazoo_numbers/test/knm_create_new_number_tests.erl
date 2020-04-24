@@ -250,7 +250,7 @@ create_existing_in_service() ->
     [{"Verifying that IN SERVICE numbers can't be created"
      ,?_assertMatch({'ok', [], _}, Resp)
      }
-     | check_error_response(Resp, 409, <<"number_exists">>, ?TEST_IN_SERVICE_NUM)
+    | check_error_response(Resp, 409, <<"number_exists">>, ?TEST_IN_SERVICE_NUM)
     ].
 
 create_dry_run() ->
@@ -350,7 +350,7 @@ existing_in_state(PN, 'false') ->
     [{lists:flatten(["Ensure number in ", State, " cannot be 'created'"])
      ,?_assert(kz_term:is_empty(knm_pipe:succeeded(Collection)))
      }
-     | check_error_response(knm_pipe:failed(Collection), 409, <<"number_exists">>, ?TEST_AVAILABLE_NUM)
+    | check_error_response(knm_pipe:failed(Collection), 409, <<"number_exists">>, ?TEST_AVAILABLE_NUM)
     ];
 
 existing_in_state(PN, 'true') ->
@@ -378,7 +378,7 @@ create_with_no_auth_by() ->
     [{"Ensure unauthorized error thrown when no auth_by supplied"
      ,?_assertMatch({'error', _}, Resp)
      }
-     | check_error_response(Resp, 403, <<"forbidden">>)
+    | check_error_response(Resp, 403, <<"forbidden">>)
     ].
 
 create_with_disallowed_account() ->
@@ -392,7 +392,7 @@ create_with_disallowed_account() ->
     [{"Ensure unauthorized error when auth_by account isn't allowed to create numbers"
      ,?_assertMatch({'error', _}, Resp)
      }
-     | check_error_response(Resp, 403, <<"forbidden">>)
+    | check_error_response(Resp, 403, <<"forbidden">>)
     ].
 
 create_with_number_porting() ->

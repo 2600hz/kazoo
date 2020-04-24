@@ -32,7 +32,7 @@
                            ,<<"unlock">>
                            ,<<"add-member">>
                            ,<<"del-member">>
-                                | ?MEMBER_UPDATE_EVENTS
+                           | ?MEMBER_UPDATE_EVENTS
                            ]).
 
 %%%=============================================================================

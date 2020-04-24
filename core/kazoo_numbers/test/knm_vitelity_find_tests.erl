@@ -50,7 +50,7 @@ tollfree_tests(Options0) ->
     <<"+1", Num/binary>> = ?TEST_CREATE_TOLL,
     Options = [{'prefix', Num}
               ,{'quantity', 1}
-               | Options0
+              | Options0
               ],
     [Result] = knm_search:find(Options),
     [{"Verify found number"
@@ -64,7 +64,7 @@ local_number_tests(Options0) ->
     Prefix = <<"9875559876">>,
     Options = [{'prefix', Prefix}
               ,{'quantity', Limit}
-               | Options0
+              | Options0
               ],
     Results = knm_search:find(Options),
     [{"Verify local number search result size"
@@ -77,7 +77,7 @@ local_prefix_tests(Options0) ->
     Prefix = <<"987">>,
     Options = [{'prefix', Prefix}
               ,{'quantity', Limit}
-               | Options0
+              | Options0
               ],
     Results = knm_search:find(Options),
     [{"Verify local prefix search result size"

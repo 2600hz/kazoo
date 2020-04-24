@@ -325,7 +325,7 @@ fetch_remote(UUID) ->
 get_active_channel_status(UUID) ->
     Command = [{<<"Call-ID">>, UUID}
               ,{<<"Active-Only">>, <<"true">>}
-               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     kz_amqp_worker:call(Command
                        ,fun kapi_call:publish_channel_status_req/1

@@ -46,7 +46,7 @@ update_call(Number, Data, Call) ->
                 ,<<"use_endpoint_privacy">>
                 ,should_use_endpoint_privacy(Strategy)
                 }
-                | update_number_func(Number, Call, Mode, Strategy)
+               | update_number_func(Number, Call, Mode, Strategy)
                ],
     cf_exe:update_call(kapps_call:exec(Routines, Call)).
 

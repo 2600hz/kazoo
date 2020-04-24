@@ -85,7 +85,7 @@ send_email(Emails0, Subject, RenderedTemplates, Attachments) ->
                              )
             ,[{<<"content-type-params">>, [{<<"charset">>, <<"utf-8">>}]}]
             ,[email_body(RenderedTemplates)
-              | add_attachments(Attachments)
+             | add_attachments(Attachments)
              ]
             },
     case relay_email(To, From, Email) of
@@ -419,7 +419,7 @@ find_account_params(AccountId) ->
               ,{<<"id">>, kz_doc:id(AccountJObj)}
               ,{<<"language">>, kzd_accounts:language(AccountJObj)}
               ,{<<"timezone">>, kzd_accounts:timezone(AccountJObj)}
-               | maybe_add_parent_params(AccountId, AccountJObj)
+              | maybe_add_parent_params(AccountId, AccountJObj)
               ]);
         {'error', _E} ->
             ?LOG_DEBUG("failed to find account doc for ~s: ~p", [AccountId, _E]),
@@ -504,7 +504,7 @@ send_update(RespQ, MsgId, Status, Msg, Metadata) ->
              ,{<<"Failure-Message">>, Msg}
              ,{<<"Msg-ID">>, MsgId}
              ,{<<"Metadata">>, Metadata}
-              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     %% ?LOG_DEBUG("notification update (~s) sending to ~s", [Status, RespQ]),
     lager:debug("notification update (~s) sending to ~s", [Status, RespQ]),

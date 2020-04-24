@@ -79,7 +79,7 @@ exec(Call, [#xmlElement{name='Conference'
               ,{<<"Conference-Doc">>, ConfDoc}
               ,{<<"Conference-Name">>, kzd_conferences:name(ConfDoc)}
               ,{<<"Moderator">>, props:get_is_true('startConferenceOnEnter', ConfProps, 'true')}
-               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     kapi_conference:publish_discovery_req(ConfReq),
 
@@ -169,7 +169,7 @@ send_bridge_command(EPs, Timeout, Strategy, IgnoreEarlyMedia, Call) ->
         ,{<<"Timeout">>, Timeout}
         ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
         ,{<<"Dial-Endpoint-Method">>, Strategy}
-         | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
         ],
     kapps_call_command:send_command(B, Call).
 
@@ -230,7 +230,7 @@ xml_elements_to_endpoints(Call
                                       ,content=DeviceIdTxt
                                       ,attributes=_DeviceAttrs
                                       }
-                           | EPs
+                          | EPs
                           ]
                          ,Acc
                          ) ->
@@ -247,7 +247,7 @@ xml_elements_to_endpoints(Call
                                       ,content=UserIdTxt
                                       ,attributes=_UserAttrs
                                       }
-                           | EPs
+                          | EPs
                           ]
                          ,Acc
                          ) ->
@@ -265,7 +265,7 @@ xml_elements_to_endpoints(Call
                                       ,content=Number
                                       ,attributes=Attrs
                                       }
-                           | EPs
+                          | EPs
                           ]
                          ,Acc
                          ) ->
@@ -293,7 +293,7 @@ xml_elements_to_endpoints(Call
                                       ,content=Number
                                       ,attributes=Attrs
                                       }
-                           | EPs
+                          | EPs
                           ]
                          ,Acc
                          ) ->

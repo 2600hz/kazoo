@@ -60,9 +60,9 @@ put_attachment(Params, DbName, DocId, AName, Contents, Options) ->
                    ]};
         {'error', _FilePath, Error} ->
             Routines = [{fun kz_att_error:set_req_url/2, FilePath}
-                        | kz_att_error:put_routines(Params, DbName, DocId, AName
-                                                   ,<<>>, Options
-                                                   )
+                       | kz_att_error:put_routines(Params, DbName, DocId, AName
+                                                  ,<<>>, Options
+                                                  )
                        ],
             handle_s3_error(Error, Routines)
     end.
@@ -85,7 +85,7 @@ fetch_attachment(Conn, DbName, DocId, AName) ->
                     {'ok', props:get_value('content', RespHeaders)};
                 {'error', FilePath, Error} ->
                     NewRoutines = [{fun kz_att_error:set_req_url/2, FilePath}
-                                   | Routines
+                                  | Routines
                                   ],
                     handle_s3_error(Error, NewRoutines)
             end
@@ -304,7 +304,7 @@ handle_s3_error({'aws_error'
     NewRoutines = [{fun kz_att_error:set_resp_code/2, RespCode}
                   ,{fun kz_att_error:set_resp_body/2, RespBody}
                   ,{fun kz_att_error:set_resp_headers/2, []}
-                   | Routines
+                  | Routines
                   ],
     lager:error("S3 error: ~p (code: ~p)", [_E, RespCode]),
     kz_att_error:new(Reason, NewRoutines);

@@ -71,7 +71,7 @@ test_for_registrations(AccountId, Realm) ->
     lager:debug("looking for any registrations in realm ~s", [Realm]),
     Reg = [{<<"Realm">>, Realm}
           ,{<<"Fields">>, [<<"Account-ID">>]}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case kz_amqp_worker:call_collect(Reg
                                     ,fun kapi_registration:publish_query_req/1
@@ -102,7 +102,7 @@ notify_initial_registration(AccountJObj) ->
 
     Req = [{<<"Account-ID">>, kz_doc:id(AccountJObj)}
           ,{<<"Occurrence">>, <<"registration">>}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_first_occurrence/1).
 
@@ -142,6 +142,6 @@ notify_initial_call(AccountJObj) ->
 
     Req = [{<<"Account-ID">>, kz_doc:id(AccountJObj)}
           ,{<<"Occurrence">>, <<"call">>}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_first_occurrence/1).

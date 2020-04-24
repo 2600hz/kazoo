@@ -243,7 +243,7 @@ to_json(#kapps_conference{}=Conference) ->
           ],
     kz_json:from_list([KV
                        || {_, V}=KV <- [{<<"Key-Value-Store">>, kz_json:from_list(KVS)}
-                                        | props:delete(<<"Key-Value-Store">>, Props)
+                                       | props:delete(<<"Key-Value-Store">>, Props)
                                        ],
                           V =/= 'undefined',
                           kz_json:is_json_term(V)
@@ -571,7 +571,7 @@ update_profile_language(Language, AccountId, Profile) ->
              ).
 
 -spec update_prompt_language(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:json_term(), kz_term:ne_binary(), kz_term:api_ne_binary()) ->
-                                    {kz_term:ne_binary(), kz_json:json_term()}.
+          {kz_term:ne_binary(), kz_json:json_term()}.
 update_prompt_language(_Yek, Key, <<>> = Value, _Language, _AccountId) ->
     {Key, Value};
 update_prompt_language(_Yek, Key, <<"tone_stream://", _/binary>> = Value, _Language, _AccountId) ->
@@ -905,7 +905,7 @@ cache(#kapps_conference{id=ConferenceId}=Conference, Expires) ->
     kz_cache:store_local(?KAPPS_CALL_CACHE, {?MODULE, 'conference', ConferenceId}, Conference, CacheProps).
 
 -spec retrieve(kz_term:ne_binary()) -> {'ok', conference()} |
-                                       {'error', 'not_found'}.
+          {'error', 'not_found'}.
 retrieve(ConferenceId) ->
     kz_cache:fetch_local(?KAPPS_CALL_CACHE, {?MODULE, 'conference', ConferenceId}).
 

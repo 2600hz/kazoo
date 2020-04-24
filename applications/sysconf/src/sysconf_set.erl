@@ -48,6 +48,6 @@ handle_req(ApiJObj, _Props) ->
            ,{<<"Key">>, Key}
            ,{<<"Value">>, Value}
            ,{<<"Msg-ID">>,  kz_json:get_value(<<"Msg-ID">>, ApiJObj)}
-            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     kapi_sysconf:publish_set_resp(RespQ, Resp).

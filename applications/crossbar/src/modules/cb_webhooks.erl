@@ -503,7 +503,7 @@ normalize_attempt_results(JObj, Acc) ->
     Doc = kz_json:get_value(<<"doc">>, JObj),
     NewDoc = kz_json:set_value(<<"timestamp">>, kz_doc:created(Doc), Doc),
     [kz_json:delete_keys([<<"id">>, <<"_id">>], NewDoc)
-     | Acc
+    | Acc
     ].
 
 %%------------------------------------------------------------------------------
@@ -641,7 +641,7 @@ send_reenable_req(Context, AccountId, Action) ->
           ,{<<"Action">>, Action}
           ,{<<"Account-ID">>, AccountId}
           ,{<<"Msg-ID">>, cb_context:req_id(Context)}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     kz_amqp_worker:call(Req
                        ,fun kapi_conf:publish_doc_type_update/1

@@ -295,12 +295,12 @@ set_authorization(AuthorizingType, AuthorizingId, #kapps_im{}=Im)
   when is_binary(AuthorizingType)
        andalso is_binary(AuthorizingId) ->
     set_custom_vars([{<<"Authorizing-Type">>, AuthorizingType}
-                            ,{<<"Authorizing-ID">>, AuthorizingId}
-                            ]
-                           ,Im#kapps_im{authorizing_type=AuthorizingType
-                                         ,authorizing_id=AuthorizingId
-                                         }
-                           ).
+                    ,{<<"Authorizing-ID">>, AuthorizingId}
+                    ]
+                   ,Im#kapps_im{authorizing_type=AuthorizingType
+                               ,authorizing_id=AuthorizingId
+                               }
+                   ).
 
 -spec set_owner_id(kz_term:ne_binary(), im()) -> im().
 set_owner_id(OwnerId, #kapps_im{}=Im) when is_binary(OwnerId) ->
@@ -560,10 +560,10 @@ to_payload(IM) ->
     ,{<<"Custom-Vars">>, custom_vars(IM)}
     ,{?KEY_EVENT_CATEGORY, kz_term:to_binary(type(IM))}
     ,{?KEY_EVENT_NAME, kz_term:to_binary(direction(IM))}
-     | kz_api:default_headers(controller_queue(IM)
-                             ,default(application_name(IM), ?APP_NAME)
-                             ,default(application_version(IM), ?APP_VERSION)
-                             )
+    | kz_api:default_headers(controller_queue(IM)
+                            ,default(application_name(IM), ?APP_NAME)
+                            ,default(application_version(IM), ?APP_VERSION)
+                            )
     ].
 
 -spec from_payload(kz_json:object()) -> im().
@@ -581,7 +581,7 @@ from_payload(JObj) ->
                ,{fun set_body/2, kz_im:body(JObj)}
                ,fun fetch_endpoint/1
                ],
-   exec(Routines,  new()).
+    exec(Routines,  new()).
 
 -spec fetch_endpoint(im()) -> im().
 fetch_endpoint(#kapps_im{authorizing_id='undefined'}=Im) -> Im;

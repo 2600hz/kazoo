@@ -221,7 +221,7 @@ req_definition() ->
                              ,?MODE_LISTEN  % hear both sides - default
                              ,?MODE_WHISPER % talk to one side
                              ]}
-                 | kapi_definition:event_type_headers(Category, EventName)
+                | kapi_definition:event_type_headers(Category, EventName)
                 ]
                }
               ,{fun kapi_definition:set_types/2

@@ -102,7 +102,7 @@ print_matching(Matching) ->
 
     lists:foreach(fun print_rate/1
                  ,[kzd_rates:set_rate_name(Winning, <<"* ", Name/binary>>)
-                   | Sorted
+                  | Sorted
                   ]).
 
 -spec rates_between(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.

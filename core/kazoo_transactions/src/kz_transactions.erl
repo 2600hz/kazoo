@@ -38,7 +38,7 @@ fetch(?NE_BINARY=Account, Options) ->
     ViewOptions = [{'result_key', <<"doc">>}
                   ,'include_docs'
                   ,'missing_as_error'
-                   | Options
+                  | Options
                   ],
     case kazoo_modb:get_results(Account, ?LIST_BY_TIMESTAMP, ViewOptions) of
         {'error', _}=Error -> Error;

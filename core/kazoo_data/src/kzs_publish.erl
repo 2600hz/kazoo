@@ -117,11 +117,11 @@ do_publish_db('true', DbName, Action) ->
         [{<<"Type">>, <<"database">>}
         ,{<<"ID">>, DbName}
         ,{<<"Database">>, DbName}
-         | kz_api:default_headers(<<"configuration">>
-                                 ,<<"db_", (kz_term:to_binary(Action))/binary>>
-                                 ,?CONFIG_CAT
-                                 ,<<"1.0.0">>
-                                 )
+        | kz_api:default_headers(<<"configuration">>
+                                ,<<"db_", (kz_term:to_binary(Action))/binary>>
+                                ,?CONFIG_CAT
+                                ,<<"1.0.0">>
+                                )
         ],
     Fun = fun(P) -> kapi_conf:publish_db_update(Action, DbName, P) end,
     kz_amqp_worker:cast(Props, Fun).
@@ -169,11 +169,11 @@ publish(Action, Db, Doc) ->
               ,{<<"Date-Modified">>, kz_doc:created(Doc)}
               ,{<<"Date-Created">>, kz_doc:modified(Doc)}
               ,{<<"Is-Soft-Deleted">>, IsSoftDeleted}
-               | kz_api:default_headers(<<"configuration">>
-                                       ,EventName
-                                       ,?APP_NAME
-                                       ,?APP_VERSION
-                                       )
+              | kz_api:default_headers(<<"configuration">>
+                                      ,EventName
+                                      ,?APP_NAME
+                                      ,?APP_VERSION
+                                      )
               ]),
     Fun = fun(P) -> kapi_conf:publish_doc_update(Action, Db, Type, Id, P) end,
     kz_amqp_worker:cast(Props, Fun).

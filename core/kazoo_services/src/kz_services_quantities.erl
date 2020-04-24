@@ -457,20 +457,20 @@ calculate_app_store_updates(JObj, Updates) ->
                                           UserKey = [<<"user_apps">>, Name],
                                           [{UserKey, -1}
                                           ,{AccountKey, 1}
-                                           | U
+                                          | U
                                           ];
                                       <<"admins">> ->
                                           UserKey = [<<"user_apps">>, Name],
                                           [{UserKey, -2}
                                           ,{AccountKey, 1}
-                                           | U
+                                          | U
                                           ];
                                       <<"specific">> ->
                                           UserKey = [<<"user_apps">>, Name],
                                           Value = length(kz_json:get_list_value(<<"users">>, App, [])),
                                           [{UserKey, Value}
                                           ,{AccountKey, 1}
-                                           | U
+                                          | U
                                           ]
                                   end
                           end

@@ -166,7 +166,7 @@ delete(Context, Username) ->
 lookup_regs(Context) ->
     Req = [{<<"Realm">>, get_realm(Context)}
           ,{<<"Fields">>, []}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
 
     ReqResp = kz_amqp_worker:call_collect(Req
@@ -227,7 +227,7 @@ count_registrations(Context) ->
     Req = [{<<"Realm">>, get_realm(Context)}
           ,{<<"Fields">>, []}
           ,{<<"Count-Only">>, 'true'}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     ReqResp = kz_amqp_worker:call(Req
                                  ,fun kapi_registration:publish_query_req/1

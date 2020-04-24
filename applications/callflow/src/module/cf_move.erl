@@ -48,7 +48,7 @@ get_channels(OwnerId, Call) ->
     DeviceIds = kz_attributes:owned_by(OwnerId, <<"device">>, Call),
     lager:debug("devices owned by ~p: ~p", [OwnerId, DeviceIds]),
     Req = [{<<"Authorizing-IDs">>, DeviceIds}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     Pub = fun kapi_call:publish_query_user_channels_req/1,
     case kz_amqp_worker:call_collect(Req, Pub, {'ecallmgr', 'true'}) of

@@ -448,7 +448,7 @@ proper_findings_lift_1_test_() ->
     JObj = kz_json:from_list([{<<0>>,'false'}]),
     {C, Es} = kz_json:lift_common_properties([JObj, JObj], [<<0>>]),
     [?_assert(kz_json:are_equal(kz_json:new(), C))
-     | [?_assert(kz_json:are_equal(E, JObj)) || E <- Es]
+    | [?_assert(kz_json:are_equal(E, JObj)) || E <- Es]
     ].
 
 -define(D1, ?JSON_WRAPPER([{<<"d1k1">>, <<"d1v1">>}
@@ -491,7 +491,7 @@ get_first_defined_test_() ->
             ,{<<"d1v1">>, [<<"nope">>, <<"d1k1">>]}
             ],
     [?_assertEqual('undefined', kz_json:get_first_defined([<<"foo">>, <<"bar">>], kz_json:new()))
-     |
+    |
      [?_assertEqual(V, kz_json:get_first_defined(Path, ?D1))
       || {V, Path} <- Paths
      ]

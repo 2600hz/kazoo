@@ -89,7 +89,7 @@ handle_start_req(JObj, _Props) ->
     Resp = kz_json:from_list(
              [{<<"Reply">>, Help}
              ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
-              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]
             ),
     kapi_tasks:publish_start_resp(kz_api:server_id(JObj), Resp).
@@ -110,7 +110,7 @@ handle_stop_req(JObj, _Props) ->
     Resp = kz_json:from_list(
              [{<<"Reply">>, Help}
              ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
-              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     kapi_tasks:publish_stop_resp(kz_api:server_id(JObj), Resp).
 
@@ -130,7 +130,7 @@ handle_remove_req(JObj, _Props) ->
     Resp = kz_json:from_list(
              [{<<"Reply">>, Help}
              ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
-              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]
             ),
     kapi_tasks:publish_remove_resp(kz_api:server_id(JObj), Resp).

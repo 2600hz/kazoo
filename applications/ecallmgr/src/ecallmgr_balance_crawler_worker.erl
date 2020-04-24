@@ -51,7 +51,7 @@ send_req(Accounts) ->
 balance_check_req(Accounts) ->
     props:filter_undefined(
       [{<<"Accounts">>, Accounts}
-       | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).
 
 -spec balance_check_response(kz_json:object()) -> kz_term:ne_binaries().

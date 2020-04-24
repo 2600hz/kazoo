@@ -185,7 +185,7 @@ notify_reseller(Services, Invoice, AuditJObj) ->
                )
              }
             ,{<<"Timestamp">>, kz_time:now_s()}
-             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     kapps_notify_publisher:cast(Props, fun kapi_notifications:publish_service_added/1).
 
@@ -206,7 +206,7 @@ update_bookkeeper(_Type, Invoice, Services, AuditJObj) ->
               ,{<<"Invoice">>, kz_json:delete_key(<<"plan">>, kz_services_invoice:public_json(Invoice))}
               ,{<<"Call-ID">>, kz_log:get_callid()}
               ,{<<"Audit-Log">>, kz_doc:public_fields(AuditJObj)}
-               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     kz_amqp_worker:call(Request
                        ,fun kapi_bookkeepers:publish_update_req/1

@@ -823,7 +823,7 @@ all_gets_should_not_be_dirty() ->
      ,{"Verify num "++binary_to_list(Num)++" is the id"
       ,?_assertEqual(Num, knm_phone_number:number(PN))
       }
-      | verify_to_json(Num, PN)
+     | verify_to_json(Num, PN)
      ]
      || Num <- nums(),
         PN <- knm_pipe:succeeded(knm_ops:get([Num]))

@@ -248,7 +248,7 @@ do_fire(#webhook{uri = ?NE_BINARY = URI
 
     Body = kz_http_util:json_to_querystring(JObj),
     Headers = [{"Content-Type", "application/x-www-form-urlencoded"}
-               | ?HTTP_REQ_HEADERS(Hook)
+              | ?HTTP_REQ_HEADERS(Hook)
               ],
     Debug = debug_req(Hook, EventId, URI, Headers, Body),
     Fired = kz_http:req(Verb, URI, Headers, Body, ?HTTP_OPTS),
@@ -271,7 +271,7 @@ do_fire(#webhook{uri = ?NE_BINARY = URI
 
     Body = kz_json:encode(JObj, ['pretty']),
     Headers = [{"Content-Type", "application/json"}
-               | ?HTTP_REQ_HEADERS(Hook)
+              | ?HTTP_REQ_HEADERS(Hook)
               ],
     Debug = debug_req(Hook, EventId, URI, Headers, Body),
     Fired = kz_http:req(Verb, URI, Headers, Body, ?HTTP_OPTS),
@@ -430,7 +430,7 @@ debug_resp({'ok', RespCode, RespHeaders, RespBody}, Debug, Retries) ->
       ,{<<"resp_body">>, RespBody}
       ,{<<"try">>, Retries}
       ,{<<"retries_left">>, RetriesLeft}
-       | Result ++ Debug
+      | Result ++ Debug
       ]);
 debug_resp({'error', E}, Debug, Retries) ->
     Error = try fix_error_value(E) of
@@ -451,7 +451,7 @@ debug_resp({'error', E}, Debug, Retries) ->
       ,{<<"retries">>, Retries}
       ,{<<"retries_left">>, RetriesLeft}
       ,{<<"client_error">>, Error}
-       | Debug
+      | Debug
       ]).
 
 -spec fix_value(number() | list()) -> number() | kz_term:ne_binary().
@@ -545,25 +545,25 @@ update_hook_docs([JObj|JObjs], Acc) ->
 -spec update_hook_doc(kz_json:object(), kz_term:ne_binary(), map()) -> map().
 update_hook_doc(WebHook, <<"callflow">>, #{update := Update}=Acc) ->
     Acc#{update => [set_as_notifications_webhook(WebHook, <<"callflow">>, kz_doc:id(WebHook), 'undefined', kz_doc:revision(WebHook))
-                    | Update
+                   | Update
                    ]
         };
 update_hook_doc(WebHook, <<"inbound_fax">>, #{update := Update, extra := Extra}=Acc) ->
     FaxErrorId = kz_binary:rand_hex(16),
     Acc#{update => [set_as_notifications_webhook(WebHook, <<"inbound_fax">>, kz_doc:id(WebHook), FaxErrorId, kz_doc:revision(WebHook))
-                    | Update
+                   | Update
                    ]
         ,extra => [set_as_notifications_webhook(WebHook, <<"inbound_fax_error">>, FaxErrorId, kz_doc:id(WebHook), 'undefined')
-                   | Extra
+                  | Extra
                   ]
         };
 update_hook_doc(WebHook, <<"outbound_fax">>, #{update := Update, extra := Extra}=Acc) ->
     FaxErrorId = kz_binary:rand_hex(16),
     Acc#{update => [set_as_notifications_webhook(WebHook, <<"outbound_fax">>, kz_doc:id(WebHook), FaxErrorId, kz_doc:revision(WebHook))
-                    | Update
+                   | Update
                    ]
         ,extra => [set_as_notifications_webhook(WebHook, <<"outbound_fax_error">>, FaxErrorId, kz_doc:id(WebHook), 'undefined')
-                   | Extra
+                  | Extra
                   ]
         }.
 
@@ -787,7 +787,7 @@ enable_descendant_hooks(Account) ->
             maybe_enable_descendants_hooks([AccountId]);
         {'ok', Descendants} ->
             maybe_enable_descendants_hooks([AccountId
-                                            | [kz_json:get_value([<<"value">>, <<"id">>], D) || D <- Descendants]
+                                           | [kz_json:get_value([<<"value">>, <<"id">>], D) || D <- Descendants]
                                            ]
                                           );
         {'error', _E} ->

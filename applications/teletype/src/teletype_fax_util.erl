@@ -67,7 +67,7 @@ add_document_data(FaxDoc, Macros, [{ContentType, Filename, Bin}]) ->
           [{<<"media">>, Filename}
           ,{<<"document_type">>, kz_mime:to_extension(ContentType)}
           ,{<<"document_size">>, erlang:size(Bin)}
-           | FaxDocProps
+          | FaxDocProps
           ]),
     FaxMacros = props:set_values(Values, props:get_value(<<"fax">>, Macros, [])),
     props:set_value(<<"fax">>, FaxMacros, Macros).

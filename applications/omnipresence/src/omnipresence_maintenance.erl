@@ -82,7 +82,7 @@ subscribe(Realm, User) ->
     Prop = [{<<"User">>, <<"sip:", User/binary, "@", Realm/binary>>}
            ,{<<"Expires">>, 1}
            ,{<<"Queue">>, <<>>}
-            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     case kz_amqp_worker:call_custom(Prop
                                    ,fun kapi_presence:publish_subscribe/1
@@ -110,7 +110,7 @@ send_mwi_update(User, New, Saved) ->
               ,{<<"Messages-Saved">>, Saved}
               ,{<<"Call-ID">>, kz_binary:rand_hex(16) }
               ,{<<"To">>, User}
-               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     kz_amqp_worker:cast(Command, fun kapi_presence:publish_mwi_update/1).
 
@@ -124,7 +124,7 @@ reset_subscription(User, Realm) ->
     API = [{<<"Realm">>, Realm}
           ,{<<"Username">>, User}
           ,{<<"Msg-ID">>, kz_binary:rand_hex(16)}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     kz_amqp_worker:cast(API, fun kapi_presence:publish_reset/1).
 

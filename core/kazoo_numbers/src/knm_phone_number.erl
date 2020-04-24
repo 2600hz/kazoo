@@ -460,18 +460,18 @@ to_json(PN=#knm_phone_number{doc=JObj}) ->
               ,{fun kzd_phone_numbers:set_pvt_module_name/2, module_name(PN)}
               ,{fun kzd_phone_numbers:set_pvt_ported_in/2, ported_in(PN)}
               ,{fun kzd_phone_numbers:set_pvt_state/2, state(PN)}
-               | props:filter_empty(
-                   [{fun kz_doc:set_revision/2, rev(PN)}
-                   ,{fun kzd_phone_numbers:set_pvt_assigned_to/2, assigned_to(PN)}
-                   ,{fun kzd_phone_numbers:set_pvt_carrier_data/2, carrier_data(PN)}
-                   ,{fun kzd_phone_numbers:set_pvt_features/2, features(PN)}
-                   ,{fun kzd_phone_numbers:set_pvt_features_allowed/2, features_allowed(PN)}
-                   ,{fun kzd_phone_numbers:set_pvt_features_denied/2, features_denied(PN)}
-                   ,{fun kzd_phone_numbers:set_pvt_previously_assigned_to/2, prev_assigned_to(PN)}
-                   ,{fun kzd_phone_numbers:set_pvt_region/2, region(PN)}
-                   ,{fun kzd_phone_numbers:set_pvt_reserve_history/2, reserve_history(PN)}
-                   ,{fun kzd_phone_numbers:set_pvt_used_by/2, used_by(PN)}
-                   ])
+              | props:filter_empty(
+                  [{fun kz_doc:set_revision/2, rev(PN)}
+                  ,{fun kzd_phone_numbers:set_pvt_assigned_to/2, assigned_to(PN)}
+                  ,{fun kzd_phone_numbers:set_pvt_carrier_data/2, carrier_data(PN)}
+                  ,{fun kzd_phone_numbers:set_pvt_features/2, features(PN)}
+                  ,{fun kzd_phone_numbers:set_pvt_features_allowed/2, features_allowed(PN)}
+                  ,{fun kzd_phone_numbers:set_pvt_features_denied/2, features_denied(PN)}
+                  ,{fun kzd_phone_numbers:set_pvt_previously_assigned_to/2, prev_assigned_to(PN)}
+                  ,{fun kzd_phone_numbers:set_pvt_region/2, region(PN)}
+                  ,{fun kzd_phone_numbers:set_pvt_reserve_history/2, reserve_history(PN)}
+                  ,{fun kzd_phone_numbers:set_pvt_used_by/2, used_by(PN)}
+                  ])
               ],
     kz_doc:setters(sanitize_public_fields(JObj), Setters).
 
@@ -511,7 +511,7 @@ from_json(JObj) ->
                 ,fun ensure_features_defined/1
                 ,{fun ensure_pvt_state_legacy_undefined/2, kz_json:get_value(?PVT_STATE_LEGACY, JObj)}
 
-                 | props:filter_undefined([{fun set_rev/2, kz_doc:revision(JObj)}])
+                | props:filter_undefined([{fun set_rev/2, kz_doc:revision(JObj)}])
                 ]),
     PN.
 
@@ -634,10 +634,10 @@ from_json_with_options(JObj, Options)
               ,{fun set_batch_run/2, knm_options:batch_run(Options, 'false')}
               ,{fun set_mdn_run/2, knm_options:mdn_run(Options)}
               ,{fun set_auth_by/2, knm_options:auth_by(Options, ?KNM_DEFAULT_AUTH_BY)}
-               |case props:is_defined('module_name', Options) of
-                    'true' -> [{fun set_module_name/2, knm_options:module_name(Options)}];
-                    'false' -> []
-                end
+              |case props:is_defined('module_name', Options) of
+                   'true' -> [{fun set_module_name/2, knm_options:module_name(Options)}];
+                   'false' -> []
+               end
               ],
     {'ok', PN} = setters(from_json(JObj), Updates),
     PN.

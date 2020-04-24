@@ -35,7 +35,7 @@ resume_callflow(Call, FlowJObj) ->
     Event = [{<<"Event-Name">>, <<"CHANNEL_PIVOT">>}
             ,{<<"Application-Data">>, kz_json:encode(FlowJObj)}
             ,{<<"Call-ID">>, kapps_call:call_id_direct(Call)}
-             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     'ok' = kz_amqp_worker:cast(Event, fun kapi_call:publish_event/1),
     {'usurp', Call}.

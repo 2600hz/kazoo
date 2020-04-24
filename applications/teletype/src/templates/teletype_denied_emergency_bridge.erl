@@ -26,7 +26,7 @@
           ,?MACRO_VALUE(<<"call.emergency_caller_id_name">>, <<"emergency_caller_id_name">>, <<"Emergency Caller ID Name">>, <<"Emergency Caller ID Name">>)
           ,?MACRO_VALUE(<<"call.emergency_caller_id_number">>, <<"emergency_caller_id_number">>, <<"Emergency Caller ID Number">>, <<"Emergency Caller ID Number">>)
           ,?MACRO_VALUE(<<"call.call_id">>, <<"call_id">>, <<"Call ID">>, <<"Call ID">>)
-           | ?COMMON_TEMPLATE_MACROS
+          | ?COMMON_TEMPLATE_MACROS
           ]
          )
        ).

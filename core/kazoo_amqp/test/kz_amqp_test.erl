@@ -63,7 +63,7 @@ run_publisher() ->
 
     Payload = [{<<"Category">>, <<"amqp">>}
               ,{<<"Key">>, <<"recv">>}
-               | kz_api:default_headers(<<?MODULE_STRING>>, <<"1.0">>)
+              | kz_api:default_headers(<<?MODULE_STRING>>, <<"1.0">>)
               ],
     loop_publisher(Payload).
 

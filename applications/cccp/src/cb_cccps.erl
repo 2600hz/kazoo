@@ -131,7 +131,7 @@ validate_cccp(Context, Id, ?HTTP_DELETE) ->
 send_new_camping(JObj, AccountId) ->
     Req = [{<<"Camping-Request">>, JObj}
           ,{<<"Account-ID">>, AccountId}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     kz_amqp_worker:cast(Req, fun kapi_camping:publish_req/1).
 

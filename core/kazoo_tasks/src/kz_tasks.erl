@@ -218,7 +218,7 @@ help(Category, Action) ->
     Req = props:filter_undefined(
             [{<<"Category">>, Category}
             ,{<<"Action">>, Action}
-             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ]),
     case kz_amqp_worker:call(Req
                             ,fun kapi_tasks:publish_lookup_req/1

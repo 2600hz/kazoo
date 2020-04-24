@@ -113,7 +113,7 @@ req_definition() ->
                                                             ]}
               ,{fun kapi_definition:set_values/2
                ,[{<<"Action">>, [<<"receive">>, <<"transmit">>]}
-                 | kapi_definition:event_type_headers(Category, EventName)
+                | kapi_definition:event_type_headers(Category, EventName)
                 ]
                }
               ,{fun kapi_definition:set_types/2
@@ -184,7 +184,7 @@ status_definition() ->
                 ,{<<"Direction">>, [<<"incoming">>
                                    ,<<"outgoing">>
                                    ]}
-                 | kapi_definition:event_type_headers(Category, EventName)
+                | kapi_definition:event_type_headers(Category, EventName)
                 ]
                }
               ,{fun kapi_definition:set_types/2, []}

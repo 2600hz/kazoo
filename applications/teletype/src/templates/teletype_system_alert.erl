@@ -32,7 +32,7 @@ id() -> <<"system_alert">>.
 macros() ->
     kz_json:from_list(
       [?MACRO_VALUE(<<"message">>, <<"message">>, <<"Message">>, <<"System message">>)
-       | ?USER_MACROS
+      | ?USER_MACROS
        ++ ?COMMON_TEMPLATE_MACROS
       ]).
 
@@ -155,7 +155,7 @@ macros(DataJObj) ->
     ,{<<"user">>, admin_user_data(DataJObj)}
     ,{<<"request">>, request_macros(DataJObj)}
     ,{<<"message">>, kz_json:get_value(<<"message">>, DataJObj, <<>>)}
-     | details_macros(DataJObj)
+    | details_macros(DataJObj)
     ].
 
 -spec details_macros(kz_json:object()) -> kz_term:proplist().

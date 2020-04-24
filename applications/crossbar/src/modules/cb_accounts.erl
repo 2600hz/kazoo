@@ -1052,6 +1052,6 @@ notify_new_account(Context, _AuthDoc) ->
              ,{<<"Account-Realm">>, kzd_accounts:realm(JObj)}
              ,{<<"Account-API-Key">>, kzd_accounts:api_key(JObj)}
              ,{<<"Account-ID">>, cb_context:account_id(Context)}
-              | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
+             | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
              ],
     kapps_notify_publisher:cast(Notify, fun kapi_notifications:publish_new_account/1).

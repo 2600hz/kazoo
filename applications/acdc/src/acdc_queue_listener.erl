@@ -112,7 +112,7 @@ start_link(WorkerSup, MgrPid, AccountId, QueueId) ->
                                                           ,{'account_id', AccountId}
                                                           ,{'queue_id', QueueId}
                                                           ]}
-                                           | ?BINDINGS
+                                          | ?BINDINGS
                                           ]}
                             ,{'responders', ?RESPONDERS}
                             ]
@@ -503,7 +503,7 @@ send_member_connect_req(CallId, AccountId, QueueId, MyQ, MyId) ->
             ,{<<"Process-ID">>, MyId}
             ,{<<"Server-ID">>, MyQ}
             ,{<<"Call-ID">>, CallId}
-             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ]),
     publish(Req, fun kapi_acdc_queue:publish_member_connect_req/1).
 
@@ -516,7 +516,7 @@ send_member_connect_win(RespJObj, Call, QueueId, MyQ, MyId, QueueOpts) ->
             ,{<<"Process-ID">>, MyId}
             ,{<<"Agent-Process-IDs">>, kz_json:get_value(<<"Agent-Process-IDs">>, RespJObj)}
             ,{<<"Queue-ID">>, QueueId}
-             | QueueOpts ++ kz_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
+            | QueueOpts ++ kz_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
             ]),
     publish(Q, Win, fun kapi_acdc_queue:publish_member_connect_win/2).
 
@@ -529,7 +529,7 @@ send_member_connect_satisfied(RespJObj, Call, QueueId, MyQ, MyId, QueueOpts) ->
                   ,{<<"Process-ID">>, MyId}
                   ,{<<"Agent-Process-IDs">>, kz_json:get_list_value(<<"Agent-Process-IDs">>, RespJObj)}
                   ,{<<"Queue-ID">>, QueueId}
-                   | QueueOpts ++ kz_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
+                  | QueueOpts ++ kz_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
                   ]),
     publish(Q, Satisfied, fun kapi_acdc_queue:publish_member_connect_satisfied/2).
 
@@ -538,7 +538,7 @@ send_agent_timeout(RespJObj, Call, QueueId) ->
     Prop = [{<<"Queue-ID">>, QueueId}
            ,{<<"Call-ID">>, kapps_call:call_id(Call)}
            ,{<<"Agent-Process-IDs">>, kz_json:get_value(<<"Agent-Process-IDs">>, RespJObj)}
-            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     publish(kz_json:get_value(<<"Server-ID">>, RespJObj), Prop
            ,fun kapi_acdc_queue:publish_agent_timeout/2
@@ -551,7 +551,7 @@ send_member_call_success(Q, AccountId, QueueId, MyId, AgentId, CallId) ->
              ,{<<"Process-ID">>, MyId}
              ,{<<"Agent-ID">>, AgentId}
              ,{<<"Call-ID">>, CallId}
-              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     publish(Q, Resp, fun kapi_acdc_queue:publish_member_call_success/2).
 
@@ -565,7 +565,7 @@ send_member_call_failure(Q, AccountId, QueueId, CallId, MyId, AgentId, Reason) -
              ,{<<"Agent-ID">>, AgentId}
              ,{<<"Failure-Reason">>, Reason}
              ,{<<"Call-ID">>, CallId}
-              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     publish(Q, Resp, fun kapi_acdc_queue:publish_member_call_failure/2).
 
@@ -574,7 +574,7 @@ publish_queue_member_remove(AccountId, QueueId, CallId) ->
     Prop = [{<<"Account-ID">>, AccountId}
            ,{<<"Queue-ID">>, QueueId}
            ,{<<"Call-ID">>, CallId}
-            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     kapi_acdc_queue:publish_queue_member_remove(Prop).
 
@@ -585,7 +585,7 @@ send_sync_req(MyQ, MyId, AccountId, QueueId, Type) ->
              ,{<<"Process-ID">>, MyId}
              ,{<<"Current-Strategy">>, Type}
              ,{<<"Server-ID">>, MyQ}
-              | kz_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
+             | kz_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
              ]),
     publish(Resp, fun kapi_acdc_queue:publish_sync_req/1).
 
@@ -597,7 +597,7 @@ publish_sync_resp(Strategy, StrategyState, ReqJObj, Id) ->
              ,{<<"Current-Strategy">>, kz_term:to_binary(Strategy)}
              ,{<<"Strategy-State">>, StrategyState}
              ,{<<"Process-ID">>, Id}
-              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     publish(kz_json:get_value(<<"Server-ID">>, ReqJObj), Resp, fun kapi_acdc_queue:publish_sync_resp/2).
 

@@ -33,7 +33,7 @@
        ).
 -define(TEST_VERIFY_CLAIM(AuthPart, AppPart)
        ,[{<<"mfa_resp">>, ?SIG_RESP(AuthPart, AppPart)}
-         | ?TEST_SIGN_CLAIM
+        | ?TEST_SIGN_CLAIM
         ]
        ).
 

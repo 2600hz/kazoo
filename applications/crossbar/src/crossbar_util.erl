@@ -315,7 +315,7 @@ response_db_fatal(Context) ->
 -spec flush_registrations(kz_term:ne_binary() | cb_context:context()) -> 'ok'.
 flush_registrations(<<_/binary>> = Realm) ->
     FlushCmd = [{<<"Realm">>, Realm}
-                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                ],
     kz_amqp_worker:cast(FlushCmd, fun kapi_registration:publish_flush/1);
 flush_registrations(Context) ->
@@ -328,7 +328,7 @@ flush_registration(Username, <<_/binary>> = Realm) ->
     FlushCmd = [{<<"Event">>, <<"check-sync">>}
                ,{<<"Realm">>, Realm}
                ,{<<"Username">>, Username}
-                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                ],
     _ = kz_amqp_worker:cast(FlushCmd, fun kapi_switch:publish_notify/1),
     kz_amqp_worker:cast(FlushCmd, fun kapi_registration:publish_flush/1);
@@ -975,7 +975,7 @@ descendants_count(<<Account/binary>>) ->
     descendants_count([{'key', AccountId}]);
 descendants_count(Opts) ->
     ViewOptions = [{'group_level', 1}
-                   | props:delete('group_level', Opts)
+                  | props:delete('group_level', Opts)
                   ],
 
     case load_descendants_count(ViewOptions) of
@@ -1150,7 +1150,7 @@ refresh_fs_xml(Realm, Doc) ->
             lager:debug("flushing fs xml for user '~s' at '~s'", [Username,Realm]),
             Req = [{<<"Username">>, Username}
                   ,{<<"Realm">>, Realm}
-                   | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                  | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                   ],
             kz_amqp_worker:cast(Req, fun kapi_switch:publish_fs_xml_flush/1)
     end.

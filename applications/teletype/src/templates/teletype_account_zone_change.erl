@@ -22,7 +22,7 @@
 -define(TEMPLATE_MACROS
        ,kz_json:from_list(
           [?MACRO_VALUE(<<"zones">>, <<"zones">>, <<"Zones">>, <<"List of account's zones">>)
-           | ?COMMON_TEMPLATE_MACROS
+          | ?COMMON_TEMPLATE_MACROS
           ]
          )
        ).

@@ -1203,7 +1203,7 @@ system_error(Context, Error) ->
                ,{<<"Message">>, Error}
                ,{<<"Details">>, system_properties(Context)}
                ,{<<"Account-ID">>, auth_account_id(Context)}
-                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                ]),
     _ = kz_amqp_worker:cast(Notify, fun kapi_notifications:publish_system_alert/1),
     add_system_error(Error, Context).

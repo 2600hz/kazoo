@@ -317,7 +317,7 @@ is_duplicate([#ci_chunk{dst_ip = DstIP
                        ,src_port = SrcPort
                        ,label = Label
                        }
-              |_]
+             |_]
             ,#ci_chunk{dst_ip = DstIP
                       ,src_ip = SrcIP
                       ,dst_port = DstPort

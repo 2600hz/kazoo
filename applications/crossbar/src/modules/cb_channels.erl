@@ -138,7 +138,7 @@ post(Context, _UUID) ->
 put(Context, UUID) ->
     API = [{<<"Call-ID">>, UUID}
           ,{<<"Flow">>, cb_context:doc(Context)}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     _ = kz_amqp_worker:cast(API, fun kapi_metaflow:publish_flow/1),
     crossbar_util:response_202(<<"metaflow sent">>, Context).
@@ -178,7 +178,7 @@ channels_query(CallId) ->
     Req = [{<<"Call-ID">>, CallId}
           ,{<<"Fields">>, <<"all">>}
           ,{<<"Active-Only">>, 'true'}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
 
     kz_amqp_worker:call_collect(Req
@@ -361,7 +361,7 @@ get_channels(Context, Devices, PublisherFun) ->
             ,{<<"Account-ID">>, get_account_id(Context)}
             ,{<<"Active-Only">>, 'false'}
             ,{<<"Msg-ID">>, cb_context:req_id(Context)}
-             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ]),
 
     case kz_amqp_worker:call_collect(Req
@@ -467,7 +467,7 @@ transfer(Context, Transferor, _Transferee, Target) ->
                           ,{<<"moh">>, cb_context:req_value(Context, <<"moh">>)}
                           ])
            }
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
 
     lager:debug("attempting ~s transfer ~s to ~s by ~s", [TransferType, _Transferee, Target, Transferor]),
@@ -479,7 +479,7 @@ maybe_hangup(Context, CallId) ->
     API = [{<<"Call-ID">>, CallId}
           ,{<<"Action">>, <<"hangup">>}
           ,{<<"Data">>, kz_json:new()}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("attempting to hangup ~s", [CallId]),
     _ = kz_amqp_worker:cast(API, fun kapi_metaflow:publish_action/1),
@@ -490,7 +490,7 @@ maybe_break(Context, CallId) ->
     API = [{<<"Call-ID">>, CallId}
           ,{<<"Action">>, <<"break">>}
           ,{<<"Data">>, kz_json:new()}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("attempting to break ~s", [CallId]),
     _ = kz_amqp_worker:cast(API, fun kapi_metaflow:publish_action/1),
@@ -507,7 +507,7 @@ maybe_callflow(Context, CallId) ->
                           ,{<<"collected">>, cb_context:req_value(Context, <<"collected">>)}
                           ])
            }
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
 
     lager:debug("attempting to running callflow ~s on ~s", [CallflowId, CallId]),
@@ -541,7 +541,7 @@ maybe_intercept(Context, CallId, TargetType, TargetId) ->
                                           ,{<<"target_id">>, TargetId}
                                           ,{<<"unbridged_only">>, UnbridgedOnly}
                                           ])}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
 
     lager:debug("attempting to move ~s to ~s(~s)", [CallId, TargetId, TargetType]),

@@ -542,7 +542,7 @@ editable_monster_apps_fields(Fields, ResellerId) ->
             Apps = kz_json:foldl(Fun, [], kzd_apps_store:apps(JObj)),
             [{<<"account_apps">>, Apps}
             ,{<<"user_apps">>, Apps}
-             | Fields
+            | Fields
             ]
     end.
 
@@ -564,9 +564,9 @@ editable_fields_to_json(Fields) ->
 editable_fields_to_json([], _Properties, JObj) -> JObj;
 editable_fields_to_json([{Category, Items}|Fields], Properties, JObj) ->
     Props = [{[Category, kzd_service_plan:all_items_key()], Properties}
-             | [{[Category, Item], kz_json:delete_key(<<"as">>, Properties)}
-                || Item <- Items
-               ]
+            | [{[Category, Item], kz_json:delete_key(<<"as">>, Properties)}
+               || Item <- Items
+              ]
             ],
     editable_fields_to_json(Fields, Properties, kz_json:set_values(Props, JObj)).
 

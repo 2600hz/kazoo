@@ -190,7 +190,7 @@ maybe_autoload_module(Module) ->
 persist_module(Module, Mods) ->
     {'ok', _} = crossbar_config:set_default_autoload_modules(
                   [kz_term:to_binary(Module)
-                   | lists:delete(kz_term:to_binary(Module), Mods)
+                  | lists:delete(kz_term:to_binary(Module), Mods)
                   ]),
     'ok'.
 
@@ -586,12 +586,12 @@ validate_account(JObj, Context) ->
                                   ,{fun cb_context:set_resp_status/2, 'fatal'}
                                   ,{fun cb_context:set_api_version/2, ?VERSION_2}
                                   ,{fun cb_context:set_auth_doc/2, User}
-                                   | case Nouns of
-                                         [] -> [];
-                                         [Id] -> [{fun cb_context:set_auth_account_id/2, Id}]
-                                     end
+                                  | case Nouns of
+                                        [] -> [];
+                                        [Id] -> [{fun cb_context:set_auth_account_id/2, Id}]
+                                    end
                                   ])
-               | Nouns
+              | Nouns
               ],
     Context1 = apply('cb_accounts', 'validate', Payload),
     case cb_context:resp_status(Context1) of

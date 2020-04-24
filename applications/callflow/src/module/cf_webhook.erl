@@ -34,7 +34,7 @@ handle_webhook(Data, Call) ->
     Props = [{<<"Hook">>, Hook}
             ,{<<"Timestamp">>, kz_time:now_s()}
             ,{<<"Data">>, CallJObj}
-             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     kapps_notify_publisher:cast(Props, fun kapi_notifications:publish_webhook/1).
 

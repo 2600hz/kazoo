@@ -26,7 +26,7 @@
           ,?MACRO_VALUE(<<"voicemail.mailbox">>, <<"mailbox">>, <<"Voicemail Box Number">>, <<"Number of the voicemail box">>)
           ,?MACRO_VALUE(<<"voicemail.max_messages">>, <<"max_messages">>, <<"Maximum Messages">>, <<"The maximum number of messages this box can hold">>)
           ,?MACRO_VALUE(<<"voicemail.message_count">>, <<"message_count">>, <<"Message Count">>, <<"The current number of messages in the voicemail box">>)
-           | ?USER_MACROS
+          | ?USER_MACROS
            ++ ?COMMON_TEMPLATE_MACROS
           ]
          )
@@ -124,7 +124,7 @@ process_req(DataJObj) ->
     Macros = [{<<"system">>, teletype_util:system_params()}
              ,{<<"account">>, teletype_util:account_params(DataJObj)}
              ,{<<"user">>, teletype_util:user_params(kz_json:get_value(<<"user">>, DataJObj))}
-              | build_template_data(DataJObj)
+             | build_template_data(DataJObj)
              ],
 
     %% Populate templates
@@ -160,5 +160,5 @@ build_voicemail_data(DataJObj) ->
       ,{<<"number">>, kz_json:get_binary_value([<<"vmbox">>, <<"mailbox">>], DataJObj)} %% backward compatibility
       ,{<<"max_messages">>, kz_json:get_binary_value(<<"max_message_count">>, DataJObj)}
       ,{<<"message_count">>, kz_json:get_binary_value(<<"message_count">>, DataJObj)}
-       | props:delete(<<"pin">>, teletype_util:public_proplist(<<"vmbox">>, DataJObj))
+      | props:delete(<<"pin">>, teletype_util:public_proplist(<<"vmbox">>, DataJObj))
       ]).

@@ -198,7 +198,7 @@ method_to_section(Method, Acc, APIPath) ->
        "    http://{SERVER}:8000", APIPath, "\n"
        "```\n\n"
      ]
-     | Acc
+    | Acc
     ].
 
 -spec method_as_action(kz_term:ne_binary()) -> kz_term:ne_binary().
@@ -258,7 +258,7 @@ ref_tables_to_doc(Tables) ->
 ref_table_to_doc({Schema, [SchemaTable | RefTables]}) ->
     [?SUB_SCHEMA_SECTION_HEADER, " ", Schema, "\n\n"
     ,SchemaTable, $\n
-     | ref_tables_to_doc(RefTables)
+    | ref_tables_to_doc(RefTables)
     ];
 ref_table_to_doc(RefTable) ->
     RefTable.
@@ -898,7 +898,7 @@ find_http_methods(Clauses) ->
           paths_with_methods().
 find_http_methods_from_clause(?CLAUSE(ArgsList, _Guards, ClauseBody), Methods) ->
     [{args_list_to_path(ArgsList), find_methods(ClauseBody)}
-     | Methods
+    | Methods
     ].
 
 -spec args_list_to_path([erl_parse:abstract_expr()]) -> iodata().
@@ -1099,11 +1099,11 @@ parameter_auth_token(IsRequired, OasVersion) ->
                       ,{<<"in">>, <<"header">>}
                       ,{<<"required">>, IsRequired}
                       ,{<<"description">>, <<"request authentication token">>}
-                       | parameter_schema(OasVersion
-                                         ,[{<<"type">>, <<"string">>}
-                                          ,{<<"minLength">>, 32}
-                                          ]
-                                         )
+                      | parameter_schema(OasVersion
+                                        ,[{<<"type">>, <<"string">>}
+                                         ,{<<"minLength">>, 32}
+                                         ]
+                                        )
                       ]).
 
 -spec parameter_schema(kz_term:ne_binary(), kz_json:json_proplist()) -> kz_json:json_proplist().
@@ -1136,7 +1136,7 @@ base_path_param(ParamName, OasVersion, SchemaProp) ->
     ,{<<"in">>, <<"path">>}
     ,{<<"required">>, true}
     ,{<<"description">>, <<"request ", Name/binary, " parameter">>}
-     | parameter_schema(OasVersion, [{<<"type">>, <<"string">>} | SchemaProp])
+    | parameter_schema(OasVersion, [{<<"type">>, <<"string">>} | SchemaProp])
     ].
 
 -spec modb_id_path_param(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:json_proplist().

@@ -142,7 +142,7 @@ base_hook_event(CallEvent, AccountId, Acc) ->
       ,{<<"reseller_id">>, kz_services_reseller:get_id(AccountId)}
       ,{<<"timestamp">>, kz_call_event:timestamp(CallEvent)}
       ,{<<"to">>, kz_json:get_value(<<"To">>, CallEvent)}
-       | Acc
+      | Acc
       ]).
 
 -spec resource_used(boolean(), kz_call_event:doc()) -> kz_term:api_binary().

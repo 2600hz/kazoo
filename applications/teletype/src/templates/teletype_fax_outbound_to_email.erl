@@ -113,7 +113,7 @@ build_template_data(DataJObj) ->
       ,{<<"fax">>, build_fax_template_data(DataJObj)}
       ,{<<"system">>, teletype_util:system_params()}
       ,{<<"user">>, teletype_util:user_params(kz_json:get_value(<<"owner">>, DataJObj))}
-       | teletype_util:build_call_data(DataJObj, Timezone)
+      | teletype_util:build_call_data(DataJObj, Timezone)
       ]).
 
 -spec build_fax_template_data(kz_json:object()) -> kz_term:proplist().
@@ -125,5 +125,5 @@ build_fax_template_data(DataJObj) ->
       ,{<<"box_id">>, kz_json:get_value(<<"faxbox_id">>, DataJObj, kz_doc:id(FaxBoxJObj))}
       ,{<<"box_name">>, kz_json:get_value(<<"name">>, FaxBoxJObj)}
       ,{<<"timestamp">>, kz_json:get_value(<<"fax_timestamp">>, DataJObj, kz_time:now_s())}
-       | kz_json:to_proplist(kz_json:get_value(<<"tx_result">>, FaxJObj, kz_json:new()))
+      | kz_json:to_proplist(kz_json:get_value(<<"tx_result">>, FaxJObj, kz_json:new()))
       ]).

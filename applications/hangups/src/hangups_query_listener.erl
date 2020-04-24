@@ -96,7 +96,7 @@ meter_resp(N, [_|_]=Values) ->
     props:filter_undefined(
       [{<<"hangup_cause">>, hangups_util:meter_hangup_cause(N)}
       ,{<<"account_id">>, hangups_util:meter_account_id(N)}
-       | get_accel(props:get_value('acceleration', Values))
+      | get_accel(props:get_value('acceleration', Values))
       ]
       ++ Vs
      ).

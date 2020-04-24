@@ -529,7 +529,7 @@ build_originate_req(Contact, Context) ->
       ,{<<"Simplify-Loopback">>, 'false'}
       ,{<<"Loopback-Bowout">>, 'false'}
       ,{<<"Start-Control-Process">>, 'false'}
-       | kz_api:default_headers(<<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
+      | kz_api:default_headers(<<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
       ]).
 
 -spec get_caller_callee(kz_term:ne_binary(), #contact{}, #contact{}) -> {#contact{}, #contact{}}.

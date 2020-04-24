@@ -54,8 +54,8 @@
 %%
 %% @end
 %%------------------------------------------------------------------------------
--spec convert(kz_term:ne_binary(), kz_term:ne_binary(), binary()|{'file', kz_term:ne_binary()}, map() | kz_term:proplist()) ->
-                     gen_kz_converter:converted().
+-spec convert(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()|{'file', kz_term:ne_binary()}, map() | kz_term:proplist()) ->
+          gen_kz_converter:converted().
 convert(From, To, Content, #{<<"from_format">> := From, <<"to_format">> := To, <<"job_id">> := _ }=Options) ->
     Filename = save_file(Content, Options),
     lager:info("converting document ~s from ~s to ~s", [Filename, From, To]),
@@ -72,15 +72,15 @@ convert(From, To, Content, #{<<"from_format">> := From, <<"to_format">> := To, <
     end;
 convert(From, To, Content, Options) when is_map(Options) ->
     case maps:is_key(<<"job_id">>, Options) of
-        true -> convert(From, To, Content, Options#{<<"from_format">> => From, <<"to_format">> => To});
-        false -> convert(From, To, Content, Options#{<<"from_format">> => From, <<"to_format">> => To, <<"job_id">> => kz_binary:rand_hex(12)})
+        'true' -> convert(From, To, Content, Options#{<<"from_format">> => From, <<"to_format">> => To});
+        'false' -> convert(From, To, Content, Options#{<<"from_format">> => From, <<"to_format">> => To, <<"job_id">> => kz_binary:rand_hex(12)})
     end;
 convert(From, To, Content, Opts) ->
     Options = maps:from_list(
                 [{<<"from_format">>, From}
                 ,{<<"to_format">>, To}
                 ,{<<"job_id">>, props:get_value(<<"job_id">>, Opts, kz_binary:rand_hex(12))}
-                 | props:delete_keys([<<"job_id">>], Opts)
+                | props:delete_keys([<<"job_id">>], Opts)
                 ]),
     convert(From, To, Content, Options).
 
@@ -221,7 +221,7 @@ convert_file(Command, FromPath, Ext, #{<<"job_id">> := JobId, <<"tmp_dir">> := T
     end.
 
 -spec run_convert_command(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                 fax_converted().
+          fax_converted().
 run_convert_command(Command, FromPath, ToPath, TmpDir) ->
     lager:debug("converting file with command: ~s", [Command]),
     Args = [{<<"FROM">>, FromPath}
@@ -250,9 +250,9 @@ handle_resample(FromPath, #{<<"tmp_dir">> := TmpDir}=Options) ->
     end.
 
 -spec select_tiff_command(map()) ->
-                                 {'convert', kz_term:ne_binary()} |
-                                 {'resample', kz_term:ne_binary()} |
-                                 'noop'.
+          {'convert', kz_term:ne_binary()} |
+          {'resample', kz_term:ne_binary()} |
+          'noop'.
 select_tiff_command(#{<<"res_x">> := X, <<"res_y">> := Y}=Map)
   when X =:= 0
        orelse Y =:= 0 ->
@@ -291,7 +291,7 @@ select_tiff_command(Map) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec validate_output(kz_term:ne_binary(), kz_term:ne_binary(), map()) ->
-                             fax_converted().
+          fax_converted().
 validate_output(?TIFF_MIME, Filename, #{<<"tmp_dir">> := TmpDir}) ->
     OutputFile = filename:join(TmpDir, <<(kz_binary:rand_hex(16))/binary, ".pdf">>),
     run_validate_command(?VALIDATE_TIFF_COMMAND, Filename, OutputFile, TmpDir);
@@ -302,7 +302,7 @@ validate_output(Mime, _FilePath, _Options) ->
     {'ok', <<"unsupported mime type", Mime/binary>>}.
 
 -spec run_validate_command(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                  fax_converted().
+          fax_converted().
 run_validate_command(Command, FromPath, ToPath, TmpDir) ->
     lager:debug("validating file with command: ~s", [Command]),
     Args = [{<<"FROM">>, FromPath}
@@ -332,7 +332,7 @@ run_validate_command(Command, FromPath, ToPath, TmpDir) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec format_response(kz_term:ne_binary(), kz_term:ne_binary(), map()) ->
-                             gen_kz_converter:converted().
+          gen_kz_converter:converted().
 format_response(ToFormat, FilePath, #{<<"output_type">> := 'binary'}=Options) ->
     Metadata = maybe_read_metadata(ToFormat, FilePath, Options),
     case format_output(FilePath, Options) of
@@ -355,8 +355,8 @@ format_response(ToFormat, FilePath, Options) ->
     end.
 
 -spec maybe_user_filename(kz_term:ne_binary(), map()) ->
-                                 {'ok', kz_term:ne_binary()} |
-                                 {'error', kz_term:ne_binary()}.
+          {'ok', kz_term:ne_binary()} |
+          {'error', kz_term:ne_binary()}.
 maybe_user_filename(FilePath, #{<<"to_filename">> := UserPath, <<"tmp_dir">> := TmpDir}) ->
     case filename:pathtype(UserPath) of
         'absolute' ->
@@ -370,8 +370,8 @@ maybe_user_filename(FilePath, _Options) ->
     {'ok', FilePath}.
 
 -spec format_output(kz_term:ne_binary(), map()) ->
-                           {'ok', binary()} |
-                           {'error', kz_term:ne_binary()}.
+          {'ok', binary()} |
+          {'error', kz_term:ne_binary()}.
 format_output(FilePath, #{<<"output_type">> := 'binary'}) ->
     case file:read_file(FilePath) of
         {'ok', _}=Ok ->
@@ -488,8 +488,8 @@ maybe_delete_previous_file(OldFilename, _NewFilename) ->
     kz_util:delete_file(OldFilename).
 
 -spec maybe_rename_file(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                               {'ok', kz_term:ne_binary()}|
-                               {'error', kz_term:ne_binary()}.
+          {'ok', kz_term:ne_binary()}|
+          {'error', kz_term:ne_binary()}.
 maybe_rename_file(TmpPath, NewPath) ->
     case filelib:is_file(NewPath) of
         'true' -> {'ok', NewPath};
@@ -497,8 +497,8 @@ maybe_rename_file(TmpPath, NewPath) ->
     end.
 
 -spec rename_file(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                         {'ok', kz_term:ne_binary()}|
-                         {'error', kz_term:ne_binary()}.
+          {'ok', kz_term:ne_binary()}|
+          {'error', kz_term:ne_binary()}.
 rename_file(FromPath, ToPath) ->
     lager:info("renaming file from ~s to ~s", [FromPath, ToPath]),
     case filelib:is_file(FromPath) of

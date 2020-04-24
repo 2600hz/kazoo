@@ -89,7 +89,7 @@ flush(CallId) -> ci_datastore:flush(CallId).
 -spec callid_details(kz_term:text()) -> 'no_return'.
 callid_details(CallId) ->
     Props = [{<<"Call-ID">>, kz_term:to_binary(CallId)}
-             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     case kz_amqp_worker:call_collect(Props
                                     ,fun kapi_inspector:publish_lookup_req/1
@@ -110,7 +110,7 @@ callid_details(CallId) ->
 -spec inspect_call_id(kz_term:ne_binary()) -> no_return.
 inspect_call_id(CallId) ->
     Req = [{<<"Call-ID">>, CallId}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case kz_amqp_worker:call(Req
                             ,fun kapi_inspector:publish_lookup_req/1

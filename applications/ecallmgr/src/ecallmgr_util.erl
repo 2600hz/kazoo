@@ -193,7 +193,7 @@ send_cmd(Node, UUID, App, FSApp, Args, EventArgs) ->
                                         ,{<<"execute-app-name">>, kz_term:to_binary(AppName)}
                                         ,{<<"execute-app-arg">>, kz_term:to_binary(Args)}
                                         ,{<<"event-uuid-name">>, kz_term:to_binary(App)}
-                                         | EventArgs
+                                        | EventArgs
                                         ]),
     lager:debug("execute result on node ~s(~s)  ~s(~s)  ~s(~s) ~p : ~p"
                ,[Node, UUID, App, FSApp, AppName, Args, EventArgs, Result]
@@ -212,7 +212,7 @@ send_cmds(Node, UUID, App, Cmds) ->
                     ,{<<"execute-app-name">>, dialplan_application(kz_term:to_binary(AppName))}
                     ,{<<"execute-app-arg">>, kz_term:to_binary(Args)}
                     ,{<<"event-uuid-name">>, kz_term:to_binary(App)}
-                     | EventArgs
+                    | EventArgs
                     ]
                 end || Cmd <- Cmds, Cmd =/= 'undefined'],
     Result = freeswitch:cmds(Node, UUID, Commands),
@@ -1200,7 +1200,7 @@ create_masquerade_event(Application, EventName, Props) ->
                    ,"Event-Name=CUSTOM,Event-Subclass=kazoo::masquerade"
                    ,",kazoo_event_name=", EventName
                    ,",kazoo_application_name=", Application
-                    | Args
+                   | Args
                    ]).
 
 %%------------------------------------------------------------------------------
@@ -1360,7 +1360,7 @@ request_media_url(MediaName, Type, CallId, JObj) ->
                  ,{<<"Stream-Type">>, kz_term:to_binary(Type)}
                  ,{<<"Call-ID">>, CallId}
                  ,{<<"Msg-ID">>, kz_binary:rand_hex(8)}
-                  | kz_api:default_headers(<<"media">>, <<"media_req">>, ?APP_NAME, ?APP_VERSION)
+                 | kz_api:default_headers(<<"media">>, <<"media_req">>, ?APP_NAME, ?APP_VERSION)
                  ]),
     case kz_amqp_worker:call_collect(kz_json:set_values(MsgProps, JObj)
                                     ,fun kapi_media:publish_req/1

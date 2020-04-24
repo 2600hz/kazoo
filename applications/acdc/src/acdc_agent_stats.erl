@@ -61,7 +61,7 @@ agent_ready(AccountId, AgentId) ->
              ,{<<"Agent-ID">>, AgentId}
              ,{<<"Timestamp">>, kz_time:now_s()}
              ,{<<"Status">>, <<"ready">>}
-              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     log_status_change(AccountId, Prop),
     kz_amqp_worker:cast(Prop
@@ -75,7 +75,7 @@ agent_logged_in(AccountId, AgentId) ->
              ,{<<"Agent-ID">>, AgentId}
              ,{<<"Timestamp">>, kz_time:now_s()}
              ,{<<"Status">>, <<"logged_in">>}
-              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     log_status_change(AccountId, Prop),
     kz_amqp_worker:cast(Prop
@@ -89,7 +89,7 @@ agent_logged_out(AccountId, AgentId) ->
              ,{<<"Agent-ID">>, AgentId}
              ,{<<"Timestamp">>, kz_time:now_s()}
              ,{<<"Status">>, <<"logged_out">>}
-              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     log_status_change(AccountId, Prop),
     kz_amqp_worker:cast(Prop
@@ -104,7 +104,7 @@ agent_pending_logged_out(AccountId, AgentId) ->
              ,{<<"Agent-ID">>, AgentId}
              ,{<<"Timestamp">>, kz_time:now_s()}
              ,{<<"Status">>, <<"pending_logged_out">>}
-              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     log_status_change(AccountId, Prop),
     kz_amqp_worker:cast(Prop
@@ -127,7 +127,7 @@ agent_connecting(AccountId, AgentId, CallId, CallerIDName, CallerIDNumber, Queue
              ,{<<"Caller-ID-Name">>, CallerIDName}
              ,{<<"Caller-ID-Number">>, CallerIDNumber}
              ,{<<"Queue-ID">>, QueueId}
-              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     log_status_change(AccountId, Prop),
     kz_amqp_worker:cast(Prop
@@ -150,7 +150,7 @@ agent_connected(AccountId, AgentId, CallId, CallerIDName, CallerIDNumber, QueueI
              ,{<<"Caller-ID-Name">>, CallerIDName}
              ,{<<"Caller-ID-Number">>, CallerIDNumber}
              ,{<<"Queue-ID">>, QueueId}
-              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     log_status_change(AccountId, Prop),
     kz_amqp_worker:cast(Prop
@@ -165,7 +165,7 @@ agent_wrapup(AccountId, AgentId, WaitTime) ->
              ,{<<"Timestamp">>, kz_time:now_s()}
              ,{<<"Status">>, <<"wrapup">>}
              ,{<<"Wait-Time">>, WaitTime}
-              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     log_status_change(AccountId, Prop),
     kz_amqp_worker:cast(Prop
@@ -182,7 +182,7 @@ agent_paused(AccountId, AgentId, PauseTime) ->
              ,{<<"Timestamp">>, kz_time:now_s()}
              ,{<<"Status">>, <<"paused">>}
              ,{<<"Pause-Time">>, PauseTime}
-              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     log_status_change(AccountId, Prop),
     kz_amqp_worker:cast(Prop
@@ -197,7 +197,7 @@ agent_outbound(AccountId, AgentId, CallId) ->
              ,{<<"Timestamp">>, kz_time:now_s()}
              ,{<<"Status">>, <<"outbound">>}
              ,{<<"Call-ID">>, CallId}
-              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     log_status_change(AccountId, Prop),
     kz_amqp_worker:cast(Prop
@@ -272,7 +272,7 @@ handle_status_query(JObj, _Prop) ->
 publish_query_errors(RespQ, MsgId, Errors) ->
     API = [{<<"Error-Reason">>, Errors}
           ,{<<"Msg-ID">>, MsgId}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("responding with errors to req ~s: ~p", [MsgId, Errors]),
     kapi_acdc_stats:publish_status_err(RespQ, API).
@@ -379,7 +379,7 @@ query_statuses(RespQ, MsgId, Match, Limit) ->
 
     Resp = [{<<"Agents">>, query_statuses_group_by_agent(Stats, Limit)}
            ,{<<"Msg-ID">>, MsgId}
-            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     kapi_acdc_stats:publish_status_resp(RespQ, Resp).
 
@@ -396,7 +396,7 @@ query_statuses_fold([#status_stat{key=#status_stat_key{agent_id=AgentId
                                                       ,timestamp=Timestamp
                                                       }
                                  }=Stat
-                     | Stats
+                    | Stats
                     ], Limit, StatsByAgent) ->
     AgentStats = maps:get(AgentId, StatsByAgent, #{}),
     StatsByAgent1 = case Limit =:= 'no_limit'

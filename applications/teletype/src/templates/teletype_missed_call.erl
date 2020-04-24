@@ -21,7 +21,7 @@
 -define(TEMPLATE_MACROS
        ,kz_json:from_list(
           [?MACRO_VALUE(<<"missed_call.reason">>, <<"missed_call_reason">>, <<"Missed Call Reason">>, <<"Reason why the call is terminated without been bridged or left a voicemail message">>)
-           | ?DEFAULT_CALL_MACROS
+          | ?DEFAULT_CALL_MACROS
            ++ ?USER_MACROS
            ++ ?COMMON_TEMPLATE_MACROS
           ]
@@ -80,7 +80,7 @@ process_req(DataJObj) ->
     Macros = [{<<"system">>, teletype_util:system_params()}
              ,{<<"account">>, teletype_util:account_params(DataJObj)}
              ,{<<"missed_call">>,  build_missed_call_data(DataJObj)}
-              | teletype_util:build_call_data(DataJObj, 'undefined')
+             | teletype_util:build_call_data(DataJObj, 'undefined')
              ],
 
     %% Populate templates

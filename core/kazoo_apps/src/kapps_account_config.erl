@@ -446,7 +446,7 @@ set_account_or_merge_global(AccountId, Category, Key, Value) ->
 
     AccountConfig = kz_json:set_values([{kz_doc:path_id(), kapps_config_util:account_doc_id(Category)}
                                        ,{Key, Value}
-                                        | updates_for_saving(AccountId, GlobalConfig)
+                                       | updates_for_saving(AccountId, GlobalConfig)
                                        ]
                                       ,GlobalConfig
                                       ),

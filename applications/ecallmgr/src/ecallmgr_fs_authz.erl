@@ -217,7 +217,7 @@ authorize_account(JObj, Data, CallId, Node) ->
     lager:debug("channel is authorized by account ~s as ~s", [AccountId, Type]),
     P = kzd_freeswitch:set_ccvs(Data, [{<<"Account-ID">>, AccountId}
                                       ,{<<"Account-Billing">>, Type}
-                                       | maybe_add_outbound_flags(ChanVars)
+                                      | maybe_add_outbound_flags(ChanVars)
                                       ]),
 
     authorize_reseller(JObj, P, CallId, Node).
@@ -381,7 +381,7 @@ maybe_update_callee_id(JObj, Acc) ->
                                               >>
              }
             ,{<<"Rate">>, Rate}
-             | Acc
+            | Acc
             ];
         'false' -> [{<<"Rate">>, Rate}|Acc]
     end.
@@ -406,7 +406,7 @@ authz_req(Data) ->
       ,{<<"From-Network-Port">>, kzd_freeswitch:from_network_port(Data)}
       ,{<<"Custom-Channel-Vars">>, kzd_freeswitch:ccvs(Data)}
       ,{<<"Custom-Application-Vars">>, kzd_freeswitch:cavs(Data)}
-       | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).
 
 -spec outbound_flags(kzd_freeswitch:data()) -> [binary()] | 'undefined'.
@@ -428,7 +428,7 @@ rating_req(CallId, Data) ->
                            ,{<<"Outbound-Flags">>, outbound_flags(Data)}
                            ,{<<"Resource-ID">>, kzd_freeswitch:ccv(Data, <<"Resource-ID">>)}
                            ,{<<"Authorizing-Type">>, kzd_freeswitch:authorizing_type(Data)}
-                            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                            ]).
 
 -spec is_emergency_number(kzd_freeswitch:data()) -> authz_reply().

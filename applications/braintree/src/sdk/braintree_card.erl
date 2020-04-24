@@ -246,22 +246,22 @@ record_to_xml(#bt_card{}=Card, ToString) ->
                  case props:get_value('options', P) of
                      'undefined' ->
                          [{'options', [{'update-existing-token', Token}]}
-                          | props:delete('token', P)
+                         | props:delete('token', P)
                          ];
                      Options ->
                          [{'options', [{'update-existing-token', Token}|Options]}
-                          | props:delete('token', props:delete('options', P))
+                         | props:delete('token', props:delete('options', P))
                          ]
                  end;
             (#bt_card{update_existing='true'}, P) ->
                  case props:get_value('options', P) of
                      'undefined' ->
                          [{'options', [{'update-existing-token', Card#bt_card.token}]}
-                          | props:delete('token', P)
+                         | props:delete('token', P)
                          ];
                      Options ->
                          [{'options', [{'update-existing-token', Card#bt_card.token}|Options]}
-                          | props:delete('token', props:delete('options', P))
+                         | props:delete('token', props:delete('options', P))
                          ]
                  end;
             (_, P) -> P

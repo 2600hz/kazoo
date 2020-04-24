@@ -26,7 +26,7 @@ request_media_url(MediaName, Type) ->
                  ,{<<"Stream-Type">>, Type}
                  ,{<<"Call-ID">>, kz_binary:rand_hex(8)}
                  ,{<<"Msg-ID">>, kz_binary:rand_hex(8)}
-                  | kz_api:default_headers(<<"media">>, <<"media_req">>, ?APP_NAME, ?APP_VERSION)
+                 | kz_api:default_headers(<<"media">>, <<"media_req">>, ?APP_NAME, ?APP_VERSION)
                  ]),
     kz_amqp_worker:call_collect(MsgProps
                                ,fun kapi_media:publish_req/1

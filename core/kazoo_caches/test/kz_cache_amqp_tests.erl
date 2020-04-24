@@ -111,7 +111,7 @@ create_db_payload(Db, ChangeType) ->
                       ,{<<"ID">>, Db}
                       ,{<<"Database">>, Db}
                       ,{<<"Msg-ID">>, kz_binary:rand_hex(5)}
-                       | kz_api:default_headers(?KAPI_CONF_CATEGORY, ChangeType, <<"test">>, <<"1">>)
+                      | kz_api:default_headers(?KAPI_CONF_CATEGORY, ChangeType, <<"test">>, <<"1">>)
                       ]).
 
 send_document_change(Db, DocId, ChangeType) ->
@@ -124,5 +124,5 @@ create_payload_json(Db, DocId, ChangeType) ->
                       ,{<<"Database">>, Db}
                       ,{<<"Type">>, ?CHANGE_TYPE}
                       ,{<<"Msg-ID">>, kz_binary:rand_hex(5)}
-                       | kz_api:default_headers(?KAPI_CONF_CATEGORY, ChangeType, <<"test">>, <<"1">>)
+                      | kz_api:default_headers(?KAPI_CONF_CATEGORY, ChangeType, <<"test">>, <<"1">>)
                       ]).

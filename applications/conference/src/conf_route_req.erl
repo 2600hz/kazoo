@@ -50,7 +50,7 @@ send_route_response(JObj, Call, Conference) ->
                                   ,{<<"Method">>, <<"park">>}
                                   ,{<<"Custom-Channel-Vars">>, CCVs}
                                   ,{<<"Custom-Application-Vars">>, kapps_call:custom_application_vars(Call)}
-                                   | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                                  | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                                   ]),
     ServerId = kz_api:server_id(JObj),
     Publisher = fun(P) -> kapi_route:publish_resp(ServerId, P) end,

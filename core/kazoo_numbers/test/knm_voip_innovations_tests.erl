@@ -55,7 +55,7 @@ api() ->
                            ],
         Options <- [[{quantity, Limit}
                     ,{prefix, Prefix}
-                     | Options0
+                    | Options0
                     ]],
         Results <- [knm_search:find(Options)]
     ].

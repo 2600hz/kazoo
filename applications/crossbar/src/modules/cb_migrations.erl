@@ -108,7 +108,7 @@ load_migration_summary(MigId, Context) ->
 render_migration_summary(Id, Desc, Context) ->
     Base = [{<<"id">>, Id}
            ,{<<"description">>, Desc}
-            | get_migration_performed(Id, Context)
+           | get_migration_performed(Id, Context)
            ],
     Resp = kz_json:from_list(Base),
 

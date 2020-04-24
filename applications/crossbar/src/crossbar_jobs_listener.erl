@@ -90,7 +90,7 @@ publish(AccountId, JobId, ReqId) ->
                              ]),
     kz_amqp_worker:cast([{<<"Delegate-Message">>, Work}
                         ,{<<"Msg-ID">>, ReqId}
-                         | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                         ]
                        ,fun(API) -> kapi_delegate:publish_delegate(?APP_ROUTING, API) end
                        ).
