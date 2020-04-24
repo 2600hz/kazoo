@@ -88,11 +88,10 @@ unsolicited_owner_mwi_update(Account, OwnerId) ->
 unsolicited_owner_mwi_update(_AccountDb, _OwnerId, 'false') ->
     lager:debug("unsolicited mwi updated disabled : ~s", [_AccountDb]);
 unsolicited_owner_mwi_update(AccountDb, OwnerId, 'true') ->
-    ViewOptions = [{'key', [<<"by_owner">>, OwnerId, <<"device">>]}
-                  ,'include_docs'
-                  ],
-    case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, ViewOptions) of
-        {'ok', JObjs} ->
+    case kz_attributes:owned_by_docs(OwnerId, <<"device">>, AccountDb) of
+        [] ->
+            lager:debug("found no devices owned by ~s", [OwnerId]);
+        JObjs ->
             {New, Saved} = vm_count_by_owner(AccountDb, OwnerId),
             AccountId = kzs_util:format_account_id(AccountDb),
             lists:foreach(fun(JObj) ->
@@ -100,9 +99,7 @@ unsolicited_owner_mwi_update(AccountDb, OwnerId, 'true') ->
                                   maybe_send_unsolicited_mwi_update(Doc, AccountId, New, Saved)
                           end
                          ,JObjs
-                         );
-        {'error', _R} ->
-            lager:warning("failed to find devices owned by ~s: ~p", [OwnerId, _R])
+                         )
     end.
 
 -spec maybe_send_unsolicited_mwi_update(kz_json:object(), kz_term:ne_binary(), integer(), integer()) -> 'ok'.

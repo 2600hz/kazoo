@@ -16,7 +16,6 @@
         ,unbind_from_call_events/1
         ,unbind_from_call_events/2
         ,agents_in_queue/2
-        ,agent_devices/2
         ,proc_id/0, proc_id/1, proc_id/2
         ,queue_presence_update/2
         ,agent_presence_update/2
@@ -96,16 +95,6 @@ agents_in_queue(AcctDb, QueueId) ->
         {'ok', []} -> [];
         {'error', _E} -> lager:debug("failed to lookup agents for ~s: ~p", [QueueId, _E]), [];
         {'ok', As} -> [kz_json:get_value(<<"value">>, A) || A <- As]
-    end.
-
--spec agent_devices(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:objects().
-agent_devices(AcctDb, AgentId) ->
-    Options = [{'key', [<<"by_owner">>, AgentId, <<"device">>]}
-              ,'include_docs'
-              ],
-    case kz_datamgr:get_results(AcctDb, ?KZ_VIEW_LIST_UNIFORM, Options) of
-        {'ok', Devices} -> [kz_json:get_value(<<"doc">>, Dev) || Dev <- Devices];
-        {'error', _} -> []
     end.
 
 -spec get_endpoints(kapps_call:call(), kz_term:ne_binary() | kazoo_data:get_results_return()) ->

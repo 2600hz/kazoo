@@ -1,1 +1,3 @@
 view_name, view_options, view_file_name
+crossbar_listings/uniform, [{key,[<<"by_owner">>,<<"user0000000000000000000000000004">>,<<"device">>]}], crossbar_listings+uniform-a9a1e79fa3faaf96ee2f1da6f620c55e.json
+crossbar_listings/uniform, [{key,[<<"by_owner">>,<<"user0000000000000000000000000005">>,<<"device">>]}], crossbar_listings+uniform-7b1db8d5e04594b6598334b307db9e06.json

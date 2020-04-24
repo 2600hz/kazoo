@@ -12,7 +12,6 @@
 -module(cb_modules_util).
 
 -export([pass_hashes/2
-        ,get_devices_owned_by/2
         ,cavs_from_context/1
 
         ,attachment_name/2
@@ -61,20 +60,6 @@ bind(Module, Bindings) ->
 pass_hashes(Username, Password) ->
     kzd_module_utils:pass_hashes(Username, Password).
 
-
--spec get_devices_owned_by(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:objects().
-get_devices_owned_by(OwnerID, DB) ->
-    Options = [{'key', [<<"by_owner">>, OwnerID, <<"device">>]}
-              ,'include_docs'
-              ],
-    case kz_datamgr:get_results(DB, ?KZ_VIEW_LIST_UNIFORM, Options) of
-        {'ok', JObjs} ->
-            lager:debug("found ~b devices owned by ~s", [length(JObjs), OwnerID]),
-            [kz_json:get_value(<<"doc">>, JObj) || JObj <- JObjs];
-        {'error', _R} ->
-            lager:debug("unable to fetch devices: ~p", [_R]),
-            []
-    end.
 
 -spec cavs_from_context(cb_context:context()) -> kz_term:proplist().
 cavs_from_context(Context) ->

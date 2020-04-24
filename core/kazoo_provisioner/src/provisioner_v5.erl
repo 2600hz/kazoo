@@ -166,12 +166,11 @@ update_user(AccountId, JObj, AuthToken) ->
 save_user(AccountId, JObj, AuthToken) ->
     _ = update_account(AccountId, AuthToken),
     AccountDb = kzs_util:format_account_db(AccountId),
-    Devices = kz_attributes:owned_by_docs(kz_doc:id(JObj), AccountDb),
     lists:foreach(fun(Device) ->
                           Settings = settings(Device),
                           maybe_save_device(Device, Settings, AccountId, AuthToken)
                   end
-                 ,Devices
+                 ,kz_attributes:owned_by_docs(kz_doc:id(JObj), <<"device">>, AccountDb)
                  ).
 
 -spec maybe_save_device(kzd_devices:doc(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) ->

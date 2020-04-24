@@ -120,7 +120,7 @@ generate_profile(EndpointId, AccountId, Endpoint, Options) ->
     Profile = [{<<"Domain-Name">>, AccountId}
               ,{<<"User-ID">>, EndpointId}
               ,{<<"Endpoint-Type">>, <<"user">>}
-              ,{<<"Members">>, owned_by_query(EndpointId, AccountId)}
+              ,{<<"Members">>, kz_attributes:owned_by(EndpointId, <<"device">>, AccountId)}
               ,{<<"Custom-Channel-Vars">>, CCVs}
               ,{<<"Custom-Profile-Vars">>, kz_json:from_list(CPVs)}
               ,{<<"Custom-SIP-Headers">>, SIPHeaders}
@@ -128,18 +128,6 @@ generate_profile(EndpointId, AccountId, Endpoint, Options) ->
               ,{<<"Expires">>, 360}
               ],
     {'ok', kz_json:from_list(Profile)}.
-
-
-
-
--spec owned_by_query(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_binaries().
-owned_by_query(OwnerId, AccountId) ->
-    ViewOptions = [{'key', [<<"by_owner">>, OwnerId, <<"device">>]}],
-    AccountDb = kzs_util:format_account_db(AccountId),
-    case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, ViewOptions) of
-        {'ok', JObjs} -> [kz_doc:id(JObj) || JObj <- JObjs];
-        {'error', _R} -> []
-    end.
 
 -spec is_call_forward_enabled(kz_json:object()) -> boolean().
 is_call_forward_enabled(Endpoint) ->

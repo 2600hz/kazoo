@@ -72,7 +72,6 @@
 
 -export([format_emergency_caller_id_number/1]).
 
--export([get_devices_by_owner/2]).
 -export([maybe_refresh_fs_xml/2
         ,refresh_fs_xml/1
         ]).
@@ -1038,8 +1037,8 @@ maybe_refresh_fs_xml('user', Context, 'true') ->
     Doc = cb_context:doc(Context),
     AccountDb = cb_context:db_name(Context),
     Realm = kzd_accounts:fetch_realm(AccountDb),
-    Id = kz_doc:id(Doc),
-    Devices = get_devices_by_owner(AccountDb, Id),
+    UserId = kz_doc:id(Doc),
+    Devices = kz_attributes:owned_by_docs(UserId, <<"device">>, AccountDb),
     lists:foreach(fun (DevDoc) -> refresh_fs_xml(Realm, DevDoc) end, Devices);
 maybe_refresh_fs_xml('device', Context, Precondition) ->
     Doc   = cb_context:doc(Context),
@@ -1134,19 +1133,6 @@ refresh_fs_xml(Realm, Doc) ->
                    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                   ],
             kz_amqp_worker:cast(Req, fun kapi_switch:publish_fs_xml_flush/1)
-    end.
-
--spec get_devices_by_owner(kz_term:ne_binary(), kz_term:api_binary()) -> kz_term:ne_binaries().
-get_devices_by_owner(_AccountDb, 'undefined') -> [];
-get_devices_by_owner(AccountDb, OwnerId) ->
-    ViewOptions = [{'key', [<<"by_owner">>, OwnerId, <<"device">>]},
-                   'include_docs'
-                  ],
-    case kz_datamgr:get_results(AccountDb, ?KZ_VIEW_LIST_UNIFORM, ViewOptions) of
-        {'ok', JObjs} -> [kz_json:get_value(<<"doc">>, JObj) || JObj <- JObjs];
-        {'error', _R} ->
-            lager:warning("unable to find documents owned by ~s: ~p", [OwnerId, _R]),
-            []
     end.
 
 -spec get_account_devices(kz_term:api_binary()) -> kz_json:objects().

@@ -123,19 +123,9 @@ count_by_owner(?MATCH_ACCOUNT_ENCODED(_)=AccountDb, OwnerId) ->
     AccountId = kzs_util:format_account_id(AccountDb),
     count_by_owner(AccountId, OwnerId);
 count_by_owner(AccountId, OwnerId) ->
-    ViewOptions = [{'key', [<<"by_owner">>, OwnerId, <<"vmbox">>]}],
-    case kz_datamgr:get_results(kvm_util:get_db(AccountId), ?KZ_VIEW_LIST_UNIFORM, ViewOptions) of
-        {'ok', []} ->
-            lager:info("no voicemail boxes belonging to user ~s found", [OwnerId]),
-            {0, 0};
-        {'ok', Boxes} ->
-            BoxIds = [kz_doc:id(Box) || Box <- Boxes],
-            lager:debug("found ~p voicemail boxes belonging to user ~s", [length(BoxIds), OwnerId]),
-            sum_owner_mailboxes(AccountId, BoxIds, {0, 0});
-        {'error', _R} ->
-            lager:info("unable to lookup vm counts by owner: ~p", [_R]),
-            {0, 0}
-    end.
+    BoxIds = kz_attributes:owned_by(OwnerId, <<"vmbox">>, AccountId),
+    lager:debug("found ~p voicemail boxes belonging to user ~s", [length(BoxIds), OwnerId]),
+    sum_owner_mailboxes(AccountId, BoxIds, {0, 0}).
 
 -spec sum_owner_mailboxes(kz_term:ne_binary(), kz_term:ne_binaries(), non_deleted_tuple()) -> non_deleted_tuple().
 sum_owner_mailboxes(_, [], Results) -> Results;

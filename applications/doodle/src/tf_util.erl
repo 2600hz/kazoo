@@ -94,10 +94,9 @@ create_im_endpoints(<<"device">>, Endpoint, Properties, Im) ->
     [create_im_endpoint(Endpoint, Properties, Im)];
 create_im_endpoints(<<"user">>, Endpoint, Properties, Im) ->
     OwnerId = kzd_endpoint:id(Endpoint),
-    EndpointIds = [kz_doc:id(EP) || EP
-                                        <- kz_attributes:owned_by_docs(OwnerId, kapps_im:account_id(Im))
-                                        ,<<"device">> =:= kz_doc:type(EP)
-                                        ,lists:member(kzd_devices:device_type(EP), ?SIP_MSG_DEVICES)
+    EndpointIds = [kz_doc:id(EP) ||
+                   EP <- kz_attributes:owned_by_docs(OwnerId, <<"device">>, kapps_im:account_id(Im)),
+                   lists:member(kzd_devices:device_type(EP), ?SIP_MSG_DEVICES)
                   ],
     EPs = [kz_endpoint:get(EndpointId, kapps_im:account_id(Im)) || EndpointId <- EndpointIds],
     [create_im_endpoint(EP, Properties, Im) || {'ok', EP} <- EPs];

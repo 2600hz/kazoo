@@ -288,7 +288,7 @@ maybe_load_user_devices(Context) ->
 -spec load_user_devices(cb_context:context()) -> cb_context:context().
 load_user_devices(Context) ->
     User = cb_context:doc(Context),
-    Devices = kz_attributes:owned_by_docs(kz_doc:id(User), cb_context:account_id(Context)),
+    Devices = kz_attributes:owned_by_docs(kz_doc:id(User), <<"device">>, cb_context:account_id(Context)),
     cb_context:set_doc(Context, Devices).
 
 -spec validate_action(cb_context:context()) -> cb_context:context().

@@ -161,7 +161,7 @@ move_agent_device(Call, AgentId, Device) ->
     DeviceId = kz_doc:id(Device),
 
     _ = case [kz_json:delete_key(<<"owner_id">>, D)
-              || D <- acdc_util:agent_devices(kapps_call:account_db(Call), AgentId),
+              || D <- kz_attributes:owned_by_docs(AgentId, <<"device">>, kapps_call:account_db(Call)),
                  kz_doc:id(D) =/= DeviceId
              ]
         of

@@ -529,25 +529,28 @@ presence_id(Endpoint, _Call, Default) ->
 %% @end
 %%------------------------------------------------------------------------------
 
--spec owned_by(kz_term:api_binary(), kapps_call:call()) -> kz_term:ne_binaries().
+-spec owned_by(kz_term:api_binary(), kz_term:ne_binary() | kapps_call:call()) -> kz_term:ne_binaries().
 owned_by('undefined', _) -> [];
-owned_by(OwnerId, Call) ->
-    AccountDb = kapps_call:account_db(Call),
+owned_by(OwnerId, <<AccountDb/binary>>) ->
     ViewOptions = [{'startkey', [<<"by_owner">>, OwnerId]}
                   ,{'endkey', [<<"by_owner">>, OwnerId, kz_json:new()]}
                   ],
-    owned_by_query(AccountDb, ViewOptions).
+    owned_by_query(AccountDb, ViewOptions);
+owned_by(OwnerId, Call) ->
+    owned_by(OwnerId, kapps_call:account_db(Call)).
 
--spec owned_by(kz_term:api_binary() | kz_term:api_binaries(), kz_term:ne_binary(), kapps_call:call()) -> kz_term:ne_binaries().
+-spec owned_by(kz_term:api_binary() | kz_term:api_binaries(), kz_term:ne_binary(), kz_term:ne_binary() | kapps_call:call()) -> kz_term:ne_binaries().
 owned_by('undefined', _, _) -> [];
-owned_by([_|_]=OwnerIds, Type, Call) ->
+owned_by([_|_]=OwnerIds, Type, <<AccountDb/binary>>) ->
     Keys = [[<<"by_owner">>, OwnerId, Type] ||
                OwnerId <- OwnerIds
            ],
-    owned_by_query(kapps_call:account_db(Call), [{'keys', Keys}]);
-owned_by(OwnerId, Type, Call) ->
+    owned_by_query(AccountDb, [{'keys', Keys}]);
+owned_by(OwnerId, Type, <<AccountDb/binary>>) ->
     ViewOptions = [{'key', [<<"by_owner">>, OwnerId, Type]}],
-    owned_by_query(kapps_call:account_db(Call), ViewOptions).
+    owned_by_query(AccountDb, ViewOptions);
+owned_by(OwnerIds, Type, Call) ->
+    owned_by(OwnerIds, Type, kapps_call:account_db(Call)).
 
 -spec owned_by_docs(kz_term:api_binary(), kz_term:ne_binary() | kapps_call:call()) ->
           kz_term:api_objects().
@@ -562,18 +565,20 @@ owned_by_docs(OwnerId, <<Account/binary>>) ->
 owned_by_docs(OwnerId, Call) ->
     owned_by_docs(OwnerId, kapps_call:account_id(Call)).
 
--spec owned_by_docs(kz_term:api_binary() | kz_term:api_binaries(), kz_term:ne_binary(), kapps_call:call()) -> kz_term:ne_objects().
+-spec owned_by_docs(kz_term:api_binary() | kz_term:api_binaries(), kz_term:ne_binary(), kz_term:ne_binary() | kapps_call:call()) -> kz_term:ne_objects().
 owned_by_docs('undefined', _, _) -> [];
-owned_by_docs([_|_]=OwnerIds, Type, Call) ->
+owned_by_docs([_|_]=OwnerIds, Type, <<AccountDb/binary>>) ->
     ViewOptions = [{'keys', [[<<"by_owner">>, OwnerId, Type] || OwnerId <- OwnerIds]}
                   ,'include_docs'
                   ],
-    owned_by_query(kapps_call:account_db(Call), ViewOptions);
-owned_by_docs(OwnerId, Type, Call) ->
+    owned_by_query(AccountDb, ViewOptions);
+owned_by_docs(OwnerId, Type, <<AccountDb/binary>>) ->
     ViewOptions = [{'key', [<<"by_owner">>, OwnerId, Type]}
                   ,'include_docs'
                   ],
-    owned_by_query(kapps_call:account_db(Call), ViewOptions).
+    owned_by_query(AccountDb, ViewOptions);
+owned_by_docs(OwnerIds, Type, Call) ->
+    owned_by_docs(OwnerIds, Type, kapps_call:account_db(Call)).
 
 -spec owned_by_query(kz_term:ne_binary(), kz_datamgr:view_options()) -> kz_term:ne_binaries() | kz_json:objects().
 owned_by_query(AccountDb, ViewOptions) ->
