@@ -6,6 +6,8 @@
 | `app/1` | `(AppNameOrId)` | |
 | `apps/0` |  | |
 | `create_account/4` | `(AccountName,Realm,Username,Password)` | |
+| `create_account/5` | `(AccountName,Realm,Username,Password,AccountId)` | |
+| `create_account/6` | `(AccountName,Realm,Username,Password,AccountId,UserId)` | |
 | `db_init/0` |  | |
 | `demote_account/1` | `(AccountId)` | |
 | `descendants_count/0` |  | |
