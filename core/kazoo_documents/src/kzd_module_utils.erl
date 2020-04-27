@@ -30,9 +30,8 @@
        ,kapps_config:get_binary(?CROSSBAR_CONFIG_CAT, <<"stability_level">>)
        ).
 
-
 %%------------------------------------------------------------------------------
-%% @doc If set, Normalize the docs emergency caller id.
+%% @doc If set, Normalize the doc's emergency caller id.
 %% @end
 %%------------------------------------------------------------------------------
 -spec maybe_normalize_emergency_caller_id_number(kz_doc:doc()) -> kz_doc:doc().
@@ -56,7 +55,6 @@ pass_hashes(Username, Password) ->
     MD5 = kz_term:to_hex_binary(crypto:hash('md5', Creds)),
     {MD5, SHA1}.
 
-
 %%------------------------------------------------------------------------------
 %% @doc Validate a Doc against a defined schema.
 %% OnSuccess function will only be called if the Doc passes schema validation.
@@ -65,16 +63,16 @@ pass_hashes(Username, Password) ->
 -spec validate_schema(kz_term:ne_binary() | kzd_schema:doc(), kazoo_documents:doc_validation_acc()
                      ,kazoo_documents:doc_validation_after_fun()) -> kazoo_documents:doc_validation_acc().
 validate_schema(<<Schema/binary>>, {Doc, ValidationErrors}, OnSuccess) ->
-    lager:debug("validating payload against schema ~p", [Schema]),
+    lager:debug("validating payload against schema ~s", [Schema]),
     SchemaRequired = ?SHOULD_ENSURE_SCHEMA_IS_VALID,
 
     case kz_json_schema:load(Schema) of
         {'ok', SchemaJObj} -> validate_schema(SchemaJObj, {Doc, ValidationErrors}, OnSuccess);
         {'error', 'not_found'} when SchemaRequired ->
-            lager:error("~p schema not found and is required", [Schema]),
+            lager:error("~s schema not found and is required", [Schema]),
             throw({'system_error', <<"schema '", Schema/binary, "' not found.">>});
         {'error', 'not_found'} ->
-            lager:error("~p schema not found, assuming schema validation passed, continuing anyway", [Schema]),
+            lager:error("~s schema not found, assuming schema validation passed, continuing anyway", [Schema]),
             validate_schema_passed({Doc, ValidationErrors}, OnSuccess)
     end;
 validate_schema(SchemaJObj, {Doc, ValidationErrors}, OnSuccess) ->

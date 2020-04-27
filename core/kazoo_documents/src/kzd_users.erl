@@ -1053,7 +1053,7 @@ do_validation(AccountId, UserId, ReqJObj, ValidateFuns) ->
                ).
 
 %%------------------------------------------------------------------------------
-%% @doc If set, Normalize the users username by converting it to lower case.
+%% @doc If set, Normalize the user's username by converting it to lower case.
 %% @end
 %%------------------------------------------------------------------------------
 -spec maybe_normalize_username(kz_term:api_ne_binary(), kz_term:api_ne_binary(), kazoo_documents:doc_validation_acc()) ->
@@ -1068,7 +1068,7 @@ maybe_normalize_username(_AccountId, _UserId, {Doc, Errors}) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc If set, Validate the users username is unique within the account.
+%% @doc If set, Validate the user's username is unique within the account.
 %% @end
 %%------------------------------------------------------------------------------
 -spec maybe_validate_username_is_unique(kz_term:api_ne_binary(), kz_term:api_ne_binary(), kazoo_documents:doc_validation_acc()) ->
@@ -1097,7 +1097,7 @@ maybe_validate_username_is_unique(AccountId, UserId, {Doc, Errors}) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc Return true if a users username is unique within an account, else
+%% @doc Return true if a user's username is unique within an account, else
 %% return false.
 %% @end
 %%------------------------------------------------------------------------------
@@ -1108,7 +1108,6 @@ is_username_unique(AccountId, UserId, Username) ->
     case kz_datamgr:get_results(AccountDb, ?LIST_BY_USERNAME, ViewOptions) of
         {'ok', []} -> 'true';
         {'ok', [JObj]} -> kz_doc:id(JObj) =:= UserId;
-        {'error', 'not_found'} -> 'true';
         _Else -> 'false'
     end.
 
@@ -1125,9 +1124,9 @@ maybe_normalize_emergency_caller_id_number(_AccountId, _UserId, {Doc, Errors}) -
 %% @doc Import user credentials if `<<"credentials">>' key is set.
 %% @end
 %%------------------------------------------------------------------------------
--spec maybe_import_credintials(kz_term:api_ne_binary(), kz_term:api_ne_binary(), kazoo_documents:doc_validation_acc()) ->
+-spec maybe_import_credentials(kz_term:api_ne_binary(), kz_term:api_ne_binary(), kazoo_documents:doc_validation_acc()) ->
           kazoo_documents:doc_validation_acc().
-maybe_import_credintials(_AccountId, _UserId, {Doc, Errors}) ->
+maybe_import_credentials(_AccountId, _UserId, {Doc, Errors}) ->
     case kz_json:get_ne_value(<<"credentials">>, Doc) of
         'undefined' -> {Doc, Errors};
         Creds ->
@@ -1140,7 +1139,7 @@ maybe_import_credintials(_AccountId, _UserId, {Doc, Errors}) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc Verify the user doc against the user doc schema
+%% @doc Verify the user doc against the user doc schema.
 %% On Success merge the private fields from the current user doc into Doc.
 %% @end
 %%------------------------------------------------------------------------------
@@ -1152,8 +1151,8 @@ validate_user_schema(AccountId, UserId, {Doc, Errors}) ->
 
 %%------------------------------------------------------------------------------
 %% @doc Executed after `validate_user_schema/3' if it passes schema validation.
-%% If the UserId is defined then merge the current user docs private fields into
-%% Doc.
+%% If the UserId is defined then merge the current user doc's private fields
+%% into Doc.
 %% @end
 %%------------------------------------------------------------------------------
 -spec on_successful_schema_validation(kz_term:api_ne_binary(), kz_term:api_ne_binary(), kazoo_documents:doc_validation_acc()) ->
@@ -1162,14 +1161,14 @@ on_successful_schema_validation(AccountId, 'undefined', {Doc, Errors}) ->
     lager:debug("new user doc passed schema validation"),
     Props = [{<<"pvt_type">>, type()}],
     JObj = kz_json:set_values(Props, Doc),
-    maybe_import_credintials(AccountId, 'undefined', {JObj, Errors});
+    maybe_import_credentials(AccountId, 'undefined', {JObj, Errors});
 on_successful_schema_validation(AccountId, UserId, {Doc, Errors}) ->
     lager:debug("updated user doc passed schema validation"),
     UpdatedDoc = maybe_merge_current_private_fields(AccountId, UserId, Doc),
-    maybe_import_credintials(AccountId, UserId, {UpdatedDoc, Errors}).
+    maybe_import_credentials(AccountId, UserId, {UpdatedDoc, Errors}).
 
 %%------------------------------------------------------------------------------
-%% @doc Merge the current (cached) docs private fields into Doc. If the current
+%% @doc Merge the current (cached) doc's private fields into Doc. If the current
 %% doc can not be found by Account Id and User Id, then return the unaltered
 %% Doc.
 %% @end
@@ -1194,13 +1193,13 @@ maybe_set_identity_secret(_AccountId, _UserId, {Doc, []=Errors}) ->
     case kz_auth_identity:has_doc_secret(Doc) of
         'true' -> {Doc, Errors};
         'false' ->
-            lager:debug("initalizing identity secret"),
+            lager:debug("initializing identity secret"),
             {kz_auth_identity:reset_doc_secret(Doc), Errors}
     end;
 maybe_set_identity_secret(_AccountId, _UserId, ValidateAcc) -> ValidateAcc.
 
 %%------------------------------------------------------------------------------
-%% @doc If set, Validate the users hotdesk id is unique within the account.
+%% @doc If set, Validate the user's hotdesk id is unique within the account.
 %% @end
 %%------------------------------------------------------------------------------
 -spec maybe_validate_hotdesk_id_is_unique(kz_term:api_ne_binary(), kz_term:api_ne_binary(), kazoo_documents:doc_validation_acc()) ->
@@ -1229,7 +1228,7 @@ maybe_validate_hotdesk_id_is_unique(AccountId, UserId, {Doc, Errors}) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc Return true if a users hotdesk id is unique within an account, else
+%% @doc Return true if a user's hotdesk id is unique within an account, else
 %% return false.
 %% @end
 %%------------------------------------------------------------------------------
@@ -1240,7 +1239,6 @@ is_hotdesk_id_unique(AccountId, UserId, HotdeskId) ->
     case kz_datamgr:get_results(AccountDb, ?LIST_BY_HOTDESK_ID, ViewOptions) of
         {'ok', []} -> 'true';
         {'ok', [JObj]} -> kz_doc:id(JObj) =:= UserId;
-        {'error', 'not_found'} -> 'true';
         _Else -> 'false'
     end.
 
@@ -1349,8 +1347,8 @@ maybe_generate_creds_hash('true', {Doc, Errors}) ->
     rehash_creds(Username, generate_password(), {UpdatedDoc, Errors}).
 
 %%------------------------------------------------------------------------------
-%% @doc Generate a random username begining with `user_' and followed by 8
-%% random charters.
+%% @doc Generate a random username beginning with `user_' and followed by 8
+%% random characters.
 %% @end
 %%------------------------------------------------------------------------------
 -spec generate_username() -> kz_term:ne_binary().
@@ -1368,7 +1366,7 @@ generate_password() ->
     kz_binary:rand_hex(32).
 
 %%------------------------------------------------------------------------------
-%% @doc Remove `pvt_md5_auth' and `pvt_sha1_auth' from a users doc.
+%% @doc Remove `pvt_md5_auth' and `pvt_sha1_auth' from a user's doc.
 %% @end
 %%------------------------------------------------------------------------------
 -spec remove_creds(doc()) -> doc().
