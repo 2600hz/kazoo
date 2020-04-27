@@ -238,7 +238,7 @@ help_14316() ->
     lager:info("created resp: ~s", [CreatedResp]),
 
     %% The data cache isn't populated right away, give it a second
-    timer:sleep(50),
+    timer:sleep(100),
 
     StoreURL = kapps_call_recording:should_store_recording(AccountId, 'undefined'),
     {'true', 'local'} = StoreURL,
@@ -254,6 +254,8 @@ help_14316() ->
     'true' = has_expected_plan(AccountId, <<"mailbox_message">>, URL),
 
     cleanup(API),
+
+    timer:sleep(100),
 
     has_expected_plan(AccountId, <<"call_recording">>, 'undefined'),
     has_expected_plan(AccountId, <<"mailbox_message">>, 'undefined'),
