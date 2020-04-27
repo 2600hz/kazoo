@@ -21,10 +21,11 @@
 -export([init/0
         ,reload/0, reload/1, reload/2
         ,flush/0
-        ,handle_created/1, handle_deleted/1
         ]).
 
 -export([reset_system_dataplan/0]).
+
+-on_load(initx/0).
 
 -include("kz_data.hrl").
 
@@ -560,6 +561,12 @@ init() ->
     reload(),
     bind().
 
+-spec initx() -> 'ok'.
+initx() ->
+    lager:info("reloading " ?MODULE_STRING),
+    kazoo_bindings:flush_mod(?MODULE),
+    init().
+
 -spec bind() -> 'ok'.
 -ifdef(TEST).
 bind() -> 'ok'.
@@ -570,8 +577,8 @@ handle_created(_) -> 'ok'.
 handle_deleted(_) -> 'ok'.
 -else.
 bind() ->
-    Bindings = [{<<"doc_created">>, 'handle_created'}
-               ,{<<"doc_deleted">>, 'handle_deleted'}
+    Bindings = [{<<"doc_created">>, fun handle_created/1}
+               ,{<<"doc_deleted">>, fun handle_deleted/1}
                ],
     lists:foreach(fun bind_for/1, Bindings).
 
