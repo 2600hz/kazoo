@@ -203,7 +203,7 @@ validate_storage_plan(Context, PlanId, ?HTTP_DELETE) ->
 %%------------------------------------------------------------------------------
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
-    maybe_update_plans(crossbar_doc:save(Context)).
+    crossbar_doc:save(Context).
 
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
 put(Context, ?PLANS_TOKEN) ->
@@ -216,7 +216,7 @@ put(Context, ?PLANS_TOKEN) ->
 %%------------------------------------------------------------------------------
 -spec post(cb_context:context()) -> cb_context:context().
 post(Context) ->
-    maybe_update_plans(crossbar_doc:save(Context)).
+    crossbar_doc:save(Context).
 
 -spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 post(Context, ?PLANS_TOKEN, _PlanId) ->
@@ -631,15 +631,3 @@ decode_json(RespBody) ->
             lager:debug("error body not JSON"),
             RespBody
     end.
-
--spec maybe_update_plans(cb_context:context()) -> cb_context:context().
-maybe_update_plans(Context) ->
-    maybe_update_plans(Context, cb_context:resp_status(Context)).
-
--spec maybe_update_plans(cb_context:context(), crossbar_status()) -> cb_context:context().
-maybe_update_plans(Context, 'success') ->
-    SavedDoc = cb_context:doc(Context),
-    _ = kzs_plan:handle_created(SavedDoc),
-    Context;
-maybe_update_plans(Context, _Status) ->
-    Context.
