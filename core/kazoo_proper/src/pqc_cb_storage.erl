@@ -198,7 +198,7 @@ help_14316() ->
     lager:info("created resp: ~s", [CreatedResp]),
 
     %% The data cache isn't populated right away, give it a second
-    %% timer:sleep(50),
+    timer:sleep(50),
 
     StoreURL = kzc_recording:should_store_recording(AccountId, 'undefined'),
     {'true', 'local'} = StoreURL,
