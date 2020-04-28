@@ -292,7 +292,7 @@ jobs:
           command: make build-ci-release
       - run:
           name: Running Kazoo release
-          command: KAZOO_CONFIG=${PWD}/rel/ci.config.ini REL="kazoo_apps" ACT="console" NODE_NAME_TYPE="-sname" make release
+          command: CODE_LOADING_MODE=interactive KAZOO_CONFIG=${PWD}/rel/ci.config.ini REL="kazoo_apps" ACT="console" NODE_NAME_TYPE="-sname" make release
       - run:
           name: Copying Relx config artifacts
           command: cp ${PWD}/rel/ci.relx.config $CIRCLE_ARTIFACTS/
