@@ -314,7 +314,8 @@ bind(Binding, Module, Fun) when is_binary(Binding) ->
           bind_result() | bind_results().
 bind([_|_]=Bindings, Module, Fun, Payload) ->
     [bind(Binding, Module, Fun, Payload) || Binding <- Bindings];
-bind(Binding, 'undefined' = Module, Fun, Payload) ->
+bind(Binding, Module, Fun, Payload)
+  when is_function(Fun, 1) ->
     lager:debug("adding binding ~s for ~p (~p)", [Binding, Fun, Payload]),
     gen_server:call(?SERVER, {'bind', Binding, Module, Fun, Payload}, 'infinity');
 bind(Binding, Module, Fun, Payload) ->
@@ -824,7 +825,8 @@ apply_map_responder(#kz_responder{module=M
     end.
 
 -spec apply_map_responder(atom(), atom() | fun(), payload()) -> any().
-apply_map_responder('undefined', Fun, Payload) ->
+apply_map_responder(_M, Fun, Payload)
+  when is_function(Fun, 1) ->
     Fun(Payload);
 apply_map_responder(M, F, Payload) ->
     erlang:apply(M, F, Payload).
