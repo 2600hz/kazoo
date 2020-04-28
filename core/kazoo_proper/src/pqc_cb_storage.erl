@@ -217,7 +217,7 @@ help_14316() ->
     'true' = has_expected_plan(AccountId, <<"mailbox_message">>, URL),
 
     %% just checking if we see the reload in kzs_plan
-    lager:info("hotload kzs_plan: ~p : ~p", [whereis(kazoo_bindings), kazoo_maintenance:hotload(kzs_dataplan)]),
+    lager:info("hotload kzs_plan: ~p : ~p", [whereis(kazoo_bindings), kazoo_maintenance:hotload(kzs_plan)]),
     %% give it time to reload
     timer:sleep(150),
 
