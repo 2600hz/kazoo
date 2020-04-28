@@ -211,9 +211,15 @@ help_14316() ->
     UpdatedResp = update(API, AccountId, UpdateStorage, 'false'),
     lager:info("updated resp: ~s", [UpdatedResp]),
 
+    %% The data cache isn't populated right away, give it a second
+    timer:sleep(50),
+
     'true' = has_expected_plan(AccountId, <<"mailbox_message">>, URL),
 
     cleanup(API),
+
+    %% The data cache isn't populated right away, give it a second
+    timer:sleep(50),
 
     has_expected_plan(AccountId, <<"call_recording">>, 'undefined'),
     has_expected_plan(AccountId, <<"mailbox_message">>, 'undefined'),
