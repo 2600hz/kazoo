@@ -31,7 +31,7 @@
        ).
 
 %%------------------------------------------------------------------------------
-%% @doc If set, Normalize the doc's emergency caller id.
+%% @doc If set, normalize the doc's emergency caller id.
 %% @end
 %%------------------------------------------------------------------------------
 -spec maybe_normalize_emergency_caller_id_number(kz_doc:doc()) -> kz_doc:doc().
@@ -56,7 +56,7 @@ pass_hashes(Username, Password) ->
     {MD5, SHA1}.
 
 %%------------------------------------------------------------------------------
-%% @doc Validate a Doc against a defined schema.
+%% @doc Validate a doc against a defined schema.
 %% `OnSuccess' function will only be called if the Doc passes schema validation.
 %% @end
 %%------------------------------------------------------------------------------
@@ -85,10 +85,10 @@ validate_schema(SchemaJObj, {Doc, ValidationErrors}, OnSuccess) ->
             lager:debug("schema validation passed"),
             validate_schema_passed({JObj, ValidationErrors}, OnSuccess);
         {'error', SchemaErrors} when Strict ->
-            lager:error("schema validation errors when strictly validating"),
+            lager:debug("schema validation errors when strictly validating"),
             validate_schema_failed({Doc, ValidationErrors}, SchemaErrors);
         {'error', SchemaErrors} ->
-            lager:error("schema validation errors but not strictly validating, trying to fix request"),
+            lager:debug("schema validation errors but not strictly validating, trying to fix request"),
             maybe_fix_js_types({Doc, ValidationErrors}, SchemaErrors, SchemaJObj, OnSuccess)
     catch
         ?STACKTRACE('error', 'function_clause', ST)
@@ -123,7 +123,7 @@ maybe_fix_js_types({Doc, ValidationErrors}, SchemaErrors, SchemaJObj, OnSuccess)
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc Add schama errors to doc validation errors.
+%% @doc Add schema errors to doc validation errors.
 %% @end
 %%------------------------------------------------------------------------------
 -spec validate_schema_failed(kazoo_documents:doc_validation_acc(), [jesse_error:error_reason()]) -> kazoo_documents:doc_validation_acc().
@@ -141,5 +141,5 @@ schema_error_to_doc_validation_error(Error) ->
     {_ErrorCode, _ErrorMessage, ErrorJObj} = kz_json_schema:error_to_jobj(Error),
     [Key] = kz_json:get_keys(ErrorJObj),
     {[JObj], [Code]} = kz_json:get_values(Key, ErrorJObj),
-    lager:error("adding schema error ~s ~s: ~p", [Key, Code, JObj]),
+    lager:debug("schema validation failied ~s ~s: ~p", [Key, Code, JObj]),
     {Key, Code, JObj}.

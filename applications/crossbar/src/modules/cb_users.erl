@@ -456,7 +456,7 @@ load_users_summary(Context) ->
 load_user(UserId, Context) -> crossbar_doc:load(UserId, Context, ?TYPE_CHECK_OPTION(kzd_users:type())).
 
 %%------------------------------------------------------------------------------
-%% @doc Validate a update request.
+%% @doc Validate an update request.
 %% @end
 %%------------------------------------------------------------------------------
 -spec validate_patch(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
