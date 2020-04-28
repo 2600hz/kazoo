@@ -19,7 +19,6 @@
 
 -define(KAZOO_DOCUMENTS_HRL, 'true').
 
-
 -type doc_validation_error() :: {kz_json:path(), kz_term:ne_binary(), kz_json:object()}.
 -type doc_validation_errors() :: [doc_validation_error()].
 -type doc_validation_acc() :: {kz_doc:doc(), doc_validation_errors()}.
@@ -29,5 +28,4 @@
              ,doc_validation_acc/0, doc_validation_fun/0
              ,doc_validation_after_fun/0
              ]).
-
 -endif.
