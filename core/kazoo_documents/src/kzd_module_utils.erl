@@ -138,8 +138,8 @@ validate_schema_failed({Doc, ValidationErrors}, SchemaErrors) ->
 %%------------------------------------------------------------------------------
 -spec validation_error(jesse_error:error_reason()) -> kazoo_documents:doc_validation_error().
 validation_error(Error) ->
-    {_ErrorCode, ErrorMessage, ErrorJObj} = kz_json_schema:error_to_jobj(Error),
+    {_ErrorCode, _ErrorMessage, ErrorJObj} = kz_json_schema:error_to_jobj(Error),
     [Key] = kz_json:get_keys(ErrorJObj),
-    {[JObj], [_Code]} = kz_json:get_values(Key, ErrorJObj),
-    lager:info("adding error prop ~s ~s: ~p", [Key, ErrorMessage, JObj]),
-    {Key, ErrorMessage, JObj}.
+    {[JObj], [Code]} = kz_json:get_values(Key, ErrorJObj),
+    lager:error("adding schema error ~s ~s: ~p", [Key, Code, JObj]),
+    {Key, Code, JObj}.
