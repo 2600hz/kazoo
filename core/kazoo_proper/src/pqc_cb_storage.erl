@@ -216,6 +216,13 @@ help_14316() ->
 
     'true' = has_expected_plan(AccountId, <<"mailbox_message">>, URL),
 
+    %% just checking if we see the reload in kzs_plan
+    kazoo_maintenance:hotload(kzs_dataplan),
+    %% give it time to reload
+    timer:sleep(150),
+
+    'true' = has_expected_plan(AccountId, <<"mailbox_message">>, URL),
+
     cleanup(API),
 
     %% The data cache isn't populated right away, give it a second
