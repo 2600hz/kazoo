@@ -396,8 +396,8 @@ token_authentication_reply(Id, Props, Node, Endpoint) ->
     AccountId = kzd_endpoint:account_id(Endpoint),
     PresenceId = presence_id(AccountId, Endpoint),
     CCVs = [{<<"Account-ID">>, AccountId}
-           ,{<<"Authorization-ID">>, kzd_endpoint:id(Endpoint)}
-           ,{<<"Authorization-Type">>, kzd_endpoint:type(Endpoint)}
+           ,{<<"Authorizing-ID">>, kzd_endpoint:id(Endpoint)}
+           ,{<<"Authorizing-Type">>, kzd_endpoint:type(Endpoint)}
            ,{<<"Owner-ID">>, kzd_endpoint:id(Endpoint)}
            ,{<<"Realm">>, kzd_accounts:fetch_realm(AccountId)}
            ,{<<"Presence-ID">>, PresenceId}
