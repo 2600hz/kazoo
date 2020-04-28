@@ -20,7 +20,7 @@
 
 -export([reset_system_dataplan/0]).
 
--on_load(initx/0).
+-on_load(onload/0).
 
 -include("kz_data.hrl").
 
@@ -487,15 +487,21 @@ start_connection(Tag, Params) ->
 
 -spec init() -> 'ok'.
 init() ->
-    lager:debug("initializing plans"),
+    %% bootstrap calls this
+    %% should we remove it ?
+    lager:debug("initializing plans").
+
+-spec onload() -> 'ok'.
+onload() ->
+    _ = kz_util:spawn(fun onload/1, [whereis(kazoo_bindings)]),
+    lager:info("loaded " ?MODULE_STRING).
+
+-spec onload(pid() | undefined) -> 'ok'.
+onload(undefined) -> 'ok';
+onload(_Pid) ->
+    kazoo_bindings:flush_mod(?MODULE),
     reload(),
     bind().
-
--spec initx() -> 'ok'.
-initx() ->
-    lager:info("reloading " ?MODULE_STRING),
-    kazoo_bindings:flush_mod(?MODULE),
-    init().
 
 -spec bind() -> 'ok'.
 -ifdef(TEST).
