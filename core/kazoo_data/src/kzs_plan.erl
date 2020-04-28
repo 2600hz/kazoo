@@ -487,30 +487,24 @@ start_connection(Tag, Params) ->
 
 -spec init() -> 'ok'.
 init() ->
-    %% bootstrap calls this
-    %% should we remove it ?
-    lager:debug("initializing plans").
-
--spec onload() -> 'ok'.
-onload() ->
-    _ = kz_util:spawn(fun onload/1, [whereis(kazoo_bindings)]),
-    lager:info("loaded " ?MODULE_STRING).
-
--spec onload(pid() | undefined) -> 'ok'.
-onload(undefined) -> 'ok';
-onload(_Pid) ->
+    lager:debug("initializing plans"),
     kazoo_bindings:flush_mod(?MODULE),
     reload(),
     bind().
 
+-spec onload() -> 'ok'.
+onload() ->
+    _ = case whereis(kazoo_bindings) of
+            undefined -> ok;
+            _Pid ->
+                lager:debug("module ~s reloaded", [?MODULE_MAME]),
+                kz_util:spawn(fun init/0)
+        end,
+    'ok'.
+
 -spec bind() -> 'ok'.
 -ifdef(TEST).
 bind() -> 'ok'.
--spec handle_created(any()) -> 'ok'.
-handle_created(_) -> 'ok'.
-
--spec handle_deleted(any()) -> 'ok'.
-handle_deleted(_) -> 'ok'.
 -else.
 bind() ->
     Bindings = [{<<"doc_created">>, fun handle_created/1}
