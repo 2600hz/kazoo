@@ -497,7 +497,7 @@ onload() ->
     _ = case whereis(kazoo_bindings) of
             undefined -> ok;
             _Pid ->
-                lager:debug("module ~s reloaded", [?MODULE_MAME]),
+                lager:debug("module ~s reloaded", [?MODULE_STRING]),
                 kz_util:spawn(fun init/0)
         end,
     'ok'.
