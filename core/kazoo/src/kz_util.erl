@@ -239,7 +239,7 @@ calling_process() ->
               {'ok', KApp} -> KApp;
               'undefined' -> Module
           end,
-    {NewApp, {Mod, Function, Arity, [{file, Filename}, {line, Line}]}} =
+    {NewApp, {Mod, Function, Arity, [{'file', Filename}, {'line', Line}]}} =
         case process_fold(Start, App) of
             App -> {App, M};
             {Parent, MFA } -> {Parent, MFA}
@@ -253,7 +253,7 @@ calling_process() ->
      }.
 
 -spec get_app(atom() | kz_term:ne_binary()) -> {atom(), string(), string()} | 'undefined'.
-get_app(<<_/binary>> = AppName) ->
+get_app(<<AppName/binary>>) ->
     get_app(kz_term:to_atom(AppName));
 get_app(AppName) ->
     case [App || {Name, _, _}=App <- application:loaded_applications(), Name =:= AppName] of

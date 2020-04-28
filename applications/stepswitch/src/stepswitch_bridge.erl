@@ -16,6 +16,7 @@
         ,bridge_outbound_cid_number/1
         ,bridge_emergency_cid_name/1
         ,bridge_outbound_cid_name/1
+        ,maybe_override_asserted_identity/2
         ]).
 
 -export([init/1
@@ -28,9 +29,9 @@
         ]).
 
 -ifdef(TEST).
--export[avoid_privacy_if_emergency_call/2
-       ,contains_emergency_endpoints/1
-       ].
+-export([avoid_privacy_if_emergency_call/2
+        ,contains_emergency_endpoints/1
+        ]).
 -endif.
 
 -include("stepswitch.hrl").
@@ -424,8 +425,8 @@ build_bridge(#state{endpoints=Endpoints
                                      ,{<<"Reseller-ID">>, kz_services_reseller:get_id(AccountId)}
                                      ,{<<"Outbound-Flags">>, outbound_flags(OffnetReq)}
                                      ]),
-    RemoveCCVs = [{<<"Require-Ignore-Early-Media">>, null}
-                 ,{<<"Require-Fail-On-Single-Reject">>, null}
+    RemoveCCVs = [{<<"Require-Ignore-Early-Media">>, 'null'}
+                 ,{<<"Require-Fail-On-Single-Reject">>, 'null'}
                  ],
 
     NewEndpoints = avoid_privacy_if_emergency_call(IsEmergency, Endpoints),
@@ -438,31 +439,31 @@ build_bridge(#state{endpoints=Endpoints
 
     props:filter_undefined(
       [{<<"Application-Name">>, <<"bridge">>}
-      ,{<<"Dial-Endpoint-Method">>, <<"single">>}
-      ,{?KEY_OUTBOUND_CALLER_ID_NUMBER, Number}
-      ,{?KEY_OUTBOUND_CALLER_ID_NAME, Name}
-      ,{<<"Caller-ID-Number">>, Number}
-      ,{<<"Caller-ID-Name">>, Name}
-      ,{<<"Custom-Channel-Vars">>, CCVs}
-      ,{<<"Custom-Application-Vars">>, kapi_offnet_resource:custom_application_vars(OffnetReq)}
-      ,{<<"Timeout">>, kapi_offnet_resource:timeout(OffnetReq)}
-      ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
-      ,{<<"Fail-On-Single-Reject">>, FailOnSingleReject}
-      ,{<<"Media">>, kapi_offnet_resource:media(OffnetReq)}
-      ,{<<"Hold-Media">>, kapi_offnet_resource:hold_media(OffnetReq)}
-      ,{<<"Presence-ID">>, kapi_offnet_resource:presence_id(OffnetReq)}
-      ,{<<"Ringback">>, kapi_offnet_resource:ringback(OffnetReq)}
-      ,{<<"Call-ID">>, kapi_offnet_resource:call_id(OffnetReq)}
-      ,{<<"Fax-Identity-Number">>, kapi_offnet_resource:fax_identity_number(OffnetReq, Number)}
-      ,{<<"Fax-Identity-Name">>, kapi_offnet_resource:fax_identity_name(OffnetReq, Name)}
-      ,{<<"Outbound-Callee-ID-Number">>, kapi_offnet_resource:outbound_callee_id_number(OffnetReq)}
-      ,{<<"Outbound-Callee-ID-Name">>, kapi_offnet_resource:outbound_callee_id_name(OffnetReq)}
-      ,{<<"Asserted-Identity-Number">>, AssertedNumber}
       ,{<<"Asserted-Identity-Name">>, AssertedName}
+      ,{<<"Asserted-Identity-Number">>, AssertedNumber}
       ,{<<"Asserted-Identity-Realm">>, kapi_offnet_resource:asserted_identity_realm(OffnetReq, Realm)}
       ,{<<"B-Leg-Events">>, kapi_offnet_resource:b_leg_events(OffnetReq, [])}
-      ,{<<"Endpoints">>, FmtEndpoints}
       ,{<<"Bridge-Actions">>, kapi_offnet_resource:outbound_actions(OffnetReq)}
+      ,{<<"Call-ID">>, kapi_offnet_resource:call_id(OffnetReq)}
+      ,{<<"Caller-ID-Name">>, Name}
+      ,{<<"Caller-ID-Number">>, Number}
+      ,{<<"Custom-Application-Vars">>, kapi_offnet_resource:custom_application_vars(OffnetReq)}
+      ,{<<"Custom-Channel-Vars">>, CCVs}
+      ,{<<"Dial-Endpoint-Method">>, <<"single">>}
+      ,{<<"Endpoints">>, FmtEndpoints}
+      ,{<<"Fail-On-Single-Reject">>, FailOnSingleReject}
+      ,{<<"Fax-Identity-Name">>, kapi_offnet_resource:fax_identity_name(OffnetReq, Name)}
+      ,{<<"Fax-Identity-Number">>, kapi_offnet_resource:fax_identity_number(OffnetReq, Number)}
+      ,{<<"Hold-Media">>, kapi_offnet_resource:hold_media(OffnetReq)}
+      ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
+      ,{<<"Media">>, kapi_offnet_resource:media(OffnetReq)}
+      ,{<<"Outbound-Callee-ID-Name">>, kapi_offnet_resource:outbound_callee_id_name(OffnetReq)}
+      ,{<<"Outbound-Callee-ID-Number">>, kapi_offnet_resource:outbound_callee_id_number(OffnetReq)}
+      ,{<<"Presence-ID">>, kapi_offnet_resource:presence_id(OffnetReq)}
+      ,{<<"Ringback">>, kapi_offnet_resource:ringback(OffnetReq)}
+      ,{<<"Timeout">>, kapi_offnet_resource:timeout(OffnetReq)}
+      ,{?KEY_OUTBOUND_CALLER_ID_NAME, Name}
+      ,{?KEY_OUTBOUND_CALLER_ID_NUMBER, Number}
        | kz_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
       ]).
 
