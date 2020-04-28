@@ -824,7 +824,8 @@ apply_map_responder(#kz_responder{module=M
     end.
 
 -spec apply_map_responder(atom(), atom() | fun(), payload()) -> any().
-apply_map_responder('undefined', Fun, Payload) ->
+apply_map_responder(_M, Fun, Payload)
+  when is_function(Fun, 1) ->
     Fun(Payload);
 apply_map_responder(M, F, Payload) ->
     erlang:apply(M, F, Payload).
