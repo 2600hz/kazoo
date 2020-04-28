@@ -91,8 +91,12 @@ init(_) ->
         'true' -> lager:info("node ~s configured to compact automatically", [node()])
     end,
 
+    %% Always bind to auto_compaction events, let `browse_dbs_for_triggers/[1,2]' decide whether or
+    %% not it has to take care of events. Avoids having to restart tasks app every time auto
+    %% compaction is enabled/disabled.
     _ = tasks_bindings:bind(?TRIGGER_AUTO_COMPACTION, ?MODULE, 'browse_dbs_for_triggers'),
     %% `do_compact_db/1' uses `?HEUR_RATIO' which allows to improve auto compaction job exec time.
+    %% `do_compact_db/1' should not receive any AMQP events if auto compaction is disabled.
     _ = tasks_bindings:bind(?TRIGGER_ALL_DBS, ?MODULE, 'do_compact_db'),
     _ = tasks_bindings:bind(<<"tasks.help">>, ?MODULE, 'help'),
     _ = tasks_bindings:bind(<<"tasks."?CATEGORY".output_header">>, ?MODULE, 'output_header'),
@@ -433,11 +437,13 @@ get_node_connections(Node, #server{options=Options}) ->
     NodeAdminPort = ?NODE_ADMIN_PORT(Node),
 
     lager:debug("getting connection information for ~s, ~p and ~p", [Host, NodeAPIPort, NodeAdminPort]),
-    C1 = couchbeam:server_connection(Hostname, NodeAPIPort, <<"">>, Options),
-    C2 = couchbeam:server_connection(Hostname, NodeAdminPort, <<"">>, Options),
+    #{'username' := Username, 'password' := Password} = props:get_value('connection_map', Options),
+    ConnOpts = [{'basic_auth', {Username, Password}}],
+    APIConn = couchbeam:server_connection(Hostname, NodeAPIPort, <<"">>, ConnOpts),
+    AdminConn = couchbeam:server_connection(Hostname, NodeAdminPort, <<"">>, ConnOpts),
 
-    try {kz_couch_util:connection_info(C1),
-         kz_couch_util:connection_info(C2)
+    try {kz_couch_util:connection_info(APIConn),
+         kz_couch_util:connection_info(AdminConn)
         }
     of
         {{'error', 'timeout'}, _} ->
