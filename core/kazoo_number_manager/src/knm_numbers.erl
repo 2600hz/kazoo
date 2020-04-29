@@ -272,18 +272,27 @@ create(Nums, Options) ->
 %%------------------------------------------------------------------------------
 
 -spec move(kz_term:ne_binaries(), kz_term:ne_binary()) -> ret().
-move(Nums, MoveTo) ->
+move(Nums, ?MATCH_ACCOUNT_RAW(MoveTo)) ->
     move(Nums, MoveTo, knm_number_options:default()).
 
 -spec move(kz_term:ne_binaries(), kz_term:ne_binary(), knm_number_options:options()) -> ret().
 move(Nums, ?MATCH_ACCOUNT_RAW(MoveTo), Options0) ->
-    Options = props:set_value('assign_to', MoveTo, Options0),
-    {TFound, NotFounds} = take_not_founds(do_get(Nums, Options)),
+    Options = knm_number_options:set_assign_to(Options0, MoveTo),
     Updates = knm_number_options:to_phone_number_setters(Options0),
-    TUpdated = do_in_wrap(fun (T) -> knm_phone_number:setters(T, Updates) end, TFound),
+    move_with_updates(Nums, Options, Updates).
+
+-spec move_with_updates(kz_term:ne_binaries(), knm_number_options:options(), knm_phone_number:set_functions()) -> ret().
+move_with_updates(Nums, Options, Updates) ->
+    {TFound, NotFounds} = take_not_founds(do_get(Nums, Options)),
+
+    TUpdated = update_found(TFound, Updates),
     TDiscovered = do(fun discover/1, new(Options, NotFounds)),
+
     T = merge_okkos(TUpdated, TDiscovered),
     ret(do(fun move_to/1, T)).
+
+update_found(TFound, Updates) ->
+    do_in_wrap(fun (T) -> knm_phone_number:setters(T, Updates) end, TFound).
 
 %%------------------------------------------------------------------------------
 %% @doc Attempts to update some phone_number fields.
@@ -835,7 +844,7 @@ do_callback(Numbers, FetchFun) ->
                   plists:foreach(FunCB, CBs)
           end,
     plists:foreach(Fun, Numbers),
-    ok.
+    'ok'.
 -endif.
 
 reconcile_number(T0, Options) ->

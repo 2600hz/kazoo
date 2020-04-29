@@ -46,7 +46,9 @@
                            {'reseller_id', kz_term:api_ne_binary()}.
 -type crossbar_options() :: [crossbar_option()].
 
--type option() :: {'assign_to', kz_term:api_ne_binary()} |
+-type assign_to() :: kz_term:api_ne_binary().
+
+-type option() :: {'assign_to', assign_to()} |
                   {'auth_by', kz_term:api_ne_binary()} |
                   {'batch_run', boolean()} |
                   {'crossbar', crossbar_options()} |
@@ -130,19 +132,19 @@ mdn_run(Options) ->
         andalso lager:debug("mdn_run-ing btw"),
     R.
 
--spec assign_to(options()) -> kz_term:api_binary().
+-spec assign_to(options()) -> assign_to().
 assign_to(Options) ->
     assign_to(Options, 'undefined').
 
--spec assign_to(options(), Default) -> kz_term:ne_binary() | Default.
+-spec assign_to(options(), Default) -> assign_to() | Default.
 assign_to(Options, Default) ->
     props:get_binary_value('assign_to', Options, Default).
 
--spec set_assign_to(options(), kz_term:ne_binary()) -> options().
-set_assign_to(Options, AssignTo) ->
+-spec set_assign_to(options(), assign_to()) -> options().
+set_assign_to(Options, ?MATCH_ACCOUNT_RAW(AssignTo)) ->
     props:set_value('assign_to', AssignTo, Options).
 
--spec auth_by(options()) -> kz_term:api_binary().
+-spec auth_by(options()) -> kz_term:api_ne_binary().
 auth_by(Options) ->
     auth_by(Options, 'undefined').
 
