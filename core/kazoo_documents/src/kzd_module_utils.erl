@@ -11,7 +11,8 @@
 
 -include("kz_documents.hrl").
 
--export([maybe_normalize_emergency_caller_id_number/1
+-export([get_setters/1
+        ,maybe_normalize_emergency_caller_id_number/1
         ,pass_hashes/2
         ,validate_schema/3
         ]).
@@ -29,6 +30,23 @@
 -define(CROSSBAR_STABILITY_LEVEL
        ,kapps_config:get_binary(?CROSSBAR_CONFIG_CAT, <<"stability_level">>)
        ).
+
+%%------------------------------------------------------------------------------
+%% @doc Get a mapping of the object key to setter function
+%% Returns map where the key is a binary and value (Function name) is an atom.
+%% @end
+%%------------------------------------------------------------------------------
+-spec get_setters(atom()) -> map().
+get_setters(Module) ->
+    ModInfo = erlang:apply(Module, 'module_info', []),
+    {'exports', ExportedFuns} = lists:keyfind('exports', 1, ModInfo),
+    FilterFun = fun({FunName, _}) ->
+                        case kz_term:to_binary(FunName) of
+                            <<"set_", Key/binary>> -> {'true', {Key, FunName}};
+                            _ -> 'false'
+                        end
+                end,
+    maps:from_list(lists:filtermap(FilterFun, ExportedFuns)).
 
 %%------------------------------------------------------------------------------
 %% @doc If set, normalize the doc's emergency caller id.

@@ -77,6 +77,7 @@
         ,classifier_restriction/2, classifier_restriction/3, set_classifier_restriction/3
         ,full_name/1, full_name/2, full_name/3
         ,validate/3
+        ,get_setters/0
         ]).
 
 -include("kz_documents.hrl").
@@ -1400,3 +1401,13 @@ rehash_creds(Username, Password, {Doc, Errors}) ->
             lager:debug("resetting identity secret"),
             {kz_auth_identity:reset_doc_secret(kz_json:delete_key(<<"password">>, UpdatedDoc)), Errors}
     end.
+
+%%------------------------------------------------------------------------------
+%% @doc Get a mapping of the object key to setter function
+%% Returns map where the key is a binary and value is an atom
+%% @end
+%%------------------------------------------------------------------------------
+-spec get_setters() -> map().
+get_setters() ->
+    kzd_module_utils:get_setters(?MODULE).
+
