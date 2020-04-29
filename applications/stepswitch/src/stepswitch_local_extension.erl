@@ -158,9 +158,9 @@ handle_cast(_Msg, State) ->
 handle_info('local_extension_timeout', #state{timeout='undefined'}=State) ->
     {'noreply', State};
 handle_info('local_extension_timeout', #state{response_queue=ResponseQ
-                                             ,resource_req=OffnetJObj
+                                             ,resource_req=OffnetReq
                                              }=State) ->
-    kapi_offnet_resource:publish_resp(ResponseQ, local_extension_timeout(OffnetJObj)),
+    kapi_offnet_resource:publish_resp(ResponseQ, local_extension_timeout(OffnetReq)),
     {'stop', 'normal', State#state{timeout='undefined'}};
 handle_info(_Info, State) ->
     lager:debug("unhandled info: ~p", [_Info]),
@@ -286,91 +286,114 @@ code_change(_OldVsn, State, _Extra) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec outbound_flags(kapi_offnet_resource:req()) -> kz_term:api_binary().
-outbound_flags(OffnetJObj) ->
-    case kapi_offnet_resource:flags(OffnetJObj) of
+outbound_flags(OffnetReq) ->
+    case kapi_offnet_resource:flags(OffnetReq) of
         [] -> 'undefined';
         Flags -> kz_binary:join(Flags, <<"|">>)
     end.
 
 -spec build_local_extension(state()) -> kz_term:proplist().
 build_local_extension(#state{number_props=Props
-                            ,resource_req=OffnetJObj
+                            ,resource_req=OffnetReq
                             ,queue=Q
                             }) ->
-    {CIDName, CIDNum} = local_extension_caller_id(OffnetJObj),
+    {CIDName, CIDNum} = local_extension_caller_id(OffnetReq),
     lager:debug("set outbound caller id to ~s '~s'", [CIDNum, CIDName]),
     Number = knm_options:number(Props),
     AccountId = knm_options:account_id(Props),
     ResellerId = kz_services_reseller:get_id(AccountId),
-    OriginalAccountId = kapi_offnet_resource:account_id(OffnetJObj),
+    OriginalAccountId = kapi_offnet_resource:account_id(OffnetReq),
     OriginalResellerId = kz_services_reseller:get_id(OriginalAccountId),
-    {CEDNum, CEDName} = local_extension_callee_id(OffnetJObj, Number),
+    {CEDNum, CEDName} = local_extension_callee_id(OffnetReq, Number),
     Realm = get_account_realm(AccountId),
     FromRealm = get_account_realm(OriginalAccountId),
-    CCVsOrig = kapi_offnet_resource:custom_channel_vars(OffnetJObj, kz_json:new()),
-    CAVs = kapi_offnet_resource:custom_application_vars(OffnetJObj),
+    CCVsOrig = kapi_offnet_resource:custom_channel_vars(OffnetReq, kz_json:new()),
+    CAVs = kapi_offnet_resource:custom_application_vars(OffnetReq),
 
-    CCVs = kz_json:set_values([{<<"Ignore-Display-Updates">>, <<"true">>}
-                              ,{<<"Account-ID">>, OriginalAccountId}
-                              ,{<<"Reseller-ID">>, OriginalResellerId}
+    CCVs = kz_json:set_values([{<<"Account-ID">>, OriginalAccountId}
+                              ,{<<"From-URI">>, <<CIDNum/binary, "@", FromRealm/binary>>}
+                              ,{<<"Ignore-Display-Updates">>, <<"true">>}
+                              ,{<<"Outbound-Flags">>, outbound_flags(OffnetReq)}
                               ,{<<"Realm">>, FromRealm}
-                              ,{<<"Outbound-Flags">>, outbound_flags(OffnetJObj)}
+                              ,{<<"Request-URI">>, <<Number/binary, "@", FromRealm/binary>>}
+                              ,{<<"Reseller-ID">>, OriginalResellerId}
                               ,{<<"Resource-ID">>, AccountId}
                               ,{<<"Resource-Type">>, <<"onnet-termination">>}
-                              ,{<<"From-URI">>, <<CIDNum/binary, "@", FromRealm/binary>>}
-                              ,{<<"Request-URI">>, <<Number/binary, "@", FromRealm/binary>>}
                               ,{<<"To-URI">>, <<Number/binary, "@", FromRealm/binary>>}
                               ]
                              ,CCVsOrig
                              ),
 
+    {AssertedNumber, AssertedName} = stepswitch_bridge:maybe_override_asserted_identity(OffnetReq
+                                                                                       ,{'false'
+                                                                                        ,stepswitch_bridge:bridge_outbound_cid_number(OffnetReq)
+                                                                                        ,stepswitch_bridge:bridge_outbound_cid_name(OffnetReq)
+                                                                                        }),
+
     CCVUpdates = kz_json:from_list(
-                   [{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Inception">>, <<Number/binary, "@", Realm/binary>>}
-                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Account-ID">>, AccountId}
-                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Reseller-ID">>, ResellerId}
+                   [{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Account-ID">>, AccountId}
+                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Inception">>, <<Number/binary, "@", Realm/binary>>}
+                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Inception-Account-ID">>, OriginalAccountId}
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Realm">>, Realm}
+                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Reseller-ID">>, ResellerId}
+                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Resource-Type">>, <<"onnet-origination">>}
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "SIP-Invite-Domain">>, Realm}
 
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "From-URI">>, <<CIDNum/binary, "@", Realm/binary>>}
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Request-URI">>, <<Number/binary, "@", Realm/binary>>}
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "To-URI">>, <<Number/binary, "@", Realm/binary>>}
-
-                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Inception-Account-ID">>, OriginalAccountId}
-                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Resource-Type">>, <<"onnet-origination">>}
                    ]),
 
     Endpoint = kz_json:from_list(
-                 [{<<"Invite-Format">>, <<"loopback">>}
+                 [{<<"Caller-ID-Name">>, CIDName}
+                 ,{<<"Caller-ID-Number">>, CIDNum}
+                 ,{<<"Custom-Channel-Vars">>, CCVUpdates}
+                 ,{<<"Enable-T38-Fax">>, 'false'}
+                 ,{<<"Enable-T38-Fax-Request">>, 'false'}
+                 ,{<<"Ignore-Early-Media">>, 'true'}
+                 ,{<<"Invite-Format">>, <<"loopback">>}
+                 ,{<<"Outbound-Callee-ID-Name">>, CEDName}
+                 ,{<<"Outbound-Callee-ID-Number">>, CEDNum}
+                 ,{<<"Outbound-Caller-ID-Name">>, CIDName}
+                 ,{<<"Outbound-Caller-ID-Number">>, CIDNum}
                  ,{<<"Route">>, Number}
                  ,{<<"To-DID">>, Number}
                  ,{<<"To-Realm">>, FromRealm}
-                 ,{<<"Custom-Channel-Vars">>, CCVUpdates}
-                 ,{<<"Outbound-Caller-ID-Name">>, CIDName}
-                 ,{<<"Outbound-Caller-ID-Number">>, CIDNum}
-                 ,{<<"Outbound-Callee-ID-Name">>, CEDName}
-                 ,{<<"Outbound-Callee-ID-Number">>, CEDNum}
-                 ,{<<"Caller-ID-Name">>, CIDName}
-                 ,{<<"Caller-ID-Number">>, CIDNum}
-                 ,{<<"Ignore-Early-Media">>, 'true'}
-                 ,{<<"Enable-T38-Fax">>, 'false'}
-                 ,{<<"Enable-T38-Fax-Request">>, 'false'}
                  ]),
 
     props:filter_undefined(
       [{<<"Application-Name">>, <<"bridge">>}
-      ,{<<"Call-ID">>, kapi_offnet_resource:call_id(OffnetJObj)}
+
+      ,{<<"Asserted-Identity-Name">>, AssertedName}
+      ,{<<"Asserted-Identity-Number">>, AssertedNumber}
+      ,{<<"Asserted-Identity-Realm">>, kapi_offnet_resource:asserted_identity_realm(OffnetReq, Realm)}
+
+      ,{<<"B-Leg-Events">>, kapi_offnet_resource:b_leg_events(OffnetReq, [])}
+      ,{<<"Bridge-Actions">>, kapi_offnet_resource:outbound_actions(OffnetReq)}
+
+      ,{<<"Call-ID">>, kapi_offnet_resource:call_id(OffnetReq)}
       ,{<<"Caller-ID-Name">>, CIDName}
       ,{<<"Caller-ID-Number">>, CIDNum}
       ,{<<"Custom-Application-Vars">>, CAVs}
       ,{<<"Custom-Channel-Vars">>, CCVs}
       ,{<<"Dial-Endpoint-Method">>, <<"single">>}
       ,{<<"Endpoints">>, [Endpoint]}
+
+      ,{<<"Fax-Identity-Name">>, kapi_offnet_resource:fax_identity_name(OffnetReq, CIDName)}
+      ,{<<"Fax-Identity-Number">>, kapi_offnet_resource:fax_identity_number(OffnetReq, CIDNum)}
+
+      ,{<<"Hold-Media">>, kapi_offnet_resource:hold_media(OffnetReq)}
+
       ,{<<"Loopback-Bowout">>, <<"false">>}
       ,{<<"Media">>, <<"process">>}
       ,{<<"Outbound-Callee-ID-Name">>, CEDName}
       ,{<<"Outbound-Callee-ID-Number">>, CEDNum}
       ,{<<"Outbound-Caller-ID-Name">>, CIDName}
       ,{<<"Outbound-Caller-ID-Number">>, CIDNum}
+      ,{<<"Presence-ID">>, kapi_offnet_resource:presence_id(OffnetReq)}
+      ,{<<"Ringback">>, kapi_offnet_resource:ringback(OffnetReq)}
+      ,{<<"Timeout">>, kapi_offnet_resource:timeout(OffnetReq)}
+
       ,{<<"Simplify-Loopback">>, <<"false">>}
        | kz_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
       ]).

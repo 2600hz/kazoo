@@ -2,7 +2,7 @@
 
 -include_lib("kazoo_amqp/include/kz_api_literals.hrl").
 
--type api_formatter_return() :: {'ok', iolist()} | {'error', string()}.
+-type api_formatter_return() :: {'ok', iodata()} | {'error', string()}.
 -type api_headers() :: kz_term:ne_binaries() | [kz_term:ne_binary() | kz_term:ne_binaries()].
 
 -type api_types() :: [{kz_term:ne_binary(), fun()}].
