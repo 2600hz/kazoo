@@ -395,7 +395,7 @@ build_local_extension(#state{number_props=Props
       ,{<<"Timeout">>, kapi_offnet_resource:timeout(OffnetReq)}
 
       ,{<<"Simplify-Loopback">>, <<"false">>}
-      | kz_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+       | kz_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
       ]).
 
 -spec get_account_realm(kz_term:ne_binary()) -> kz_term:ne_binary().
@@ -435,7 +435,7 @@ local_extension_timeout(OffnetReq) ->
     ,{<<"Response-Code">>, <<"sip:500">>}
     ,{<<"Error-Message">>, <<"local extension request timed out">>}
     ,{<<"To-DID">>, kapi_offnet_resource:to_did(OffnetReq)}
-    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
 -spec local_extension_error(kz_call_event:doc(), kapi_offnet_resource:req()) -> kz_term:proplist().
@@ -447,7 +447,7 @@ local_extension_error(CallEvt, OffnetReq) ->
     ,{<<"Response-Code">>, <<"sip:500">>}
     ,{<<"Error-Message">>, kz_call_event:error_message(CallEvt, <<"failed to process request">>)}
     ,{<<"To-DID">>, kapi_offnet_resource:to_did(OffnetReq)}
-    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
 -spec local_extension_success(kapi_offnet_resource:req()) -> kz_term:proplist().
@@ -458,7 +458,7 @@ local_extension_success(OffnetReq) ->
     ,{<<"Response-Message">>, <<"SUCCESS">>}
     ,{<<"Response-Code">>, <<"sip:200">>}
     ,{<<"Resource-Response">>, kz_json:new()}
-    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
 -spec local_extension_failure(kz_call_event:doc(), kapi_offnet_resource:req()) -> kz_term:proplist().
@@ -471,7 +471,7 @@ local_extension_failure(CallEvt, OffnetReq) ->
     ,{<<"Response-Message">>, response_message(CallEvt)}
     ,{<<"Response-Code">>, kz_call_event:hangup_code(CallEvt)}
     ,{<<"Resource-Response">>, CallEvt}
-    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
 -spec response_message(kz_call_event:doc()) -> kz_term:api_ne_binary().
