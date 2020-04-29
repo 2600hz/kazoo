@@ -1221,7 +1221,7 @@ add_doc_validation_errors(Context, ValidationErrors) ->
                ).
 
 %%------------------------------------------------------------------------------
-%% @doc After successfull kazoo_documents validation, update the context with
+%% @doc After successful kazoo_documents validation, update the context with
 %% the updated doc and set the response status to `success'
 %% @end
 %%------------------------------------------------------------------------------
