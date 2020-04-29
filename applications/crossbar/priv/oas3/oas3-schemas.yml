@@ -11972,6 +11972,26 @@
         'number':
           - 5555555551
       'description': milliwatt tone
+      'properties':
+        'duration':
+          'default': 30000
+          'description': milliwatt tone duration
+          'type': integer
+        'frequencies':
+          'default':
+            - 2600
+          'description': milliwatt tone frequencies
+          'items':
+            'type': string
+          'type': array
+        'frequency_off':
+          'default': 1000
+          'description': milliwatt tone frequency_off
+          'type': integer
+        'frequency_on':
+          'default': 5000
+          'description': milliwatt tone frequency_on
+          'type': integer
       'type': object
   'type': object
 'system_config.mobile':

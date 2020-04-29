@@ -16,27 +16,30 @@
 -include("milliwatt.hrl").
 
 -define(FREQUENCIES, [<<"2600">>]).
--define(DURATION, 30000).
+-define(FREQ_ON, 5 * ?MILLISECONDS_IN_SECOND).
+-define(DURATION, 30 * ?MILLISECONDS_IN_SECOND).
 
 -spec exec(kapps_call:call()) -> 'ok'.
 exec(Call) ->
-    Tone = get_tone(),
-    Duration = kz_json:get_integer_value(<<"Duration-ON">>, Tone, ?DURATION),
+    ToneConfig = get_tone(),
+    Duration = kapps_config:get_integer(?CONFIG_CAT, [<<"tone">>, <<"duration">>], ?DURATION),
+
     lager:info("milliwatt execute action tone"),
     kapps_call_command:answer(Call),
     timer:sleep(500),
-    kapps_call_command:tones([Tone], Call),
+    kapps_call_command:tones([ToneConfig], Call),
     timer:sleep(Duration),
     kapps_call_command:hangup(Call).
 
 -spec get_tone() -> kz_json:object().
 get_tone() ->
-    JObj = ?TONE,
-    Hz = kz_json:get_list_value(<<"frequencies">>, JObj, ?FREQUENCIES),
-    Duration = kz_json:get_value(<<"duration">>, JObj, ?DURATION),
+    Hz = kapps_config:get_ne_binaries(?CONFIG_CAT, [<<"tone">>, <<"frequencies">>], ?FREQUENCIES),
+    FrequencyOn = kapps_config:get_integer(?CONFIG_CAT, [<<"tone">>, <<"frequency_on">>], ?FREQ_ON),
+    FrequencyOff = kapps_config:get_integer(?CONFIG_CAT, [<<"tone">>, <<"frequency_off">>], 1000),
+
     kz_json:from_list(
       [{<<"Frequencies">>, Hz}
-      ,{<<"Duration-ON">>, kz_term:to_binary(Duration)}
-      ,{<<"Duration-OFF">>, <<"1000">>}
+      ,{<<"Duration-ON">>, FrequencyOn}
+      ,{<<"Duration-OFF">>, FrequencyOff}
       ]
      ).

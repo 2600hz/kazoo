@@ -443,6 +443,8 @@ curl -v -X DELETE \
 
 Webhooks tracks attempts to send the hook payloads to your URIs. You can get a listing of the more recent attempts to help debug what went wrong.
 
+!!! note By default clusters are not configured to store successful webhook attempts.
+
 > GET /v2/accounts/{ACCOUNT_ID}/webhooks/attempts
 
 ```shell
