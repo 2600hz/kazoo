@@ -583,7 +583,7 @@ filter_bindings(Predicate, Key, Updates, Deletes) ->
             filter_bindings(Predicate
                            ,ets:next(table_id(), Key)
                            ,[{Key, {#kz_binding.binding_responders, NewResponders}}
-                            | Updates
+                             | Updates
                             ]
                            ,Deletes
                            )
@@ -643,7 +643,7 @@ fold_bind_results([#kz_responder{module=M
                                 ,function=F
                                 ,payload='undefined'
                                 }=Responder
-                  | Responders
+                   | Responders
                   ]
                  ,[_|Tokens]=Payload
                  ,Route
