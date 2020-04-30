@@ -105,7 +105,7 @@ send_authz_req(AccountId, ResellerId, CallId) ->
                                                          ,{<<"Reseller-ID">>, ResellerId}
                                                          ])
            }
-          | kz_api:default_headers(<<?MODULE_STRING>>, <<"5.0">>)
+           | kz_api:default_headers(<<?MODULE_STRING>>, <<"5.0">>)
           ],
     kz_amqp_worker:call(Req
                        ,fun kapi_authz:publish_authz_req/1
@@ -127,7 +127,7 @@ send_channel_destroy(AccountId, ResellerId, CallId) ->
                                                            ,{<<"Reseller-ID">>, ResellerId}
                                                            ])
              }
-            | kz_api:default_headers(<<"call_event">>, <<"CHANNEL_DESTROY">>, <<?MODULE_STRING>>, <<"5.0">>)
+             | kz_api:default_headers(<<"call_event">>, <<"CHANNEL_DESTROY">>, <<?MODULE_STRING>>, <<"5.0">>)
             ],
     kz_amqp_worker:cast(Event, fun kapi_call:publish_event/1).
 
@@ -145,7 +145,7 @@ send_channel_create(AccountId, ResellerId, CallId) ->
                                                            ,{<<"Reseller-ID">>, ResellerId}
                                                            ])
              }
-            | kz_api:default_headers(<<"call_event">>, <<"CHANNEL_CREATE">>, <<?MODULE_STRING>>, <<"5.0">>)
+             | kz_api:default_headers(<<"call_event">>, <<"CHANNEL_CREATE">>, <<?MODULE_STRING>>, <<"5.0">>)
             ],
     kz_amqp_worker:cast(Event, fun kapi_call:publish_event/1).
 
