@@ -5408,7 +5408,8 @@
                                             "e164",
                                             "npan",
                                             "1npan",
-                                            "username"
+                                            "username",
+                                            "strip_plus"
                                         ],
                                         "type": "string"
                                     },
@@ -5858,6 +5859,7 @@
                                 "1npan",
                                 "e164",
                                 "route",
+                                "strip_plus",
                                 "contact"
                             ],
                             "type": "string"
@@ -13948,6 +13950,7 @@
                         "npan",
                         "1npan",
                         "route",
+                        "strip_plus",
                         "loopback",
                         "contact"
                     ],
@@ -26461,6 +26464,7 @@
                         "npan",
                         "1npan",
                         "route",
+                        "strip_plus",
                         "loopback",
                         "contact"
                     ],
@@ -31499,7 +31503,8 @@
                                     "username",
                                     "e164",
                                     "npan",
-                                    "1npan"
+                                    "1npan",
+                                    "strip_plus"
                                 ],
                                 "type": "string"
                             },
@@ -37147,7 +37152,7 @@
                     "default": [
                         "regex"
                     ],
-                    "description": "suffix for the KNM module to use for E164, NPAN and 1NPAN normalization of numbers",
+                    "description": "suffix for the KNM module to use for E164, NPAN, 1NPAN and strip_plus normalization of numbers",
                     "items": {
                         "type": "string"
                     },
@@ -39587,6 +39592,7 @@
                                             "e164",
                                             "npan",
                                             "1npan",
+                                            "strip_plus",
                                             "username"
                                         ],
                                         "type": "string"
