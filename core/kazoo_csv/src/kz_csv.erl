@@ -199,7 +199,7 @@ verify_mapped_row(Pred, MappedRow) when is_function(Pred, 2),
 %% Escape all double quotes with a leading double quote.
 %% Surround all cells in double quotes.
 %% Add a comma between all cells.
-%% Add an new line to the end of the row.
+%% Add a new line to the end of the row.
 %% This should be used to format all rows correctly and ensure all cells are
 %% correctly escaped.
 %% @end
@@ -209,11 +209,11 @@ row_to_iolist(Cells=[_|_]) ->
     [lists:join($,, [cell_to_binary(Cell) || Cell <- Cells]), $\n].
 
 %%------------------------------------------------------------------------------
-%% @doc Convert a maped row into a row.
+%% @doc Convert a mapped row into a row.
 %% Escape all double quotes with a leading double quote.
 %% Surround all cells in double quotes.
 %% Add a comma between all cells.
-%% Add an new line to the end of the row.
+%% Add a new line to the end of the row.
 %% @end
 %%------------------------------------------------------------------------------
 -spec mapped_row_to_iolist(row(), mapped_row()) -> iodata().
@@ -270,7 +270,7 @@ write_header_to_file({File, CellOrdering}, HeaderMap) ->
 
     {File, CellOrdering}.
 
--type file_return() :: {'undfined' | file:filename_all(), kz_json:paths()}.
+-type file_return() :: {'undefined' | file:filename_all(), kz_json:paths()}.
 -spec jobjs_to_file(kz_json:objects()) -> file_return().
 jobjs_to_file([]) -> {'undefined', []};
 jobjs_to_file([JObj | _]=JObjs) ->
@@ -441,9 +441,9 @@ map_io_indices(Header, CSVHeader) ->
 %% and leaving commas as all cells are wrapped in double quotation marks.
 %% All cells should pass though this function to be correctly formatted.
 %%
-%% If a cell is a list, add commas to seperate the list items and try to convert
+%% If a cell is a list, add commas to separate the list items and try to convert
 %% the list to a binary.
-%% If the cell is non binary data, try and covert the cell to a binary.
+%% If the cell is non binary data, try and convert the cell to a binary.
 %% If the conversion fails then use `?ZILCH' as the cells value.
 %% @end
 %%------------------------------------------------------------------------------
