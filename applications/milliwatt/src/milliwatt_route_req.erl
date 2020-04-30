@@ -44,7 +44,7 @@ send_route_response(RouteReq, Call, Action) ->
                                   ,{?KEY_MSG_REPLY_ID, kapps_call:call_id_direct(Call)}
                                   ,{<<"Routes">>, []}
                                   ,{<<"Method">>, <<"park">>}
-                                  | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                                   | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                                   ]),
     ServerId = kz_api:server_id(RouteReq),
     Publisher = fun(P) -> kapi_route:publish_resp(ServerId, P) end,
