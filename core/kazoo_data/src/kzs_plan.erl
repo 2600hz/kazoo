@@ -25,7 +25,7 @@
 
 -export([reset_system_dataplan/0]).
 
--on_load(initx/0).
+-on_load(onload/0).
 
 -include("kz_data.hrl").
 
@@ -558,23 +558,23 @@ start_connection(Tag, Params) ->
 -spec init() -> 'ok'.
 init() ->
     lager:debug("initializing plans"),
+    kazoo_bindings:flush_mod(?MODULE),
     reload(),
     bind().
 
--spec initx() -> 'ok'.
-initx() ->
-    lager:info("reloading " ?MODULE_STRING),
-    kazoo_bindings:flush_mod(?MODULE),
-    init().
+-spec onload() -> 'ok'.
+onload() ->
+    _ = case whereis(kazoo_bindings) of
+            undefined -> ok;
+            _Pid ->
+                lager:debug("module ~s reloaded", [?MODULE_STRING]),
+                kz_util:spawn(fun init/0)
+        end,
+    'ok'.
 
 -spec bind() -> 'ok'.
 -ifdef(TEST).
 bind() -> 'ok'.
--spec handle_created(any()) -> 'ok'.
-handle_created(_) -> 'ok'.
-
--spec handle_deleted(any()) -> 'ok'.
-handle_deleted(_) -> 'ok'.
 -else.
 bind() ->
     Bindings = [{<<"doc_created">>, fun handle_created/1}

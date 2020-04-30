@@ -251,6 +251,16 @@ help_14316() ->
     UpdatedResp = update(API, AccountId, UpdateStorage, 'false'),
     lager:info("updated resp: ~s", [UpdatedResp]),
 
+    %% The data cache isn't populated right away, give it a second
+    timer:sleep(50),
+
+    'true' = has_expected_plan(AccountId, <<"mailbox_message">>, URL),
+
+    %% just checking if we see the reload in kzs_plan
+    lager:info("hotload kzs_plan: ~p : ~p", [whereis(kazoo_bindings), kazoo_maintenance:hotload(kzs_plan)]),
+    %% give it time to reload
+    timer:sleep(150),
+
     'true' = has_expected_plan(AccountId, <<"mailbox_message">>, URL),
 
     cleanup(API),

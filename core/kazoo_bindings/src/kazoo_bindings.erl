@@ -323,7 +323,8 @@ bind(Binding, Module, Fun) when is_binary(Binding) ->
           bind_result() | bind_results().
 bind([_|_]=Bindings, Module, Fun, Payload) ->
     [bind(Binding, Module, Fun, Payload) || Binding <- Bindings];
-bind(Binding, 'undefined' = Module, Fun, Payload) ->
+bind(Binding, Module, Fun, Payload)
+  when is_function(Fun, 1) ->
     lager:debug("adding binding ~s for ~p (~p)", [Binding, Fun, Payload]),
     gen_server:call(?SERVER, {'bind', Binding, Module, Fun, Payload}, 'infinity');
 bind(Binding, Module, Fun, Payload) ->
@@ -578,7 +579,7 @@ filter_bindings(Predicate, Key, Updates, Deletes) ->
             filter_bindings(Predicate
                            ,ets:next(table_id(), Key)
                            ,[{Key, {#kz_binding.binding_responders, NewResponders}}
-                             | Updates
+                            | Updates
                             ]
                            ,Deletes
                            )
@@ -638,7 +639,7 @@ fold_bind_results([#kz_responder{module=M
                                 ,function=F
                                 ,payload='undefined'
                                 }=Responder
-                   | Responders
+                  | Responders
                   ]
                  ,[_|Tokens]=Payload
                  ,Route
