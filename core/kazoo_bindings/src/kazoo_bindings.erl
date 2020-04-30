@@ -23,7 +23,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0
+-export([start_link/0, is_running/0
         ,bind/2, bind/3, bind/4
         ,unbind/3, unbind/4
         ,map/2, map/3, pmap/2, pmap/3
@@ -44,14 +44,12 @@
         ]).
 
 %% Helper Function for calling map/3
--export([candidates/1
-        ]).
+-export([candidates/1]).
 
 -export([rt_options/0, rt_options/1]).
 
 %% Helper Functions for debugging
--export([bindings/0, bindings/1, bindings/2
-        ]).
+-export([bindings/0, bindings/1, bindings/2]).
 
 %% ETS Persistence
 -export([table_id/0
@@ -84,8 +82,8 @@
 
 -record(kz_responder, {module :: atom()
                       ,function :: atom() | fun()
-                      ,payload :: any()
-                      }).
+                                               ,payload :: any()
+                                               }).
 -type kz_responder() :: #kz_responder{}.
 -type kz_responders() :: [kz_responder()].
 
@@ -290,6 +288,10 @@ matches(_, _) -> 'false'.
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     gen_server:start_link({'local', ?SERVER}, ?MODULE, [], []).
+
+-spec is_running() -> boolean().
+is_running() ->
+    is_pid(whereis(?SERVER)).
 
 -spec stop() -> 'ok'.
 stop() -> gen_server:cast(?SERVER, 'stop').
