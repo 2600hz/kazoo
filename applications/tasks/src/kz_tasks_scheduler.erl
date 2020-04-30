@@ -213,11 +213,11 @@ maybe_strip_columns(Columns, CSVPath, ColumnsWritten) ->
 strip_columns(FullHeader, Header, CSV, OutputPath) ->
     case kz_csv:take_mapped_row(FullHeader, CSV) of
         'eof' ->
-            'ok' = file:write_file(OutputPath, [kz_csv:row_to_iolist(Header), $\n], ['append']),
+            'ok' = file:write_file(OutputPath, kz_csv:row_to_iolist(Header), ['append']),
             tac(OutputPath);
         {MappedRow, NewCSV} ->
             Stripped = maps:with(Header, MappedRow),
-            Data = [kz_csv:mapped_row_to_iolist(Header, Stripped), $\n],
+            Data = kz_csv:mapped_row_to_iolist(Header, Stripped),
             'ok' = file:write_file(OutputPath, Data, ['append']),
             strip_columns(FullHeader, Header, NewCSV, OutputPath)
     end.
