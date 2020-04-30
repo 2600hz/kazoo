@@ -49,6 +49,7 @@ seq() ->
 
     _ = send_channel_create(AccountId, ResellerId, CallId3),
     {'ok', Resp3} = send_authz_req(AccountId, ResellerId, CallId3),
+    lager:info("should not be authz: ~p", [Resp3]),
     'false' = is_authorized(Resp3),
     3 = query_limits(AccountId),
     _ = send_channel_destroy(AccountId, ResellerId, CallId3),
@@ -99,7 +100,7 @@ send_authz_req(AccountId, ResellerId, CallId) ->
           ,{<<"Custom-Channel-Vars">>, kz_json:from_list([{<<"Account-ID">>, AccountId}
                                                          ,{<<"Reseller-ID">>, ResellerId}
                                                          ])}
-           | kz_api:default_headers(<<?MODULE_STRING>>, <<"5.0">>)
+          | kz_api:default_headers(<<?MODULE_STRING>>, <<"5.0">>)
           ],
     kz_amqp_worker:call(Req
                        ,fun kapi_authz:publish_authz_req/1
@@ -119,7 +120,7 @@ send_channel_destroy(AccountId, ResellerId, CallId) ->
             ,{<<"Custom-Channel-Vars">>, kz_json:from_list([{<<"Account-ID">>, AccountId}
                                                            ,{<<"Reseller-ID">>, ResellerId}
                                                            ])}
-             | kz_api:default_headers(<<"call_event">>, <<"CHANNEL_DESTROY">>, <<?MODULE_STRING>>, <<"5.0">>)
+            | kz_api:default_headers(<<"call_event">>, <<"CHANNEL_DESTROY">>, <<?MODULE_STRING>>, <<"5.0">>)
             ],
     kz_amqp_worker:cast(Event, fun kapi_call:publish_event/1).
 
@@ -135,7 +136,7 @@ send_channel_create(AccountId, ResellerId, CallId) ->
             ,{<<"Custom-Channel-Vars">>, kz_json:from_list([{<<"Account-ID">>, AccountId}
                                                            ,{<<"Reseller-ID">>, ResellerId}
                                                            ])}
-             | kz_api:default_headers(<<"call_event">>, <<"CHANNEL_CREATE">>, <<?MODULE_STRING>>, <<"5.0">>)
+            | kz_api:default_headers(<<"call_event">>, <<"CHANNEL_CREATE">>, <<?MODULE_STRING>>, <<"5.0">>)
             ],
     kz_amqp_worker:cast(Event, fun kapi_call:publish_event/1).
 
