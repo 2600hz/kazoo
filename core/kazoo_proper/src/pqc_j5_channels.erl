@@ -74,21 +74,25 @@ seq() ->
 
     cleanup(API).
 
+-spec is_authorized(kz_json:object()) -> boolean().
 is_authorized(JObj) ->
-    kz_json:get_boolean_value(<<"Is-Authorized">>, JObj).
+    kz_json:is_true(<<"Is-Authorized">>, JObj).
 
 create_account(API) ->
     AccountResp = pqc_cb_accounts:create_account(API, hd(?ACCOUNT_NAMES)),
-    ?INFO("created account: ~s", [AccountResp]),
+    lager:info("created account: ~s", [AccountResp]),
 
     kz_json:get_value([<<"data">>, <<"id">>], kz_json:decode(AccountResp)).
 
 reseller_id(API, AccountId) ->
     FetchResp = pqc_cb_accounts:fetch_account(API, AccountId),
-    ?INFO("account fetched: ~s", [FetchResp]),
+    lager:info("account fetched: ~s", [FetchResp]),
 
     kz_json:get_value([<<"data">>, <<"reseller_id">>], kz_json:decode(FetchResp)).
 
+-spec send_authz_req(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
+          {'ok', kz_json:object()} |
+          {'error', any()}.
 send_authz_req(AccountId, ResellerId, CallId) ->
     Req = [{<<"Call-Direction">>, <<"inbound">>}
           ,{<<"Call-ID">>, CallId}
@@ -99,7 +103,8 @@ send_authz_req(AccountId, ResellerId, CallId) ->
           ,{<<"To">>, <<"12223334444@realm.com">>}
           ,{<<"Custom-Channel-Vars">>, kz_json:from_list([{<<"Account-ID">>, AccountId}
                                                          ,{<<"Reseller-ID">>, ResellerId}
-                                                         ])}
+                                                         ])
+           }
           | kz_api:default_headers(<<?MODULE_STRING>>, <<"5.0">>)
           ],
     kz_amqp_worker:call(Req
@@ -108,6 +113,7 @@ send_authz_req(AccountId, ResellerId, CallId) ->
                        ,3 * ?MILLISECONDS_IN_SECOND
                        ).
 
+-spec send_channel_destroy(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 send_channel_destroy(AccountId, ResellerId, CallId) ->
     Event = [{<<"Call-Direction">>, <<"inbound">>}
             ,{<<"Call-ID">>, CallId}
@@ -119,11 +125,13 @@ send_channel_destroy(AccountId, ResellerId, CallId) ->
             ,{<<"Timestamp">>, kz_time:now_s()}
             ,{<<"Custom-Channel-Vars">>, kz_json:from_list([{<<"Account-ID">>, AccountId}
                                                            ,{<<"Reseller-ID">>, ResellerId}
-                                                           ])}
+                                                           ])
+             }
             | kz_api:default_headers(<<"call_event">>, <<"CHANNEL_DESTROY">>, <<?MODULE_STRING>>, <<"5.0">>)
             ],
     kz_amqp_worker:cast(Event, fun kapi_call:publish_event/1).
 
+-spec send_channel_create(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 send_channel_create(AccountId, ResellerId, CallId) ->
     Event = [{<<"Call-Direction">>, <<"inbound">>}
             ,{<<"Call-ID">>, CallId}
@@ -135,11 +143,13 @@ send_channel_create(AccountId, ResellerId, CallId) ->
             ,{<<"Timestamp">>, kz_time:now_s()}
             ,{<<"Custom-Channel-Vars">>, kz_json:from_list([{<<"Account-ID">>, AccountId}
                                                            ,{<<"Reseller-ID">>, ResellerId}
-                                                           ])}
+                                                           ])
+             }
             | kz_api:default_headers(<<"call_event">>, <<"CHANNEL_CREATE">>, <<?MODULE_STRING>>, <<"5.0">>)
             ],
     kz_amqp_worker:cast(Event, fun kapi_call:publish_event/1).
 
+-spec query_limits(kz_term:ne_binary()) -> non_neg_integer().
 query_limits(AccountId) ->
     j5_channels:total_calls(AccountId).
 
@@ -149,7 +159,7 @@ cleanup() ->
     cleanup_system().
 
 cleanup(API) ->
-    ?INFO("CLEANUP TIME, EVERYBODY HELPS"),
+    lager:info("CLEANUP TIME, EVERYBODY HELPS"),
     _ = pqc_cb_accounts:cleanup_accounts(API, ?ACCOUNT_NAMES),
     _ = pqc_cb_api:cleanup(API),
     cleanup_system().
@@ -164,4 +174,4 @@ update_limits(API, AccountId, Trunks) ->
                                                      ]
                                                     )
                                   ),
-    ?INFO("update limits: ~s", [_Update]).
+    lager:info("update limits: ~s", [_Update]).
