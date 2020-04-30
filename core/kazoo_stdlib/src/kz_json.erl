@@ -158,11 +158,11 @@ encode(JObj, Options) ->
 -spec unsafe_decode(iolist() | kz_term:ne_binary()) -> json_term().
 unsafe_decode(Thing) when is_list(Thing);
                           is_binary(Thing) ->
-    unsafe_decode(Thing, <<"application/json">>).
+    unsafe_decode(Thing, []).
 
--spec unsafe_decode(iolist() | kz_term:ne_binary(), kz_term:ne_binary()) -> json_term().
-unsafe_decode(JSON, <<"application/json">>) ->
-    try jiffy:decode(JSON, ?DECODE_OPTIONS)
+-spec unsafe_decode(iolist() | kz_term:ne_binary(), list()) -> json_term().
+unsafe_decode(JSON, Options) ->
+    try jiffy:decode(JSON, lists:merge(?DECODE_OPTIONS, Options))
     catch
         'throw':{'error',{_Loc, 'invalid_string'}}=Error ->
             lager:debug("invalid string(near char ~p) in input, checking for unicode", [_Loc]),
@@ -179,14 +179,14 @@ unsafe_decode(JSON, <<"application/json">>) ->
 -spec decode(iolist() | kz_term:ne_binary()) -> json_term().
 decode(Thing) when is_list(Thing)
                    orelse is_binary(Thing) ->
-    decode(Thing, <<"application/json">>).
+    decode(Thing, []).
 
--spec decode(iolist() | kz_term:ne_binary(), kz_term:ne_binary()) -> json_term().
-decode(JSON, <<"application/json">>) ->
-    try unsafe_decode(JSON)
+-spec decode(iolist() | kz_term:ne_binary(), list()) -> json_term().
+decode(JSON, Options) ->
+    try unsafe_decode(JSON, Options)
     catch
         _:{'invalid_json', {'error', {_Loc, _Msg}}, _JSON} ->
-            lager:error_unsafe("decode error ~s near char # ~b => ~s", [_Msg, _Loc, binary:part(JSON, _Loc-5, 25)]),
+            lager:error_unsafe("decode error ~s near char # ~b => ~s", [_Msg, _Loc, binary:part(JSON, _Loc, 25)]),
             new()
     end.
 
