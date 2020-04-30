@@ -41,17 +41,22 @@ seq() ->
     {'ok', Resp1} = send_authz_req(AccountId, ResellerId, CallId1),
     'true' = is_authorized(Resp1),
     1 = query_limits(AccountId),
+    lager:info("first channel ~s authorized successfully", [CallId1]),
 
     _ = send_channel_create(AccountId, ResellerId, CallId2),
     {'ok', Resp2} = send_authz_req(AccountId, ResellerId, CallId2),
     'true' = is_authorized(Resp2),
     2 = query_limits(AccountId),
+    lager:info("second channel ~s authorized successfully", [CallId2]),
 
     _ = send_channel_create(AccountId, ResellerId, CallId3),
     {'ok', Resp3} = send_authz_req(AccountId, ResellerId, CallId3),
     lager:info("should not be authz: ~p", [Resp3]),
     'false' = is_authorized(Resp3),
     3 = query_limits(AccountId),
+
+    lager:info("third channel ~s failed to authorize", [CallId3]),
+
     _ = send_channel_destroy(AccountId, ResellerId, CallId3),
     _ = timer:sleep(?WAIT_AFTER_DELETE),
     2 = query_limits(AccountId),
