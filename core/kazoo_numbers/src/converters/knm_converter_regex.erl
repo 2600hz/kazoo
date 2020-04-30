@@ -88,8 +88,10 @@ to_1npan(Num) ->
 %%------------------------------------------------------------------------------
 -spec to_strip_plus(kz_term:ne_binary()) -> kz_term:ne_binary().
 to_strip_plus(Number) ->
-    <<"+",N/binary>> = to_e164(Number),
-    N.
+    case normalize(Number) of
+        <<$+,N/binary>> -> N;
+        DID -> DID
+    end.
 
 %%%=============================================================================
 %%% Internal functions

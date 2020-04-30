@@ -16,6 +16,7 @@
                               ,<<"route">>, <<"loopback">>
                               ,<<"contact">>
                               ,<<"endpoint">>, <<"forward">>
+                              ,<<"strip_plus">>
                               ]
                              }).
 

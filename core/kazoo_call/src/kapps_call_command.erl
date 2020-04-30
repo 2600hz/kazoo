@@ -1199,6 +1199,7 @@ bridge_context_request_uris(Call, Props) ->
     URIs = [{<<"e164">>, knm_converters:normalize(kapps_call:request_user(Call), kapps_call:account_id(Call))}
            ,{<<"npan">>, knm_converters:to_npan(kapps_call:request_user(Call))}
            ,{<<"1npan">>, knm_converters:to_1npan(kapps_call:request_user(Call))}
+           ,{<<"strip_plus">>, knm_converters:to_strip_plus(kapps_call:request_user(Call))}
            ,{<<"route">>, kapps_call:request_user(Call)}
            ],
     [{<<"request">>, kz_json:from_list(URIs)} | Props].

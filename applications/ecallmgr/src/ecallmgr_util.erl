@@ -955,6 +955,12 @@ build_freetdm_channel(#bridge_endpoint{invite_format = <<"1npan">>
                                       ,channel_selection=ChannelSelection
                                       }) ->
     {'ok', <<"freetdm/", Span/binary, "/", ChannelSelection/binary, "/", (knm_converters:to_1npan(Number))/binary>>};
+build_freetdm_channel(#bridge_endpoint{invite_format = <<"strip_plus">>
+                                      ,number=Number
+                                      ,span=Span
+                                      ,channel_selection=ChannelSelection
+                                      }) ->
+    {'ok', <<"freetdm/", Span/binary, "/", ChannelSelection/binary, "/", (knm_converters:to_strip_plus(Number))/binary>>};
 build_freetdm_channel(#bridge_endpoint{number=Number
                                       ,span=Span
                                       ,channel_selection=ChannelSelection
@@ -1142,6 +1148,8 @@ maybe_format_user(Contact, #bridge_endpoint{invite_format = <<"npan">>, number=N
     re:replace(Contact, "^[^\@]+", knm_converters:to_npan(Number), [{'return', 'binary'}]);
 maybe_format_user(Contact, #bridge_endpoint{invite_format = <<"1npan">>, number=Number}) ->
     re:replace(Contact, "^[^\@]+", knm_converters:to_1npan(Number), [{'return', 'binary'}]);
+maybe_format_user(Contact, #bridge_endpoint{invite_format = <<"strip_plus">>, number=Number}) ->
+    re:replace(Contact, "^[^\@]+", knm_converters:to_strip_plus(Number), [{'return', 'binary'}]);
 maybe_format_user(Contact, _) -> Contact.
 
 -spec maybe_set_interface(kz_term:ne_binary(), bridge_endpoint()) -> kz_term:ne_binary().
