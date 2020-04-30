@@ -569,7 +569,7 @@ onload() ->
 -spec onload(boolean()) -> 'ok'.
 onload('false') -> 'ok';
 onload('true') ->
-    _P = kz_util:spawn(fun init/0),
+    _P = kz_process:spawn(fun init/0),
     lager:debug("module ~s reloaded", [?MODULE_STRING]).
 
 -spec bind() -> 'ok'.
