@@ -27,4 +27,4 @@ exec(Call) ->
 
 -spec get_duration() -> non_neg_integer().
 get_duration() ->
-    kapps_config:get_json(?CONFIG_CAT, [<<"echo">>, <<"duration">>], ?DURATION).
+    kapps_config:get_integer(?CONFIG_CAT, [<<"echo">>, <<"duration">>], ?DURATION).

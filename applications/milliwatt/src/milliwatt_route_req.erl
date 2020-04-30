@@ -44,7 +44,7 @@ send_route_response(RouteReq, Call, Action) ->
                                   ,{?KEY_MSG_REPLY_ID, kapps_call:call_id_direct(Call)}
                                   ,{<<"Routes">>, []}
                                   ,{<<"Method">>, <<"park">>}
-                                   | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                                  | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                                   ]),
     ServerId = kz_api:server_id(RouteReq),
     Publisher = fun(P) -> kapi_route:publish_resp(ServerId, P) end,
@@ -86,7 +86,7 @@ tone_or_echo(Call) ->
             maybe_echo_maybe_tone(Echo, Tone, To, From)
     end.
 
--spec maybe_echo(kz_json:object(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) ->
+-spec maybe_echo(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) ->
           'undefined' | 'echo'.
 maybe_echo(Echo, To, From) ->
     case rule_exist(Echo, To, From) of
@@ -94,7 +94,7 @@ maybe_echo(Echo, To, From) ->
         'false' -> 'undefined'
     end.
 
--spec maybe_tone(kz_json:object(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) ->
+-spec maybe_tone(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) ->
           'undefined' | 'tone'.
 maybe_tone(Tone, To, From) ->
     case rule_exist(Tone, To, From) of
@@ -102,7 +102,7 @@ maybe_tone(Tone, To, From) ->
         'false' -> 'undefined'
     end.
 
--spec maybe_echo_maybe_tone(kz_json:object(), kz_json:object(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) ->
+-spec maybe_echo_maybe_tone(kz_json:object(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) ->
           action() | 'undefined'.
 maybe_echo_maybe_tone(Echo, Tone, To, From) ->
     case {rule_exist(Echo, To, From)
@@ -117,13 +117,12 @@ maybe_echo_maybe_tone(Echo, Tone, To, From) ->
         _ -> 'undefined'
     end.
 
--spec rule_exist(kz_json:object(), kz_term:api_ne_binary(), kz_term:ne_binary()) -> boolean().
+-spec rule_exist(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 rule_exist(ActionConfig, To, From) ->
     matching_number(ActionConfig, To)
         orelse matching_caller_id(ActionConfig, From).
 
--spec matching_number(kz_json:object(), kz_term:api_ne_binary()) -> boolean().
-matching_number(_ActionConfig, 'undefined') -> 'false';
+-spec matching_number(kz_json:object(), kz_term:ne_binary()) -> boolean().
 matching_number(ActionConfig, To) ->
     lists:member(To, kz_json:get_list_value(<<"number">>, ActionConfig, [])).
 
