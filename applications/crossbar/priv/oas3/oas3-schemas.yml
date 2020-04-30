@@ -4285,6 +4285,7 @@
                   - npan
                   - 1npan
                   - username
+                  - strip_plus
                 'type': string
               'ip':
                 'description': IP (sip) address for this device
@@ -4651,6 +4652,7 @@
             - 1npan
             - e164
             - route
+            - strip_plus
             - contact
           'type': string
           'x-support_level': supported
@@ -8104,6 +8106,7 @@
               - e164
               - npan
               - 1npan
+              - strip_plus
             'type': string
           'invite_parameters':
             'additionalProperties': false
@@ -12468,7 +12471,7 @@
       'default':
         - regex
       'description': |-
-        suffix for the KNM module to use for E164, NPAN and 1NPAN normalization of numbers
+        suffix for the KNM module to use for E164, NPAN, 1NPAN and strip_plus normalization of numbers
       'items':
         'type': string
       'type': array
@@ -14452,6 +14455,7 @@
                   - e164
                   - npan
                   - 1npan
+                  - strip_plus
                   - username
                 'type': string
               'media_handling':
