@@ -7,16 +7,16 @@
 %%%
 %%% @end
 %%%-----------------------------------------------------------------------------
--module (knm_converter_migrate_maintenance).
+-module(knm_converter_migrate_maintenance).
 
--export ([migrate/0
-         ,migrate_account/1
-         ,migrate_invite_format/1, migrate_invite_format/3
-         ,migrate_devices/1, migrate_devices/3
-         ,migrate_global_resources/0, migrate_global_resources/2
-         ,migrate_local_resources/1, migrate_local_resources/3
-         ,migrate_trunkstore/1, migrate_trunkstore/3
-         ]).
+-export([migrate/0
+        ,migrate_account/1
+        ,migrate_invite_format/1, migrate_invite_format/3
+        ,migrate_devices/1, migrate_devices/3
+        ,migrate_global_resources/0, migrate_global_resources/2
+        ,migrate_local_resources/1, migrate_local_resources/3
+        ,migrate_trunkstore/1, migrate_trunkstore/3
+        ]).
 
 -define(LEGACY_STRIP_PLUS, <<"e164_without_plus">>).
 -define(ONE_NPAN, <<"1npan">>).
@@ -117,7 +117,7 @@ maybe_migrate_devices(AccountDb, From, To, #{total := Total, processed := _Proce
             Length = length(ViewResults),
             io:format("[~s] processing ~b devices~n", [AccountId, Length]),
             UpdateFun = fun(JObj, Map) ->
-                            maybe_update_device(AccountDb, kz_json:get_ne_binary_value(<<"key">>, JObj), From, To, Map)
+                                maybe_update_device(AccountDb, kz_json:get_ne_binary_value(<<"key">>, JObj), From, To, Map)
                         end,
             ProcessMap = lists:foldl(UpdateFun, Stats, ViewResults),
             io:format("[~s] device migration finished, (~b/~b) devices has been updated~n"
@@ -202,7 +202,7 @@ maybe_migrate_resources(AccountDb, From, To, #{total := Total, processed := _Pro
             Length = length(ViewResults),
             io:format("[~s] processing ~b resources~n", [AccountId, Length]),
             UpdateFun = fun(JObj, Map) ->
-                            maybe_update_resource(AccountDb, kz_json:get_ne_binary_value(<<"key">>, JObj), From, To, Map)
+                                maybe_update_resource(AccountDb, kz_json:get_ne_binary_value(<<"key">>, JObj), From, To, Map)
                         end,
             ProcessMap = lists:foldl(UpdateFun, Stats, ViewResults),
             io:format("[~s] resource migration finished, (~b/~b) resources has been updated~n"
@@ -220,7 +220,7 @@ maybe_migrate_resources(AccountDb, From, To, #{total := Total, processed := _Pro
 maybe_update_resource(AccountDb, ResourceId, From, To, #{total := _Total, processed := Processed, updated := _Updated, skip := Skip}=Map) ->
     {'ok', Doc} = kz_datamgr:open_doc(AccountDb, ResourceId),
     UpdateFun = fun(JObj, Acc) ->
-                    maybe_update_gateways(JObj, From, To, Acc)
+                        maybe_update_gateways(JObj, From, To, Acc)
                 end,
     Gateways = kzd_resources:gateways(Doc),
     NewGateways = lists:foldl(UpdateFun, [], Gateways),
@@ -281,9 +281,9 @@ maybe_migrate_trunkstore(AccountDb, From, To, #{total := Total, processed := _Pr
             Length = length(ViewResults),
             io:format("[~s] processing ~b trunks~n", [AccountId, Length]),
             UpdateFun = fun(JObj, Map) ->
-                            maybe_update_trunk(AccountDb, kz_json:get_ne_binary_value(<<"id">>, JObj), From, To, Map)
+                                maybe_update_trunk(AccountDb, kz_json:get_ne_binary_value(<<"id">>, JObj), From, To, Map)
                         end,
-           ProcessMap = lists:foldl(UpdateFun, Stats, ViewResults),
+            ProcessMap = lists:foldl(UpdateFun, Stats, ViewResults),
             io:format("[~s] trunkstore migration finished, (~b/~b) trunks has been updated~n"
                      ,[AccountId, maps:get('updated', ProcessMap), Total]
                      );
@@ -299,7 +299,7 @@ maybe_migrate_trunkstore(AccountDb, From, To, #{total := Total, processed := _Pr
 maybe_update_trunk(AccountDb, TrunkId, From, To, #{total := _Total, processed := Processed, updated := _Updated, skip := Skip}=Map) ->
     {'ok', Doc} = kz_datamgr:open_doc(AccountDb, TrunkId),
     UpdateFun = fun(JObj, Acc) ->
-                    maybe_update_servers(JObj, From, To, Acc)
+                        maybe_update_servers(JObj, From, To, Acc)
                 end,
     Servers = kzd_trunkstore:servers(Doc),
     NewServers = lists:foldl(UpdateFun, [], Servers),
