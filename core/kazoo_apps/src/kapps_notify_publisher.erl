@@ -141,7 +141,7 @@ maybe_handle_error(NotifyType, Req, Reason) ->
 %%------------------------------------------------------------------------------
 -spec handle_error(kz_term:ne_binary(), kz_term:api_terms(), failure_reason()) -> 'ok'.
 handle_error(NotifyType, Req, {Reason, Metadata}) ->
-    lager:warning("failed to publish notification ~s: ~p  , saving the payload...", [NotifyType, Reason]),
+    lager:warning("failed to publish notification '~s': ~p, saving the payload...", [NotifyType, Reason]),
     Props = props:filter_undefined(
               [{<<"description">>, <<"failed to publish notification">>}
               ,{<<"failure_reason">>, Reason}

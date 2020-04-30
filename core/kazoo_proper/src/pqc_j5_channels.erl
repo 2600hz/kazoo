@@ -147,7 +147,8 @@ send_channel_create(AccountId, ResellerId, CallId) ->
              }
              | kz_api:default_headers(<<"call_event">>, <<"CHANNEL_CREATE">>, <<?MODULE_STRING>>, <<"5.0">>)
             ],
-    kz_amqp_worker:cast(Event, fun kapi_call:publish_event/1).
+    kz_amqp_worker:cast(Event, fun kapi_call:publish_event/1),
+    timer:sleep(10).
 
 -spec query_limits(kz_term:ne_binary()) -> non_neg_integer().
 query_limits(AccountId) ->

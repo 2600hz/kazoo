@@ -534,11 +534,13 @@ refresh([Database|Databases], Pause, Total, Unexpected) ->
                 end,
             Unexpected
         catch
-            ?STACKTRACE(Error, Reason, StackTrace)
-            [io_lib:format("WARNING: Unable to refresh/migrate db ~s! ~s: {~p, ~p}",
-                           [Database, Error, Reason, StackTrace])
-             | Unexpected]
-            end,
+            Error:Reason:StackTrace ->
+                [io_lib:format("WARNING: Unable to refresh/migrate db ~s! ~s: {~p, ~p}"
+                              ,[Database, Error, Reason, StackTrace]
+                              )
+                | Unexpected
+                ]
+        end,
     refresh(Databases, Pause, Total, NewUnexpected).
 
 -spec get_databases() -> kz_term:ne_binaries().
@@ -804,7 +806,7 @@ cleanup_aggregated_accounts([]) -> 'ok';
 cleanup_aggregated_accounts([JObj|JObjs]) ->
     _ = case kz_doc:id(JObj) of
             <<"_design", _/binary>> -> 'ok';
-            AccountId ->
+            <<AccountId/binary>> ->
                 io:format("    verifying ~s doc ~s~n", [?KZ_ACCOUNTS_DB, AccountId]),
                 cleanup_aggregated_account(AccountId)
         end,
@@ -1769,7 +1771,7 @@ call_id_status(CallId) ->
 -spec call_id_status(kz_term:ne_binary(), boolean() | kz_term:ne_binary()) -> 'ok'.
 call_id_status(CallId, Verbose) ->
     Req = [{<<"Call-ID">>, kz_term:to_binary(CallId)}
-           | kz_api:default_headers(<<"shell">>, <<"0">>)
+          | kz_api:default_headers(<<"shell">>, <<"0">>)
           ],
     case kz_amqp_worker:call(Req
                             ,fun kapi_call:publish_channel_status_req/1
@@ -2137,7 +2139,7 @@ register_system_dbs_views() ->
             ,kapps_util:get_view_json(?APP, <<"views/pending_notify.json">>)
             ,kapps_util:get_view_json(?APP, <<"views/rates.json">>)
             ,kapps_util:get_view_json(?APP, <<"views/token_auth.json">>)
-             | kapps_util:get_views_json('kazoo_ips', "views")
+            | kapps_util:get_views_json('kazoo_ips', "views")
             ],
     kz_datamgr:register_views(?APP, Views).
 
