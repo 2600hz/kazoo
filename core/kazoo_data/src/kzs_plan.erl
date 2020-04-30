@@ -564,13 +564,13 @@ init() ->
 
 -spec onload() -> 'ok'.
 onload() ->
-    _ = case whereis('kazoo_bindings') of
-            'undefined' -> 'ok';
-            _Pid ->
-                lager:debug("module ~s reloaded", [?MODULE_STRING]),
-                kz_util:spawn(fun init/0)
-        end,
-    'ok'.
+    onload(kazoo_bindings:is_running()).
+
+-spec onload(boolean()) -> 'ok'.
+onload('false') -> 'ok';
+onload('true') ->
+    _P = kz_util:spawn(fun init/0),
+    lager:debug("module ~s reloaded", [?MODULE_STRING]).
 
 -spec bind() -> 'ok'.
 -ifdef(TEST).
