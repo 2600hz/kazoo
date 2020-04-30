@@ -82,8 +82,8 @@
 
 -record(kz_responder, {module :: atom()
                       ,function :: atom() | fun()
-                                               ,payload :: any()
-                                               }).
+                      ,payload :: any()
+                      }).
 -type kz_responder() :: #kz_responder{}.
 -type kz_responders() :: [kz_responder()].
 
