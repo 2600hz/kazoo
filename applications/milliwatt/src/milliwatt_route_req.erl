@@ -72,7 +72,7 @@ execute_action(Call, 'echo') ->
 -spec tone_or_echo(kapps_call:call()) -> action() | 'undefined'.
 tone_or_echo(Call) ->
     From = kapps_call:caller_id_number(Call),
-    To = kapps_Call:to_user(Call),
+    To = kapps_call:to_user(Call),
 
     lager:debug("checking whether to handle call to ~s from ~s", [To, From]),
 

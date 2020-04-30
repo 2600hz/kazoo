@@ -301,7 +301,7 @@ key_to_key_path(?LIST(?MOD_FUN_ARGS('kapps_config', _F, [_Doc, Field | _]), ?EMP
 key_to_key_path(?LIST(?MOD_FUN_ARGS('kapps_config', _F, [_Doc, Field | _]), Tail)) ->
     [kz_ast_util:binary_match_to_binary(Field)
     ,?FIELD_PROPERTIES
-    | key_to_key_path(Tail)
+     | key_to_key_path(Tail)
     ];
 key_to_key_path(?LIST(?MOD_FUN_ARGS('kz_term', 'to_binary', [?VAR(_Name)]), _Tail)) ->
     'undefined';
@@ -415,7 +415,7 @@ guess_properties(Document, SourceModule, Key=?NE_BINARY, Type, Default) ->
       [{?SOURCE, SourceModule}
       ,{<<"description">>, Description}
       ,{?FIELD_DEFAULT, try default_value(Default) catch _:_ -> 'undefined' end}
-      | type(Type)
+       | type(Type)
       ]);
 
 guess_properties(Document, Source, [Key], Type, Default)
