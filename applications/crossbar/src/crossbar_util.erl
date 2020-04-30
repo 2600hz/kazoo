@@ -979,7 +979,7 @@ descendants_count(Opts) ->
         {'error', 'no_descendants'} ->
             handle_no_descendants(ViewOptions);
         {'error', _E} ->
-            io:format("could not load view listing_by_descendants_count: ~p~n", [_E]);
+            lager:info("could not load view listing_by_descendants_count: ~p~n", [_E]);
         {'ok', Counts} ->
             handle_descendant_counts(ViewOptions, Counts)
     end.

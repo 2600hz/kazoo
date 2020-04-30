@@ -104,3 +104,11 @@ If the backend needs to receive the attachment binary as a base64-encoded value,
 ```
 
 When fetching the attachment back from your server, you can return either the raw binary or the base64-encoded version. KAZOO will decode it if necessary.
+
+### Fetching the binary
+
+Metadata about the file being requested will be included as querystring parameters on the GET request to your server.
+
+For instance, if you store voicemail messages to `http://storage.server.com/storage/` with no URL formatting (`fields:[]` in handler settings), you can expect to receive a GET to `http://storage.server.com/storage/?from=pqc_cb_storage4e3005310add6229778caf6babfe7cfb/202004-03b64407c4f1f83340a9ef39fc0d02d8/uploaded_file_63754892074.mp3?from=pqc_cb_storage&media_id=202004-03b64407c4f1f83340a9ef39fc0d02d8&call_id=abad6555b4031ed6cb1e7dec&caller_id_name=pqc_cb_storage&caller_id_number=pqc_cb_storage&from=pqc_cb_storage%4053cb34.sip.2600hz.com&from_user=pqc_cb_storage&from_realm=53cb34.sip.2600hz.com&length=1&timestamp=63754892074&to=1010%4053cb34.sip.2600hz.com&to_user=1010&to_realm=53cb34.sip.2600hz.com&folder=new`
+
+The querystring will reflect the metadata of the stored media (the JSON you'd get with a GET to the corresponding Crossbar API).

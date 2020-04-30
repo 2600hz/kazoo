@@ -197,7 +197,7 @@ make_request([Code|_]=Codes, HTTP, URL, RequestHeaders) when is_integer(Code) ->
 make_request(#{'response_codes' := _}=Expectation, HTTP, URL, RequestHeaders) ->
     make_request([Expectation], HTTP, URL, RequestHeaders);
 make_request([#{}|_]=Expectations, HTTP, URL, RequestHeaders) ->
-    lager:info("~p(~p, ~p)", [HTTP, URL, RequestHeaders]),
+    lager:info("~p(~s, ~p)", [HTTP, URL, RequestHeaders]),
 
     handle_response(Expectations, HTTP(URL, RequestHeaders)).
 

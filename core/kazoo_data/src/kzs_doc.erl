@@ -78,10 +78,10 @@ update_cache(DbName, DocId, JObj, 'false') ->
           {'ok', kz_json:objects()} |
           data_error().
 save_docs(#{server := {App, Conn}}, DbName, Docs, Options) ->
-    {PreparedDocs, Publish} = lists:unzip([prepare_doc_for_save(DbName, D) || D <- Docs]),
+    {PreparedDocs, PublishDocs} = lists:unzip([prepare_doc_for_save(DbName, D) || D <- Docs]),
     try App:save_docs(Conn, DbName, PreparedDocs, Options) of
         {'ok', JObjs}=Ok ->
-            kzs_publish:maybe_publish_docs(DbName, Publish, JObjs),
+            kzs_publish:maybe_publish_docs(DbName, PublishDocs, JObjs),
             _ = [update_cache(DbName, kz_doc:id(JObj), JObj, 'true') || JObj <- JObjs],
             Ok;
         Else -> Else
@@ -151,13 +151,16 @@ del_doc(#{server := {App, Conn}}=Server, DbName, Doc, Options) ->
 -spec del_docs(map(), kz_term:ne_binary(), kz_json:objects() | kz_term:ne_binaries(), kz_term:proplist()) ->
           {'ok', kz_json:objects()} |
           data_error().
-del_docs(#{server := {App, Conn}}=Server, DbName, Docs, Options) ->
-    DelDocs = [prepare_doc_for_del(Server,DbName, D) || D <- Docs],
-    {PreparedDocs, Publish} = lists:unzip([prepare_doc_for_save(DbName, D) || D <- DelDocs]),
+del_docs(Server, DbName, Docs, Options) ->
+    do_delete_docs(Server, DbName, prepare_docs_for_deletion(Server, DbName, Docs), Options).
+
+do_delete_docs(_Server, _DbName, [], _Options) -> {'ok', []};
+do_delete_docs(#{server := {App, Conn}}, DbName, DelDocs, Options) ->
+    {PreparedDocs, PublishDocs} = lists:unzip([prepare_doc_for_save(DbName, D) || D <- DelDocs]),
     try App:del_docs(Conn, DbName, PreparedDocs, Options) of
         {'ok', JObjs}=Ok ->
-            kzs_publish:maybe_publish_docs(DbName, Publish, JObjs),
-            _ = [update_cache(DbName, kz_doc:id(JObj), JObj, 'true') || JObj <- JObjs],
+            kzs_publish:maybe_publish_docs(DbName, PublishDocs, JObjs),
+            _ = [kzs_cache:flush_cache_doc(DbName, kz_doc:id(JObj)) || JObj <- JObjs],
             Ok;
         Else -> Else
     catch
@@ -185,6 +188,54 @@ prepare_doc_for_del(Server, DbName, Doc) ->
        | kzs_publish:publish_fields(Doc)
       ]).
 
+-spec prepare_docs_for_deletion(map(), kz_term:ne_binary(), [kz_json:object() | kz_term:ne_binary()]) ->
+          kz_json:objects().
+prepare_docs_for_deletion(Server, DbName, Docs) ->
+    {NeedsRev, HasRev} = lists:partition(fun needs_rev/1, Docs),
+
+    NeededRevDocs = [prepare_doc_for_del(Server, DbName, D) || D <- get_revisions(Server, DbName, NeedsRev)],
+    HasRevDeletionDocs = [prepare_doc_for_del(Server, DbName, D) || D <- HasRev],
+
+    HasRevDeletionDocs ++ NeededRevDocs.
+
+get_revisions(Server, DbName, NeedsRev) ->
+    IDs = lists:foldl(fun get_ids/2, [], NeedsRev),
+    case kzs_view:all_docs(Server, DbName, [{'keys', IDs}]) of
+        {'ok', Docs} ->
+            lists:foldl(fun get_revision_from_all_docs_result/2, [], Docs);
+        {'error', 'not_found'} -> [];
+        {'error', _E} ->
+            lager:debug("all_docs error: ~p", [_E]),
+            []
+    end.
+
+get_revision_from_all_docs_result(Result, Acc) ->
+    get_revision_from_all_docs_result(Result, Acc, kz_doc:id(Result)).
+
+get_revision_from_all_docs_result(_Result, Acc, 'undefined') -> Acc;
+get_revision_from_all_docs_result(Result, Acc, DocId) ->
+    Doc = kz_doc:setters([{fun kz_doc:set_id/2, DocId}
+                         ,{fun kz_doc:set_revision/2, kz_json:get_value([<<"value">>, <<"rev">>], Result)}
+                         ]),
+    [Doc | Acc].
+
+get_ids(<<DocID/binary>>, Acc) -> [DocID | Acc];
+get_ids(JObj, Acc) -> [kz_doc:id(JObj) | Acc].
+
+-spec needs_rev(kz_term:ne_binary() | kz_json:object()) -> boolean().
+needs_rev(<<_DocId/binary>>) -> 'true';
+needs_rev(Doc) -> kz_doc:revision(Doc) =:= 'undefined'.
+
+%%------------------------------------------------------------------------------
+%% @doc Prepare / convert a doc for save or delete.
+%% If the doc has the key `id' set,it will be deleted and a new `id' will be
+%% generated.
+%% @returns {PreparedDoc, PublishDoc} where:
+%% PreparedDoc is a JObj containing all the necessary key values and in the
+%% correct format for the save or delete operation.
+%% PublishDoc is a JObj containing a defined set of key value pairs (?PUBLISH_FIELDS + doc rev).
+%% @end
+%%------------------------------------------------------------------------------
 -spec prepare_doc_for_save(kz_term:ne_binary(), kz_json:object()) -> {kz_json:object(), kz_json:object()}.
 prepare_doc_for_save(Db, JObj) ->
     Doc = kz_json:delete_key(<<"id">>, JObj),
@@ -198,7 +249,11 @@ prepare_doc_for_save(_Db, JObj, 'false') ->
 
 -spec prepare_publish(kz_json:object()) -> {kz_json:object(), kz_json:object()}.
 prepare_publish(JObj) ->
-    {maybe_tombstone(JObj), kz_json:from_list(kzs_publish:publish_fields(JObj))}.
+    PublishDoc = kz_json:from_list(
+                   [{<<"_rev">>, kz_doc:revision(JObj)}
+                    | kzs_publish:publish_fields(JObj)
+                   ]),
+    {maybe_tombstone(JObj), PublishDoc}.
 
 -spec maybe_tombstone(kz_json:object()) -> kz_json:object().
 maybe_tombstone(JObj) ->

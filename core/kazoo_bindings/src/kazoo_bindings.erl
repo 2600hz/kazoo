@@ -23,7 +23,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0
+-export([start_link/0, is_running/0
         ,bind/2, bind/3, bind/4
         ,unbind/3, unbind/4
         ,map/2, map/3, pmap/2, pmap/3
@@ -44,14 +44,12 @@
         ]).
 
 %% Helper Function for calling map/3
--export([candidates/1
-        ]).
+-export([candidates/1]).
 
 -export([rt_options/0, rt_options/1]).
 
 %% Helper Functions for debugging
--export([bindings/0, bindings/1, bindings/2
-        ]).
+-export([bindings/0, bindings/1, bindings/2]).
 
 %% ETS Persistence
 -export([table_id/0
@@ -291,6 +289,10 @@ matches(_, _) -> 'false'.
 start_link() ->
     gen_server:start_link({'local', ?SERVER}, ?MODULE, [], []).
 
+-spec is_running() -> boolean().
+is_running() ->
+    is_pid(whereis(?SERVER)).
+
 -spec stop() -> 'ok'.
 stop() -> gen_server:cast(?SERVER, 'stop').
 
@@ -314,7 +316,8 @@ bind(Binding, Module, Fun) when is_binary(Binding) ->
           bind_result() | bind_results().
 bind([_|_]=Bindings, Module, Fun, Payload) ->
     [bind(Binding, Module, Fun, Payload) || Binding <- Bindings];
-bind(Binding, 'undefined' = Module, Fun, Payload) ->
+bind(Binding, Module, Fun, Payload)
+  when is_function(Fun, 1) ->
     lager:debug("adding binding ~s for ~p (~p)", [Binding, Fun, Payload]),
     gen_server:call(?SERVER, {'bind', Binding, Module, Fun, Payload}, 'infinity');
 bind(Binding, Module, Fun, Payload) ->
@@ -824,7 +827,8 @@ apply_map_responder(#kz_responder{module=M
     end.
 
 -spec apply_map_responder(atom(), atom() | fun(), payload()) -> any().
-apply_map_responder('undefined', Fun, Payload) ->
+apply_map_responder(_M, Fun, Payload)
+  when is_function(Fun, 1) ->
     Fun(Payload);
 apply_map_responder(M, F, Payload) ->
     erlang:apply(M, F, Payload).
