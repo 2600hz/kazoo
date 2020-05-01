@@ -33,6 +33,7 @@ publish_presence(#{call_id := UUID, payload := _JObj} = Ctx) ->
     kz_log:put_callid(UUID),
     Routines = [fun check_proto/1
                ,fun check_node/1
+               ,fun check_presence_id/1
                ],
     case lists:all(fun(F) -> F(Ctx) end, Routines) of
         'true' -> build_presence_event(UUID, Ctx);
@@ -60,8 +61,14 @@ check_node(#{payload := JObj}) ->
         'false' -> 'true';
         'undefined' -> 'true';
         Node -> 'true';
-        _Other -> 'false'
+        _Other ->
+            lager:debug("check node failed ~p ", [_Other]),
+            'false'
     end.
+
+-spec check_presence_id(map()) -> boolean().
+check_presence_id(#{payload := JObj}) ->
+    kz_call_event:custom_channel_var(JObj, <<"Presence-ID">>) =/= 'undefined'.
 
 -spec realm(kz_json:object()) -> kz_term:ne_binary().
 realm(JObj) ->
@@ -83,7 +90,8 @@ get_user_realm(JObj) ->
 
 -spec from(kz_json:object()) -> kz_term:ne_binary().
 from(JObj) ->
-    kz_json:get_first_defined([<<"from">>
+    kz_json:get_first_defined([?GET_CCV(<<"Presence-ID">>)
+                              ,<<"from">>
                               ,<<"variable_presence_id">>
                               ,<<"Channel-Presence-ID">>
                               ]
