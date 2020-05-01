@@ -1,0 +1,3 @@
+<definition name="interaction-timestamp">
+    <field name="Timestamp" type="expand" value="${regex(${variable_Call-Interaction-ID}|([^-]*)-(.*)|%1)}" serialize-as="number"/>
+</definition>

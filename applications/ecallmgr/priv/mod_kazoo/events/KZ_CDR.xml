@@ -5,7 +5,7 @@
 		<field name="msg-id" type="reference" />
 		<field name="App-Name" type="static" value="freeswitch" />
 		<field name="App-Version" type="static" value="1.0" />
-		<field name="timestamp" type="reference" />
+		<field name="interaction-timestamp" type="reference" />
 		<field name="Unique-ID" as="Call-ID" />
 		<field name="Caller-Channel-Created-Time" as="Channel-Created-Time" serialize-as="number"/>
 		<field name="Core-UUID" as="Node" />
