@@ -1,4 +1,4 @@
-### Setup SSL support for Crossbar
+# Setup SSL support for Crossbar
 
 Note: all commands are run from `$KAZOO/applications/crossbar/priv/ssl/`.
 
@@ -110,7 +110,7 @@ Getting Private key
 You can now test your new SSL-enabled APIs via:
 
 ```shell
-$ curl -v --cacert crossbar.crt https://api.2600hz.com:8443/v1/accounts
+$ curl -v --cacert crossbar.crt https://api.2600hz.com:8443/v2/accounts
 * About to connect() to api.2600hz.com port 8443 (#0)
 *   Trying 127.0.0.1... connected
 * successfully set certificate verify locations:
@@ -134,7 +134,7 @@ CApath: /etc/ssl/certs
 *        common name: api.2600hz.com (matched)
 *        issuer: C=US; ST=California; L=San Francisco; O=2600Hz; CN=api.2600hz.com
 *        SSL certificate verify ok.
-> GET /v1/accounts HTTP/1.1
+> GET /v2/accounts HTTP/1.1
 > User-Agent: curl/7.22.0 (x86_64-pc-linux-gnu) libcurl/7.22.0 OpenSSL/1.0.1 zlib/1.2.3.4 libidn/1.23 librtmp/2.3
 > Host: api.2600hz.com:8443
 > Accept: */*
@@ -156,3 +156,40 @@ CApath: /etc/ssl/certs
 * Closing connection #0
 * SSLv3, TLS alert, Client hello (1):
 ```
+
+# Reverse Proxies
+
+Apache, nginx, HAProxy, and others can be used for SSL/TLS termination instead of Crossbar itself.
+
+Ideally on a separate server (or two), these can be setup to load balance across multiple instances of Crossbar in your cluster.
+
+## Apache
+
+In `httpd.conf` add `Listen 8443` (or whatever port you want clients to connect on with TLS).
+
+Add this virtual host:
+
+```
+<VirtualHost *:8443>
+    ServerName api.your.domain.com:8443
+    ProxyPreserveHost On
+
+    SSLEngine on
+    SSLCertificateKeyFile "/etc/path/to/privkey.pem"
+    SSLCertificateFile "/etc/path/to/cert.pem"
+
+    # Servers to proxy the connection, or;
+    # List of application servers:
+    # Usage:
+    # ProxyPass / http://[IP Addr.]:[port]/
+    # ProxyPassReverse / http://[IP Addr.]:[port]/
+    # Example:
+    ProxyPass / http://crossbar.server:8000/
+    ProxyPassReverse / http://crossbar.server:8000/
+</VirtualHost>
+```
+
+Save the virtual host and restart httpd/apache2.
+
+!!! note
+    This is just a basic example. Other configurations are likely more efficient and better suited to a production environment.

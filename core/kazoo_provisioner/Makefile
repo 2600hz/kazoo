@@ -1,7 +1,6 @@
-ROOT = ../..
+CWD = $(shell pwd -P)
+ROOT = $(realpath $(CWD)/../..)
 PROJECT = kazoo_provisioner
-
-SOURCES = $(wildcard src/*.erl)
 
 all: compile
 

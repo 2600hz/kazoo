@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Record something
 %%% "data":{
 %%%   "action":["start","stop"] // one of these
@@ -9,6 +9,11 @@
 %%% }
 %%%
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(konami_record_call).
@@ -20,13 +25,13 @@
 -include("konami.hrl").
 
 -spec handle(kz_json:object(), kapps_call:call()) ->
-                    {'continue', kapps_call:call()}.
+          {'continue', kapps_call:call()}.
 handle(Data, Call) ->
     Call1 = handle(Data, Call, get_action(kz_json:get_ne_binary_value(<<"action">>, Data))),
     {'continue', Call1}.
 
 -spec handle(kz_json:object(), kapps_call:call(), kz_term:ne_binary()) ->
-                    kapps_call:call().
+          kapps_call:call().
 handle(Data, Call, <<"mask">>) ->
     LegId = kz_json:get_ne_binary_value(<<"dtmf_leg">>, Data),
     lager:debug("masking recording on leg ~s, see you on the other side", [LegId]),

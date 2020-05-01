@@ -10,19 +10,46 @@
     "language": "javascript",
     "views": {
         "accounts": {
-            "map": "function(doc) {if (doc.pvt_type != 'storage' || doc.pvt_deleted) return; if(doc._id != doc.pvt_account_id) return; emit(doc._id, null);}"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'storage' || doc.pvt_deleted) return;",
+                "  if (doc._id != doc.pvt_account_id) return;",
+                "  emit(doc._id, null);",
+                "}"
+            ]
         },
         "crossbar_listing": {
-            "map": "function(doc) {if (doc.pvt_type != 'storage_plan' || doc.pvt_deleted) return; emit(doc._id, null);}"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'storage_plan' || doc.pvt_deleted) return;",
+                "  emit(doc._id, null);",
+                "}"
+            ]
         },
         "plans_by_account": {
-            "map": "function(doc) { if (doc.pvt_type != 'storage_plan'  || doc.pvt_deleted || doc.pvt_system_plan) return; emit([doc.pvt_account_id, doc._id], null); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'storage_plan' || doc.pvt_deleted || doc.pvt_system_plan) return;",
+                "  emit([doc.pvt_account_id, doc._id], null);",
+                "}"
+            ]
         },
         "storage_by_account": {
-            "map": "function(doc) { if (doc.pvt_type != 'storage'  || doc.pvt_deleted || doc.pvt_system_plan) return; if(doc._id == doc.pvt_account_id) return; emit(doc.pvt_account_id, null); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'storage' || doc.pvt_deleted || doc.pvt_system_plan) return;",
+                "  if (doc._id == doc.pvt_account_id) return;",
+                "  emit(doc.pvt_account_id, null);",
+                "}"
+            ]
         },
         "system_plans": {
-            "map": "function(doc) { if (doc.pvt_type != 'storage_plan'  || doc.pvt_deleted || !doc.pvt_system_plan) return; emit(doc._id, null); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'storage_plan' || doc.pvt_deleted || !doc.pvt_system_plan) return;",
+                "  emit(doc._id, null);",
+                "}"
+            ]
         }
     }
 }

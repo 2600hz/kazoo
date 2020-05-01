@@ -3,6 +3,11 @@
     "_id": "system_config.jonny5",
     "description": "Schema for jonny5 system_config",
     "properties": {
+        "check_service_standing": {
+            "default": true,
+            "description": "jonny5 check_service_standing",
+            "type": "boolean"
+        },
         "default_allow_postpay": {
             "description": "jonny5 default_allow_postpay",
             "type": "boolean"
@@ -33,6 +38,16 @@
             "default": false,
             "description": "lookup flat rate regexps per resource",
             "type": "boolean"
+        },
+        "service_standing_cache_acceptable": {
+            "default": true,
+            "description": "jonny5 service_standing_cache_acceptable",
+            "type": "boolean"
+        },
+        "service_standing_cache_expiration_s": {
+            "default": 1800,
+            "description": "jonny5 service_standing_cache_expiration_s",
+            "type": "integer"
         }
     },
     "type": "object"

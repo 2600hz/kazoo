@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Rater whapp; send me a DID, get a rate back.
 %%% ```
 %%% (Words * Bytes/Word) div (Prefixes) ~= Bytes per Prefix
@@ -16,6 +16,11 @@
 %%% '''
 %%%
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(hon_trie).
@@ -123,7 +128,7 @@ rebuild() ->
 
 -spec init([kz_term:ne_binary()]) -> {'ok', state()}.
 init([RatedeckDb]) ->
-    kz_util:put_callid(trie_proc_name(RatedeckDb)),
+    kz_log:put_callid(trie_proc_name(RatedeckDb)),
     PidRef = start_builder(RatedeckDb),
     lager:debug("building trie for ~s in ~p", [RatedeckDb, PidRef]),
     {'ok', ?STATE_BUILDING('undefined', RatedeckDb, PidRef)}.
@@ -135,8 +140,8 @@ start_builder(RatedeckDb) ->
     PidRef.
 
 -spec handle_call(any(), kz_term:pid_ref(), state()) ->
-                         {'noreply', state()} |
-                         {'reply', match_return(), state()}.
+          {'noreply', state()} |
+          {'reply', match_return(), state()}.
 handle_call({'match_did', _DID}, _From, ?STATE_BUILDING('undefined', _RatedeckDb, _PidRef)=State) ->
     {'reply', {'error', 'no_trie'}, State};
 handle_call({'match_did', DID}, _From, ?STATE_BUILDING(Trie, _RatedeckDb, {_Pid, _Ref})=State) ->
@@ -257,7 +262,7 @@ build_trie(Server, Database) ->
 -define(LIMIT, 5000).
 
 -spec build_trie(pid(), kz_term:ne_binary(), trie:trie(), kazoo_data:get_results_return()) ->
-                        'ok'.
+          'ok'.
 build_trie(Server, _Database, Trie, {'ok', []}) ->
     gen_server:cast(Server, ?BUILT_TRIE(self(), Trie));
 build_trie(Server, Database, Trie, {'ok', JObjs}) ->
@@ -286,7 +291,7 @@ add_result(Result, Trie) ->
     trie:append(Prefix, Id, Trie).
 
 -spec fetch_rates(kz_term:ne_binary(), non_neg_integer()) ->
-                         kazoo_data:get_results_return().
+          kazoo_data:get_results_return().
 fetch_rates(Database, StartKey) ->
     Options = props:filter_undefined([{'startkey', StartKey}
                                      ,{'limit', ?LIMIT+1}

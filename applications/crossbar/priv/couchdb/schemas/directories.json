@@ -9,6 +9,14 @@
             "support_level": "supported",
             "type": "boolean"
         },
+        "flags": {
+            "description": "Flags set by external applications",
+            "items": {
+                "type": "string"
+            },
+            "support_level": "supported",
+            "type": "array"
+        },
         "max_dtmf": {
             "default": 0,
             "description": "Cap the number of DTMF characters collected from a caller, 0 for unlimited",
@@ -27,6 +35,15 @@
             "description": "The name of the directory",
             "minLength": 1,
             "support_level": "supported",
+            "type": "string"
+        },
+        "search_fields": {
+            "description": "What user fields to search DTMF matches on",
+            "enum": [
+                "first_name",
+                "last_name",
+                "both"
+            ],
             "type": "string"
         },
         "sort_by": {

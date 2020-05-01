@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kzd_devices).
@@ -27,6 +31,7 @@
 -export([do_not_disturb_enabled/1, do_not_disturb_enabled/2, set_do_not_disturb_enabled/2]).
 -export([enabled/1, enabled/2, set_enabled/2]).
 -export([exclude_from_queues/1, exclude_from_queues/2, set_exclude_from_queues/2]).
+-export([flags/1, flags/2, set_flags/2]).
 -export([formatters/1, formatters/2, set_formatters/2]).
 -export([hotdesk/1, hotdesk/2, set_hotdesk/2]).
 -export([language/1, language/2, set_language/2]).
@@ -39,7 +44,9 @@
 -export([name/1, name/2, set_name/2]).
 -export([outbound_flags/1, outbound_flags/2, set_outbound_flags/2]).
 -export([owner_id/1, owner_id/2, set_owner_id/2]).
--export([presence_id/1, presence_id/2, set_presence_id/2]).
+-export([presence_id/1, presence_id/2, set_presence_id/2
+        ,calculate_presence_id/1, calculate_presence_id/2
+        ]).
 -export([provision/1, provision/2, set_provision/2]).
 -export([provision_combo_keys/1, provision_combo_keys/2, set_provision_combo_keys/2]).
 -export([provision_combo_key/2, provision_combo_key/3, set_provision_combo_key/3]).
@@ -55,16 +62,21 @@
 -export([ringtones_internal/1, ringtones_internal/2, set_ringtones_internal/2]).
 -export([sip/1, sip/2, set_sip/2]).
 -export([sip_custom_sip_headers/1, sip_custom_sip_headers/2, set_sip_custom_sip_headers/2]).
+-export([sip_custom_sip_interface/1, sip_custom_sip_interface/2, set_sip_custom_sip_interface/2]).
 -export([sip_expire_seconds/1, sip_expire_seconds/2, set_sip_expire_seconds/2]).
+-export([sip_forward/1, sip_forward/2, set_sip_forward/2]).
 -export([sip_ignore_completed_elsewhere/1, sip_ignore_completed_elsewhere/2, set_sip_ignore_completed_elsewhere/2]).
 -export([sip_invite_format/1, sip_invite_format/2, set_sip_invite_format/2]).
 -export([sip_ip/1, sip_ip/2, set_sip_ip/2]).
 -export([sip_method/1, sip_method/2, set_sip_method/2]).
 -export([sip_number/1, sip_number/2, set_sip_number/2]).
 -export([sip_password/1, sip_password/2, set_sip_password/2]).
+-export([sip_proxy/1, sip_proxy/2, set_sip_proxy/2]).
 -export([sip_realm/1, sip_realm/2, set_sip_realm/2]).
 -export([sip_route/1, sip_route/2, set_sip_route/2]).
+-export([sip_static_invite/1, sip_static_invite/2, set_sip_static_invite/2]).
 -export([sip_static_route/1, sip_static_route/2, set_sip_static_route/2]).
+-export([sip_transport/1, sip_transport/2, set_sip_transport/2]).
 -export([sip_username/1, sip_username/2, set_sip_username/2]).
 -export([suppress_unregister_notifications/1, suppress_unregister_notifications/2, set_suppress_unregister_notifications/2]).
 -export([timezone/1, timezone/2, set_timezone/2]).
@@ -87,7 +99,8 @@
 -include("kz_documents.hrl").
 
 -type doc() :: kz_json:object().
--export_type([doc/0]).
+-type docs() :: [doc()].
+-export_type([doc/0, docs/0]).
 
 -define(SCHEMA, <<"devices">>).
 -define(STATIC_FLAGS, <<"static">>).
@@ -175,7 +188,7 @@ call_forward_number(Doc) ->
 
 -spec call_forward_number(doc(), Default) -> binary() | Default.
 call_forward_number(Doc, Default) ->
-    kz_json:get_binary_value([<<"call_forward">>, <<"number">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"call_forward">>, <<"number">>], Doc, Default).
 
 -spec set_call_forward_number(doc(), binary()) -> doc().
 set_call_forward_number(Doc, CallForwardNumber) ->
@@ -283,7 +296,7 @@ device_type(Doc) ->
 
 -spec device_type(doc(), Default) -> binary() | Default.
 device_type(Doc, Default) ->
-    kz_json:get_binary_value([<<"device_type">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"device_type">>], Doc, Default).
 
 -spec set_device_type(doc(), binary()) -> doc().
 set_device_type(Doc, DeviceType) ->
@@ -349,6 +362,18 @@ exclude_from_queues(Doc, Default) ->
 set_exclude_from_queues(Doc, ExcludeFromQueues) ->
     kz_json:set_value([<<"exclude_from_queues">>], ExcludeFromQueues, Doc).
 
+-spec flags(doc()) -> kz_term:api_ne_binaries().
+flags(Doc) ->
+    flags(Doc, 'undefined').
+
+-spec flags(doc(), Default) -> kz_term:ne_binaries() | Default.
+flags(Doc, Default) ->
+    kz_json:get_list_value([<<"flags">>], Doc, Default).
+
+-spec set_flags(doc(), kz_term:ne_binaries()) -> doc().
+set_flags(Doc, Flags) ->
+    kz_json:set_value([<<"flags">>], Flags, Doc).
+
 -spec formatters(doc()) -> kz_term:api_object().
 formatters(Doc) ->
     formatters(Doc, 'undefined').
@@ -379,7 +404,7 @@ language(Doc) ->
 
 -spec language(doc(), Default) -> binary() | Default.
 language(Doc, Default) ->
-    kz_json:get_binary_value([<<"language">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"language">>], Doc, Default).
 
 -spec set_language(doc(), binary()) -> doc().
 set_language(Doc, Language) ->
@@ -392,7 +417,7 @@ mac_address(Doc) ->
 -spec mac_address(doc(), Default) -> binary() | Default.
 mac_address(Doc, Default) ->
     provisioner_util:cleanse_mac_address(
-      kz_json:get_binary_value([<<"mac_address">>], Doc, Default)
+      kz_json:get_ne_binary_value([<<"mac_address">>], Doc, Default)
      ).
 
 -spec set_mac_address(doc(), binary()) -> doc().
@@ -443,7 +468,7 @@ music_on_hold_media_id(Doc) ->
 
 -spec music_on_hold_media_id(doc(), Default) -> binary() | Default.
 music_on_hold_media_id(Doc, Default) ->
-    kz_json:get_binary_value([<<"music_on_hold">>, <<"media_id">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"music_on_hold">>, <<"media_id">>], Doc, Default).
 
 -spec set_music_on_hold_media_id(doc(), binary()) -> doc().
 set_music_on_hold_media_id(Doc, MusicOnHoldMediaId) ->
@@ -536,11 +561,60 @@ presence_id(Doc) ->
 
 -spec presence_id(doc(), Default) -> binary() | Default.
 presence_id(Doc, Default) ->
-    kz_json:get_binary_value([<<"presence_id">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"presence_id">>], Doc, Default).
 
 -spec set_presence_id(doc(), binary()) -> doc().
 set_presence_id(Doc, PresenceId) ->
     kz_json:set_value([<<"presence_id">>], PresenceId, Doc).
+
+-spec calculate_presence_id(doc()) -> kz_term:api_ne_binary().
+calculate_presence_id(Doc) ->
+    calculate_presence_id(Doc, sip_username(Doc)).
+
+-spec calculate_presence_id(doc(), Default) -> kz_term:ne_binary() | Default.
+calculate_presence_id(Doc, Default) ->
+    DevicePresenceId = presence_id(Doc, Default),
+    case calculate_presence_id(Doc, DevicePresenceId, owner_id(Doc)) of
+        'undefined' -> 'undefined';
+        PresenceId -> maybe_fix_presence_id(Doc, PresenceId)
+    end.
+
+-spec maybe_fix_presence_id(doc(), kz_term:ne_binary()) -> kz_term:ne_binary().
+maybe_fix_presence_id(Doc, PresenceId) ->
+    case binary:match(PresenceId, <<"@">>) of
+        'nomatch' -> fix_presence_id(Doc, PresenceId);
+        _Match -> PresenceId
+    end.
+
+-spec fix_presence_id(doc(), kz_term:ne_binary()) -> kz_term:ne_binary().
+fix_presence_id(Doc, PresenceId) ->
+    AccountRealm = kzd_accounts:fetch_realm(kz_doc:account_id(Doc)),
+    <<PresenceId/binary, "@", AccountRealm/binary>>.
+
+-spec calculate_presence_id(doc(), Default, kz_term:api_ne_binary()) -> kz_term:ne_binary() | Default.
+calculate_presence_id(Doc, DevicePresenceId, 'undefined') ->
+    calculate_presence_id_from_hotdesk(Doc, DevicePresenceId, hotdesk_ids(Doc, []));
+calculate_presence_id(Doc, DevicePresenceId, OwnerId) ->
+    calculate_presence_id_from_owner(Doc, DevicePresenceId, OwnerId).
+
+-spec calculate_presence_id_from_owner(doc(), Default, kz_term:ne_binary()) -> kz_term:ne_binary() | Default.
+calculate_presence_id_from_owner(Doc, DevicePresenceId, OwnerId) ->
+    case kzd_users:fetch(kz_doc:account_db(Doc), OwnerId) of
+        {'ok', Owner} ->
+            kzd_users:presence_id(Owner, DevicePresenceId);
+        {'error', _} ->
+            DevicePresenceId
+    end.
+
+-spec calculate_presence_id_from_hotdesk(doc(), Default, kz_term:ne_binaries()) -> kz_term:ne_binary() | Default.
+calculate_presence_id_from_hotdesk(_Doc, DevicePresenceId, []) -> DevicePresenceId;
+calculate_presence_id_from_hotdesk(Doc, DevicePresenceId, [HotdeskId|HotdeskIds]) ->
+    case calculate_presence_id_from_owner(Doc, DevicePresenceId, HotdeskId) of
+        DevicePresenceId -> calculate_presence_id_from_hotdesk(Doc, DevicePresenceId, HotdeskIds);
+        HotdeskPresenceId ->
+            lager:debug("using hotdesk presence id ~s from ~s", [HotdeskPresenceId, HotdeskId]),
+            HotdeskPresenceId
+    end.
 
 -spec provision(doc()) -> kz_term:api_object().
 provision(Doc) ->
@@ -584,7 +658,7 @@ provision_endpoint_brand(Doc) ->
 
 -spec provision_endpoint_brand(doc(), Default) -> binary() | Default.
 provision_endpoint_brand(Doc, Default) ->
-    kz_json:get_binary_value([<<"provision">>, <<"endpoint_brand">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"provision">>, <<"endpoint_brand">>], Doc, Default).
 
 -spec set_provision_endpoint_brand(doc(), binary()) -> doc().
 set_provision_endpoint_brand(Doc, ProvisionEndpointBrand) ->
@@ -596,7 +670,7 @@ provision_endpoint_family(Doc) ->
 
 -spec provision_endpoint_family(doc(), Default) -> binary() | Default.
 provision_endpoint_family(Doc, Default) ->
-    kz_json:get_binary_value([<<"provision">>, <<"endpoint_family">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"provision">>, <<"endpoint_family">>], Doc, Default).
 
 -spec set_provision_endpoint_family(doc(), binary()) -> doc().
 set_provision_endpoint_family(Doc, ProvisionEndpointFamily) ->
@@ -680,7 +754,7 @@ ringtones_external(Doc) ->
 
 -spec ringtones_external(doc(), Default) -> binary() | Default.
 ringtones_external(Doc, Default) ->
-    kz_json:get_binary_value([<<"ringtones">>, <<"external">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"ringtones">>, <<"external">>], Doc, Default).
 
 -spec set_ringtones_external(doc(), binary()) -> doc().
 set_ringtones_external(Doc, RingtonesExternal) ->
@@ -692,7 +766,7 @@ ringtones_internal(Doc) ->
 
 -spec ringtones_internal(doc(), Default) -> binary() | Default.
 ringtones_internal(Doc, Default) ->
-    kz_json:get_binary_value([<<"ringtones">>, <<"internal">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"ringtones">>, <<"internal">>], Doc, Default).
 
 -spec set_ringtones_internal(doc(), binary()) -> doc().
 set_ringtones_internal(Doc, RingtonesInternal) ->
@@ -722,6 +796,18 @@ sip_custom_sip_headers(Doc, Default) ->
 set_sip_custom_sip_headers(Doc, SipCustomSipHeaders) ->
     kz_json:set_value([<<"sip">>, <<"custom_sip_headers">>], SipCustomSipHeaders, Doc).
 
+-spec sip_custom_sip_interface(doc()) -> kz_term:api_binary().
+sip_custom_sip_interface(Doc) ->
+    sip_custom_sip_interface(Doc, 'undefined').
+
+-spec sip_custom_sip_interface(doc(), Default) -> binary() | Default.
+sip_custom_sip_interface(Doc, Default) ->
+    kz_json:get_binary_value([<<"sip">>, <<"custom_sip_interface">>], Doc, Default).
+
+-spec set_sip_custom_sip_interface(doc(), binary()) -> doc().
+set_sip_custom_sip_interface(Doc, SipCustomSipInterface) ->
+    kz_json:set_value([<<"sip">>, <<"custom_sip_interface">>], SipCustomSipInterface, Doc).
+
 -spec sip_expire_seconds(doc()) -> integer().
 sip_expire_seconds(Doc) ->
     sip_expire_seconds(Doc, 300).
@@ -733,6 +819,18 @@ sip_expire_seconds(Doc, Default) ->
 -spec set_sip_expire_seconds(doc(), integer()) -> doc().
 set_sip_expire_seconds(Doc, SipExpireSeconds) ->
     kz_json:set_value([<<"sip">>, <<"expire_seconds">>], SipExpireSeconds, Doc).
+
+-spec sip_forward(doc()) -> kz_term:api_binary().
+sip_forward(Doc) ->
+    sip_forward(Doc, 'undefined').
+
+-spec sip_forward(doc(), Default) -> binary() | Default.
+sip_forward(Doc, Default) ->
+    kz_json:get_binary_value([<<"sip">>, <<"forward">>], Doc, Default).
+
+-spec set_sip_forward(doc(), binary()) -> doc().
+set_sip_forward(Doc, SipForward) ->
+    kz_json:set_value([<<"sip">>, <<"forward">>], SipForward, Doc).
 
 -spec sip_ignore_completed_elsewhere(doc()) -> kz_term:api_boolean().
 sip_ignore_completed_elsewhere(Doc) ->
@@ -752,7 +850,7 @@ sip_invite_format(Doc) ->
 
 -spec sip_invite_format(doc(), Default) -> binary() | Default.
 sip_invite_format(Doc, Default) ->
-    kz_json:get_binary_value([<<"sip">>, <<"invite_format">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"sip">>, <<"invite_format">>], Doc, Default).
 
 -spec set_sip_invite_format(doc(), binary()) -> doc().
 set_sip_invite_format(Doc, SipInviteFormat) ->
@@ -764,7 +862,7 @@ sip_ip(Doc) ->
 
 -spec sip_ip(doc(), Default) -> binary() | Default.
 sip_ip(Doc, Default) ->
-    kz_json:get_binary_value([<<"sip">>, <<"ip">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"sip">>, <<"ip">>], Doc, Default).
 
 -spec set_sip_ip(doc(), binary()) -> doc().
 set_sip_ip(Doc, SipIP) ->
@@ -776,7 +874,7 @@ sip_method(Doc) ->
 
 -spec sip_method(doc(), Default) -> binary() | Default.
 sip_method(Doc, Default) ->
-    kz_json:get_binary_value([<<"sip">>, <<"method">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"sip">>, <<"method">>], Doc, Default).
 
 -spec set_sip_method(doc(), binary()) -> doc().
 set_sip_method(Doc, SipMethod) ->
@@ -788,7 +886,7 @@ sip_number(Doc) ->
 
 -spec sip_number(doc(), Default) -> binary() | Default.
 sip_number(Doc, Default) ->
-    kz_json:get_binary_value([<<"sip">>, <<"number">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"sip">>, <<"number">>], Doc, Default).
 
 -spec set_sip_number(doc(), binary()) -> doc().
 set_sip_number(Doc, SipNumber) ->
@@ -805,6 +903,18 @@ sip_password(Doc, Default) ->
 -spec set_sip_password(doc(), kz_term:ne_binary()) -> doc().
 set_sip_password(Doc, SipPassword) ->
     kz_json:set_value([<<"sip">>, <<"password">>], SipPassword, Doc).
+
+-spec sip_proxy(doc()) -> kz_term:api_binary().
+sip_proxy(Doc) ->
+    sip_proxy(Doc, 'undefined').
+
+-spec sip_proxy(doc(), Default) -> binary() | Default.
+sip_proxy(Doc, Default) ->
+    kz_json:get_binary_value([<<"sip">>, <<"proxy">>], Doc, Default).
+
+-spec set_sip_proxy(doc(), binary()) -> doc().
+set_sip_proxy(Doc, SipProxy) ->
+    kz_json:set_value([<<"sip">>, <<"proxy">>], SipProxy, Doc).
 
 -spec sip_realm(doc()) -> kz_term:api_ne_binary().
 sip_realm(Doc) ->
@@ -824,11 +934,23 @@ sip_route(Doc) ->
 
 -spec sip_route(doc(), Default) -> binary() | Default.
 sip_route(Doc, Default) ->
-    kz_json:get_binary_value([<<"sip">>, <<"route">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"sip">>, <<"route">>], Doc, Default).
 
 -spec set_sip_route(doc(), binary()) -> doc().
 set_sip_route(Doc, SipRoute) ->
     kz_json:set_value([<<"sip">>, <<"route">>], SipRoute, Doc).
+
+-spec sip_static_invite(doc()) -> kz_term:api_binary().
+sip_static_invite(Doc) ->
+    sip_static_invite(Doc, 'undefined').
+
+-spec sip_static_invite(doc(), Default) -> binary() | Default.
+sip_static_invite(Doc, Default) ->
+    kz_json:get_binary_value([<<"sip">>, <<"static_invite">>], Doc, Default).
+
+-spec set_sip_static_invite(doc(), binary()) -> doc().
+set_sip_static_invite(Doc, SipStaticInvite) ->
+    kz_json:set_value([<<"sip">>, <<"static_invite">>], SipStaticInvite, Doc).
 
 -spec sip_static_route(doc()) -> kz_term:api_binary().
 sip_static_route(Doc) ->
@@ -836,11 +958,23 @@ sip_static_route(Doc) ->
 
 -spec sip_static_route(doc(), Default) -> binary() | Default.
 sip_static_route(Doc, Default) ->
-    kz_json:get_binary_value([<<"sip">>, <<"static_route">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"sip">>, <<"static_route">>], Doc, Default).
 
 -spec set_sip_static_route(doc(), binary()) -> doc().
 set_sip_static_route(Doc, SipStaticRoute) ->
     kz_json:set_value([<<"sip">>, <<"static_route">>], SipStaticRoute, Doc).
+
+-spec sip_transport(doc()) -> kz_term:api_binary().
+sip_transport(Doc) ->
+    sip_transport(Doc, 'undefined').
+
+-spec sip_transport(doc(), Default) -> binary() | Default.
+sip_transport(Doc, Default) ->
+    kz_json:get_binary_value([<<"sip">>, <<"transport">>], Doc, Default).
+
+-spec set_sip_transport(doc(), binary()) -> doc().
+set_sip_transport(Doc, SipTransport) ->
+    kz_json:set_value([<<"sip">>, <<"transport">>], SipTransport, Doc).
 
 -spec sip_username(doc()) -> kz_term:api_ne_binary().
 sip_username(Doc) ->
@@ -872,16 +1006,16 @@ timezone(Doc) ->
 
 -spec timezone(doc(), Default) -> binary() | Default.
 timezone(Doc, Default) ->
-    kz_json:get_binary_value([<<"timezone">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"timezone">>], Doc, Default).
 
 -spec set_timezone(doc(), binary()) -> doc().
 set_timezone(Doc, Timezone) ->
     kz_json:set_value([<<"timezone">>], Timezone, Doc).
 
 -spec fetch(kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> {'ok', doc()} |
-                                                                 {'error', any()}.
+          {'error', any()}.
 fetch(Account=?NE_BINARY, DeviceId=?NE_BINARY) ->
-    AccountDb = kz_util:format_account_db(Account),
+    AccountDb = kzs_util:format_account_db(Account),
     kz_datamgr:open_cache_doc(AccountDb, DeviceId, [{'cache_failures', 'false'}]);
 fetch(_, _) ->
     {'error', 'invalid_parameters'}.
@@ -942,7 +1076,7 @@ set_custom_sip_headers_outbound(Device, Headers) ->
     set_sip_custom_sip_headers(Device, OutboundCSH).
 
 -spec set_outbound_flags(kz_json:object(), kz_term:api_ne_binaries(), kz_term:api_ne_binaries()) ->
-                                kz_json:object().
+          kz_json:object().
 set_outbound_flags(JObj, 'undefined', DynamicFlags) ->
     set_outbound_flags(JObj, [], DynamicFlags);
 set_outbound_flags(JObj, StaticFlags, 'undefined') ->

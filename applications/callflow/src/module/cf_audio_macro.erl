@@ -1,6 +1,11 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Plays an audio prompt and then continue.
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cf_audio_macro).
@@ -40,7 +45,7 @@ handle_macros(Call, Macros) ->
     end.
 
 -spec get_macro(kz_json:object(), kapps_call:call()) ->
-                       kapps_call_command:audio_macro_prompts().
+          kapps_call_command:audio_macro_prompts().
 get_macro(Data, Call) ->
     {Macros, _, _} = lists:foldl(fun get_macro_entry/2
                                 ,{[]
@@ -117,18 +122,18 @@ get_macro_entry(Macro, {Macros, Data, AccountId}, <<"tone">>) ->
     {[{'tones', [Tone]} | Macros], Data, AccountId}.
 
 -spec say_macro(kz_term:api_ne_binaries()) ->
-                       kapps_call_command:audio_macro_prompt() | 'undefined'.
+          kapps_call_command:audio_macro_prompt() | 'undefined'.
 say_macro(SayArgs) ->
     macro(SayArgs, 'say').
 
 -spec tts_macro(kz_term:api_ne_binaries()) ->
-                       kapps_call_command:audio_macro_prompt() | 'undefined'.
+          kapps_call_command:audio_macro_prompt() | 'undefined'.
 tts_macro(TTSArgs) ->
     macro(TTSArgs, 'tts').
 
 
 -spec macro(kz_term:api_ne_binaries(), atom()) ->
-                   kapps_call_command:audio_macro_prompt() | 'undefined'.
+          kapps_call_command:audio_macro_prompt() | 'undefined'.
 macro(Args, Type) ->
     case lists:takewhile(fun kz_term:is_not_empty/1, Args) of
         [] -> 'undefined';

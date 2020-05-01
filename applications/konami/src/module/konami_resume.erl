@@ -1,10 +1,15 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Reconnect the two legs of the call, if possible
 %%% Data = {
 %%% }
 %%%
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(konami_resume).
@@ -16,7 +21,7 @@
 -include("konami.hrl").
 
 -spec handle(kz_json:object(), kapps_call:call()) ->
-                    {'continue', kapps_call:call()}.
+          {'continue', kapps_call:call()}.
 handle(_Data, Call) ->
     lager:debug("reconnecting ~s and ~s", [kapps_call:call_id(Call)
                                           ,kapps_call:other_leg_call_id(Call)

@@ -1,7 +1,11 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Voice mailbox utility functions.
 %%% @author Hesaam Farhang
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kvm_util).
@@ -18,8 +22,10 @@
         ,retention_seconds/0, retention_seconds/1
         ,enforce_retention/1, enforce_retention/2, is_prior_to_retention/2
 
-        ,publish_saved_notify/5, publish_voicemail_saved/5
+        ,publish_saved_notify/5, publish_voicemail_saved/5, publish_voicemail_deleted/3
         ,get_caller_id_name/1, get_caller_id_number/1
+
+        ,transcribe_default/0
         ]).
 
 -include("kz_voicemail.hrl").
@@ -30,7 +36,7 @@
 %%------------------------------------------------------------------------------
 -spec get_db(kz_term:ne_binary()) -> kz_term:ne_binary().
 get_db(AccountId) ->
-    kz_util:format_account_db(AccountId).
+    kzs_util:format_account_db(AccountId).
 
 %%------------------------------------------------------------------------------
 %% @doc Get formatted account's MODB database name.
@@ -218,7 +224,7 @@ is_prior_to_retention(JObj, RetentionTimestamp) ->
 
 %% @equiv get_change_vmbox_funs(AccountId, NewBoxId, NBoxJ, OldBoxId, 'undefined')
 -spec get_change_vmbox_funs(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) ->
-                                   {kz_term:ne_binary(), update_funs()}.
+          {kz_term:ne_binary(), update_funs()}.
 get_change_vmbox_funs(AccountId, NewBoxId, NBoxJ, OldBoxId) ->
     get_change_vmbox_funs(AccountId, NewBoxId, NBoxJ, OldBoxId, 'undefined').
 
@@ -227,7 +233,7 @@ get_change_vmbox_funs(AccountId, NewBoxId, NBoxJ, OldBoxId) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_change_vmbox_funs(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), kz_term:api_binary()) ->
-                                   {kz_term:ne_binary(), update_funs()}.
+          {kz_term:ne_binary(), update_funs()}.
 get_change_vmbox_funs(AccountId, NewBoxId, NBoxJ, OldBoxId, ToId) ->
     Timestamp = kz_time:now_s(),
     {{Y, M, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
@@ -283,6 +289,14 @@ get_caller_id_number(Call) ->
             kz_binary:truncate_right(Pre, kzd_schema_caller_id:external_name_max_length())
     end.
 
+%%------------------------------------------------------------------------------
+%% @doc Get trascribe default.
+%% @end
+%%------------------------------------------------------------------------------
+-spec transcribe_default() -> boolean().
+transcribe_default() ->
+    kapps_config:get_is_true(?VM_CONFIG_CAT, [?KEY_VOICEMAIL, <<"transcribe_default">>], 'false').
+
 %%%=============================================================================
 %%% Publish Notification
 %%%=============================================================================
@@ -292,10 +306,10 @@ get_caller_id_number(Call) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec publish_saved_notify(kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call(), pos_integer(), kz_term:proplist()) ->
-                                  kz_amqp_worker:request_return().
+          kz_amqp_worker:request_return().
 publish_saved_notify(MediaId, BoxId, Call, Length, Props) ->
     MaybeTranscribe = props:get_value(<<"Transcribe-Voicemail">>, Props, 'false'),
-    Transcription = maybe_transcribe(kapps_call:account_id(Call), MediaId, MaybeTranscribe),
+    Transcription = maybe_transcribe(Call, MediaId, MaybeTranscribe),
 
     NotifyProp = [{<<"From-User">>, kapps_call:from_user(Call)}
                  ,{<<"From-Realm">>, kapps_call:from_realm(Call)}
@@ -341,55 +355,61 @@ publish_voicemail_saved(Length, BoxId, Call, MediaId, Timestamp) ->
     _ = kz_amqp_worker:cast(Prop, fun kapi_notifications:publish_voicemail_saved/1),
     lager:debug("published voicemail_saved for ~s", [BoxId]).
 
+%%------------------------------------------------------------------------------
+%% @doc Publishes `voicemail_deleted' notification.
+%% @end
+%%------------------------------------------------------------------------------
+-spec publish_voicemail_deleted(kz_term:ne_binary(), kz_json:object(), vm_delete_reason()) -> 'ok'.
+publish_voicemail_deleted(BoxId, Msg, Reason) ->
+    Metadata = kzd_box_message:metadata(Msg),
+    From = kz_json:get_ne_binary_value(<<"from">>, Metadata),
+    To = kz_json:get_ne_binary_value(<<"to">>, Metadata),
+
+    [FromUser, FromRealm] = binary:split(From, <<"@">>, [global]),
+    [ToUser, ToRealm] = binary:split(To, <<"@">>, [global]),
+
+    Prop = [{<<"From-User">>, FromUser}
+           ,{<<"From-Realm">>, FromRealm}
+           ,{<<"To-User">>, ToUser}
+           ,{<<"To-Realm">>, ToRealm}
+           ,{<<"Reason">>, Reason}
+           ,{<<"Account-DB">>, kz_json:get_ne_binary_value(<<"pvt_account_db">>, Msg)}
+           ,{<<"Account-ID">>, kz_json:get_ne_binary_value(<<"pvt_account_id">>, Msg)}
+           ,{<<"Voicemail-Box">>, BoxId}
+           ,{<<"Voicemail-ID">>, kz_json:get_ne_binary_value(<<"media_id">>, Metadata)}
+           ,{<<"Caller-ID-Number">>, kz_json:get_ne_binary_value(<<"caller_id_number">>, Metadata)}
+           ,{<<"Caller-ID-Name">>, kz_json:get_ne_binary_value(<<"caller_id_name">>, Metadata)}
+           ,{<<"Voicemail-Timestamp">>, kz_json:get_ne_binary_value(<<"timestamp">>, Metadata)}
+           ,{<<"Voicemail-Length">>, kz_json:get_ne_binary_value(<<"length">>, Metadata)}
+           ,{<<"Call-ID">>, kz_json:get_ne_binary_value(<<"call_id">>, Metadata)}
+            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],
+
+    case ?SEND_DELETE_NOTIFY_AMPQ of
+        true ->
+            _ = kz_amqp_worker:cast(Prop, fun kapi_notifications:publish_voicemail_deleted/1),
+            lager:debug("published voicemail_deleted for ~s", [BoxId]);
+        _ ->
+            ok
+    end.
+
 %%%=============================================================================
 %%% Internal functions
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
 %% @doc
+%% generate and asr request to transcribe voicemail recording
 %% @end
 %%------------------------------------------------------------------------------
--spec maybe_transcribe(kz_term:ne_binary(), kz_term:ne_binary(), boolean()) -> kz_term:api_object().
-maybe_transcribe(AccountId, MediaId, 'true') ->
-    Db = get_db(AccountId, MediaId),
-    {'ok', MediaDoc} = kz_datamgr:open_doc(Db, MediaId),
-    case kz_doc:attachment_names(MediaDoc) of
-        [] ->
-            lager:warning("no audio attachments on media doc ~s: ~p", [MediaId, MediaDoc]),
-            'undefined';
-        [AttachmentId|_] ->
-            CT = kz_doc:attachment_content_type(MediaDoc, AttachmentId),
-            case kz_datamgr:fetch_attachment(Db, MediaId, AttachmentId) of
-                {'ok', Bin} ->
-                    lager:info("transcribing first attachment ~s", [AttachmentId]),
-                    maybe_transcribe(Db, MediaDoc, Bin, CT);
-                {'error', _E} ->
-                    lager:info("error fetching vm: ~p", [_E]),
-                    'undefined'
-            end
-    end;
-maybe_transcribe(_, _, 'false') -> 'undefined'.
-
--spec maybe_transcribe(kz_term:ne_binary(), kz_json:object(), binary(), kz_term:api_binary()) -> kz_term:api_object().
-maybe_transcribe(_, _, _, 'undefined') -> 'undefined';
-maybe_transcribe(_, _, <<>>, _) -> 'undefined';
-maybe_transcribe(Db, MediaDoc, Bin, ContentType) ->
-    case kazoo_asr:freeform(Bin, ContentType) of
-        {'ok', Resp} ->
-            lager:info("transcription resp: ~p", [Resp]),
-            MediaDoc1 = kz_json:set_value(<<"transcription">>, Resp, MediaDoc),
-            _ = kz_datamgr:ensure_saved(Db, MediaDoc1),
-            is_valid_transcription(kz_json:get_value(<<"result">>, Resp)
-                                  ,kz_json:get_value(<<"text">>, Resp)
-                                  ,Resp
-                                  );
-        {'error', _E} ->
-            lager:info("error transcribing: ~p", [_E]),
+-spec maybe_transcribe(kapps_call:call(), kz_term:ne_binary(), boolean()) -> 'undefined' | kazoo_speech:asr_resp().
+maybe_transcribe(_, _,'false') -> 'undefined';
+maybe_transcribe(Call, MediaId, 'true') ->
+    Req = asr_request:from_voicemail(Call, MediaId),
+    Req0 = asr_request:transcribe(Req),
+    case asr_request:error(Req0) of
+        'undefined' -> asr_request:transcription(Req0);
+        Error ->
+            lager:notice("error transcribing ~p", [Error]),
             'undefined'
     end.
-
--spec is_valid_transcription(kz_term:api_binary(), binary(), kz_json:object()) -> kz_term:api_object().
-is_valid_transcription(<<"success">>, ?NE_BINARY, Resp) -> Resp;
-is_valid_transcription(_Res, _Txt, _) ->
-    lager:info("not valid transcription: ~s: '~s'", [_Res, _Txt]),
-    'undefined'.

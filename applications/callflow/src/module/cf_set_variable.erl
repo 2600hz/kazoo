@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2019, 2600Hz
+%%% @copyright (C) 2013-2020, 2600Hz
 %%% @doc Set a Custom Channel variable.
 %%%
 %%% <h4>Data options:</h4>
@@ -17,6 +17,11 @@
 %%%
 %%%
 %%% @author Sponsored by GTNetwork LLC, Implemented by SIPLABS LLC
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cf_set_variable).
@@ -29,7 +34,9 @@
 
 -spec name_mapping() -> kz_term:proplist().
 name_mapping() ->
-    [{<<"call_priority">>, <<"Call-Priority">>}].
+    [{<<"call_priority">>, <<"Call-Priority">>}
+    ,{<<"group_id">>, <<"Group-ID">>}
+    ].
 
 %%------------------------------------------------------------------------------
 %% @doc Entry point for this module

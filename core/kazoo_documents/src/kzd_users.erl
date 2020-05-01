@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kzd_users).
@@ -29,6 +33,7 @@
 -export([enabled/1, enabled/2, set_enabled/2]).
 -export([feature_level/1, feature_level/2, set_feature_level/2]).
 -export([first_name/1, first_name/2, set_first_name/2]).
+-export([flags/1, flags/2, set_flags/2]).
 -export([formatters/1, formatters/2, set_formatters/2]).
 -export([hotdesk/1, hotdesk/2, set_hotdesk/2]).
 -export([hotdesk_enabled/1, hotdesk_enabled/2, set_hotdesk_enabled/2]).
@@ -59,6 +64,7 @@
 -export([voicemail/1, voicemail/2, set_voicemail/2]).
 -export([voicemail_notify/1, voicemail_notify/2, set_voicemail_notify/2]).
 -export([voicemail_notify_callback/1, voicemail_notify_callback/2, set_voicemail_notify_callback/2]).
+-export([md5_auth/1, sha1_auth/1, signature_secret/1]).
 
 
 -export([fetch/2]).
@@ -69,6 +75,9 @@
 -export([name/1]).
 -export([is_account_admin/1, is_account_admin/2]).
 -export([classifier_restriction/2, classifier_restriction/3, set_classifier_restriction/3]).
+-export([full_name/1, full_name/2]).
+
+-export([full_name/3]).
 
 -include("kz_documents.hrl").
 
@@ -160,7 +169,7 @@ call_forward_number(Doc) ->
 
 -spec call_forward_number(doc(), Default) -> binary() | Default.
 call_forward_number(Doc, Default) ->
-    kz_json:get_binary_value([<<"call_forward">>, <<"number">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"call_forward">>, <<"number">>], Doc, Default).
 
 -spec set_call_forward_number(doc(), binary()) -> doc().
 set_call_forward_number(Doc, CallForwardNumber) ->
@@ -340,7 +349,7 @@ feature_level(Doc) ->
 
 -spec feature_level(doc(), Default) -> binary() | Default.
 feature_level(Doc, Default) ->
-    kz_json:get_binary_value([<<"feature_level">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"feature_level">>], Doc, Default).
 
 -spec set_feature_level(doc(), binary()) -> doc().
 set_feature_level(Doc, FeatureLevel) ->
@@ -357,6 +366,18 @@ first_name(Doc, Default) ->
 -spec set_first_name(doc(), kz_term:ne_binary()) -> doc().
 set_first_name(Doc, FirstName) ->
     kz_json:set_value([<<"first_name">>], FirstName, Doc).
+
+-spec flags(doc()) -> kz_term:api_ne_binaries().
+flags(Doc) ->
+    flags(Doc, 'undefined').
+
+-spec flags(doc(), Default) -> kz_term:ne_binaries() | Default.
+flags(Doc, Default) ->
+    kz_json:get_list_value([<<"flags">>], Doc, Default).
+
+-spec set_flags(doc(), kz_term:ne_binaries()) -> doc().
+set_flags(Doc, Flags) ->
+    kz_json:set_value([<<"flags">>], Flags, Doc).
 
 -spec formatters(doc()) -> kz_term:api_object().
 formatters(Doc) ->
@@ -400,7 +421,7 @@ hotdesk_id(Doc) ->
 
 -spec hotdesk_id(doc(), Default) -> binary() | Default.
 hotdesk_id(Doc, Default) ->
-    kz_json:get_binary_value([<<"hotdesk">>, <<"id">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"hotdesk">>, <<"id">>], Doc, Default).
 
 -spec set_hotdesk_id(doc(), binary()) -> doc().
 set_hotdesk_id(Doc, HotdeskId) ->
@@ -448,7 +469,7 @@ language(Doc) ->
 
 -spec language(doc(), Default) -> binary() | Default.
 language(Doc, Default) ->
-    kz_json:get_binary_value([<<"language">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"language">>], Doc, Default).
 
 -spec set_language(doc(), binary()) -> doc().
 set_language(Doc, Language) ->
@@ -508,7 +529,7 @@ music_on_hold_media_id(Doc) ->
 
 -spec music_on_hold_media_id(doc(), Default) -> binary() | Default.
 music_on_hold_media_id(Doc, Default) ->
-    kz_json:get_binary_value([<<"music_on_hold">>, <<"media_id">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"music_on_hold">>, <<"media_id">>], Doc, Default).
 
 -spec set_music_on_hold_media_id(doc(), binary()) -> doc().
 set_music_on_hold_media_id(Doc, MusicOnHoldMediaId) ->
@@ -520,7 +541,7 @@ password(Doc) ->
 
 -spec password(doc(), Default) -> binary() | Default.
 password(Doc, Default) ->
-    kz_json:get_binary_value([<<"password">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"password">>], Doc, Default).
 
 -spec set_password(doc(), binary()) -> doc().
 set_password(Doc, Password) ->
@@ -532,7 +553,7 @@ presence_id(Doc) ->
 
 -spec presence_id(doc(), Default) -> binary() | Default.
 presence_id(Doc, Default) ->
-    kz_json:get_binary_value([<<"presence_id">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"presence_id">>], Doc, Default).
 
 -spec set_presence_id(doc(), binary()) -> doc().
 set_presence_id(Doc, PresenceId) ->
@@ -544,7 +565,7 @@ priv_level(Doc) ->
 
 -spec priv_level(doc(), Default) -> binary() | Default.
 priv_level(Doc, Default) ->
-    kz_json:get_binary_value([<<"priv_level">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"priv_level">>], Doc, Default).
 
 -spec set_priv_level(doc(), binary()) -> doc().
 set_priv_level(Doc, PrivLevel) ->
@@ -580,7 +601,7 @@ pronounced_name_media_id(Doc) ->
 
 -spec pronounced_name_media_id(doc(), Default) -> binary() | Default.
 pronounced_name_media_id(Doc, Default) ->
-    kz_json:get_binary_value([<<"pronounced_name">>, <<"media_id">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"pronounced_name">>, <<"media_id">>], Doc, Default).
 
 -spec set_pronounced_name_media_id(doc(), binary()) -> doc().
 set_pronounced_name_media_id(Doc, PronouncedNameMediaId) ->
@@ -616,7 +637,7 @@ ringtones_external(Doc) ->
 
 -spec ringtones_external(doc(), Default) -> binary() | Default.
 ringtones_external(Doc, Default) ->
-    kz_json:get_binary_value([<<"ringtones">>, <<"external">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"ringtones">>, <<"external">>], Doc, Default).
 
 -spec set_ringtones_external(doc(), binary()) -> doc().
 set_ringtones_external(Doc, RingtonesExternal) ->
@@ -628,7 +649,7 @@ ringtones_internal(Doc) ->
 
 -spec ringtones_internal(doc(), Default) -> binary() | Default.
 ringtones_internal(Doc, Default) ->
-    kz_json:get_binary_value([<<"ringtones">>, <<"internal">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"ringtones">>, <<"internal">>], Doc, Default).
 
 -spec set_ringtones_internal(doc(), binary()) -> doc().
 set_ringtones_internal(Doc, RingtonesInternal) ->
@@ -728,14 +749,14 @@ set_voicemail_notify_callback(Doc, VoicemailNotifyCallback) ->
     kz_json:set_value([<<"voicemail">>, <<"notify">>, <<"callback">>], VoicemailNotifyCallback, Doc).
 
 -spec fetch(kz_term:api_ne_binary(), kz_term:api_ne_binary()) ->
-                   {'ok', doc()} |
-                   kz_datamgr:data_error().
+          {'ok', doc()} |
+          kz_datamgr:data_error().
 fetch('undefined', _UserId) ->
     {'error', 'invalid_db_name'};
 fetch(_Account, 'undefined') ->
     {'error', 'not_found'};
 fetch(Account, UserId=?NE_BINARY) ->
-    AccountDb = kz_util:format_account_db(Account),
+    AccountDb = kzs_util:format_account_db(Account),
     kz_datamgr:open_cache_doc(AccountDb, UserId).
 
 -spec to_vcard(doc()) -> binary().
@@ -888,7 +909,7 @@ normalize_address(AddressJObj) ->
                 'undefined' -> [<<"intl">>, <<"postal">>, <<"parcel">>, <<"work">>];
                 T -> T
             end,
-    Address = kz_json:get_binary_value(<<"address">>, AddressJObj),
+    Address = kz_json:get_ne_binary_value(<<"address">>, AddressJObj),
     {kz_binary:join(Types, <<",">>), Address}.
 
 -spec enable(doc()) -> doc().
@@ -948,3 +969,33 @@ set_classifier_restriction(Doc, Classifier, Action) ->
     set_call_restriction(Doc
                         ,kz_json:set_value([Classifier, <<"action">>], Action, Restrictions)
                         ).
+
+-spec full_name(kz_json:object()) -> kz_term:api_ne_binary().
+full_name(Doc) ->
+    full_name(Doc, 'undefined').
+
+-spec full_name(kz_json:object(), Default) -> kz_term:api_ne_binary() | Default.
+full_name(Doc, Default) ->
+    full_name(first_name(Doc), last_name(Doc), Default).
+
+-spec full_name(kz_term:api_binary(), kz_term:api_binary(), Default) -> kz_term:ne_binary() | Default.
+full_name(?NE_BINARY = First, ?NE_BINARY = Last, _) ->
+    <<First/binary, " ", Last/binary>>;
+full_name(_, ?NE_BINARY = Last, _) ->
+    <<Last/binary>>;
+full_name(?NE_BINARY = First, _, _) ->
+    <<First/binary>>;
+full_name(_, _, Default) ->
+    Default.
+
+-spec md5_auth(doc()) -> kz_term:api_object().
+md5_auth(Doc) ->
+    kz_json:get_ne_binary_value(<<"pvt_md5_auth">>, Doc).
+
+-spec sha1_auth(doc()) -> kz_term:api_object().
+sha1_auth(Doc) ->
+    kz_json:get_ne_binary_value(<<"pvt_sha1_auth">>, Doc).
+
+-spec signature_secret(doc()) -> kz_term:api_object().
+signature_secret(Doc) ->
+    kz_json:get_ne_binary_value(<<"pvt_signature_secret">>, Doc).

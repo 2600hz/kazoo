@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kazoo_amqp_maintenance).
@@ -22,7 +26,7 @@
         ,consumer_details/3
         ]).
 
--export([gc_pools/0, gc_pool/1]).
+-export([gc_pool/1]).
 
 -include("kz_amqp_util.hrl").
 
@@ -112,7 +116,7 @@ validate_assignments() ->
 
 -spec validate_assignments({[kz_amqp_assignment()], ets:continuation()} | '$end_of_table') -> 'ok'.
 validate_assignments('$end_of_table') -> 'ok';
-validate_assignments({[#kz_amqp_assignment{timestamp={_, _, _}
+validate_assignments({[#kz_amqp_assignment{timestamp=_Timestamp
                                           ,consumer='undefined'
                                           ,consumer_ref='undefined'
                                           ,assigned='undefined'
@@ -131,7 +135,7 @@ validate_assignments({[#kz_amqp_assignment{timestamp={_, _, _}
             'true' -> 'ok'
         end,
     validate_assignments(ets:match_object(Continuation));
-validate_assignments({[#kz_amqp_assignment{timestamp={_, _, _}
+validate_assignments({[#kz_amqp_assignment{timestamp=_Timestamp
                                           ,consumer=Consumer
                                           ,consumer_ref=ConsumerRef
                                           ,assigned='undefined'
@@ -149,7 +153,7 @@ validate_assignments({[#kz_amqp_assignment{timestamp={_, _, _}
             'true' -> 'ok'
         end,
     validate_assignments(ets:match_object(Continuation));
-validate_assignments({[#kz_amqp_assignment{timestamp={_, _, _}
+validate_assignments({[#kz_amqp_assignment{timestamp=_Timestamp
                                           ,consumer=Consumer
                                           ,consumer_ref=ConsumerRef
                                           ,assigned='undefined'
@@ -167,19 +171,19 @@ validate_assignments({[#kz_amqp_assignment{timestamp={_, _, _}
             'true' -> 'ok'
         end,
     validate_assignments(ets:match_object(Continuation));
-validate_assignments({[#kz_amqp_assignment{timestamp={_, _, _}
+validate_assignments({[#kz_amqp_assignment{timestamp=_Timestamp
                                           ,consumer=Consumer
                                           ,consumer_ref=ConsumerRef
                                           ,channel=Channel
                                           ,channel_ref=ChannelRef
                                           ,connection=Connection
-                                          ,assigned=Assigned
+                                          ,assigned=_Assigned
                                           ,broker=?NE_BINARY
                                           }=Assignment
                       ], Continuation})
   when is_pid(Consumer), is_reference(ConsumerRef)
        ,is_pid(Channel), is_reference(ChannelRef)
-       ,is_pid(Connection), is_integer(Assigned) ->
+       ,is_pid(Connection) ->
     %% validate assignment
     _ = case is_process_alive(Consumer)
             andalso is_process_alive(Channel)
@@ -215,20 +219,16 @@ connection_summary({[#kz_amqp_connections{connection=Connection
                                          ,broker=Broker
                                          ,available=Available
                                          ,zone=Zone
-                                         }
+                                         }=Conn
                     ], Continuation
                    }
-                  ,PrimaryBroker) ->
-    MatchSpec = [{#kz_amqp_assignment{connection=Connection
-                                     ,_='_'
-                                     },
-                  [],
-                  ['true']}
-                ],
+                  ,PrimaryBroker
+                  ) ->
+
     io:format("| ~-48s | ~-16w | ~-8B | ~-9s | ~-10s | ~-7s |~n"
              ,[Broker
               ,Connection
-              ,ets:select_count(?ASSIGNMENTS, MatchSpec)
+              ,kz_amqp_assignments:channel_count(Conn)
               ,Available
               ,Zone
               ,Broker =:= PrimaryBroker
@@ -381,27 +381,29 @@ broker_summary_prechannels(Broker) ->
 %%------------------------------------------------------------------------------
 -spec channel_summary() -> 'ok'.
 channel_summary() ->
-    io:format("+--------------------------------------------------+----------+----------+-----------------+-----------------+-----------------+----------+----------+~n"),
-    io:format("| Broker                                           |   Age    | Assigned |     Consumer    |     Channel     |   Connection    |   Type   | Watchers |~n"),
-    io:format("+==================================================+==========+==========+=================+=================+=================+==========+==========+~n"),
+    io:format("+--------------------------------------------------+----------+----------+----------------------+-----------------+-----------------+-----------------+----------+----------+~n"),
+    io:format("| Broker                                           |   Age    | Assigned |      Application     |     Consumer    |     Channel     |   Connection    |   Type   | Watchers |~n"),
+    io:format("+==================================================+==========+==========+======================+=================+=================+=================+==========+==========+~n"),
     Pattern = #kz_amqp_assignment{_='_'},
     channel_summary(ets:match_object(?ASSIGNMENTS, Pattern, 1)).
 
 channel_summary('$end_of_table') -> 'ok';
 channel_summary({[#kz_amqp_assignment{}=Assignment], Continuation}) ->
-    io:format("| ~-48s | ~-8B | ~-8B | ~-15w | ~-15w | ~-15w | ~-8s | ~-8B |~n"
+    io:format("| ~-48s | ~-8B | ~-8B | ~-20w | ~-15w | ~-15w | ~-15w | ~-8s | ~-8B |~n"
              ,[Assignment#kz_amqp_assignment.broker
               ,channel_summary_age(Assignment#kz_amqp_assignment.timestamp)
               ,channel_summary_age(Assignment#kz_amqp_assignment.assigned)
+              ,Assignment#kz_amqp_assignment.application
               ,Assignment#kz_amqp_assignment.consumer
               ,Assignment#kz_amqp_assignment.channel
               ,Assignment#kz_amqp_assignment.connection
               ,Assignment#kz_amqp_assignment.type
               ,sets:size(Assignment#kz_amqp_assignment.watchers)
               ]),
-    io:format("+--------------------------------------------------+----------+----------+-----------------+-----------------+-----------------+----------+----------+~n"),
+    io:format("+--------------------------------------------------+----------+----------+----------------------+-----------------+-----------------+-----------------+----------+----------+~n"),
     channel_summary(ets:match_object(Continuation)).
 
+-spec channel_summary_age('undefined' | kz_time:start_time()) -> non_neg_integer().
 channel_summary_age('undefined') -> 0;
 channel_summary_age(Timestamp) -> kz_time:elapsed_s(Timestamp).
 
@@ -450,71 +452,62 @@ print_consumer_details({[Consumer], Continuation}) ->
     print_consumer_details(ets:select(Continuation));
 print_consumer_details(Consumer) when is_pid(Consumer) ->
     _ = io:format("Consumer ~p:~n", [Consumer]),
-    _ = case kz_amqp_assignments:find(Consumer) of
-            {'error', _} ->
-                io:format("  ~-10s: Not currently assigned AMQP channel!~n"
-                         ,["Status"]
-                         );
-            #kz_amqp_assignment{channel='undefined'
-                               ,type='sticky'
-                               ,broker=Broker
-                               } ->
-                io:format("  ~-10s: Waiting for sticky channel from ~s~n"
-                         ,["Status", Broker]
-                         );
-            #kz_amqp_assignment{channel='undefined'
-                               ,type='float'
-                               } ->
-                io:format("  ~-10s: Waiting for float channel from any broker~n"
-                         ,["Status"]
-                         );
-            #kz_amqp_assignment{broker=Broker
-                               ,channel=Channel
-                               ,connection=Connection
-                               ,type=Type
-                               } ->
-                io:format("  ~-10s: Assigned AMQP channel~n", ["Status"]),
-                io:format("  ~-10s: ~s~n", ["Broker", Broker]),
-                io:format("  ~-10s: ~p~n", ["Channel", Channel]),
-                io:format("  ~-10s: ~p~n", ["Connection", Connection]),
-                io:format("  ~-10s: ~p~n", ["Type", Type])
-        end,
-    _ = case kz_amqp_history:get(Consumer) of
-            [] -> 'ok';
-            History ->
-                io:format("  ~-10s:~n", ["History"]),
-                print_consumer_history(History)
-        end,
-    _ = case is_process_alive(Consumer) of
-            'false' -> 'ok';
-            'true' ->
-                io:format("  ~-10s:~n    ", ["Backtrace"]),
-                {'backtrace', Backtrace} = process_info(Consumer, 'backtrace'),
-                io:format(binary:replace(Backtrace, <<"\n">>, <<"~n    ">>, ['global']), [])
-        end,
-    io:format("~n", []).
 
-print_consumer_history([]) -> 'ok';
-print_consumer_history([Command|Commands]) ->
-    {'$lager_record', Name, Props} = lager:pr(Command, ?MODULE),
-    io:format("    ~s~n      ~p~n", [Name, Props]),
-    print_consumer_history(Commands).
+    print_consumer_assignment(Consumer),
+    print_consumer_backtrace(Consumer),
+    io:format("~n").
 
--spec gc_pools() -> 'ok'.
-gc_pools() ->
-    _ = [gc_pool(Pool, Pid) || {Pool, Pid} <- kz_amqp_sup:pools()],
-    'ok'.
+print_consumer_assignment(Consumer) when is_pid(Consumer) ->
+    print_consumer_assignment(kz_amqp_assignments:find(Consumer));
+print_consumer_assignment({'error', _}) ->
+    io:format("  ~-10s: Not currently assigned AMQP channel!~n"
+             ,["Status"]
+             );
+print_consumer_assignment(#kz_amqp_assignment{channel='undefined'
+                                             ,type='sticky'
+                                             ,broker=Broker
+                                             }
+                         ) ->
+    io:format("  ~-10s: Waiting for sticky channel from ~s~n"
+             ,["Status", Broker]
+             );
+print_consumer_assignment(#kz_amqp_assignment{channel='undefined'
+                                             ,type='float'
+                                             }
+                         ) ->
+    io:format("  ~-10s: Waiting for float channel from any broker~n"
+             ,["Status"]
+             );
+print_consumer_assignment(#kz_amqp_assignment{broker=Broker
+                                             ,channel=Channel
+                                             ,connection=Connection
+                                             ,type=Type
+                                             }
+                         ) ->
+    io:format("  ~-10s: Assigned AMQP channel~n", ["Status"]),
+    io:format("  ~-10s: ~s~n", ["Broker", Broker]),
+    io:format("  ~-10s: ~p~n", ["Channel", Channel]),
+    io:format("  ~-10s: ~p~n", ["Connection", Connection]),
+    io:format("  ~-10s: ~p~n", ["Type", Type]).
+
+print_consumer_backtrace(Consumer) ->
+    case is_process_alive(Consumer) of
+        'false' -> 'ok';
+        'true' ->
+            io:format("  ~-10s:~n    ", ["Backtrace"]),
+            {'backtrace', Backtrace} = process_info(Consumer, 'backtrace'),
+            io:format(binary:replace(Backtrace, <<"\n">>, <<"~n    ">>, ['global']), [])
+    end.
 
 -spec gc_pool(kz_term:text()) -> 'ok'.
 gc_pool(Pool) when is_atom(Pool) ->
-    case [P || {Name, _}=P <- kz_amqp_sup:pools(), Pool =:= Name] of
-        [] -> io:format("no pool named ~p found~n", [Pool]);
-        [{Pool, Pid}] -> gc_pool(Pool, Pid)
-    end;
+    gc_pool(Pool, whereis(Pool));
 gc_pool(PoolBin) ->
     gc_pool(kz_term:to_atom(PoolBin)).
 
--spec gc_pool(atom(), pid()) -> 'ok'.
+-spec gc_pool(atom(), kz_term:api_pid()) -> 'ok'.
+gc_pool(Pool, 'undefined') ->
+    io:format("no pool named ~p found~n", [Pool]);
 gc_pool(Pool, PoolPid) ->
     print_gc_results(Pool, gc_workers(PoolPid)).
 
@@ -548,10 +541,14 @@ print_gc_summary(Results) ->
                              ]
                             ,<<" < ">>
                             ),
-    io:format("  Min/Avg/Max of ~p workers: ~s~n", [Count, Summary]).
+    io:format("  Min/Avg/Max of ~p workers: ~s (~s released)~n"
+             ,[Count
+              ,Summary
+              ,kz_util:pretty_print_bytes(kz_term:words_to_bytes(Sum), 'truncated')
+              ]).
 
 -spec gc_summary([{pid(), integer(), integer(), integer()}]) ->
-                        {integer(), integer(), integer(), integer()}.
+          {integer(), integer(), integer(), integer()}.
 gc_summary([{_W, Diff, _B, _A} | Results]) ->
     lists:foldl(fun gc_summary_fold/2
                ,{Diff, Diff, Diff, 1}
@@ -561,7 +558,7 @@ gc_summary([{_W, Diff, _B, _A} | Results]) ->
 -spec gc_summary_fold({pid(), integer(), integer(), integer()}
                      ,{integer(), integer(), integer(), integer()}
                      ) ->
-                             {integer(), integer(), integer(), integer()}.
+          {integer(), integer(), integer(), integer()}.
 gc_summary_fold({_W, Diff, _B, _A}
                ,{Min, Max, Sum, Count}
                ) ->

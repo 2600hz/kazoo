@@ -73,7 +73,7 @@
                             </tr>
                             <tr>
                                 <td style="padding:10px;background-color:#f5f5f5;text-align:right;font-family:'Open Sans',sans-serif;color:#555555;font-size:13px;font-weight:400;line-height:20px;border-size:3px;border-color:#ffffff;border-right-style:solid;border-bottom-style:solid;" width="30%"><b>Requested Port Date</b></td>
-                                <td style="padding:10px;background-color:#eaeaea;font-size:13px;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;border-size:3px;border-color:#ffffff;border-bottom-style:solid;" width="70%">{{port_request.requested_port_date.local|date:"l, F j, Y H:i"}}</td>
+                                <td style="padding:10px;background-color:#eaeaea;font-size:13px;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;border-size:3px;border-color:#ffffff;border-bottom-style:solid;" width="70%">{{port_request.requested_port_date.local|date:"l, F j, Y"}}</td>
                             </tr>
                             <tr>
                                 <td style="padding:10px;background-color:#f5f5f5;text-align:right;font-family:'Open Sans',sans-serif;color:#555555;font-size:13px;font-weight:400;line-height:20px;border-size:3px;border-color:#ffffff;border-right-style:solid;border-bottom-style:solid;" width="30%"><b>Service Provider</b></td>

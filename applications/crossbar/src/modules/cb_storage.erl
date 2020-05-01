@@ -1,6 +1,11 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc storage
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cb_storage).
@@ -52,7 +57,7 @@
 %%------------------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
+    _ = crossbar_bindings:bind(<<"*.authorize.storage">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.storage">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.storage">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.validate.storage">>, ?MODULE, 'validate'),
@@ -299,14 +304,20 @@ summary(Context) ->
 
 -spec summary(cb_context:context(), scope()) -> cb_context:context().
 summary(Context, 'system_plans') ->
-    crossbar_doc:load_view(?CB_SYSTEM_LIST, ['include_docs'], Context, fun normalize_view_results/2);
+    Options = [{'databases', [?KZ_DATA_DB]}
+              ,{'mapper', crossbar_view:get_doc_fun()}
+              ,'include_docs'
+              ],
+    crossbar_view:load(Context, ?CB_SYSTEM_LIST, Options);
 
 summary(Context, {'reseller_plans', AccountId}) ->
-    Options = ['include_docs'
+    Options = [{'databases', [?KZ_DATA_DB]}
+              ,{'mapper', crossbar_view:get_doc_fun()}
               ,{'startkey', [AccountId]}
-              ,{'endkey', [AccountId, kz_json:new()]}
+              ,{'endkey', [AccountId, crossbar_view:high_value_key()]}
+              ,'include_docs'
               ],
-    crossbar_doc:load_view(?CB_ACCOUNT_LIST, Options, Context, fun normalize_view_results/2).
+    crossbar_view:load(Context, ?CB_ACCOUNT_LIST, Options).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -336,21 +347,17 @@ on_successful_validation(Id, ?HTTP_PATCH, Context) ->
     crossbar_doc:load_merge(Id, Context, ?STORAGE_CHECK_OPTIONS).
 
 %%------------------------------------------------------------------------------
-%% @doc Normalizes the results of a view.
+%% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
-normalize_view_results(JObj, Acc) ->
-    [kz_json:get_value(<<"doc">>, JObj)|Acc].
-
--spec scope(cb_context:context()) -> scope().
+-spec scope(cb_context:context()) -> scope() | 'undefined'.
 scope(Context) ->
     cb_context:fetch(Context, 'scope').
 
 -spec set_scope(cb_context:context()) -> cb_context:context().
 set_scope(Context) ->
     Setters = [{fun cb_context:store/3, 'ensure_valid_schema', 'true'}
-              ,{fun cb_context:set_account_db/2, ?KZ_DATA_DB}
+              ,{fun cb_context:set_db_name/2, ?KZ_DATA_DB}
               ],
     set_scope(cb_context:setters(Context, Setters), cb_context:req_nouns(Context)).
 
@@ -392,7 +399,7 @@ doc_id({'reseller_plan', PlanId, _AccountId}) -> PlanId;
 doc_id(Context) -> doc_id(scope(Context)).
 
 -spec maybe_check_storage_settings(cb_context:context(), kz_term:ne_binary()) ->
-                                          cb_context:context().
+          cb_context:context().
 maybe_check_storage_settings(Context, ReqVerb) when ReqVerb =:= ?HTTP_PUT
                                                     orelse ReqVerb =:= ?HTTP_POST
                                                     orelse ReqVerb =:= ?HTTP_PATCH ->
@@ -401,7 +408,7 @@ maybe_check_storage_settings(Context, ReqVerb) when ReqVerb =:= ?HTTP_PUT
     case cb_context:resp_status(Context) of
         'success' when ValidateSettings ->
             lager:debug("validating storage settings"),
-            Attachments = kz_json:get_json_value(<<"attachments">>, cb_context:doc(Context)),
+            Attachments = kz_json:get_json_value(<<"attachments">>, cb_context:doc(Context), kz_json:new()),
             validate_attachments_settings(Attachments, Context);
         'success' when SystemAllowsSkippingValidation ->
             lager:notice("client has explicitly disabled validating attachment settings"),
@@ -433,22 +440,34 @@ validate_attachments_settings(Attachments, Context) ->
                                        ,cb_context:context()
                                        ) -> cb_context:context().
 validate_attachment_settings_fold(AttId, Att, ContextAcc) ->
+    case verify_attachment_setting_signature(Att) of
+        'true' -> ContextAcc;
+        'false' -> validate_attachment_setting(AttId, Att, ContextAcc)
+    end.
+
+-spec validate_attachment_setting(kz_term:ne_binary()
+                                 ,kz_json:object()
+                                 ,cb_context:context()
+                                 ) -> cb_context:context().
+validate_attachment_setting(AttId, Att, Context) ->
     %% Files content will differ at least on this value and also this `Random'
     %% value is used to make sure we always send unique attachment names when
     %% testing storage settings.
     Random = kz_binary:rand_hex(16),
     Content = <<"some random content: ", Random/binary>>,
     AName = <<Random/binary, "_test_credentials_file.txt">>,
-    AccountId = cb_context:account_id(ContextAcc),
     %% Create dummy document where the attachment(s) will be attached to.
     %% TODO: move this tmp doc creation to maybe_check_storage_settings function.
     TmpDoc = kz_json:from_map(#{<<"att_uuid">> => AttId
                                ,<<"pvt_type">> => <<"storage_settings_probe">>
                                ,<<"content">> => Content
+                               ,<<"request_id">> => cb_context:req_id(Context)
                                }),
-    DbName = kazoo_modb:get_modb(AccountId),
+
+    DbName = attachment_probe_db(Context),
     UpdatedDoc = kz_doc:update_pvt_parameters(TmpDoc, DbName),
-    {'ok', Doc} = kazoo_modb:save_doc(AccountId, UpdatedDoc),
+    Fun = attachment_probe_db_save(DbName),
+    {'ok', Doc} = Fun(DbName, UpdatedDoc),
 
     DocId = kz_doc:id(Doc),
 
@@ -471,23 +490,60 @@ validate_attachment_settings_fold(AttId, Att, ContextAcc) ->
             case kz_datamgr:fetch_attachment(DbName, DocId, AName, Opts) of
                 {'ok', Content} ->
                     lager:debug("successfully got content back from storage backend"),
-                    ContextAcc;
+                    update_attachment_signature(AttId, Att, Context);
                 {'ok', _C} ->
                     lager:notice("got unexpected contents back on fetch: ~p", [_C]),
-                    add_datamgr_error(AttId, 'invalid_data', ContextAcc);
+                    add_datamgr_error(AttId, 'invalid_data', Context);
                 {'error', Error} ->
-                    add_datamgr_error(AttId, Error, ContextAcc);
+                    add_datamgr_error(AttId, Error, Context);
                 AttachmentError ->
-                    add_att_settings_validation_error(AttId, AttachmentError, ContextAcc)
+                    add_att_settings_validation_error(AttId, AttachmentError, Context)
             end;
         {'error', Error} ->
-            add_datamgr_error(AttId, Error, ContextAcc);
+            add_datamgr_error(AttId, Error, Context);
         AttachmentError ->
-            add_att_settings_validation_error(AttId, AttachmentError, ContextAcc)
+            add_att_settings_validation_error(AttId, AttachmentError, Context)
     end.
 
+-type attachment_probe_db_save_ret() :: {'ok', kz_json:object()} | kz_datamgr:data_error().
+-type attachment_probe_db_save_fun() :: fun((kz_term:ne_binary(), kz_json:object()) -> attachment_probe_db_save_ret()).
+
+-spec attachment_probe_db_save(kz_term:ne_binary()) -> attachment_probe_db_save_fun().
+attachment_probe_db_save(?KZ_DATA_DB) -> fun kz_datamgr:save_doc/2;
+attachment_probe_db_save(_) -> fun kazoo_modb:save_doc/2.
+
+-spec attachment_probe_db(cb_context:context() | scope()) -> kz_term:ne_binary().
+attachment_probe_db('system') -> ?KZ_DATA_DB;
+attachment_probe_db('system_plans') -> ?KZ_DATA_DB;
+attachment_probe_db({'system_plan', _PlanId}) -> ?KZ_DATA_DB;
+attachment_probe_db({'account', AccountId}) -> kazoo_modb:get_modb(AccountId);
+attachment_probe_db({'user', _UserId, AccountId}) -> kazoo_modb:get_modb(AccountId);
+attachment_probe_db({'reseller_plans', AccountId}) -> kazoo_modb:get_modb(AccountId);
+attachment_probe_db({'reseller_plan', _PlanId, AccountId}) -> kazoo_modb:get_modb(AccountId);
+attachment_probe_db(Context) ->
+    case scope(Context) of
+        'undefined' -> kazoo_modb:get_modb(cb_context:account_id(Context));
+        Scope -> attachment_probe_db(Scope)
+    end.
+
+-spec attachment_setting_signature(kz_json:object()) -> kz_term:ne_binary().
+attachment_setting_signature(JObj) ->
+    kz_binary:md5(kz_json:encode(kz_doc:public_fields(JObj))).
+
+-spec verify_attachment_setting_signature(kz_json:object()) -> boolean().
+verify_attachment_setting_signature(JObj) ->
+    kz_json:get_ne_binary_value(<<"_sig">>, JObj) =:= attachment_setting_signature(JObj).
+
+-spec update_attachment_signature(kz_term:ne_binary()
+                                 ,kz_json:object()
+                                 ,cb_context:context()
+                                 ) -> cb_context:context().
+update_attachment_signature(AttId, Att, Context) ->
+    JObj = kz_json:set_value(<<"_sig">>, attachment_setting_signature(Att), Att),
+    cb_context:set_doc(Context, kz_json:set_value([<<"attachments">>, AttId], JObj, cb_context:doc(Context))).
+
 -spec add_datamgr_error(kz_term:ne_binary(), kz_datamgr:data_errors(), cb_context:context()) ->
-                               cb_context:context().
+          cb_context:context().
 add_datamgr_error(AttId, Error, Context) ->
     crossbar_doc:handle_datamgr_errors(Error, AttId, Context).
 
@@ -520,14 +576,14 @@ add_att_settings_validation_error(AttId, {'error', Reason, ExtendedError}, Conte
                                    ).
 
 -spec get_error_response(kz_term:proplist(), Bin) ->
-                                Bin | kz_json:object()
-                                    when Bin :: binary().
+          Bin | kz_json:object()
+              when Bin :: binary().
 get_error_response(ErrorHeaders, ErrorBody) ->
     get_error_response(ErrorHeaders, ErrorBody, props:get_value(<<"content-type">>, ErrorHeaders)).
 
 -spec get_error_response(kz_term:proplist(), Bin, kz_term:api_ne_binary()) ->
-                                Bin | kz_json:object()
-                                    when Bin :: binary().
+          Bin | kz_json:object()
+              when Bin :: binary().
 get_error_response(_Headers, ErrorBody, 'undefined') ->
     lager:debug("no error content-type returned, trying JSON decoding"),
     decode_json(ErrorBody);
@@ -538,7 +594,7 @@ get_error_response(_Headers, ErrorBody, _CT) ->
     ErrorBody.
 
 -spec decode_json(Bin) -> kz_json:object() | Bin
-                              when Bin :: binary().
+              when Bin :: binary().
 decode_json(RespBody) ->
     try kz_json:unsafe_decode(RespBody) of
         DecodedErrorBody -> DecodedErrorBody

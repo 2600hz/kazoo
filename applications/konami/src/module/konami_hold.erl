@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2014-2019, 2600Hz
+%%% @copyright (C) 2014-2020, 2600Hz
 %%% @doc Put the call on hold
 %%% Data = {
 %%%   "moh_aleg":"media_id"
@@ -9,6 +9,11 @@
 %%%
 %%% @author James Aimonetti
 %%% @author SIPLABS LLC (Maksim Krzhemenevskiy)
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(konami_hold).
@@ -20,7 +25,7 @@
 -include("konami.hrl").
 
 -spec handle(kz_json:object(), kapps_call:call()) ->
-                    {'continue', kapps_call:call()}.
+          {'continue', kapps_call:call()}.
 handle(Data, Call) ->
     AMOH = kz_json:get_value(<<"moh_aleg">>, Data),
     AMOHToPlay = kz_media_util:media_path(AMOH, kapps_call:account_id(Call)),

@@ -14,7 +14,7 @@ Port Request Information
     State:  {{port_request.port_state}}
     ID:  {{port_request.id}}{% if port_request.port_scheduled_date %}
     Scheduled Date:  {{port_request.port_scheduled_date.local|date:"l, F j, Y h:i A"}} ({{port_request.port_scheduled_date.timezone}}){% elif port_request.requested_port_date %}
-    Requested Transfer Date:  {{port_request.requested_port_date.local|date:"l, F j, Y h:i A"}} ({{port_request.requested_port_date.timezone}}){% endif %}
+    Requested Transfer Date:  {{port_request.requested_port_date.local|date:"l, F j, Y"}} ({{port_request.requested_port_date.timezone}}){% endif %}
     Numbers: {{ port_request.numbers|join:", "|stringformat:"s"|wordwrap:40 }}
 
 

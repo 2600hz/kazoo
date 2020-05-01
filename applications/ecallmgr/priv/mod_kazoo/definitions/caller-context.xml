@@ -1,0 +1,6 @@
+<definition name="caller-context">
+	<field name="variable_sofia_profile_name" as="Caller-Profile" />
+	<field name="Caller-Context" />
+	<field name="Caller-Dialplan" />
+	<field name="Caller-Destination-Number" />
+</definition>

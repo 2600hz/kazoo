@@ -1,8 +1,13 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
 %%% @author Karl Anderson
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(ecallmgr_fs_resource).
@@ -60,13 +65,13 @@ start_link(Node, Options) ->
                             ,{'queue_options', ?QUEUE_OPTIONS}
                             ,{'consume_options', ?CONSUME_OPTIONS}
                             ],
-                            [Node, Options]).
+                            [Node, Options]
+                           ).
 
 -spec handle_originate_req(kz_json:object(), kz_term:proplist()) -> kz_types:sup_startchild_ret().
 handle_originate_req(JObj, Props) ->
-    _ = kz_util:put_callid(JObj),
+    _ = kz_log:put_callid(JObj),
     Node = props:get_value('node', Props),
-    lager:debug("received originate request for node ~s, starting originate process", [Node]),
     ecallmgr_originate_sup:start_originate_proc(Node, JObj).
 
 %%%=============================================================================
@@ -80,7 +85,7 @@ handle_originate_req(JObj, Props) ->
 -spec init([atom() | kz_term:proplist()]) -> {'ok', state()}.
 init([Node, Options]) ->
     process_flag('trap_exit', 'true'),
-    kz_util:put_callid(Node),
+    kz_log:put_callid(Node),
     lager:info("starting new fs resource listener for ~s", [Node]),
     {'ok', #state{node=Node, options=Options}}.
 
@@ -108,9 +113,9 @@ handle_cast(_Msg, State) ->
 handle_info({'update_options', NewOptions}, State) ->
     {'noreply', State#state{options=NewOptions}, 'hibernate'};
 handle_info({'EXIT', _, 'noconnection'}, State) ->
-    {stop, {'shutdown', 'noconnection'}, State};
+    {'stop', {'shutdown', 'noconnection'}, State};
 handle_info({'EXIT', _, Reason}, State) ->
-    {stop, Reason, State};
+    {'stop', Reason, State};
 handle_info(_Info, State) ->
     {'noreply', State}.
 

@@ -19,6 +19,8 @@ main(_) ->
     {Year, _, _} = erlang:date(),
 
     io:format("Edocify Kazoo...~n~n"),
+    FindCmd = regex_find("applications/ core/", "'.*/src/.*.(erl|erl.src)$'", os:type()),
+    io:format("find cmd is ~p ~n", [FindCmd]),
 
     Run = [
            %% regex for evil spec+specs
@@ -27,10 +29,10 @@ main(_) ->
            ,fun evil_specs/1
            }
 
-          ,{"find applications/ core/ -regextype egrep -regex '.*/src/.*.(erl|erl.src)$'"
-           ,"bump/fix copyright"
-           ,fun(R) -> bump_copyright(R, Year) end
-           }
+           %% ,{"FindCmd
+           %%  ,"bump/fix copyright"
+           %%  ,fun(R) -> bump_copyright(R, Year) end
+           %%  }
 
            %% regex to find contributors tag.
           ,{"ag -G '(erl|erl.src|hrl|hrl.src|escript)$' -l '%%+ *@?([Cc]ontributors|[Cc]ontributions)' core/ applications/"
@@ -39,9 +41,8 @@ main(_) ->
            }
 
            %% regex to find `@public' tag.
-           %% TODO: remove private tag from this regex in a distant future.
-          ,{"ag -G '(erl|erl.src|hrl|hrl.src|escript)$' '%%* *@(public|private)' core/ applications/"
-           ,"remove public/private tag"
+          ,{"ag -G '(erl|erl.src|hrl|hrl.src|escript)$' '%%* *@(public)' core/ applications/"
+           ,"remove public tag"
            ,fun remove_public_tag/1
            }
 
@@ -85,10 +86,10 @@ main(_) ->
            }
 
            %% regex for finding first comment line after `@doc'
-          ,{"ag '%%*\\s*@doc$(\\n%%*$)*\\n%%*\\s*[^@\\n]+$' core/ applications/"
-           ,"move first comment line to the same line as doc tag"
-           ,fun move_to_doc_line/1
-           }
+           %% ,{"ag '%%*\\s*@doc$(\\n%%*$)*\\n%%*\\s*[^@\\n]+$' core/ applications/"
+           %%  ,"move first comment line to the same line as doc tag"
+           %%  ,fun move_to_doc_line/1
+           %%  }
 
            %% regex for empty comment line after @doc to avoid empty paragraph or dot in summary
            %% must be last thing to run
@@ -98,6 +99,14 @@ main(_) ->
            }
           ],
     edocify(Run, 0).
+
+regex_find(Folder, Regex, {'unix', 'darwin'}) ->
+    "find -E " ++ Folder ++ " -regex " ++ Regex;
+regex_find(Folder, Regex, {'unix', 'linux'}) ->
+    "find " ++ Folder ++ " -regextype egrep -regex " ++ Regex;
+regex_find(Folder, Regex, _) ->
+    io:format("Unplanned OS type, expect Darwin or Linux."),
+    error.
 
 check_ag_available() ->
     case os:find_executable("ag") of

@@ -1,0 +1,11 @@
+<definition name="Custom-SIP-Headers">
+	<field name="Custom-SIP-Headers" type="static" serialize-as="object">
+		<filters>
+			<filter name="ecallmgr" type="include" compare="prefix"
+				value="variable_sip_h_" />
+		</filters>
+		<fields verbose="false">
+			<field name="variable_sip_h_" type="prefix" exclude-prefix="true" />
+		</fields>
+	</field>
+</definition>

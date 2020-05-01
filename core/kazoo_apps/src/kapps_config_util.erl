@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
 %%% @author Roman Galeev
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kapps_config_util).
@@ -50,7 +55,7 @@ get_reseller_config(Account, Config) ->
 -spec load_config_from_account(kz_term:api_binary(), kz_term:ne_binary()) -> {ok, kz_json:object()} | {error, any()}.
 load_config_from_account(undefined, _Config) -> {ok, kz_json:new()};
 load_config_from_account(Account, Config) ->
-    AccountDb = kz_util:format_account_db(Account),
+    AccountDb = kzs_util:format_account_db(Account),
     kz_datamgr:open_cache_doc(AccountDb, account_doc_id(Config), [{cache_failures, [not_found]}]).
 
 -spec load_config_from_reseller(kz_term:api_binary(), kz_term:ne_binary()) -> {ok, kz_json:object()} | {error, any()}.
@@ -117,7 +122,7 @@ system_config_no_document_schema() ->
     kz_doc:public_fields(SysConfigSchema).
 
 -spec load_system_config_schema() -> {'ok', kz_json:object()} |
-                                     {'error', 'not_found'}.
+          {'error', 'not_found'}.
 load_system_config_schema() ->
     case kz_json_schema:load(<<"system_configs">>) of
         {'ok', _}=OK -> OK;

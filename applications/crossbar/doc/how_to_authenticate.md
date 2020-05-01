@@ -110,7 +110,7 @@ curl -X PUT \
     http://{SERVER}:8000/v2/api_auth
 ```
 
-You can find the API key in Authentication application in UI, or you can get it using [Accounts API](accounts#fetch-the-accounts-api-key).
+You can find the API key in Authentication application in UI, or you can get it using [Accounts API](./accounts.md#fetch-the-accounts-api-key).
 
 ## Next Steps
 

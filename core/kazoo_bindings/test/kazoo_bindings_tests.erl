@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2018, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Store routing keys/pid bindings. When a binding is fired,
 %%% pass the payload to the pid for evaluation, accumulating
 %%% the results for the response to the running process.
@@ -15,15 +15,23 @@
 %%%
 %%% @author James Aimonetti
 %%% @author Karl Anderson
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kazoo_bindings_tests).
 
 -ifdef(PROPER).
+-export([expanded_paths/0]).
+
 - include_lib("proper/include/proper.hrl").
 -endif.
 -include_lib("eunit/include/eunit.hrl").
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
+-include_lib("kazoo_stdlib/include/kazoo_dbg.hrl").
 
 %% EUNIT and PropEr TESTING %%
 -spec binding_matches(kz_term:ne_binary(), binary()) -> boolean().
@@ -64,20 +72,13 @@ bindings_match_test_() ->
 %% Left commented out because this was really useful for stepping through
 %% individual tests and I want to keep it here for reference in the future
 %% dbg_test() ->
-%%     dbg:start(),
-
-%%     dbg:tracer(),
-
-%%     dbg:tpl(kazoo_bindings, [{'_', [], [$_]}]),
-%%     dbg:p(all, c),
-
+%%     ?DBG_START,
+%%     ?DBG_TRACE('kazoo_bindings'),
 
 %%     Result = binding_matches(<<"W0.*.m.m.#">>, <<"W0.m.m.m.5">>),
 
-
-%%     dbg:stop_clear(),
-%%     dbg:stop(),
-%%     ?assertEqual('true', Result).
+%%     ?DBG_STOP,
+%%     ?assert(Result).
 
 weird_bindings_test_() ->
     [?_assertEqual('true', binding_matches(<<"#.A.*">>, <<"A.a.A.a">>))
@@ -145,7 +146,7 @@ right(Path) ->
     ?LET(P, Path, {right1(P), 'true'}).
 
 %% Here's why some patterns will always succeed even if we try to make them
-%% wrong. In a given strign S, we could add segments, but some subpatterns
+%% wrong. In a given string S, we could add segments, but some subpatterns
 %% would have a chance to fix the problem we created. See a.*.#, which means
 %% 'at least two segments'  but still matches (albeit wrongly) a.b if we drop
 %% a section of the text, replace it by one, or add two of them. It can

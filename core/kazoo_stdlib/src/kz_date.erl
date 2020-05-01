@@ -1,8 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Represent a date, and perform various manipulations on it.
 %%% @author Mark Magnusson
 %%% @author Karl Anderson
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_date).
@@ -15,6 +19,7 @@
         ,to_iso_week/1
 
         ,find_next_weekday/2
+        ,previous_day/1
         ,normalize/1
         ,relative_difference/2
 
@@ -38,8 +43,8 @@
 %% @end
 %%------------------------------------------------------------------------------
 -spec from_gregorian_seconds(kz_time:gregorian_seconds(), kz_term:ne_binary()) ->
-                                    kz_time:date().
-from_gregorian_seconds(Seconds, <<_/binary>>=TZ) when is_integer(Seconds) ->
+          kz_time:date().
+from_gregorian_seconds(Seconds, <<TZ/binary>>) when is_integer(Seconds) ->
     {{_,_,_}, {_,_,_}} = DateTime = calendar:gregorian_seconds_to_datetime(Seconds),
     TZList = kz_term:to_list(TZ),
     {{_,_,_}=Date, {_,_,_}} = localtime:utc_to_local(DateTime, TZList),
@@ -132,6 +137,21 @@ find_next_weekday({Y, M, D}, Weekday) ->
             normalize({Y, M, D + ( 7 - DOW ) + RefDOW})
     end.
 
+%%------------------------------------------------------------------------------
+%% @doc Calculates the date of the previous day, while also handling the situation
+%% where that day falls on the previous month or previous year.
+%% @end
+%%------------------------------------------------------------------------------
+-spec previous_day(kz_time:date()) -> kz_time:date().
+previous_day({Y, 1, 1}) ->
+    {Y-1, 12, days_in_month(Y-1, 12)};
+
+previous_day({Y, M, 1}) ->
+    {Y, M-1, days_in_month(Y, M-1)};
+
+previous_day({Y, M, D}) ->
+    {Y, M, D-1}.
+
 -spec from_iso8601(binary()) -> kz_time:date() | 'error'.
 from_iso8601(<<Year:4/binary, Month:2/binary, Day:2/binary>>) ->
     {kz_term:to_integer(Year), kz_term:to_integer(Month), kz_term:to_integer(Day)};
@@ -210,7 +230,7 @@ dow_to_wday(5) -> <<"friday">>;
 dow_to_wday(6) -> <<"saturday">>;
 dow_to_wday(7) -> <<"sunday">>.
 
--spec days_in_month(kz_tyime:year(), 0..13) -> 28..31.
+-spec days_in_month(kz_time:year(), 0..13) -> 28..31.
 days_in_month(_Year,  1) -> 31;
 days_in_month(_Year,  3) -> 31;
 days_in_month(_Year,  5) -> 31;

@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kazoo_data_maintenance).
@@ -19,8 +24,8 @@
         ,trace_pid/1
         ,stop_trace/1
         ]).
--export([open_document/2
-        ,open_document_cached/2
+-export([open_document/2, open_document/3
+        ,open_document_cached/2, open_document_cached/3
         ]).
 
 -export([load_doc_from_file/2]).
@@ -46,12 +51,12 @@ flush_docs() ->
 
 -spec flush_docs(kz_term:ne_binary()) -> 'ok'.
 flush_docs(Account) ->
-    _ = kz_datamgr:flush_cache_docs(kz_util:format_account_db(Account)),
+    _ = kz_datamgr:flush_cache_docs(kzs_util:format_account_db(Account)),
     io:format("flushed all docs cached for account ~s~n", [Account]).
 
 -spec flush_docs(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 flush_docs(Account, DocId) ->
-    _ = kz_datamgr:flush_cache_doc(kz_util:format_account_db(Account), DocId),
+    _ = kz_datamgr:flush_cache_doc(kzs_util:format_account_db(Account), DocId),
     io:format("flushed cached doc ~s for account ~s~n", [DocId, Account]).
 
 -spec trace_module(kz_term:ne_binary()) -> 'ok'.
@@ -83,24 +88,35 @@ stop_trace(Ref) ->
     io:format("trace stopped, see log at ~s~n", [Filename]).
 
 
--spec open_document(kz_term:ne_binary(), kz_term:ne_binary()) -> no_return.
+-spec open_document(kz_term:ne_binary(), kz_term:ne_binary()) -> 'no_return'.
 open_document(Db, Id) ->
-    print(kz_datamgr:open_doc(Db, Id)).
+    open_document(Db, Id, 'false').
 
--spec open_document_cached(kz_term:ne_binary(), kz_term:ne_binary()) -> no_return.
+-spec open_document(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary() | boolean()) -> 'no_return'.
+open_document(Db, Id, PP) ->
+    print(kz_datamgr:open_doc(Db, Id), kz_term:is_true(PP)).
+
+-spec open_document_cached(kz_term:ne_binary(), kz_term:ne_binary()) -> 'no_return'.
 open_document_cached(Db, Id) ->
-    print(kz_datamgr:open_cache_doc(Db, Id)).
+    open_document_cached(Db, Id, 'false').
 
-print({ok, JSON}) ->
-    io:format("~s\n", [kz_json:encode(JSON)]),
-    no_return;
-print({error, R}) ->
+-spec open_document_cached(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary() | boolean()) -> 'no_return'.
+open_document_cached(Db, Id, PP) ->
+    print(kz_datamgr:open_cache_doc(Db, Id), kz_term:is_true(PP)).
+
+print({'ok', JObj}, 'true') ->
+    io:format("~s\n", [kz_json:encode(JObj, ['pretty'])]),
+    'no_return';
+print({'ok', JObj}, 'false') ->
+    io:format("~s\n", [kz_json:encode(JObj)]),
+    'no_return';
+print({'error', R}, _PP) ->
     io:format("ERROR: ~p\n", [R]),
-    no_return.
+    'no_return'.
 
 -spec load_doc_from_file(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                {'ok', kz_json:object()} |
-                                data_error().
+          {'ok', kz_json:object()} |
+          data_error().
 load_doc_from_file(Db, _FilePath) when size(Db) == 0 ->
     {'error', 'invalid_db_name'};
 load_doc_from_file(Db, FilePath) ->

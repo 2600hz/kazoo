@@ -13,10 +13,6 @@
             "description": "caller-id-number, taken from user if absent",
             "type": "string"
         },
-        "scheduled": {
-            "description": "The timestamp to start delivering the message",
-            "type": "integer"
-        },
         "to": {
             "description": "callee-id-number",
             "type": "string"

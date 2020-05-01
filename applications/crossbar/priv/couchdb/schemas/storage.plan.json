@@ -7,6 +7,9 @@
         "account": {
             "$ref": "storage.plan.database"
         },
+        "aggregate": {
+            "$ref": "storage.plan.database"
+        },
         "modb": {
             "$ref": "storage.plan.database"
         },

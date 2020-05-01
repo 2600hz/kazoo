@@ -1,0 +1,15 @@
+{application, kazoo_telemetry,
+ [
+  {description, "Telemetry gathers anonymous statistics of Kazoo clusters and running applications"},
+  {vsn, "4.0.0"},
+  {modules, []},
+  {registered, [kazoo_telemetry_sup]},
+  {applications, [kernel
+                 ,crypto
+                 ,stdlib
+                 , kazoo_globals
+                 , kazoo_config
+                 , lager
+                 ]}
+ ,{mod, {kazoo_telemetry_app, []}}
+ ]}.

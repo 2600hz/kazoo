@@ -1,0 +1,267 @@
+paths:
+  /accounts/{ACCOUNT_ID}/faxes:
+    put:
+      operationId: PutAccountsAccountIdFaxes
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/faxes'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of faxes
+      tags:
+        - faxes
+  /accounts/{ACCOUNT_ID}/faxes/inbox:
+    get:
+      operationId: GetAccountsAccountIdFaxesInbox
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get inbox of faxes
+      tags:
+        - faxes
+  /accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}:
+    delete:
+      operationId: DeleteAccountsAccountIdFaxesInboxFaxId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/FAX_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of faxes
+      tags:
+        - faxes
+    get:
+      operationId: GetAccountsAccountIdFaxesInboxFaxId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/FAX_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a faxes by ID
+      tags:
+        - faxes
+    put:
+      operationId: PutAccountsAccountIdFaxesInboxFaxId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/FAX_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/faxes'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of faxes
+      tags:
+        - faxes
+  /accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}/attachment:
+    delete:
+      operationId: DeleteAccountsAccountIdFaxesInboxFaxIdAttachment
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/FAX_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of faxes
+      tags:
+        - faxes
+    get:
+      operationId: GetAccountsAccountIdFaxesInboxFaxIdAttachment
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/FAX_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get attachment of faxes
+      tags:
+        - faxes
+  /accounts/{ACCOUNT_ID}/faxes/incoming:
+    get:
+      operationId: GetAccountsAccountIdFaxesIncoming
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get incoming of faxes
+      tags:
+        - faxes
+  /accounts/{ACCOUNT_ID}/faxes/incoming/{FAX_ID}:
+    get:
+      operationId: GetAccountsAccountIdFaxesIncomingFaxId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/FAX_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a faxes by ID
+      tags:
+        - faxes
+  /accounts/{ACCOUNT_ID}/faxes/outbox:
+    get:
+      operationId: GetAccountsAccountIdFaxesOutbox
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get outbox of faxes
+      tags:
+        - faxes
+  /accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}:
+    delete:
+      operationId: DeleteAccountsAccountIdFaxesOutboxFaxId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/FAX_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of faxes
+      tags:
+        - faxes
+    get:
+      operationId: GetAccountsAccountIdFaxesOutboxFaxId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/FAX_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a faxes by ID
+      tags:
+        - faxes
+    put:
+      operationId: PutAccountsAccountIdFaxesOutboxFaxId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/FAX_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/faxes'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of faxes
+      tags:
+        - faxes
+  /accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}/attachment:
+    delete:
+      operationId: DeleteAccountsAccountIdFaxesOutboxFaxIdAttachment
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/FAX_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of faxes
+      tags:
+        - faxes
+    get:
+      operationId: GetAccountsAccountIdFaxesOutboxFaxIdAttachment
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/FAX_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get attachment of faxes
+      tags:
+        - faxes
+  /accounts/{ACCOUNT_ID}/faxes/outgoing:
+    get:
+      operationId: GetAccountsAccountIdFaxesOutgoing
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get outgoing of faxes
+      tags:
+        - faxes
+    put:
+      operationId: PutAccountsAccountIdFaxesOutgoing
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/faxes'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of faxes
+      tags:
+        - faxes
+  /accounts/{ACCOUNT_ID}/faxes/outgoing/{FAX_JOB_ID}:
+    get:
+      operationId: GetAccountsAccountIdFaxesOutgoingFaxJobId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/FAX_JOB_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a faxes by ID
+      tags:
+        - faxes
+  /accounts/{ACCOUNT_ID}/faxes/smtplog:
+    get:
+      operationId: GetAccountsAccountIdFaxesSmtplog
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get smtplog of faxes
+      tags:
+        - faxes
+  /accounts/{ACCOUNT_ID}/faxes/smtplog/{ATTEMPT_ID}:
+    get:
+      operationId: GetAccountsAccountIdFaxesSmtplogAttemptId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/ATTEMPT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a faxes by ID
+      tags:
+        - faxes

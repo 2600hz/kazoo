@@ -1,27 +1,13 @@
 -ifndef(KZ_API_HEADERS).
 
--include_lib("kazoo/include/kz_api_literals.hrl").
+-include_lib("kazoo_amqp/include/kz_api_literals.hrl").
 
--type api_formatter_return() :: {'ok', iolist()} | {'error', string()}.
+-type api_formatter_return() :: {'ok', iodata()} | {'error', string()}.
 -type api_headers() :: kz_term:ne_binaries() | [kz_term:ne_binary() | kz_term:ne_binaries()].
 
 -type api_types() :: [{kz_term:ne_binary(), fun()}].
 -type valid_value() :: kz_term:ne_binary() | integer().
 -type api_valid_values() :: [{kz_term:ne_binary(), valid_value() | [valid_value()]}].
-
--record(kapi_definition, {name :: kz_term:ne_binary()
-                         ,friendly_name :: kz_term:ne_binary()
-                         ,description :: kz_term:ne_binary()
-                         ,build_fun :: fun((kz_term:api_terms()) -> api_formatter_return())
-                         ,validate_fun :: fun((kz_term:api_terms()) -> boolean())
-                         ,publish_fun :: fun((...) -> 'ok')
-                         ,binding = 'undefined' :: kz_term:api_ne_binary()
-                         ,restrict_to = 'undefined' :: kz_term:api_atom()
-                         ,required_headers :: api_headers()
-                         ,optional_headers :: api_headers()
-                         ,values :: api_valid_values()
-                         ,types :: api_types()
-                         }).
 
 %%% *_HEADERS defines a list of Keys that must exist in every message of type *
 %%% (substitute AUTHN_REQ, AUTHN_RESP, etc, for *) to be considered valid.
@@ -82,6 +68,7 @@
         ,?KEY_REPLY_TO_PID
         ,?KEY_AMQP_BROKER
         ,?KEY_AMQP_ZONE
+        ,?KEY_DELIVER_TO_PID
         ]).
 -define(DEFAULT_VALUES, [{?KEY_NODE, kz_term:to_binary(node())}
                         ,{?KEY_MSG_ID, kz_binary:rand_hex(16)}
@@ -105,7 +92,6 @@
 -define(ERROR_RESP_HEADERS, [?KEY_ERROR_MESSAGE]).
 -define(OPTIONAL_ERROR_RESP_HEADERS, [?KEY_REQUEST
                                      ,?KEY_API_CALL_ID
-                                     ,<<"Custom-Channel-Vars">>
                                      ]).
 -define(ERROR_RESP_VALUES, [{?KEY_EVENT_CATEGORY, <<"error">>}]).
 -define(ERROR_RESP_TYPES, []).

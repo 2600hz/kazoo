@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(pqc_util).
@@ -21,7 +26,7 @@ transition_if(CurrentModel, Checks) ->
     end.
 
 -spec transition_if_fold({fun(), list()}, {boolean(), pqc_kazoo_model:model()}) ->
-                                {boolean(), pqc_kazoo_model:model()}.
+          {boolean(), pqc_kazoo_model:model()}.
 transition_if_fold({_Fun, _Args}, {'false', _}=False) -> False;
 transition_if_fold({Fun, Args}, {'true', Model}) ->
     case apply(Fun, [Model | Args]) of
@@ -37,23 +42,24 @@ simple_counterexample() ->
 
 -spec simple_counterexample('undefined' | list()) -> [{module(), function(), list()}].
 simple_counterexample('undefined') ->
-    {error, no_counterexample};
+    {'error', 'no_counterexample'};
 simple_counterexample([Seq]) ->
     [{M, F, ['{API}'|cleanup_args(Args)]}
-     || {set, _Var, {call, M, F, [_|Args]}} <- Seq
+     || {'set', _Var, {'call', M, F, [_|Args]}} <- Seq
     ].
 
 cleanup_args(Args) ->
     [cleanup_arg(Arg) || Arg <- Args].
-cleanup_arg({call, M, F, Args}) ->
+cleanup_arg({'call', M, F, Args}) ->
     {M,F, length(Args)};
 cleanup_arg(Arg) -> Arg.
 
-
+%% {M, F, Args/Arity, [{file, Filename}, {line, LineNo}]}
+-type stack_item() :: {module(), atom(), arity() | [term()], [{'file', string()} | {'line', integer()}]}.
 -spec run_counterexample(module()) ->
-                                {kz_term:ne_binary(), 'postcondition_failed'} |
-                                {kz_term:ne_binary(), atom(), any(), [erlang:stack_item()]} |
-                                {'ok', kz_term:ne_binary()}.
+          {kz_term:ne_binary(), 'postcondition_failed'} |
+          {kz_term:ne_binary(), atom(), any(), [stack_item()]} |
+          {'ok', kz_term:ne_binary()}.
 run_counterexample(PQC) ->
     PQC:cleanup(),
     io:format("cleaned up, running counterexample~n", []),
@@ -77,9 +83,9 @@ run_counterexample(PQC) ->
             ?INFO("call: ~s:~s(~p)", [M, F, A]),
             ?INFO("SUT resp: ~p", [Resp]),
             {RequestId, 'postcondition_failed'};
-        E:R ->
-            #{'request_id' := RequestId} = pqc_kazoo_model:api(InitialState),
-            {RequestId, E, R, erlang:get_stacktrace()}
+        ?STACKTRACE(E, R, ST)
+        #{'request_id' := RequestId} = pqc_kazoo_model:api(InitialState),
+        {RequestId, E, R, ST}
     after
         PQC:cleanup()
     end.

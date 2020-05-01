@@ -1,3 +1,3 @@
-
 # Omnipresence *It knows*
-_the call is from inside the house_
+
+Omnipresence tracks subscriptions and sends presence updates to Kamailio for routing purposes (SIP NOTIFY messages).

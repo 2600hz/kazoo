@@ -1,0 +1,30 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.callflow.action.accepted",
+    "description": "AMQP API for callflow.action.accepted",
+    "properties": {
+        "Call-ID": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "callflow"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "action.accepted"
+            ],
+            "type": "string"
+        },
+        "Msg-ID": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Call-ID",
+        "Msg-ID"
+    ],
+    "type": "object"
+}

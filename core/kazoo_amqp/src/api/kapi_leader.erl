@@ -1,24 +1,64 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kapi_leader).
 
+-export([api_definitions/0, api_definition/1]).
+
 -export([whoami/0, whoami/1]).
 -export([queue/0, queue/1, queue/2]).
 -export([route/0, route/1, route/2]).
--export([req/1, req_v/1]).
+-export([req/1
+        ,req_v/1
+        ,publish_req/2
+        ,publish_req/3
+        ]).
 -export([bind_q/2, unbind_q/2]).
 -export([declare_exchanges/0]).
--export([publish_req/2, publish_req/3]).
 
 -include_lib("kz_amqp_util.hrl").
 
--define(LEADER_REQ_HEADERS, []).
--define(LEADER_REQ_VALUES, []).
--define(LEADER_REQ_TYPES, []).
--define(OPTIONAL_LEADER_REQ_HEADERS, [<<"Message">>]).
+
+%%------------------------------------------------------------------------------
+%% @doc Get all API definitions of this module.
+%% @end
+%%------------------------------------------------------------------------------
+-spec api_definitions() -> kapi_definition:apis().
+api_definitions() ->
+    [req_definition()].
+
+%%------------------------------------------------------------------------------
+%% @doc Get API definition of the given `Name'.
+%% @see api_definitions/0
+%% @end
+%%------------------------------------------------------------------------------
+-spec api_definition(kz_term:text()) -> kapi_definition:api().
+api_definition(Name) when not is_binary(Name) ->
+    api_definition(kz_term:to_binary(Name));
+api_definition(<<"req">>) ->
+    req_definition().
+
+-spec req_definition() -> kapi_definition:api().
+req_definition() ->
+    Setters = [{fun kapi_definition:set_name/2, <<"req">>}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Leader Request">>}
+              ,{fun kapi_definition:set_description/2, <<"Leader Request">>}
+              ,{fun kapi_definition:set_category/2, <<"leader">>}
+              ,{fun kapi_definition:set_build_fun/2, fun req/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun req_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_req/2}
+              ,{fun kapi_definition:set_required_headers/2, []}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Message">>]}
+              ,{fun kapi_definition:set_values/2, []}
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
 
 -spec whoami() -> pid() | {'registered_name', atom()}.
 whoami() ->
@@ -66,20 +106,26 @@ route(Name) when is_atom(Name) ->
 route(Name, Node) ->
     iolist_to_binary(io_lib:format("~s.~s", [Name, Node])).
 
--spec req(kz_term:api_terms()) -> api_formatter_return().
-req(Prop) when is_list(Prop) ->
-    case req_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?LEADER_REQ_HEADERS, ?OPTIONAL_LEADER_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for leader_req"}
-    end;
-req(JObj) ->
-    req(kz_json:to_proplist(JObj)).
+-spec req(kz_term:api_terms()) -> kz_api:api_formatter_return().
+req(Req) ->
+    kapi_definition:build_message(Req, req_definition()).
 
 -spec req_v(kz_term:api_terms()) -> boolean().
-req_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?LEADER_REQ_HEADERS, ?LEADER_REQ_VALUES, ?LEADER_REQ_TYPES);
-req_v(JObj) ->
-    req_v(kz_json:to_proplist(JObj)).
+req_v(Req) ->
+    kapi_definition:validate(Req, req_definition()).
+
+-spec publish_req(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
+publish_req(Routing, JObj) ->
+    publish_req(Routing, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_req(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
+publish_req(Routing, Req, ContentType) ->
+    Definition = req_definition(),
+    {'ok', Payload} = kz_api:prepare_api_payload(Req
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:leader_publish(Routing, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
 %% @doc Declare the exchanges used by this API.
@@ -88,15 +134,6 @@ req_v(JObj) ->
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
     kz_amqp_util:leader_exchange().
-
--spec publish_req(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
-publish_req(Routing, JObj) ->
-    publish_req(Routing, JObj, ?DEFAULT_CONTENT_TYPE).
-
--spec publish_req(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
-publish_req(Routing, Req, ContentType) ->
-    {ok, Payload} = kz_api:prepare_api_payload(Req, ?LEADER_REQ_VALUES, fun req/1),
-    kz_amqp_util:leader_publish(Routing, Payload, ContentType).
 
 -spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q(Queue, [{'name', Name}]) ->

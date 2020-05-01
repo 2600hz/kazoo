@@ -1,7 +1,11 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2017-2019, 2600Hz
+%%% @copyright (C) 2017-2020, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_hooks_util).
@@ -15,27 +19,22 @@
         ,deregister_rr/0, deregister_rr/1, deregister_rr/2
         ,registered_rr/0, registered_rr/1, registered_rr/2
         ,all_registered_rr/0
+
+        ,bind/3, unbind/3
         ]).
 -export([lookup_account_id/1]).
 -export([handle_call_event/2]).
 
--include_lib("kazoo_stdlib/include/kz_types.hrl").
--include_lib("kazoo_stdlib/include/kz_log.hrl").
+-include("kazoo_events.hrl").
 -include("kz_hooks.hrl").
 
--define(HOOK_REG
-       ,{'p', 'l', 'kz_hook'}).
--define(HOOK_REG(AccountId)
-       ,{'p', 'l', {'kz_hook', AccountId}}).
--define(HOOK_REG(AccountId, EventName)
-       ,{'p', 'l', {'kz_hook', AccountId, EventName}}).
+-define(HOOK_REG, {'p', 'l', 'kz_hook'}).
+-define(HOOK_REG(AccountId), {'p', 'l', {'kz_hook', AccountId}}).
+-define(HOOK_REG(AccountId, EventName), {'p', 'l', {'kz_hook', AccountId, EventName}}).
 
--define(HOOK_REG_RR
-       ,{'p', 'l', 'kz_hook_rr'}).
--define(HOOK_REG_RR(AccountId)
-       ,{'p', 'l', {'kz_hook_rr', AccountId}}).
--define(HOOK_REG_RR(AccountId, EventName)
-       ,{'p', 'l', {'kz_hook_rr', AccountId, EventName}}).
+-define(HOOK_REG_RR, {'p', 'l', 'kz_hook_rr'}).
+-define(HOOK_REG_RR(AccountId), {'p', 'l', {'kz_hook_rr', AccountId}}).
+-define(HOOK_REG_RR(AccountId, EventName), {'p', 'l', {'kz_hook_rr', AccountId, EventName}}).
 
 -spec register() -> 'true'.
 register() ->
@@ -211,19 +210,44 @@ maybe_remove_binding_to_listener(ServerName) ->
 maybe_remove_binding_to_listener(ServerName, EventName) ->
     gen_listener:cast(ServerName, {'maybe_remove_binding', EventName}).
 
--spec handle_call_event(kz_json:object(), kz_term:proplist()) -> 'ok'.
+-spec bind(kz_term:ne_binary(), kz_term:ne_binary(), bind_fun()) -> kazoo_bindings:bind_result().
+bind(AccountId, EventName, {M, F, Args}) ->
+    BindingKey = binding_key(AccountId, EventName),
+    lager:debug("binding for hook event ~s in account ~s", [EventName, AccountId]),
+    kazoo_bindings:bind(BindingKey, M, F, Args);
+bind(AccountId, EventName, BindFun) ->
+    BindingKey = binding_key(AccountId, EventName),
+    lager:debug("binding for hook event ~s in account ~s", [EventName, AccountId]),
+    kazoo_bindings:bind(BindingKey, BindFun).
+
+binding_key(AccountId, EventName) ->
+    kz_binary:join([<<?MODULE_STRING>>, AccountId, EventName], <<".">>).
+
+-spec unbind(kz_term:ne_binary(), kz_term:ne_binary(), bind_fun()) -> kazoo_bindings:unbind_result().
+unbind(AccountId, EventName, {M, F, Args}) ->
+    BindingKey = binding_key(AccountId, EventName),
+    lager:debug("unbinding for hook event ~s in account ~s", [EventName, AccountId]),
+    kazoo_bindings:unbind(BindingKey, M, F, Args);
+unbind(AccountId, EventName, BindFun) ->
+    BindingKey = binding_key(AccountId, EventName),
+    lager:debug("unbinding for hook event ~s in account ~s", [EventName, AccountId]),
+    kazoo_bindings:unbind(BindingKey, BindFun).
+
+-spec handle_call_event(kz_call_event:doc(), kz_term:proplist()) -> 'ok'.
 handle_call_event(JObj, Props) ->
     'true' = kapi_call:event_v(JObj),
-    HookEvent = kz_json:get_value(<<"Event-Name">>, JObj),
-    AccountId = kz_json:get_value([<<"Custom-Channel-Vars">>
-                                  ,<<"Account-ID">>
-                                  ], JObj),
-    CallId = kz_json:get_value(<<"Call-ID">>, JObj),
-    kz_util:put_callid(CallId),
+    HookEvent = kz_api:event_name(JObj),
+    AccountId = kz_call_event:account_id(JObj),
+    CallId = kz_call_event:call_id(JObj),
+    kz_log:put_callid(CallId),
+
+    RoutingKey = binding_key(AccountId, HookEvent),
+    _ = kazoo_bindings:map(RoutingKey, [JObj]),
+
     handle_call_event(JObj, AccountId, HookEvent, CallId, props:get_is_true('rr', Props)).
 
 -spec handle_call_event(kz_json:object(), kz_term:api_binary(), kz_term:ne_binary(), kz_term:ne_binary(), boolean()) ->
-                               'ok'.
+          'ok'.
 handle_call_event(JObj, 'undefined', <<"CHANNEL_CREATE">>, CallId, RR) ->
     lager:debug("event 'channel_create' had no account id"),
     case lookup_account_id(JObj) of
@@ -235,6 +259,18 @@ handle_call_event(JObj, 'undefined', <<"CHANNEL_CREATE">>, CallId, RR) ->
                                   ,<<"Account-ID">>
                                   ], AccountId, JObj),
             handle_call_event(J, AccountId, <<"CHANNEL_CREATE">>, CallId, RR)
+    end;
+handle_call_event(JObj, 'undefined', <<"CHANNEL_DESTROY">>, CallId, RR) ->
+    lager:debug("event 'channel_destroy' had no account id"),
+    case lookup_account_id(JObj) of
+        {'error', _R} ->
+            lager:debug("failed to determine account id for 'channel_destroy'", []);
+        {'ok', AccountId} ->
+            lager:debug("determined account id for 'channel_destroy' is ~s", [AccountId]),
+            J = kz_json:set_value([<<"Custom-Channel-Vars">>
+                                  ,<<"Account-ID">>
+                                  ], AccountId, JObj),
+            handle_call_event(J, AccountId, <<"CHANNEL_DESTROY">>, CallId, RR)
     end;
 handle_call_event(JObj, AccountId, HookEvent, _CallId, 'false') ->
     Evt = ?HOOK_EVT(AccountId, HookEvent, JObj),
@@ -261,7 +297,7 @@ lookup_account_id(JObj) ->
 
 -spec fetch_account_id(kz_term:ne_binary()) -> {'ok', kz_term:ne_binary()} | {'error', any()}.
 fetch_account_id(Number) ->
-    case knm_number:lookup_account(Number) of
+    case knm_numbers:lookup_account(Number) of
         {'ok', AccountId, _} ->
             CacheProps = [{'origin', {'db', knm_converters:to_db(Number), Number}}],
             kz_cache:store_local(?HOOKS_CACHE_NAME, cache_key_number(Number), AccountId, CacheProps),

@@ -52,6 +52,7 @@ Key | Description | Type | Default | Required | Support Level
 `delay` | How long to delay ringing the device, in seconds | `integer()` | `0` | `false` |  
 `endpoint_types.[]` |   | `string()` |   | `false` |  
 `endpoint_types` | Endpoint types to perform search: user, device | `array(string())` | `[]` | `false` |  
+`skip_module` | When set to true this callflow action is skipped, advancing to the wildcard branch (if any) | `boolean()` |   | `false` |  
 `static_invite` | Override the SIP Username | `string()` |   | `false` |  
 `suppress_clid` | Suppress sending caller ID | `boolean()` |   | `false` |  
 `timeout` | Time, in seconds, to wait for device to bridge | `integer()` | `0` | `false` |  

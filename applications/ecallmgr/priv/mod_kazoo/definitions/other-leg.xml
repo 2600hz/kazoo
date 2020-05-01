@@ -1,0 +1,8 @@
+<definition name="other-leg">
+	<field name="Other-Leg-Direction" />
+	<field name="Other-Leg-Caller-ID-Name" />
+	<field name="Other-Leg-Caller-ID-Number" />
+	<field name="Other-Leg-Destination-Number" />
+	<field name="Other-Leg-Call-ID" type="first-of"
+		value="Other-Leg-Unique-ID|Other-Leg-Call-ID|variable_origination_uuid" />
+</definition>

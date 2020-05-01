@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc CDR
 %%% Read only access to CDR docs
 %%%
@@ -9,6 +9,11 @@
 %%% @author Karl Anderson
 %%% @author Ben Wann
 %%% @author Sponsored by GTNetwork LLC, Implemented by SIPLABS LLC
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cb_cdrs).
@@ -33,8 +38,9 @@
 -include("crossbar.hrl").
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".cdrs">>).
+-define(MOD_MAX_RANGE, kapps_config:get_pos_integer(?MOD_CONFIG_CAT, <<"maximum_range">>, ?MAX_RANGE)).
 -define(MAX_BULK, kapps_config:get_pos_integer(?MOD_CONFIG_CAT, <<"maximum_bulk">>, 50)).
--define(STALE_CDR, kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"cdr_stale_view">>, false)).
+-define(STALE_CDR, kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"cdr_stale_view">>, 'false')).
 
 -define(CB_LIST, <<"cdrs/crossbar_listing">>).
 -define(CB_LIST_BY_USER, <<"cdrs/listing_by_owner">>).
@@ -51,50 +57,6 @@
 -define(KEY_UTC_OFFSET, <<"utc_offset">>).
 -define(KEY_CCV, <<"custom_channel_vars">>).
 
--define(COLUMNS
-       ,[{<<"id">>, fun col_id/3}
-        ,{<<"call_id">>, fun col_call_id/3}
-        ,{<<"caller_id_number">>, fun col_caller_id_number/3}
-        ,{<<"caller_id_name">>, fun col_caller_id_name/3}
-        ,{<<"callee_id_number">>, fun col_callee_id_number/3}
-        ,{<<"callee_id_name">>, fun col_callee_id_name/3}
-        ,{<<"duration_seconds">>, fun col_duration_seconds/3}
-        ,{<<"billing_seconds">>, fun col_billing_seconds/3}
-        ,{<<"timestamp">>, fun col_timestamp/3}
-        ,{<<"hangup_cause">>, fun col_hangup_cause/3}
-        ,{<<"other_leg_call_id">>, fun col_other_leg_call_id/3}
-        ,{<<"owner_id">>, fun col_owner_id/3}
-        ,{<<"to">>, fun col_to/3}
-        ,{<<"from">>, fun col_from/3}
-        ,{<<"direction">>, fun col_call_direction/3}
-        ,{<<"request">>, fun col_request/3}
-        ,{<<"authorizing_id">>, fun col_authorizing_id/3}
-        ,{<<"cost">>, fun col_customer_cost/3}
-         %% New fields
-        ,{<<"dialed_number">>, fun col_dialed_number/3}
-        ,{<<"calling_from">>, fun col_calling_from/3}
-        ,{<<"datetime">>, fun col_pretty_print/3}
-        ,{<<"unix_timestamp">>, fun col_unix_timestamp/3}
-        ,{<<"rfc_1036">>, fun col_rfc1036/3}
-        ,{<<"iso_8601">>, fun col_iso8601/3}
-        ,{<<"iso_8601_combined">>, fun col_iso8601_combined/3}
-        ,{<<"call_type">>, fun col_account_call_type/3}
-        ,{<<"rate">>, fun col_rate/3}
-        ,{<<"rate_name">>, fun col_rate_name/3}
-        ,{<<"bridge_id">>, fun col_bridge_id/3}
-        ,{<<"recording_url">>, fun col_recording_url/3}
-        ,{<<"media_recordings">>, fun col_media_recordings/3}
-        ,{<<"media_server">>, fun col_media_server/3}
-        ,{<<"call_priority">>, fun col_call_priority/3}
-        ]).
-
--define(COLUMNS_RESELLER
-       ,[{<<"reseller_cost">>, fun col_reseller_cost/3}
-        ,{<<"reseller_call_type">>, fun col_reseller_call_type/3}
-        ]).
-
--type csv_column_fun() :: fun((kz_json:object(), kz_time:gregorian_seconds(), cb_context:context()) -> kz_term:ne_binary()).
-
 %%%=============================================================================
 %%% API
 %%%=============================================================================
@@ -103,7 +65,7 @@
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec init() -> ok.
+-spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.cdrs">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.cdrs">>, ?MODULE, 'resource_exists'),
@@ -111,7 +73,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.to_json.get.cdrs">>, ?MODULE, 'to_json'),
     _ = crossbar_bindings:bind(<<"*.to_csv.get.cdrs">>, ?MODULE, 'to_csv'),
     _ = crossbar_bindings:bind(<<"*.validate.cdrs">>, ?MODULE, 'validate'),
-    ok.
+    'ok'.
 
 -spec to_json(cb_cowboy_payload()) -> cb_cowboy_payload().
 to_json({Req, Context}) ->
@@ -122,7 +84,7 @@ to_csv({Req, Context}) ->
     {Req, to_response(Context, <<"csv">>, cb_context:req_nouns(Context))}.
 
 -spec to_response(cb_context:context(), kz_term:ne_binary(), req_nouns()) ->
-                         cb_context:context().
+          cb_context:context().
 to_response(Context, _, [{<<"cdrs">>, []}, {?KZ_ACCOUNTS_DB, _}|_]) ->
     Context;
 to_response(Context, _, [{<<"cdrs">>, []}, {<<"users">>, _}|_]) ->
@@ -240,7 +202,8 @@ validate_utc_offset(Context, UTCSecondsOffset) ->
             lager:debug("adjusting CDR datetime field with UTC Time Offset: ~p", [UTCSecondsOffset]),
             validate_chunk_view(Context)
     catch
-        error:badarg -> crossbar_util:response('error', <<"utc_offset must be a number">>, 404, Context)
+        'error':'badarg' ->
+            crossbar_util:response('error', <<"utc_offset must be a number">>, 404, Context)
     end.
 
 -spec validate_chunk_view(cb_context:context()) -> cb_context:context().
@@ -256,11 +219,13 @@ validate_chunk_view(Context) ->
 -spec load_chunk_view(cb_context:context(), kz_term:ne_binary(), kz_term:proplist()) -> cb_context:context().
 load_chunk_view(Context, ViewName, Options0) ->
     AuthAccountId = cb_context:auth_account_id(Context),
+
     Setters = [{fun cb_context:store/3, 'has_cdr_filter', crossbar_filter:is_defined(Context)}
               ,{fun cb_context:store/3, 'is_reseller', kz_services_reseller:is_reseller(AuthAccountId)}
               ],
     Options = [{'is_chunked', 'true'}
               ,{'chunk_size', ?MAX_BULK}
+              ,{'max_range', ?MOD_MAX_RANGE}
                | Options0
               ],
     crossbar_view:load_modb(cb_context:setters(fix_qs_filter_keys(Context), Setters), ViewName, Options).
@@ -298,6 +263,7 @@ load_cdr_summary(Context) ->
               ,{'range_start_keymap', []}
               ,{'range_end_keymap', crossbar_view:suffix_key_fun([kz_json:new()])}
               ,{'list', ?CB_SUMMARY_LIST}
+              ,{'max_range', ?MOD_MAX_RANGE}
               ],
     C1 = crossbar_view:load_modb(Context, ?CB_SUMMARY_VIEW, Options),
     case cb_context:resp_status(C1) of
@@ -318,7 +284,10 @@ merge_cdr_summary(JObj1, JObj2) ->
                                   NewValue = merge_cdr_summary(Value1, Value1),
                                   kz_json:set_value(Key1, NewValue, JObj)
                           end
-                  end, JObj2, JObj1).
+                  end
+                 ,JObj2
+                 ,JObj1
+                 ).
 
 -spec normalize_summary_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_summary_results(JObj, Acc) -> [JObj|Acc].
@@ -360,7 +329,8 @@ get_view_options([{<<"cdrs">>, [?PATH_INTERACTION]}, {<<"users">>, [OwnerId]}|_]
     {?CB_INTERACTION_LIST_BY_USER
     ,props:filter_undefined(
        [{'range_start_keymap', [OwnerId]}
-       ,{'range_end_keymap', fun(Ts) -> [OwnerId, Ts, kz_json:new()] end}
+       ,{'range_end_keymap', [OwnerId]}
+       ,{'key_min_length', 4}
        ,{'group', 'true'}
        ,{'group_level', 3}
        ,{'reduce', 'true'}
@@ -389,8 +359,10 @@ load_chunked_cdrs(Context, RespType) ->
 
 -spec load_chunked_cdrs(cb_context:context(), kz_term:ne_binary(), kz_json:objects()) -> cb_context:context().
 load_chunked_cdrs(Context, RespType, RespData) ->
-    Fun = fun(JObj, Acc) -> split_to_modbs(cb_context:account_id(Context), kz_doc:id(JObj), Acc) end,
+    AccountId = cb_context:account_id(Context),
+    Fun = fun(JObj, Acc) -> split_to_modbs(AccountId, kz_doc:id(JObj), Acc) end,
     MapIds = lists:foldl(Fun, #{}, RespData),
+
     C1 = cb_context:set_resp_data(Context, []),
     try maps:fold(fun(Db, Ids, C) -> load_chunked_cdr_ids(C, RespType, Db, Ids) end, C1, MapIds)
     catch
@@ -406,10 +378,10 @@ split_to_modbs(AccountId, ?MATCH_MODB_PREFIX(Year, Month, _)=Id, Map) ->
 
 -spec load_chunked_cdr_ids(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binaries()) -> cb_context:context().
 load_chunked_cdr_ids(Context, RespType, Db, Ids) ->
-    case cb_context:resp_status(Context) =:= 'success'
-        andalso kz_datamgr:open_docs(Db, Ids, [{'doc_type', <<"cdr">>}])
-    of
-        'false' -> Context;
+    load_chunked_cdr_ids(Context, RespType, Db, Ids, cb_context:resp_status(Context)).
+
+load_chunked_cdr_ids(Context, RespType, Db, Ids, 'success') ->
+    case kz_datamgr:open_docs(Db, Ids, [{'doc_type', kzd_cdrs:type()}]) of
         {'ok', Results} ->
             Resp0 = [normalize_cdr(Context, RespType, Result)
                      || Result <- Results,
@@ -427,19 +399,47 @@ load_chunked_cdr_ids(Context, RespType, Db, Ids) ->
         {'error', Reason} ->
             lager:debug("failed to load cdrs doc from ~s: ~p", [Db, Reason]),
             crossbar_doc:handle_datamgr_errors(Reason, <<"load_cdrs">>, Context)
-    end.
+    end;
+load_chunked_cdr_ids(Context, _RespType, _Db, _Ids, _Status) ->
+    Context.
 
--spec normalize_cdr(cb_context:context(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object() | kz_term:binary().
+-spec normalize_cdr(cb_context:context(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object() | kz_term:ne_binary().
 normalize_cdr(Context, <<"json">>, Result) ->
     JObj = kz_json:get_json_value(<<"doc">>, Result),
-    Duration = kz_json:get_integer_value(<<"duration_seconds">>, JObj, 0),
-    Timestamp = kz_json:get_integer_value(<<"timestamp">>, JObj, 0) - Duration,
-    kz_json:from_list([{K, F(JObj, Timestamp, Context)} || {K, F} <- csv_rows(Context)]);
+    Duration = kzd_cdrs:duration_seconds(JObj, 0),
+    Timestamp = kzd_cdrs:timestamp(JObj, 0) - Duration,
+
+    MappedRows = [{K, apply_row_mapper(K, F, JObj, Timestamp, Context)} || {K, F} <- csv_rows(Context)],
+    maybe_filter_empties(MappedRows, kapps_config:is_true(?MOD_CONFIG_CAT, <<"should_filter_empty_strings">>, 'false'));
 normalize_cdr(Context, <<"csv">>, Result) ->
     JObj = kz_json:get_json_value(<<"doc">>, Result),
-    Duration = kz_json:get_integer_value(<<"duration_seconds">>, JObj, 0),
-    Timestamp = kz_json:get_integer_value(<<"timestamp">>, JObj, 0) - Duration,
-    <<(kz_binary:join([F(JObj, Timestamp, Context) || {_, F} <- csv_rows(Context)], <<",">>))/binary, "\r\n">>.
+    Duration = kzd_cdrs:duration_seconds(JObj, 0),
+    Timestamp = kzd_cdrs:timestamp(JObj, 0) - Duration,
+
+    <<(kz_binary:join([apply_row_mapper(K, F, JObj, Timestamp, Context)
+                       || {K, F} <- csv_rows(Context)
+                      ]
+                     ,<<",">>
+                     ))/binary
+     ,"\r\n"
+    >>.
+
+-spec apply_row_mapper(kz_term:ne_binary(), fun(), kz_json:object(), kz_time:gregorian_seconds(), cb_context:context()) -> binary().
+apply_row_mapper(<<"datetime">>, _F, JObj, Timestamp, Context) ->
+    col_pretty_print(JObj, Timestamp, Context);
+apply_row_mapper(_, F, JObj, Timestamp, _Context) ->
+    F(JObj, Timestamp, 'undefined').
+
+-spec col_pretty_print(kz_json:object(), kz_time:gregorian_seconds(), cb_context:context()) -> kz_term:ne_binary().
+col_pretty_print(_JObj, Timestamp, Context) ->
+    UTCSecondsOffset = cb_context:req_value(Context, ?KEY_UTC_OFFSET),
+    kz_time:pretty_print_datetime(handle_utc_time_offset(Timestamp, UTCSecondsOffset)).
+
+-spec maybe_filter_empties(kz_term:proplist(), boolean()) -> kz_json:objects().
+maybe_filter_empties(Rows, 'true') ->
+    kz_json:from_list(props:filter_empty_strings(Rows));
+maybe_filter_empties(Rows, 'false') ->
+    kz_json:from_list(Rows).
 
 -spec maybe_add_csv_header(cb_context:context(), kz_term:ne_binary(), kz_json:objects() | kz_term:binaries()) -> cb_context:context().
 maybe_add_csv_header(Context, _, []) ->
@@ -451,118 +451,19 @@ maybe_add_csv_header(Context, <<"csv">>, [Head | Tail]=Data) ->
         'true' ->
             cb_context:set_resp_data(Context, Data);
         'false' ->
-            CSVHeader = kz_binary:join([K || {K, _Fun} <- csv_rows(Context)], <<",">>),
+            CSVHeader = kz_binary:join([K || {K, _Fun} <- csv_rows(Context)]
+                                      ,<<",">>
+                                      ),
             cb_context:set_resp_data(Context, [<<CSVHeader/binary, "\r\n", Head/binary>> | Tail])
     end.
 
--spec csv_rows(cb_context:context()) -> [{kz_term:ne_binary(), csv_column_fun()}].
 csv_rows(Context) ->
-    case cb_context:fetch(Context, 'is_reseller', 'false') of
-        'false' -> ?COLUMNS;
-        'true' -> ?COLUMNS ++ ?COLUMNS_RESELLER
-    end.
-
-%% see csv_column_fun() for specs for each function here
-col_id(JObj, _Timestamp, _Context) -> kz_doc:id(JObj, <<>>).
-col_call_id(JObj, _Timestamp, _Context) -> kz_json:get_value(<<"call_id">>, JObj, <<>>).
-col_caller_id_number(JObj, _Timestamp, _Context) -> kz_json:get_value(<<"caller_id_number">>, JObj, <<>>).
-col_caller_id_name(JObj, _Timestamp, _Context) -> kz_json:get_value(<<"caller_id_name">>, JObj, <<>>).
-col_callee_id_number(JObj, _Timestamp, _Context) -> kz_json:get_value(<<"callee_id_number">>, JObj, <<>>).
-col_callee_id_name(JObj, _Timestamp, _Context) -> kz_json:get_value(<<"callee_id_name">>, JObj, <<>>).
-col_duration_seconds(JObj, _Timestamp, _Context) -> kz_json:get_value(<<"duration_seconds">>, JObj, <<>>).
-col_billing_seconds(JObj, _Timestamp, _Context) -> kz_json:get_value(<<"billing_seconds">>, JObj, <<>>).
-col_timestamp(_JObj, Timestamp, _Context) -> kz_term:to_binary(Timestamp).
-col_hangup_cause(JObj, _Timestamp, _Context) -> kz_json:get_value(<<"hangup_cause">>, JObj, <<>>).
-col_other_leg_call_id(JObj, _Timestamp, _Context) -> kz_json:get_value(<<"other_leg_call_id">>, JObj, <<>>).
-col_owner_id(JObj, _Timestamp, _Context) -> kz_json:get_value([?KEY_CCV, <<"owner_id">>], JObj, <<>>).
-col_to(JObj, _Timestamp, _Context) -> kz_json:get_value(<<"to">>, JObj, <<>>).
-col_from(JObj, _Timestamp, _Context) -> kz_json:get_value(<<"from">>, JObj, <<>>).
-col_call_direction(JObj, _Timestamp, _Context) -> kz_json:get_value(<<"call_direction">>, JObj, <<>>).
-col_request(JObj, _Timestamp, _Context) -> kz_json:get_value(<<"request">>, JObj, <<>>).
-col_authorizing_id(JObj, _Timestamp, _Context) ->
-    case {kz_json:get_value([?KEY_CCV, <<"account_id">>], JObj, <<>>)
-         ,kz_json:get_value([?KEY_CCV, <<"authorizing_id">>], JObj, <<>>)
-         }
-    of
-        {A, A} -> <<>>;
-        {_A, B} -> B
-    end.
-col_customer_cost(JObj, _Timestamp, _Context) -> kz_term:to_binary(customer_cost(JObj)).
-
-col_dialed_number(JObj, _Timestamp, _Context) -> dialed_number(JObj).
-col_calling_from(JObj, _Timestamp, _Context) -> calling_from(JObj).
-col_pretty_print(_JObj, Timestamp, Context) ->
-    UTCSecondsOffset = cb_context:req_value(Context, ?KEY_UTC_OFFSET),
-    pretty_print_datetime(handle_utc_time_offset(Timestamp, UTCSecondsOffset)).
-col_unix_timestamp(_JObj, Timestamp, _Context) -> kz_term:to_binary(kz_time:gregorian_seconds_to_unix_seconds(Timestamp)).
-col_rfc1036(_JObj, Timestamp, _Context) -> kz_time:rfc1036(Timestamp).
-col_iso8601(_JObj, Timestamp, _Context) -> kz_date:to_iso8601_extended(Timestamp).
-col_iso8601_combined(_JObj, Timestamp, _Context) -> kz_time:iso8601(Timestamp).
-col_account_call_type(JObj, _Timestamp, _Context) -> kz_json:get_value([?KEY_CCV, <<"account_billing">>], JObj, <<>>).
-col_rate(JObj, _Timestamp, _Context) -> kz_term:to_binary(kz_currency:units_to_dollars(kz_json:get_value([?KEY_CCV, <<"rate">>], JObj, 0))).
-col_rate_name(JObj, _Timestamp, _Context) -> kz_json:get_value([?KEY_CCV, <<"rate_name">>], JObj, <<>>).
-col_bridge_id(JObj, _Timestamp, _Context) -> kz_json:get_value([?KEY_CCV, <<"bridge_id">>], JObj, <<>>).
-col_recording_url(JObj, _Timestamp, _Context) -> kz_json:get_value([<<"recording_url">>], JObj, <<>>).
-col_media_recordings(JObj, _Timestamp, _Context) -> format_recordings(JObj).
-col_media_server(JObj, _Timestamp, _Context) -> kz_json:get_value(<<"media_server">>, JObj, <<>>).
-col_call_priority(JObj, _Timestamp, _Context) -> kz_json:get_value([?KEY_CCV, <<"call_priority">>], JObj, <<>>).
-
-col_reseller_cost(JObj, _Timestamp, _Context) -> kz_term:to_binary(reseller_cost(JObj)).
-col_reseller_call_type(JObj, _Timestamp, _Context) -> kz_json:get_value([?KEY_CCV, <<"reseller_billing">>], JObj, <<>>).
-
--spec pretty_print_datetime(kz_time:datetime() | kz_time:gregorian_second()) -> kz_term:ne_binary().
-pretty_print_datetime(Timestamp) when is_integer(Timestamp) ->
-    pretty_print_datetime(calendar:gregorian_seconds_to_datetime(Timestamp));
-pretty_print_datetime({{Y,Mo,D},{H,Mi,S}}) ->
-    iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0w ~2..0w:~2..0w:~2..0w"
-                                  ,[Y, Mo, D, H, Mi, S]
-                                  )).
+    kzd_cdrs:csv_headers(cb_context:fetch(Context, 'is_reseller', 'false')).
 
 -spec handle_utc_time_offset(kz_time:gregorian_seconds(), kz_term:api_integer()) -> kz_time:gregorian_seconds().
 handle_utc_time_offset(Timestamp, 'undefined') -> Timestamp;
 handle_utc_time_offset(Timestamp, UTCSecondsOffset) ->
     Timestamp + kz_term:to_number(UTCSecondsOffset).
-
--spec format_recordings(kz_json:object()) -> kz_term:binaries().
-format_recordings(JObj) ->
-    case kz_json:get_value([?KEY_CCV, <<"media_recordings">>], JObj, []) of
-        Recordings when is_list(Recordings) -> Recordings;
-        Recording -> [Recording]
-    end.
-
--spec dialed_number(kz_json:object()) -> binary().
-dialed_number(JObj) ->
-    case kz_json:get_value(<<"call_direction">>, JObj) of
-        <<"inbound">> ->
-            [Num|_] = binary:split(kz_json:get_value(<<"request">>, JObj, <<>>), <<"@">>),
-            Num;
-        <<"outbound">> ->
-            [Num|_] = binary:split(kz_json:get_value(<<"to">>, JObj, <<>>), <<"@">>),
-            Num
-    end.
-
--spec calling_from(kz_json:object()) -> binary().
-calling_from(JObj) ->
-    case kz_json:get_value(<<"call_direction">>, JObj) of
-        <<"inbound">> -> kz_json:get_value(<<"caller_id_number">>, JObj, <<>>);
-        <<"outbound">> ->
-            [Num|_] = binary:split(kz_json:get_value(<<"from_uri">>, JObj, <<>>), <<"@">>),
-            Num
-    end.
-
--spec customer_cost(kz_json:object()) -> pos_integer().
-customer_cost(JObj) ->
-    case kz_json:get_value([?KEY_CCV, <<"account_billing">>], JObj) of
-        <<"per_minute">> -> kapps_call_util:call_cost(JObj);
-        _ -> 0
-    end.
-
--spec reseller_cost(kz_json:object()) -> pos_integer().
-reseller_cost(JObj) ->
-    case kz_json:get_value([?KEY_CCV, <<"reseller_billing">>], JObj) of
-        <<"per_minute">> -> kapps_call_util:call_cost(JObj);
-        _ -> 0
-    end.
 
 %%------------------------------------------------------------------------------
 %% @doc Load a CDR document from the database
@@ -572,8 +473,8 @@ reseller_cost(JObj) ->
 load_cdr(?MATCH_MODB_PREFIX(Year, Month, _Day) = CDRId, Context) ->
     AccountId = cb_context:account_id(Context),
     AccountDb = kazoo_modb:get_modb(AccountId, kz_term:to_integer(Year), kz_term:to_integer(Month)),
-    Context1 = cb_context:set_account_db(Context, AccountDb),
-    crossbar_doc:load({<<"cdr">>, CDRId}, Context1, ?TYPE_CHECK_OPTION(<<"cdr">>));
+    Context1 = cb_context:set_db_name(Context, AccountDb),
+    crossbar_doc:load({kzd_cdrs:type(), CDRId}, Context1, ?TYPE_CHECK_OPTION(kzd_cdrs:type()));
 load_cdr(CDRId, Context) ->
     lager:debug("error loading cdr by id ~p", [CDRId]),
     crossbar_util:response('error', <<"could not find cdr with supplied id">>, 404, Context).
@@ -585,27 +486,32 @@ load_cdr(CDRId, Context) ->
 -spec load_legs(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_legs(<<Year:4/binary, Month:2/binary, "-", _/binary>> = DocId, Context) ->
     AccountId = cb_context:account_id(Context),
-    AccountDb = kazoo_modb:get_modb(AccountId, kz_term:to_integer(Year), kz_term:to_integer(Month)),
-    Context1 = cb_context:set_account_db(Context, AccountDb),
-    case kz_datamgr:open_doc(AccountDb, {<<"cdr">>, DocId}) of
+    MODB = kazoo_modb:get_modb(AccountId, kz_term:to_integer(Year), kz_term:to_integer(Month)),
+    case kz_datamgr:open_cache_doc(MODB, {kzd_cdrs:type(), DocId}) of
         {'ok', JObj} ->
-            load_legs(kz_json:get_value(<<"interaction_id">>, JObj), Context1);
-        _ ->
+            lager:debug("finding interaction id in ~s / ~s", [MODB, DocId]),
+            load_legs(kzd_cdrs:interaction_id(JObj), Context);
+        {'error', _} ->
             lager:debug("error loading legs for cdr id ~p", [DocId]),
-            crossbar_util:response('error', <<"could not find legs for supplied id">>, 404, Context1)
+            crossbar_util:response('error', <<"could not find legs for supplied id">>, 404, Context)
     end;
-load_legs(InteractionId, Context) ->
-    Options = ['include_docs'
-              ,{'startkey', [InteractionId]}
-              ,{'endkey', [InteractionId, kz_json:new()]}
+load_legs(<<BinTimestamp:11/binary, "-", _Key/binary>>=InteractionId, Context) ->
+    MODB = kazoo_modb:get_modb(cb_context:account_id(Context), kz_term:to_integer(BinTimestamp)),
+
+    lager:debug("finding legs for ~s / ~s", [MODB, InteractionId]),
+
+    Options = [{'mapper', fun normalize_leg_view_results/2}
+              ,{'range_start_keymap',  fun(_) -> [InteractionId] end}
+              ,{'range_end_keymap', fun(_) -> [InteractionId, kz_json:new()] end}
+              ,{'databases', [MODB]}
+              ,{'max_range', ?MOD_MAX_RANGE}
+              ,'include_docs'
               ],
-    crossbar_doc:load_view(?CB_INTERACTION_LIST_BY_ID
-                          ,Options
-                          ,Context
-                          ,fun normalize_leg_view_results/2
-                          ).
+    crossbar_view:load_modb(Context, ?CB_INTERACTION_LIST_BY_ID, Options);
+load_legs(Id, Context) ->
+    crossbar_util:response_bad_identifier(Id, Context).
 
 -spec normalize_leg_view_results(kz_json:object(), kz_json:objects()) ->
-                                        kz_json:objects().
+          kz_json:objects().
 normalize_leg_view_results(JObj, Acc) ->
-    Acc ++ [kz_json:get_value(<<"doc">>, JObj)].
+    Acc ++ [kz_json:get_json_value(<<"doc">>, JObj)].

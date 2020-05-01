@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2016-2019, 2600Hz
+%%% @copyright (C) 2016-2020, 2600Hz
 %%% @doc Some utilities to work with attachment.
 %%% @author Luis Azedo
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_att_util).
@@ -63,7 +68,7 @@ format_url_from_metadata(Map, {DbName, DocId, AName}, Format, JObj) ->
     Args = [{<<"attachment">>, AName}
            ,{<<"id">>, DocId}
            ,{<<"account_id">>, kz_doc:account_id(JObj, <<"unknown_account">>)}
-           ,{<<"db">>, kz_util:uri_decode(DbName)}
+           ,{<<"db">>, kz_http_util:urldecode(DbName)}
            ],
     format_url(Map, kz_doc:public_fields(JObj), Args, Format).
 
@@ -77,7 +82,7 @@ format_url(Params, JObj, Args, DefaultFields) ->
 
     case path_from_settings(Params) of
         'undefined' -> BaseUrl;
-        Path -> list_to_binary([Path, "/", BaseUrl])
+        Path -> list_to_binary([kz_binary:strip_right(Path, $/), "/", BaseUrl])
     end.
 
 -spec do_format_url(url_fields(), kz_json:object(), kz_term:proplist(), binary()) -> kz_term:ne_binary().
@@ -92,7 +97,7 @@ do_format_url(Fields, JObj, Args, Separator) ->
     kz_binary:join(Reversed, Separator).
 
 -spec format_url_field(kz_json:object(), kz_term:proplist(), url_field(), kz_term:ne_binaries()) ->
-                              kz_term:ne_binaries().
+          kz_term:ne_binaries().
 format_url_field(JObj, Args, #{<<"group">> := Arg}, Acc) ->
     format_url_field(JObj, Args, {'group', Arg}, Acc);
 format_url_field(JObj, Args, {'group', Arg}, Acc) ->
@@ -102,14 +107,14 @@ format_url_field(JObj, Args, #{<<"arg">> := Arg}, Fields) ->
 format_url_field(_JObj, Args, {'arg', Arg}, Fields) ->
     case props:get_value(Arg, Args) of
         'undefined' -> Fields;
-        V -> [kz_util:uri_encode(V) | Fields]
+        V -> [kz_http_util:urlencode(V) | Fields]
     end;
 format_url_field(JObj, Args, #{<<"field">> := Field}, Fields) ->
     format_url_field(JObj, Args, {'field', Field}, Fields);
 format_url_field(JObj, _Args, {'field', Field}, Fields) ->
     case kz_json:get_ne_binary_value(Field, JObj) of
         'undefined' -> Fields;
-        V -> [kz_util:uri_encode(V) | Fields]
+        V -> [kz_http_util:urlencode(V) | Fields]
     end;
 format_url_field(JObj, Args, #{<<"const">> := Field}, Fields) ->
     format_url_field(JObj, Args, {'const', Field}, Fields);

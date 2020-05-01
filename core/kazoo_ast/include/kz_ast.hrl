@@ -1,16 +1,27 @@
 -ifndef(KZ_AST_HRL).
 
 -type clauses() :: [erl_parse:abstract_clause()].
--type ast_functions() :: [{module(), function(), non_neg_integer(), clauses()}].
+-type ast_functions() :: [{module(), atom(), non_neg_integer(), clauses()}].
 -type ast_records() :: [{atom(), [atom()]}].
+-type ast_exports() :: [{atom(), non_neg_integer()}]. %% [{Function, Arity} | {TypeName, Arity}]
+-type ast_specs() :: [{atom(), non_neg_integer(), tuple(), tuple()}]. %% [{Function, Arity, Args, Return}]
+-type ast_types() :: [{atom(), tuple()}]. %% [{Name, TypeDef}]
 
 -record(module_ast, {functions = [] :: ast_functions()
                     ,records = [] :: ast_records()
+                    ,exports = [] :: ast_exports()
+                    ,exported_types = [] :: ast_exports()
+                    ,specs = [] :: ast_specs()
+                    ,types = [] :: ast_types()
+                    ,behaviour :: atom()
                     }).
 
 -type module_ast() :: #module_ast{}.
 
 %% Helper macros for processing Erlang AST forms
+-define(EOF, {'eof',_}).
+
+-define(LAGER_RECORDS, {'attribute', _,'lager_records', _}).
 
 -define(AST_FUNCTION(Name, Arity, Clauses)
        ,{'function', _, Name, Arity, Clauses}
@@ -18,6 +29,66 @@
 
 -define(AST_RECORD(Name, Fields)
        ,{'attribute', _, 'record', {Name, Fields}}
+       ).
+
+-define(AST_ATTRIBUTE_FILE(Path)
+       ,{'attribute',_,'file',{Path,_}}
+       ).
+
+-define(AST_ATTRIBUTE_MODULE(M)
+       ,{'attribute',_,'module',M}
+       ).
+
+-define(BEHAVIOUR(Behaviour)
+       ,{'attribute',_,'behaviour',Behaviour}
+       ).
+
+-define(AST_EXPORTS(Exports)
+       ,{'attribute',_,'export',Exports}
+       ).
+
+-define(AST_EXPORTED_TYPES(Types)
+       ,{'attribute',_,'export_type',Types}
+       ).
+
+-define(TYPE_PRODUCT(Types)
+       ,{'type',_,'product', Types}
+       ).
+
+-define(TYPE_UNION(Types)
+       ,{'type',_,'union', Types}
+       ).
+
+-define(REMOTE_TYPE(Module, Fun, Args)
+       ,{'remote_type',_, [Module,Fun,Args]}
+       ).
+
+-define(USER_TYPE(Name, Args)
+       ,{'user_type',_,Name,Args}
+       ).
+
+-define(SPEC_TYPE(Type, Args)
+       ,{'type',_,Type,Args}
+       ).
+-define(SPEC_TYPE(Type), ?TYPE(Type, [])).
+
+-define(SPEC_ARGS_RETURN(Args, Return)
+       ,[Args, Return]
+       ).
+
+-define(SPEC(Fun, Arity, Args, Return)
+       ,{'attribute',_,'spec'
+        ,{{Fun, Arity}
+         ,[{'type',_,'fun', ?SPEC_ARGS_RETURN(Args, Return)}]
+         }
+        }
+       ).
+
+-type acl_fun() :: fun((kz_term:ne_binary()) -> kz_json:object()).
+-define(TYPE(Name, TypeDef)
+       ,{'attribute',_,'type'
+        ,{Name, TypeDef, []}
+        }
        ).
 
 -define(CLAUSE(Args, Guards, Body)

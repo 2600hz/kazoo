@@ -3,6 +3,14 @@
     "_id": "temporal_rules_sets",
     "description": "Schema for a temporal rules sets",
     "properties": {
+        "flags": {
+            "description": "Flags set by external applications",
+            "items": {
+                "type": "string"
+            },
+            "support_level": "supported",
+            "type": "array"
+        },
         "name": {
             "description": "A friendly name for the temporal rule set",
             "maxLength": 128,

@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2017-2019, 2600Hz
+%%% @copyright (C) 2017-2020, 2600Hz
 %%% @doc Google Drive for attachments.
 %%% @author Luis Azedo
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_att_onedrive).
@@ -17,6 +22,9 @@
 
 -define(GRAPH_HTTP_OPTIONS, [{'version', "HTTP/1.1"}
                             ,{'ssl', [{'versions', ['tlsv1.2']}]}
+                            ,{'follow_redirect', 'true'}
+                            ,{'max_redirect', 5}
+                            ,'with_body'
                             ]).
 
 -define(GRAPH_API_URL, <<"https://graph.microsoft.com/v1.0">>).
@@ -143,8 +151,10 @@ do_fetch_attachment({'ok', #{'token' := #{'authorization' := Authorization}}},
                     DriveId, ContentId, HandlerProps, DbName, DocId, AName) ->
     Headers = [{<<"Authorization">>, Authorization}],
     Url = ?DRV_FETCH_URL(DriveId, ContentId),
-    lager:debug("getting ~p", [Url]),
-    case kz_http:get(Url, Headers, ?GRAPH_HTTP_OPTIONS) of
+    lager:debug("getting ~p : ~p", [Url, Headers]),
+    %% case kz_http:get(Url, Headers, ?GRAPH_HTTP_OPTIONS) of
+    %% SEEMS HTTPC IS BROKEN IN OTP 21.2.5
+    case hackney:request('get', Url, Headers, <<>>, ?GRAPH_HTTP_OPTIONS) of
         {'ok', 200, _ResponseHeaders, ResponseBody} ->
             {'ok', ResponseBody};
         Resp ->
@@ -183,8 +193,8 @@ onedrive_format_url(Map, AttInfo) ->
     kz_att_util:format_url(Map, AttInfo, onedrive_default_fields()).
 
 -spec onedrive_put(binary(), kz_term:proplist(), binary()) ->
-                          {'ok', {binary(), binary()}, kz_term:proplist()} |
-                          {'error', kz_term:ne_binary(), kz_http:ret() | atom()}.
+          {'ok', {binary(), binary()}, kz_term:proplist()} |
+          {'error', kz_term:ne_binary(), kz_http:ret() | atom()}.
 onedrive_put(Url, Headers, Body) ->
     case kz_http:put(Url, Headers, Body, ?GRAPH_HTTP_OPTIONS) of
         {'ok', Code, ResponseHeaders, ResponseBody}

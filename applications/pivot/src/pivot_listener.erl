@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(pivot_listener).
@@ -70,7 +74,7 @@ init([]) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), state()) ->
-                         {'reply', {'error', 'not_implemented'}, state()}.
+          {'reply', {'error', 'not_implemented'}, state()}.
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -79,7 +83,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> {'noreply', state()} |
-                                     {'noreply', state(), 'hibernate'}.
+          {'noreply', state(), 'hibernate'}.
 handle_cast({'gen_listener', {'created_queue', _QueueNAme}}, State) ->
     {'noreply', State, 'hibernate'};
 handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->

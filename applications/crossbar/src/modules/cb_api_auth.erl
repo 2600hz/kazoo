@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Account API auth module
 %%% This is a non-standard module:
 %%% * it authenticates and authorizes itself
@@ -10,6 +10,11 @@
 %%%
 %%% @author Karl Anderson
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cb_api_auth).
@@ -25,7 +30,6 @@
 
 -include("crossbar.hrl").
 
--define(AGG_VIEW_FILE, <<"views/accounts.json">>).
 -define(AGG_VIEW_API, <<"accounts/listing_by_api">>).
 -define(API_AUTH_TOKENS, kapps_config:get_integer(?CONFIG_CAT, <<"api_auth_tokens">>, 35)).
 
@@ -39,8 +43,8 @@
 %%------------------------------------------------------------------------------
 -spec init() -> ok.
 init() ->
-    _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
-    _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
+    _ = crossbar_bindings:bind(<<"*.authenticate.api_auth">>, ?MODULE, 'authenticate'),
+    _ = crossbar_bindings:bind(<<"*.authorize.api_auth">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.api_auth">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.api_auth">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.validate.api_auth">>, ?MODULE, 'validate'),
@@ -121,19 +125,21 @@ put(Context) ->
 %%------------------------------------------------------------------------------
 -spec on_successful_validation(cb_context:context()) -> cb_context:context().
 on_successful_validation(Context) ->
-    ApiKey = kz_json:get_value(<<"api_key">>, cb_context:doc(Context)),
-
-    case kz_json:is_empty(ApiKey) of
-        'true' -> cb_context:add_system_error('invalid_credentials', Context);
-        'false' -> validate_by_api_key(Context, ApiKey)
+    case kzd_api_auth:api_key(cb_context:doc(Context)) of
+        'undefined' ->
+            cb_context:add_system_error('invalid_credentials', Context);
+        <<>> ->
+            cb_context:add_system_error('invalid_credentials', Context);
+        <<ApiKey/binary>> ->
+            validate_by_api_key(Context, ApiKey)
     end.
 
 -spec validate_by_api_key(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 validate_by_api_key(Context, ApiKey) ->
-    Context1 = crossbar_doc:load_view(?AGG_VIEW_API
-                                     ,[{'key', ApiKey}]
-                                     ,cb_context:set_account_db(Context, ?KZ_ACCOUNTS_DB)
-                                     ),
+    Options = [{'databases', [?KZ_ACCOUNTS_DB]}
+              ,{'key', ApiKey}
+              ],
+    Context1 = crossbar_view:load(Context, ?AGG_VIEW_API, Options),
     case cb_context:resp_status(Context1) of
         'success' ->
             validate_by_api_key(Context1, ApiKey, cb_context:doc(Context1));
@@ -141,18 +147,14 @@ validate_by_api_key(Context, ApiKey) ->
     end.
 
 -spec validate_by_api_key(cb_context:context(), kz_term:ne_binary(), kz_json:object() | kz_json:objects()) ->
-                                 cb_context:context().
+          cb_context:context().
 validate_by_api_key(Context, ApiKey, []) ->
-    lager:debug("api key '~s' not associated with any accounts"
-               ,[ApiKey]
-               ),
+    lager:debug("api key '~s' not associated with any accounts", [ApiKey]),
     crossbar_util:response_bad_identifier(ApiKey, Context);
 validate_by_api_key(Context, ApiKey, [Doc]) ->
     validate_by_api_key(Context, ApiKey, Doc);
 validate_by_api_key(Context, ApiKey, [Doc|_]) ->
-    lager:debug("found multiple accounts with api key '~s', using '~s'"
-               ,[ApiKey, kz_doc:id(Doc)]
-               ),
+    lager:debug("found multiple accounts with api key '~s', using '~s'", [ApiKey, kz_doc:id(Doc)]),
     validate_by_api_key(Context, ApiKey, Doc);
 validate_by_api_key(Context, ApiKey, Doc) ->
     lager:debug("found API key '~s' belongs to account ~s", [ApiKey, kz_doc:id(Doc)]),

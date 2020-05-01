@@ -1,14 +1,20 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(pqc_cb_phone_numbers).
 -behaviour(proper_statem).
 
 %% Crossbar API test functions
--export([list_number/3
+-export([summary/2
+        ,list_number/3
         ,cleanup_numbers/2
         ,add_number/3
         ,activate_number/3
@@ -25,6 +31,10 @@
         ,correct_parallel/0
         ]).
 
+-export([seq/0
+        ,cleanup/0
+        ]).
+
 -include_lib("proper/include/proper.hrl").
 -include("kazoo_proper.hrl").
 
@@ -33,8 +43,12 @@
 
 -spec cleanup_numbers(pqc_cb_api:state(), kz_term:ne_binaries()) -> 'ok'.
 cleanup_numbers(_API, Numbers) ->
-    _ = knm_numbers:delete(Numbers, [{'auth_by',  <<"system">>}]),
+    _ = knm_ops:delete(Numbers, [{'auth_by',  <<"system">>}]),
     'ok'.
+
+-spec summary(pqc_cb_api:state(), kz_term:ne_binary()) -> pqc_cb_api:response().
+summary(API, AccountId) ->
+    pqc_cb_crud:summary(API, numbers_url(AccountId)).
 
 -spec list_number(pqc_cb_api:state(), kz_term:api_ne_binary(), kz_term:ne_binary()) -> pqc_cb_api:response().
 list_number(_API, 'undefined', _Number) -> ?FAILED_RESPONSE;
@@ -42,17 +56,28 @@ list_number(API, AccountId, Number) ->
     URL = number_url(AccountId, Number),
     RequestHeaders = pqc_cb_api:request_headers(API),
 
-    pqc_cb_api:make_request([200, 404], fun kz_http:get/2, URL, RequestHeaders).
+    Expectations = [#expectation{response_codes = [200, 404]}],
+    pqc_cb_api:make_request(Expectations
+                           ,fun kz_http:get/2
+                           ,URL
+                           ,RequestHeaders
+                           ).
 
 -spec add_number(pqc_cb_api:state(), kz_term:api_ne_binary(), kz_term:ne_binary()) -> pqc_cb_api:response().
 add_number(_API, 'undefined', _Number) -> ?FAILED_RESPONSE;
 add_number(API, AccountId, Number) ->
+    add_number(API, AccountId, Number, kz_json:new()).
+
+-spec add_number(pqc_cb_api:state(), kz_term:api_ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
+          pqc_cb_api:response().
+add_number(API, AccountId, Number, RequestData) ->
     URL = number_url(AccountId, Number),
     RequestHeaders = pqc_cb_api:request_headers(API),
-    RequestEnvelope  = pqc_cb_api:create_envelope(kz_json:new()
+    RequestEnvelope  = pqc_cb_api:create_envelope(RequestData
                                                  ,kz_json:from_list([{<<"accept_charges">>, 'true'}])
                                                  ),
-    pqc_cb_api:make_request([201, 404, 409]
+    Expectations = [#expectation{response_codes = [201, 404, 409]}],
+    pqc_cb_api:make_request(Expectations
                            ,fun kz_http:put/3
                            ,URL
                            ,RequestHeaders
@@ -64,7 +89,8 @@ remove_number(_API, 'undefined', _Number) -> ?FAILED_RESPONSE;
 remove_number(API, AccountId, Number) ->
     URL = number_url(AccountId, Number),
     RequestHeaders = pqc_cb_api:request_headers(API),
-    pqc_cb_api:make_request([200, 404]
+    Expectations = [#expectation{response_codes = [200, 404]}],
+    pqc_cb_api:make_request(Expectations
                            ,fun kz_http:delete/2
                            ,URL
                            ,RequestHeaders
@@ -76,12 +102,20 @@ activate_number(API, AccountId, Number) ->
     URL = number_url(AccountId, Number, "activate"),
     RequestHeaders = pqc_cb_api:request_headers(API),
     RequestEnvelope  = pqc_cb_api:create_envelope(kz_json:new(), kz_json:from_list([{<<"accept_charges">>, 'true'}])),
-    pqc_cb_api:make_request([201, 404, 500]
+
+    Expectations = [#expectation{response_codes = [201, 404, 500]}],
+    pqc_cb_api:make_request(Expectations
                            ,fun kz_http:put/3
                            ,URL
                            ,RequestHeaders
                            ,kz_json:encode(RequestEnvelope)
                            ).
+
+-spec numbers_url(kz_term:ne_binary()) -> string().
+numbers_url(AccountId) ->
+    string:join([pqc_cb_accounts:account_url(AccountId), "phone_numbers"]
+               ,"/"
+               ).
 
 -spec number_url(kz_term:ne_binary(), kz_term:ne_binary()) -> string().
 number_url(AccountId, Number) ->
@@ -106,12 +140,12 @@ correct() ->
            ,commands(?MODULE)
            ,?TRAPEXIT(
                begin
+                   timer:sleep(1000),
                    {History, Model, Result} = run_commands(?MODULE, Cmds),
-
                    pqc_cb_accounts:cleanup_accounts(pqc_kazoo_model:api(Model), ?ACCOUNT_NAMES),
 
                    ?WHENFAIL(io:format("Final Model : ~p~nFailing Cmds: ~p~n"
-                                      ,[Model, zip(Cmds, History)]
+                                      ,[pqc_kazoo_model:pp(Model), zip(Cmds, History)]
                                       )
                             ,aggregate(command_names(Cmds), Result =:= 'ok')
                             )
@@ -292,3 +326,68 @@ postcondition(Model
 
 -spec precondition(pqc_kazoo_model:model(), any()) -> boolean().
 precondition(_Model, _Call) -> 'true'.
+
+-spec seq() -> 'ok'.
+seq() ->
+    _ = init(),
+    seq_kzoo_41().
+
+seq_kzoo_41() ->
+    Model = initial_state(),
+    API = pqc_kazoo_model:api(Model),
+
+    AccountResp = pqc_cb_accounts:create_account(API, hd(?ACCOUNT_NAMES)),
+    AccountId = kz_json:get_value([<<"data">>, <<"id">>], kz_json:decode(AccountResp)),
+    lager:info("created account ~s", [AccountId]),
+
+    EmptySummaryResp = summary(API, AccountId),
+    lager:info("empty summary: ~s", [EmptySummaryResp]),
+    'true' = kz_json:is_empty(kz_json:get_json_value([<<"data">>, <<"numbers">>], kz_json:decode(EmptySummaryResp))),
+
+    PhoneNumber = hd(?PHONE_NUMBERS),
+
+    CreateResp = add_number(API, AccountId, PhoneNumber, kz_json:from_list([{<<"carrier_name">>, <<"knm_other">>}])),
+    lager:info("create resp ~p", [CreateResp]),
+    NumberDoc = kz_json:get_json_value(<<"data">>, kz_json:decode(CreateResp)),
+    <<PhoneNumber/binary>> = kz_doc:id(NumberDoc),
+
+    SummaryResp = summary(API, AccountId),
+    lager:info("summary resp: ~s", [SummaryResp]),
+    SummaryJObj = kz_json:get_json_value([<<"data">>, <<"numbers">>, PhoneNumber], kz_json:decode(SummaryResp)),
+    'false' = kz_json:is_empty(SummaryJObj),
+
+    RemoveResp = remove_number(API, AccountId, PhoneNumber),
+    lager:info("removed resp: ~s", [RemoveResp]),
+
+    EmptyAgainResp = summary(API, AccountId),
+    lager:info("empty again: ~s", [EmptyAgainResp]),
+    EmptyData = kz_json:get_json_value([<<"data">>, <<"numbers">>], kz_json:decode(EmptyAgainResp)),
+    'true' = kz_json:is_empty(EmptyData),
+
+    cleanup(API).
+
+init() ->
+    _ = kz_data_tracing:clear_all_traces(),
+    _ = [kapps_controller:start_app(App) ||
+            App <- ['crossbar']
+        ],
+    _ = [crossbar_maintenance:start_module(Mod) ||
+            Mod <- ['cb_phone_numbers_v2']
+        ],
+    lager:info("INIT FINISHED").
+
+-spec cleanup() -> any().
+cleanup() ->
+    lager:info("CLEANUP ALL THE THINGS"),
+    kz_data_tracing:clear_all_traces(),
+    cleanup(pqc_cb_api:authenticate()).
+
+-spec cleanup(pqc_cb_api:state()) -> any().
+cleanup(API) ->
+    lager:info("CLEANUP TIME, EVERYBODY HELPS"),
+    lager:info("~p", [API]),
+    _ = pqc_cb_accounts:cleanup_accounts(API, ?ACCOUNT_NAMES),
+    _D = knm_numbers:delete(?PHONE_NUMBERS, [{'auth_by', pqc_cb_api:auth_account_id(API)}]),
+    lager:info("deleted numbers ~p", [_D]),
+    _ = pqc_cb_api:cleanup(API),
+    'ok'.

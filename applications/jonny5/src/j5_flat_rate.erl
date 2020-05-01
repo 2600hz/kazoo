@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(j5_flat_rate).
@@ -16,21 +20,20 @@
 -define(WHITELIST, kapps_config:get_ne_binary(?APP_NAME, <<"flat_rate_whitelist">>, ?DEFAULT_WHITELIST)).
 -define(BLACKLIST, kapps_config:get_ne_binary(?APP_NAME, <<"flat_rate_blacklist">>, ?DEFAULT_BLACKLIST)).
 
+-define(DEFAULT_EXPIRATION, 30 * ?SECONDS_IN_MINUTE).
+
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
 -spec authorize(j5_request:request(), j5_limits:limits()) -> j5_request:request().
 authorize(Request, Limits) ->
-    Options = #{allow_postpay => j5_limits:allow_postpay(Limits)
-               ,max_postpay_amount => j5_limits:max_postpay(Limits)
-               },
-    authorize(Request, Limits, kz_services:is_good_standing(j5_limits:account_id(Limits), Options)).
+    authorize(Request, Limits, maybe_check_standing(Limits)).
 
--spec authorize(j5_request:request(), j5_limits:limits(), {boolean(), kz_term:ne_binary()}) -> j5_request:request().
-authorize(Request, Limits, {'false', Reason}) ->
-    lager:debug("account ~s does not have enough credit for flat rate trunks: ~s"
-               ,[j5_limits:account_id(Limits), Reason]
+-spec authorize(j5_request:request(), j5_limits:limits(), kz_services_standing:acceptable_return()) -> j5_request:request().
+authorize(Request, Limits, {'false', _Reason}) ->
+    lager:debug("account ~s has a billing issue can not use flat rate trunks"
+               ,[j5_limits:account_id(Limits)]
                ),
     Request;
 authorize(Request, Limits, {'true', _Reason}) ->
@@ -46,6 +49,25 @@ authorize(Request, Limits, {'true', _Reason}) ->
                        ),
             Request
     end.
+
+-spec maybe_check_standing(j5_limits:limits()) ->  kz_services_standing:acceptable_return().
+maybe_check_standing(Limits) ->
+    case kapps_config:get_is_true(?APP_NAME, <<"check_service_standing">>, 'true') of
+        'true' -> check_standing(Limits);
+        'false' -> {'true', <<"service standing for jonny5 is not required">>}
+    end.
+
+-spec check_standing(j5_limits:limits()) ->  kz_services_standing:acceptable_return().
+check_standing(Limits) ->
+    CacheAcceptable = kapps_config:get_is_true(?APP_NAME, <<"service_standing_cache_acceptable">>, 'true'),
+    CacheExpiration = kapps_config:get_integer(?APP_NAME, <<"service_standing_cache_expiration_s">>, ?DEFAULT_EXPIRATION),
+    Options = #{amount => j5_limits:reserve_amount(Limits)
+               ,allow_postpay => j5_limits:allow_postpay(Limits)
+               ,max_postpay_amount => j5_limits:max_postpay(Limits)
+               ,cache_acceptable => CacheAcceptable
+               ,cache_expiration => CacheExpiration
+               },
+    kz_services_standing:acceptable(j5_limits:account_id(Limits), Options).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -77,12 +99,12 @@ is_number_eligible_for_flat_rate(Request) ->
        ).
 
 -spec maybe_get_resource_flat_rate(j5_request:request()) ->
-                                          {kz_term:ne_binary(), kz_term:ne_binary()}.
+          {kz_term:ne_binary(), kz_term:ne_binary()}.
 maybe_get_resource_flat_rate(Request) ->
     maybe_get_resource_flat_rate(Request, ?SHOULD_LOOKUP_FLAT_RATE).
 
 -spec maybe_get_resource_flat_rate(j5_request:request(), boolean()) ->
-                                          {kz_term:ne_binary(), kz_term:ne_binary()}.
+          {kz_term:ne_binary(), kz_term:ne_binary()}.
 maybe_get_resource_flat_rate(_Request, 'false') ->
     {?WHITELIST, ?BLACKLIST};
 maybe_get_resource_flat_rate(Request, 'true') ->

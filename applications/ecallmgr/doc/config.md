@@ -1,48 +1,96 @@
 
 # System configuration options in ecallmgr
 
-|Key | Type | Default | Description
-|--- | ---- | ------- | -----------
-|`authz_enabled`|boolean()|`false`|Should ecallmgr authorize the caller
-|`authz_local_resources`|boolean()|`false`|Should ecallmgr perform authorization against channels using local account resources
-|`authz_dry_run`|boolean()|`false`|If `true`, don't stop the channel from progressing
-|`authz_default_action`|`deny`,`allow`|`deny`|If authz lookup fails or isn't configured to run, what should be the default action
-|`inbound_rate_resp_timeout`|integer()|10000|Time, in milliseconds, to wait for a rate response for inbound channels
-|`outbound_rate_resp_timeout`|integer()|10000|Time, in milliseconds, to wait for a rate response for outbound channels
-|`inbound_rate_required`|boolean()|`false`|Is a rate required for the inbound call to proceed
-|`outbound_rate_required`|boolean()|`false`|Is a rate required for the outbound call to proceed
-|`node_down_grace_period`|integer()|10000|Time, in milliseconds, ecallmgr will flush the internal channels cache of channels from the down FreeSWITCH node
-|`fs_nodes`|[string()]|\[]|The list of FreeSWITCH servers to connect to when ecallmgr starts
-|`acls`|json\_object()|`{}`|The list carrier/SBC/endpoint ACLs to load into FreeSWITCH
-|`send_registrar_notifications`|boolean()|`true`|Should ecallmgr figure out which registrar is the oldest and send a register update if the local ecallmgr is the oldest
-|`default_fax_extension`|string()|`.tiff`|What extension fax files should be stored with on the local FreeSWITCH disk
-|`default_recording_extension`|string()|`.mp3`|What extension recording files should be stored with on the local FreeSWITCH disk
-|`fax_file_path`|string()|`/tmp/`|Where on the local FreeSWITCH disk should faxes be temporarily stored
-|`recording_file_path`|string()|`/tmp/`|Where on the local FreeSWITCH disk should recordings be temporarily stored
-|`use_vlc`|boolean()|`false`|Toggle experimental usage of mod_vlc for media streaming
-|`use_shout`|boolean()|`false`|Toggle usage of mod_shout for media streaming
-|`use_http_cache`|boolean()|`true`|Toggle usage of mod_http_cache for media streaming
-|`expires_deviation_time`|integer()|180|Time, in seconds, to "fudge" registration expiration with
-|`user_cache_time_in_ms`|integer()|3600000 (one hour)|Time, in milliseconds, to cache user XML
-|`record_waste_resources`|boolean()|`false`|Should recording waste resources by sending RTP (see [FreeSWITCH wiki](http://wiki.freeswitch.org/wiki/Variable_record_waste_resources)
-|`sofia_conf`|boolean()|`false`|Should ecallmgr fetch Sofia's XML config from Kazoo
-|`fs_profiles`|json\_object()|`{}`|The FreeSWITCH profiles to load
-|`process_gateways`|boolean()|`false`|Should ecallmgr fetch SIP gateways
-|`gateways`|json\_object()|`{}`|Sofia Gateway definitions
-|`fs_node_uptime_s`|integer()|600|How much uptime, in seconds, before a FreeSWITCH server is considered "up"
-|`fetch_timeout`|integer()|2600|How long, in milliseconds, to wait for fetch API requests to respond. Should be less than mod_kazoo waits for ecallmgr.
-|`fs_cmds_wait_ms`|integer()|5000|How long, in milliseconds, to wait for start commands to be executed on a connecting FreeSWITCH node
-|`fs_cmds`|json\_object()|`[{"load":"mod_sofia"},{"reloadacl":""}]`|What commands to run on a FreeSWITCH server when connecting for the first time
-|`fs_reconnect_cmds`|json\_objects()|`{}`|What commands to run on a FreeSWITCH server when reconnecting (falls back to `fs_cmds` if none exist
-|`capabilities`|json\_object()|`{}`|Read-only, result of probing FreeSWITCH for what capabilities are loaded
-|`restrict_channel_state_publisher`|boolean()|`false`|If `true` only the "handling" ecallmgr will publish channel events for a given call
-|`tcp_packet_type`|integer()|2|TCP packet type for how data is encoded between ecallmgr and mod\_kazoo
-|`event_stream_idle_alert`|integer()|0|Time, in seconds, to consider an event stream idle and restart it (30s or less is considered "infinity")
-|`redirect_via_proxy`|boolean()|`true`|When moving a channel to another FreeSWITCH server, do so via an SBC/proxy
-|`freeswitch_context`|string()|`context_2`|The default FreeSWITCH context
-|`default_realm`|string()|`nodomain.com`|The default realm when the realm is missing
-|`max_timeout_for_node_restart`|integer()|10000|Time, in milliseconds, to consider a node down (allows nodes to come up after momentary blip)
-|`max_channel_cleanup_timeout_ms`|integer()|60000|Time, in milliseconds, to check for too-old channels and remove them
-|`publish_channel_reconnect`|boolean()|`false`|Whether to publish a call event related to a node reconnecting (apps may need to check for their channel if the CHANNEL_DESTROY was missed)
-|`max_channel_update_s`|integer()|0|Limit, in seconds, to channel duration (0 for no limit). Channels exceeding this limit will be killed.
-|`should_detect_inband_dtmf`|boolean()|`false`|Whether to start the DTMF detection if telephone-event 101 isn't offered in the SDP.
+Schema for ecallmgr system_config
+
+
+
+Key | Description | Type | Default | Required | Support Level
+--- | ----------- | ---- | ------- | -------- | -------------
+`acl_request_timeout_fudge_ms` | ecallmgr acl_request_timeout_fudge_ms | `integer()` | `100` | `false` |
+`acl_request_timeout_ms` | ecallmgr acl_request_timeout_ms | `integer()` | `2000` | `false` |
+`acls` | ecallmgr acls | `object()` | `{}` | `false` |
+`allow_endless_recording` | ecallmgr allow_endless_recording | `boolean()` | `false` | `false` |
+`authz_default_action` | ecallmgr authz default action | `string()` | `deny` | `false` |
+`authz_dry_run` | ecallmgr authz dry run | `boolean()` | `false` | `false` |
+`authz_enabled` | ecallmgr authz enabled | `boolean()` | `false` | `false` |
+`authz_local_resources` | ecallmgr authz local resources | `boolean()` | `false` | `false` |
+`balance_crawler_cycle_ms` | ecallmgr balance crawler cycle in milliseconds | `integer()` | `60000` | `false` |
+`balance_crawler_enabled` | ecallmgr balance crawler enabled | `boolean()` | `false` | `false` |
+`balance_crawler_fetch_timeout_ms` | ecallmgr balance crawler fetch timeout in milliseconds | `integer()` | `10000` | `false` |
+`balance_crawler_interaccount_delay_ms` | ecallmgr balance crawler interaccount delay in milliseconds | `integer()` | `10` | `false` |
+`call_routing_bindings.[]` |   | `string()` |   | `false` |
+`call_routing_bindings` | ecallmgr call routing bindings | `array(string())` | `["context_2"]` | `false` |
+`capabilities` | ecallmgr capabilities | `array(object())` | `["{"capability":"conference","is_loaded":false,"module":"mod_conference"}", "{"capability":"channel_move","is_loaded":false,"module":"mod_channel_move"}", "{"capability":"http_cache","is_loaded":false,"module":"mod_http_cache"}", "{"capability":"dialplan","is_loaded":false,"module":"mod_dptools"}", "{"capability":"sip","is_loaded":false,"module":"mod_sofia"}", "{"capability":"fax","is_loaded":false,"module":"mod_spandsp"}", "{"capability":"tts","is_loaded":false,"module":"mod_flite"}", "{"capability":"freetdm","is_loaded":false,"module":"mod_freetdm"}", "{"capability":"skype","is_loaded":false,"module":"mod_skypopen"}", "{"capability":"xmpp","is_loaded":false,"module":"mod_dingaling"}", "{"capability":"skinny","is_loaded":false,"module":"mod_skinny"}", "{"capability":"sms","is_loaded":false,"module":"mod_sms"}"]` | `false` |
+`debug_channel` | ecallmgr debug channel | `boolean()` | `false` | `false` |
+`default_fax_extension` | ecallmgr default fax extension | `string()` | `.tiff` | `false` |
+`default_realm` | ecallmgr default realm | `string()` | `nodomain.com` | `false` |
+`default_recording_extension` | ecallmgr default recording extension | `string()` | `.mp3` | `false` |
+`default_ringback` | ecallmgr default ringback | `string()` | `%(2000,4000,440,480)` | `false` |
+`event_stream_idle_alert` | ecallmgr event stream idle alert | `integer()` | `0` | `false` |
+`expandable_macros` | macros that will be expanded at call-time, for use in custom SIP headers | `object()` | `{"{reseller_id}":"${ecallmgr_Reseller-ID}","{caller_id_number}":"${caller_id_number}","{caller_id_name}":"${caller_id_name}","{billing_id}":"${ecallmgr_Billing-ID}","{account_id}":"${ecallmgr_Account-ID}"}` | `false` |
+`expires_deviation_time` | ecallmgr expires deviation time | `integer()` | `180` | `false` |
+`failover_when_all_unreg` | failover only when all devices are offline | `boolean()` | `false` | `false` |
+`fax_file_path` | ecallmgr fax file path | `string()` | `/tmp/` | `false` |
+`fetch_timeout` | ecallmgr fetch timeout | `integer()` | `2600` | `false` |
+`freeswitch_context` | ecallmgr freeswitch context | `string()` | `context_2` | `false` |
+`fs_cmds` | ecallmgr fs cmds | `array(object())` | `["{"load":"mod_sofia"}", "{"reloadacl":""}"]` | `false` |
+`fs_cmds_wait_ms` | ecallmgr fs cmds wait in milliseconds | `integer()` | `5000` | `false` |
+`fs_node_uptime_s` | ecallmgr fs node uptime in seconds | `integer()` | `600` | `false` |
+`fs_nodes.[]` |   | `string()` |   | `false` |
+`fs_nodes` | ecallmgr fs nodes | `array(string())` | `[]` | `false` |
+`fs_profiles` | ecallmgr fs profiles | `object()` | `{}` | `false` |
+`fs_reconnect_cmds` | ecallmgr fs reconnect cmds | `array(object())` |   | `false` |
+`gateways` | ecallmgr gateways | `object()` | `{}` | `false` |
+`insert_fetched_registration_locally` | ecallmgr insert fetched registration locally | `boolean()` | `false` | `false` |
+`max_channel_cleanup_timeout_ms` | ecallmgr maximum channel cleanup timeout in milliseconds | `integer()` | `60000` | `false` |
+`max_channel_uptime_s` | ecallmgr maximum channel uptime in seconds | `integer()` | `0` | `false` |
+`max_timeout_for_node_restart` | ecallmgr maximum timeout for node restart | `integer()` | `10000` | `false` |
+`multivar_separator` | ecallmgr multivar_separator | `string()` | `~` | `false` |
+`network_map` | ecallmgr network map | `object()` | `{}` | `false` |
+`node_commands` |   |   |   | `false` |
+`node_down_grace_period` | ecallmgr node down grace period | `integer()` | `10000` | `false` |
+`process_gateways` | ecallmgr process gateways | `boolean()` | `false` | `false` |
+`publish_channel_reconnect` | ecallmgr publish channel reconnect | `boolean()` | `false` | `false` |
+`publish_channel_state` | ecallmgr publish channel state | `boolean()` | `true` | `false` |
+`publish_conference_event.[]` |   | `string()` |   | `false` |
+`publish_conference_event` | ecallmgr publish conference event | `array(string())` | `["conference-create", "conference-destroy", "lock", "unlock", "add-member", "del-member", "stop-talking", "start-talking", "mute-member", "unmute-member", "deaf-member", "undeaf-member"]` | `false` |
+`record_sample_rate` | ecallmgr record sample rate | `integer()` | `8000` | `false` |
+`record_stereo_sample_rate` | ecallmgr record stereo sample rate | `integer()` | `16000` | `false` |
+`record_waste_resources` | ecallmgr record waste resources | `boolean()` | `false` | `false` |
+`recording_file_path` | ecallmgr recording file path | `string()` | `/tmp/` | `false` |
+`recording_software_name` | ecallmgr recording software name | `string()` | `2600Hz, Inc.'s Kazoo` | `false` |
+`redirect_via_proxy` | ecallmgr redirect via proxy | `boolean()` | `true` | `false` |
+`restrict_channel_state_publisher` | ecallmgr restrict channel state publisher | `boolean()` | `false` | `false` |
+`sanitize_fs_value_regex` | ecallmgr sanitize_fs_value_regex | `string()` | `[^0-9\w\s-]` | `false` |
+`should_detect_inband_dtmf` | ecallmgr should detect inband dtmf | `boolean()` | `false` | `false` |
+`sofia_conf` | ecallmgr sofia conf | `boolean()` |   | `false` |
+`tcp_packet_type` | ecallmgr tcp packet type | `integer()` | `2` | `false` |
+`text_routing_bindings.[]` |   | `string()` |   | `false` |
+`text_routing_bindings` | ecallmgr text routing bindings | `array(string())` | `["context_2"]` | `false` |
+`use_bypass_media_after_bridge` | ecallmgr use bypass media after bridge | `boolean()` | `false` | `false` |
+`use_http_cache` | ecallmgr use http cache | `boolean()` | `true` | `false` |
+`use_shout` | ecallmgr use shout | `boolean()` | `false` | `false` |
+`use_vlc` | ecallmgr use vlc | `boolean()` | `false` | `false` |
+`user_cache_time_in_ms` | ecallmgr user cache time in in milliseconds | `integer()` | `3600000` | `false` |
+
+
+## `failover_when_all_unreg`
+
+When a list of endpoints is passed to ecallmgr for bridging (say via a ring group or a user's owned devices), the listing can optionally include failover endpoints to be dialed if a user's normal devices are offline.
+
+When this flag is enabled, the provided SIP endpoints are checked for active registrations; if no SIP endpoints remain after filtering those endpoints missing registrations, the failover endpoint(s) are used instead.
+
+### User callflow
+
+When a user has one or more SIP endpoints and has also configured failover (by setting `"call_forward.failover":true` plus the call forwarding details), a bridge command will be sent to ecallmgr with the SIP device(s) and the failover endpoint. When ecallmgr goes to build the bridge string for FreeSWITCH, the SIP endpoint statuses will be checked; if all SIP endpoints are missing registrations, the failover endpoint will be used. If any SIP endpoint is registered, the failover endpoint is omitted from the bridge string.
+
+### Ring Group callflow
+
+When KAZOO builds a ring group endpoint list, it resolves all group and user IDs into their owned device IDs. That list of endpoints is then sent to ecallmgr for bridging.
+
+This means that if any SIP device from the resulting endpoint list has an active registration, *all* failover endpoints will be filtered out and not dialed. So if a user has no online SIP endpoints and has failover configured, their failover endpoint will *not* ring if any other SIP endpoint in the ring group is actively registered.
+
+### "Normal" call forwarded endpoints
+
+If a user or ring group has "normal" call-forwarded endpoints included, since these endpoints don't maintain a registration (since they typically are forwarded to another DID), then they aren't ever "offline" from KAZOO's perspective. Bear this in mind when failover endpoints aren't ringing when SIP endpoints are unregistered.

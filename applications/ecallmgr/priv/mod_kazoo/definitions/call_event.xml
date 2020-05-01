@@ -1,0 +1,18 @@
+<definition name="call_event">
+	<field name="call_event_headers" type="reference" />
+	<field name="application-all" type="reference" />
+	<field name="call-direction" type="reference" />
+	<field name="channel-state" type="reference" />
+	<field name="caller-id" type="reference" />
+	<field name="caller-context" type="reference" />
+	<field name="sip-tags" type="reference" />
+	<field name="presence-id" type="reference" />
+	<field name="loopback" type="reference" />
+	<field name="freeswitch-url" type="reference" />
+	<field name="other-leg" type="reference" />
+	<field name="user-agent" type="reference" />
+	<field name="Custom-Channel-Vars" type="reference" />
+	<field name="Custom-Application-Vars" type="reference" />
+	<field name="Control" type="reference" />
+	<field name="debug-call" type="reference" />
+</definition>

@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Click to call
 %%% Allow embedded HTML forms (or other ways to POST to the URL)
 %%% and create a call.
@@ -9,6 +9,11 @@
 %%% @author Karl Anderson
 %%% @author Edouard Swiac
 %%% @author Sponsored by Conversant Ltd, Implemented by SIPLABS, LLC (Ilya Ashchepkov)
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cb_clicktocall).
@@ -17,8 +22,8 @@
         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
         ,resource_exists/0, resource_exists/1, resource_exists/2
         ,validate/1, validate/2, validate/3
-        ,authenticate/1
-        ,authorize/1
+        ,authenticate/1, authenticate/2, authenticate/3
+        ,authorize/1, authorize/2, authorize/3
         ,put/1
         ,post/2, post/3
         ,patch/2
@@ -32,7 +37,7 @@
 -define(HISTORY, <<"history">>).
 -define(CB_LIST, <<"click2call/crossbar_listing">>).
 -define(HISTORY_LIST, <<"clicktocall/history_listing">>).
--define(PVT_TYPE, <<"click2call">>).
+-define(PVT_TYPE, kzd_clicktocall:type()).
 -define(CONNECT_C2C_URL, [{<<"clicktocall">>, [_, ?CONNECT_CALL]}
                          ,{?KZ_ACCOUNTS_DB, [_]}
                          ]).
@@ -50,8 +55,8 @@
 init() ->
     Bindings = [{<<"*.allowed_methods.clicktocall">>, 'allowed_methods'}
                ,{<<"*.resource_exists.clicktocall">>, 'resource_exists'}
-               ,{<<"*.authenticate">>, 'authenticate'}
-               ,{<<"*.authorize">>, 'authorize'}
+               ,{<<"*.authenticate.clicktocall">>, 'authenticate'}
+               ,{<<"*.authorize.clicktocall">>, 'authorize'}
                ,{<<"*.validate.clicktocall">>, 'validate'}
                ,{<<"*.execute.put.clicktocall">>, 'put'}
                ,{<<"*.execute.post.clicktocall">>, 'post'}
@@ -102,10 +107,26 @@ authenticate(Context) ->
     is_c2c_url(Context, cb_context:req_nouns(Context))
         andalso maybe_authenticate(Context).
 
+-spec authenticate(cb_context:context(), path_token()) -> 'true'.
+authenticate(Context, _) ->
+    authenticate(Context).
+
+-spec authenticate(cb_context:context(), path_token(), path_token()) -> 'true'.
+authenticate(Context, _, _) ->
+    authenticate(Context).
+
 -spec authorize(cb_context:context()) -> 'true'.
 authorize(Context) ->
     is_c2c_url(Context, cb_context:req_nouns(Context))
         andalso maybe_authorize(Context).
+
+-spec authorize(cb_context:context(), path_token()) -> 'true'.
+authorize(Context, _) ->
+    authorize(Context).
+
+-spec authorize(cb_context:context(), path_token(), path_token()) -> 'true'.
+authorize(Context, _, _) ->
+    authorize(Context).
 
 -spec maybe_authenticate(cb_context:context()) -> boolean().
 maybe_authenticate(Context) ->
@@ -130,7 +151,7 @@ is_auth_required(Context) ->
     Nouns = cb_context:req_nouns(Context),
     [C2CID, _] = props:get_value(<<"clicktocall">>, Nouns),
     JObj = cb_context:doc(crossbar_doc:load(C2CID, Context, ?TYPE_CHECK_OPTION(?PVT_TYPE))),
-    kz_json:is_true(<<"auth_required">>, JObj, 'true').
+    kzd_clicktocall:auth_required(JObj, 'true').
 
 -spec is_c2c_url(cb_context:context(), req_nouns()) -> boolean().
 is_c2c_url(Context, ?CONNECT_C2C_URL) ->
@@ -200,24 +221,12 @@ delete(Context, _) ->
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @doc Normalizes the results of a view.
+%% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
-normalize_view_results(JObj, Acc) ->
-    [kz_json:get_value(<<"value">>, JObj)|Acc].
-
--spec normalize_history_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
-normalize_history_results(JObj, Acc) ->
-    [kz_json:get_value(<<"doc">>, JObj)|Acc].
-
 -spec load_c2c_summary(cb_context:context()) -> cb_context:context().
 load_c2c_summary(Context) ->
-    crossbar_doc:load_view(?CB_LIST
-                          ,[]
-                          ,Context
-                          ,fun normalize_view_results/2
-                          ).
+    crossbar_view:load(Context, ?CB_LIST, [{'mapper', crossbar_view:get_value_fun()}]).
 
 -spec load_c2c(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_c2c(C2CId, Context) ->
@@ -225,24 +234,20 @@ load_c2c(C2CId, Context) ->
 
 -spec load_c2c_history(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_c2c_history(C2CId, Context) ->
-    Options = ['include_docs'
-              ,{'startkey', [C2CId]}
-              ,{'endkey', [C2CId, kz_json:new()]}
+    Options = [{'mapper', crossbar_view:get_doc_fun()}
+              ,{'range_keymap', [C2CId]}
+              ,'include_docs'
               ],
-    crossbar_doc:load_view(?HISTORY_LIST
-                          ,Options
-                          ,cb_context:set_account_db(Context, cb_context:account_modb(Context))
-                          ,fun normalize_history_results/2
-                          ).
+    crossbar_view:load_modb(Context, ?HISTORY_LIST, Options).
 
 -spec create_c2c(cb_context:context()) -> cb_context:context().
 create_c2c(Context) ->
-    cb_context:validate_request_data(<<"clicktocall">>, Context, fun clear_history_set_type/1).
+    cb_context:validate_request_data(kzd_clicktocall:schema(), Context, fun clear_history_set_type/1).
 
 -spec update_c2c(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 update_c2c(C2CId, Context) ->
     OnSuccess = fun(C) -> crossbar_doc:load_merge(C2CId, C, ?TYPE_CHECK_OPTION(?PVT_TYPE)) end,
-    cb_context:validate_request_data(<<"clicktocall">>, Context, OnSuccess).
+    cb_context:validate_request_data(kzd_clicktocall:schema(), Context, OnSuccess).
 
 -spec validate_patch_c2c(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 validate_patch_c2c(C2CId, Context) ->
@@ -258,8 +263,8 @@ establish_c2c(C2CId, Context) ->
 
 -spec maybe_migrate_history(kz_term:ne_binary()) -> 'ok'.
 maybe_migrate_history(Account) ->
-    AccountId = kz_util:format_account_id(Account),
-    AccountDb = kz_util:format_account_db(Account),
+    AccountId = kzs_util:format_account_id(Account),
+    AccountDb = kzs_util:format_account_db(Account),
 
     case kz_datamgr:get_results(AccountDb, ?CB_LIST, ['include_docs']) of
         {'ok', []} -> 'ok';
@@ -269,28 +274,28 @@ maybe_migrate_history(Account) ->
 
 -spec migrate_histories(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:objects()) -> 'ok'.
 migrate_histories(AccountId, AccountDb, C2Cs) ->
-    _ = [migrate_history(AccountId, AccountDb, kz_json:get_value(<<"doc">>, C2C)) || C2C <- C2Cs],
+    _ = [migrate_history(AccountId, AccountDb, kz_json:get_json_value(<<"doc">>, C2C)) || C2C <- C2Cs],
     'ok'.
 
 -spec migrate_history(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 migrate_history(AccountId, AccountDb, C2C) ->
-    case kz_json:get_list_value(<<"pvt_history">>, C2C, []) of
+    case kzd_clicktocall:history(C2C, []) of
         [] -> 'ok';
         History ->
-            Id = kz_doc:id(C2C),
-            _ = [save_history_item(AccountId, HistoryItem, Id) || HistoryItem <- History],
-            Update = [{<<"pvt_history">>, 'null'}],
+            C2CId = kz_doc:id(C2C),
+            _ = [save_history_item(AccountId, HistoryItem, C2CId) || HistoryItem <- History],
+            Update = [{kzd_clicktocall:path_history(), 'null'}],
             UpdateOptions = [{'update', Update}],
-            _Resp = kz_datamgr:update_doc(AccountDb, Id, UpdateOptions),
+            _Resp = kz_datamgr:update_doc(AccountDb, C2CId, UpdateOptions),
             lager:debug("removed history from c2c ~s in ~s: ~p"
-                       ,[Id, AccountId, _Resp]
+                       ,[C2CId, AccountId, _Resp]
                        )
     end.
 
 -spec save_history_item(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> any().
 save_history_item(AccountId, HistoryItem, C2CId) ->
     Timestamp = kz_json:get_integer_value(<<"timestamp">>, HistoryItem, kz_time:now_s()),
-    AccountModb = kz_util:format_account_mod_id(AccountId, Timestamp),
+    AccountModb = kzs_util:format_account_mod_id(AccountId, Timestamp),
     JObj = kz_doc:update_pvt_parameters(kz_json:set_value(<<"pvt_clicktocall_id">>, C2CId, HistoryItem)
                                        ,AccountModb
                                        ,[{'type', <<"c2c_history">>}
@@ -303,7 +308,7 @@ save_history_item(AccountId, HistoryItem, C2CId) ->
 clear_history_set_type(Context) ->
     cb_context:set_doc(Context
                       ,kz_doc:update_pvt_parameters(cb_context:doc(Context)
-                                                   ,cb_context:account_db(Context)
+                                                   ,cb_context:db_name(Context)
                                                    ,[{'type', ?PVT_TYPE}]
                                                    )
                       ).
@@ -327,7 +332,7 @@ originate_call(_C2CId, Context, 'undefined') ->
                                    );
 originate_call(C2CId, Context, Contact) ->
     JObj = cb_context:doc(Context),
-    case kz_json:get_ne_value(<<"whitelist">>, JObj, []) of
+    case kzd_clicktocall:whitelist(JObj, []) of
         [] -> originate_call(C2CId, Context, Contact, 'true');
         Whitelist -> originate_call(C2CId, Context, Contact, match_regexps(Whitelist, Contact))
     end.
@@ -340,7 +345,7 @@ originate_call(C2CId, Context, Contact, 'true') ->
     do_originate_call(C2CId, Context, Contact, Request, cb_context:req_value(Context, <<"blocking">>, 'false')).
 
 do_originate_call(C2CId, Context, Contact, Request, 'false') ->
-    _Pid = kz_util:spawn(fun() -> do_originate_call(C2CId, Context, Contact, Request) end),
+    _Pid = kz_process:spawn(fun() -> do_originate_call(C2CId, Context, Contact, Request) end),
     JObj = kz_json:normalize(kz_json:from_list(kz_api:remove_defaults(Request))),
     lager:debug("attempting call in ~p", [JObj]),
     crossbar_util:response_202(<<"processing request">>, JObj, cb_context:set_resp_data(Context, Request));
@@ -366,11 +371,11 @@ handle_response(C2CId, Context, Contact, Resp) ->
     _ = kazoo_modb:save_doc(AccountId, HistoryItem).
 
 -spec do_originate_call(kz_term:ne_binary(), cb_context:context(), kz_term:api_binary(), kz_term:proplist()) ->
-                               {'ok', kz_json:object()} |
-                               kz_datamgr:data_error().
+          {'ok', kz_json:object()} |
+          kz_datamgr:data_error().
 do_originate_call(C2CId, Context, Contact, Request) ->
     ReqId = cb_context:req_id(Context),
-    kz_util:put_callid(ReqId),
+    kz_log:put_callid(ReqId),
 
     Resp = exec_originate(Request),
     lager:debug("got status for ~p", [Resp]),
@@ -386,8 +391,8 @@ match_regexps([Pattern | Rest], Number) ->
 match_regexps([], _Number) -> 'false'.
 
 -spec exec_originate(kz_term:api_terms()) ->
-                            {'success', kz_json:object()} |
-                            {'error', kz_term:ne_binary()}.
+          {'success', kz_json:object()} |
+          {'error', kz_term:ne_binary()}.
 exec_originate(Request) ->
     Resp = kz_amqp_worker:call_collect(Request
                                       ,fun kapi_resource:publish_originate_req/1
@@ -401,8 +406,8 @@ exec_originate(Request) ->
                             {'error', _} |
                             {'timeout', _}
                            ) ->
-                                   {'success', kz_json:object()} |
-                                   {'error', kz_term:ne_binary()}.
+          {'success', kz_json:object()} |
+          {'error', kz_term:ne_binary()}.
 handle_originate_resp({'ok', [Resp|_]}) ->
     AppResponse = kz_json:get_first_defined([<<"Application-Response">>
                                             ,<<"Hangup-Cause">>

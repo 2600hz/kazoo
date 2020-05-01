@@ -10,7 +10,17 @@
     "language": "javascript",
     "views": {
         "listing_by_mdn": {
-            "map": "function(doc) { if (doc.pvt_type != 'device' || doc.pvt_deleted || doc.device_type != 'mobile') return; var owner_id = doc.pvt_owner_id ? doc.pvt_owner_id : doc.owner_id; emit(doc.mobile.mdn, {'id': doc._id, 'owner_id' : owner_id, 'name': doc.name}); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'device' || doc.pvt_deleted || doc.device_type != 'mobile') return;",
+                "  var owner_id = doc.pvt_owner_id ? doc.pvt_owner_id : doc.owner_id;",
+                "  emit(doc.mobile.mdn, {",
+                "    'id': doc._id,",
+                "    'owner_id': owner_id,",
+                "    'name': doc.name",
+                "  });",
+                "}"
+            ]
         }
     }
 }

@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kazoo_tts_voicefabric).
@@ -81,8 +85,8 @@ create(Text, Voice, _Format, Options) ->
     end.
 
 -spec voicefabric_request_body(kz_term:ne_binary(), list()) ->
-                                      {'ok', list(), kz_term:ne_binary()} |
-                                      {'error', kz_term:ne_binary()}.
+          {'ok', list(), kz_term:ne_binary()} |
+          {'error', kz_term:ne_binary()}.
 voicefabric_request_body(<<"urlencode">>, Data) ->
     Headers = [{"Content-Type", "application/x-www-form-urlencoded"}],
     Body = kz_http_util:props_to_querystring(Data),
@@ -113,9 +117,9 @@ voicefabric_request_body(ArgsEncode, _Data) ->
     {'error', <<"voicefabric: unknown args encode method: ", ArgsEncode/binary>>}.
 
 -spec create_response(kz_http:ret()) ->
-                             kz_http:req_id() |
-                             {'ok', kz_term:ne_binary(), kz_term:ne_binary()} |
-                             {'error', 'tts_provider_failure', binary()}.
+          kz_http:req_id() |
+          {'ok', kz_term:ne_binary(), kz_term:ne_binary()} |
+          {'error', 'tts_provider_failure', binary()}.
 create_response({'error', _R}) ->
     lager:warning("creating speech file failed with error ~p", [_R]),
     {'error', 'tts_provider_failure', <<"unexpected error encountered accessing provider">>};
@@ -174,7 +178,7 @@ voicefabric_filter_rate(<<"rate=", _/binary>>) -> 'true';
 voicefabric_filter_rate(_)                     -> 'false'.
 
 -spec create_default_response({'ok', 200, kz_term:proplist(), binary()}) ->
-                                     {'ok', kz_term:ne_binary(), binary()}.
+          {'ok', kz_term:ne_binary(), binary()}.
 create_default_response({'ok', 200, Headers, Content}) ->
     ContentType = props:get_value("content-type", Headers),
     ContentLength = props:get_value("content-length", Headers),

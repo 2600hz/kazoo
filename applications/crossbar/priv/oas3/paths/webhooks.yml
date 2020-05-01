@@ -1,0 +1,154 @@
+paths:
+  /accounts/{ACCOUNT_ID}/webhooks:
+    get:
+      operationId: GetAccountsAccountIdWebhooks
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get all webhooks
+      tags:
+        - webhooks
+    patch:
+      operationId: PatchAccountsAccountIdWebhooks
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/webhooks'
+      responses:
+        200:
+          description: Successful operation
+      summary: Patch specific fields of webhooks
+      tags:
+        - webhooks
+    put:
+      operationId: PutAccountsAccountIdWebhooks
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/webhooks'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of webhooks
+      tags:
+        - webhooks
+  /accounts/{ACCOUNT_ID}/webhooks/attempts:
+    get:
+      operationId: GetAccountsAccountIdWebhooksAttempts
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get attempts of webhooks
+      tags:
+        - webhooks
+  /accounts/{ACCOUNT_ID}/webhooks/samples:
+    get:
+      operationId: GetAccountsAccountIdWebhooksSamples
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get samples of webhooks
+      tags:
+        - webhooks
+  /accounts/{ACCOUNT_ID}/webhooks/samples/{SAMPLE_ID}:
+    get:
+      operationId: GetAccountsAccountIdWebhooksSamplesSampleId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/SAMPLE_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a webhooks by ID
+      tags:
+        - webhooks
+  /accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}:
+    delete:
+      operationId: DeleteAccountsAccountIdWebhooksWebhookId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/WEBHOOK_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of webhooks
+      tags:
+        - webhooks
+    get:
+      operationId: GetAccountsAccountIdWebhooksWebhookId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/WEBHOOK_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a webhooks by ID
+      tags:
+        - webhooks
+    patch:
+      operationId: PatchAccountsAccountIdWebhooksWebhookId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/WEBHOOK_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/webhooks'
+      responses:
+        200:
+          description: Successful operation
+      summary: Patch specific fields of webhooks
+      tags:
+        - webhooks
+    post:
+      operationId: PostAccountsAccountIdWebhooksWebhookId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/WEBHOOK_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/webhooks'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of webhooks
+      tags:
+        - webhooks
+  /accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}/attempts:
+    get:
+      operationId: GetAccountsAccountIdWebhooksWebhookIdAttempts
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/WEBHOOK_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get attempts of webhooks
+      tags:
+        - webhooks

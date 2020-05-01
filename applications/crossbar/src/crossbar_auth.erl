@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(crossbar_auth).
@@ -9,6 +13,7 @@
         ,validate_auth_token/1, validate_auth_token/2
         ,authorize_auth_token/1
         ,reset_identity_secret/1
+        ,has_identity_secret/1
         ,log_success_auth/4, log_success_auth/5, log_success_auth/6
         ,log_failed_auth/4, log_failed_auth/5, log_failed_auth/6
         ,get_inherited_config/1
@@ -32,7 +37,6 @@
           ,{<<"cb_api_auth">>, ?DEFAULT_METHOD_CONFIG('false')}
           ,{<<"cb_auth">>, ?DEFAULT_METHOD_CONFIG('false')}
           ,{<<"cb_ip_auth">>, ?DEFAULT_METHOD_CONFIG('false')}
-          ,{<<"cb_ubiquiti_auth">>, ?DEFAULT_METHOD_CONFIG('false')}
           ]
          )
        ).
@@ -42,7 +46,7 @@
 -define(SHOULD_LOG_SUCCESS, kapps_config:get_is_true(?AUTH_CONFIG_CAT, <<"log_successful_attempts">>, 'true')).
 
 -spec create_auth_token(cb_context:context(), atom()) ->
-                               cb_context:context().
+          cb_context:context().
 create_auth_token(Context, AuthModule) ->
     JObj = cb_context:doc(Context),
     Method = kz_term:to_binary(AuthModule),
@@ -58,7 +62,7 @@ create_auth_token(Context, AuthModule) ->
     end.
 
 -spec create_auth_token(cb_context:context(), kz_term:ne_binary(), kz_json:object()) ->
-                               cb_context:context().
+          cb_context:context().
 create_auth_token(Context, Method, JObj) ->
     Data = cb_context:req_data(Context),
 
@@ -122,9 +126,9 @@ create_auth_token(Context, Method, JObj) ->
     end.
 
 -spec maybe_create_token(cb_context:context(), kz_term:proplist(), kz_json:object(), kz_term:ne_binary(), boolean()) ->
-                                {'ok', kz_term:ne_binary()} |
-                                {'error', any()} |
-                                {'error', any(), any()}.
+          {'ok', kz_term:ne_binary()} |
+          {'error', any()} |
+          {'error', any(), any()}.
 maybe_create_token(_Context, Claims, _AuthConfig, _Method, 'false') ->
     kz_auth:create_token(Claims);
 maybe_create_token(Context, Claims, AuthConfig, Method, 'true') ->
@@ -148,6 +152,9 @@ maybe_create_token(Context, Claims, AuthConfig, Method, 'true') ->
             lager:debug("~s, creating local auth token", [Reason]),
             log_failed_auth(Method, <<"multi_factor">>, Reason, Context, AccountId, AuthConfig),
             kz_auth:create_token(Claims);
+        {'error', {'configuration', Reason}} ->
+            lager:error("mfa configuration error : ~s", [Reason]),
+            kz_auth:create_token(Claims);
         {'error', Reason}=Error ->
             log_failed_auth(Method, <<"multi_factor">>, kz_term:to_binary(Reason), Context, AccountId, AuthConfig),
             Error;
@@ -155,23 +162,25 @@ maybe_create_token(Context, Claims, AuthConfig, Method, 'true') ->
     end.
 
 -spec validate_auth_token(map() | kz_term:ne_binary()) ->
-                                 {ok, kz_json:object()} | {error, any()}.
+          {'ok', kz_json:object()} | {'error', any()}.
 validate_auth_token(Token) ->
     validate_auth_token(Token, []).
 
 -spec validate_auth_token(map() | kz_term:ne_binary(), kz_term:proplist()) ->
-                                 {ok, kz_json:object()} | {error, any()}.
+          {'ok', kz_json:object()} | {'error', any()}.
 validate_auth_token(Token, Options) ->
     case kz_auth:validate_token(Token, Options) of
         {'error', 'no_jwt_signed_token'} -> maybe_db_token(Token);
         Other -> Other
     end.
 
--spec authorize_auth_token(map() | kz_term:ne_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
+-spec authorize_auth_token(map() | kz_term:ne_binary()) ->
+          {'ok', kz_json:object()} | {'error', any()}.
 authorize_auth_token(Token) ->
     kz_auth:authorize_token(Token).
 
--spec maybe_db_token(map() | kz_term:ne_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
+-spec maybe_db_token(map() | kz_term:ne_binary()) ->
+          {'ok', kz_json:object()} | {'error', any()}.
 maybe_db_token(AuthToken) ->
     kz_datamgr:open_cache_doc(?KZ_TOKEN_DB, AuthToken).
 
@@ -183,6 +192,14 @@ maybe_db_token(AuthToken) ->
 reset_identity_secret(Context) ->
     Doc = kz_auth_identity:reset_doc_secret(cb_context:doc(Context)),
     cb_context:set_doc(Context, Doc).
+
+%%------------------------------------------------------------------------------
+%% @doc Check if user has a non-empty `pvt_signature_secret'
+%% @end
+%%------------------------------------------------------------------------------
+-spec has_identity_secret(cb_context:context()) -> boolean().
+has_identity_secret(Context) ->
+    kz_auth_identity:has_doc_secret(cb_context:doc(Context)).
 
 %%------------------------------------------------------------------------------
 %% @doc Get merge result of account and its parents, reseller and system
@@ -349,7 +366,7 @@ is_log_type_enabled(<<"success">>, Method, AuthConfig) ->
 -spec log_attempts(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 log_attempts(Context, AccountId, Method, Status, AuthType, Reason) ->
     Now = kz_time:now_s(),
-    MODB = kz_util:format_account_mod_id(AccountId, Now),
+    MODB = kzs_util:format_account_mod_id(AccountId, Now),
 
     LogId = kazoo_modb_util:modb_id(Now),
 

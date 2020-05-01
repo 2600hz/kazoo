@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kapi_konami).
@@ -24,8 +29,8 @@
 -define(TRANSFERRED_TYPES, []).
 
 -spec transferred(kz_term:api_terms()) ->
-                         {'ok', iolist()} |
-                         {'error', kz_term:ne_binary()}.
+          {'ok', iolist()} |
+          {'error', kz_term:ne_binary()}.
 transferred(API) ->
     case transferred_v(API) of
         'true' -> kz_api:build_message(API, ?TRANSFERRED_HEADERS, ?OPTIONAL_TRANSFERRED_HEADERS);

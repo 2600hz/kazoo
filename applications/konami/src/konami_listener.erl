@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(konami_listener).
@@ -77,7 +81,7 @@ handle_metaflow(JObj, Props) ->
 -spec handle_route_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_route_req(JObj, _Props) ->
     'true' = kapi_route:req_v(JObj),
-    kz_util:put_callid(JObj),
+    kz_log:put_callid(JObj),
     Call = kapps_call:from_route_req(JObj),
 
     maybe_start_metaflows(kapps_call:account_id(Call)
@@ -90,7 +94,7 @@ handle_route_req(JObj, _Props) ->
 -spec handle_channel_create(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_channel_create(JObj, _Props) ->
     'true' = kapi_call:event_v(JObj),
-    kz_util:put_callid(JObj),
+    kz_log:put_callid(JObj),
     Call = kapps_call:from_json(JObj),
 
     maybe_start_metaflows(kapps_call:account_id(Call)

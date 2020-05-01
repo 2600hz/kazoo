@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Init to be done.
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kazoo_apps_init).
@@ -16,13 +21,14 @@
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     _ = sanity_checks(), %% one day make this true
-    _ = kz_util:spawn(fun init/0),
+    _ = kz_process:spawn(fun init/0),
     'ignore'.
 
 -spec init() -> 'ok'.
 init() ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     set_cookie(),
+    start_distribution(),
     set_loglevel().
 
 -spec set_cookie() -> 'true'.
@@ -40,12 +46,13 @@ maybe_cookie_from_env() ->
 
 -spec cookie_from_ini() -> atom().
 cookie_from_ini() ->
-    case kz_config:get_atom(?APP, 'cookie') of
+    case kz_config:get_atom(?APP_NAME, <<"cookie">>) of
         [] ->
             [Name, _Host] = binary:split(kz_term:to_binary(node()), <<"@">>),
-            case kz_config:get_atom(kz_term:to_atom(Name, 'true'), 'cookie') of
-                [] -> lager:warning("failed to get cookie for node ~s, generating one", [node()]),
-                      kz_term:to_atom(kz_binary:rand_hex(16), 'true');
+            case kz_config:get_atom(Name, <<"cookie">>) of
+                [] ->
+                    lager:warning("failed to get cookie for node ~s, generating one", [node()]),
+                    kz_term:to_atom(kz_binary:rand_hex(16), 'true');
                 [Cookie|_] -> Cookie
             end;
         [Cookie|_] -> Cookie
@@ -53,13 +60,12 @@ cookie_from_ini() ->
 
 -spec set_loglevel() -> 'ok'.
 set_loglevel() ->
-    [Console|_] = kz_config:get_atom('log', 'console', ['notice']),
+    [Console|_] = kz_config:get_atom(<<"log">>, <<"console">>, ['notice']),
     kz_log:change_console_log_level(Console),
-    [Syslog|_] = kz_config:get_atom('log', 'syslog', ['info']),
+    [Syslog|_] = kz_config:get_atom(<<"log">>, <<"syslog">>, ['info']),
     kz_log:change_syslog_log_level(Syslog),
-    [Error|_] = kz_config:get_atom('log', 'error', ['error']),
-    kz_log:change_error_log_level(Error),
-    'ok'.
+    [Error|_] = kz_config:get_atom(<<"log">>, <<"error">>, ['error']),
+    kz_log:change_error_log_level(Error).
 
 -spec sanity_checks() -> boolean().
 sanity_checks() ->
@@ -105,7 +111,7 @@ time_hostname_resolutions(HowManyTests, InitTime) ->
                ).
 
 -spec time_hostname_resolution(any(), resolutions()) ->
-                                      resolutions().
+          resolutions().
 time_hostname_resolution(_TestNo, {Min, Max, Total, Timings}) ->
     case time_hostname_resolution() of
         Time when Time < Min ->
@@ -130,3 +136,7 @@ is_system_clock_on_utc() ->
             lager:critical("system is not running in UTC and Kazoo expects it"),
             'false'
     end.
+
+-spec start_distribution() -> 'ok'.
+start_distribution() ->
+    amqp_dist:add_brokers(kz_amqp_connections:uris()).

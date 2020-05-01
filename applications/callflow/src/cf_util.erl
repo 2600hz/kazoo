@@ -1,9 +1,14 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc
 %%% @author Karl Anderson
 %%% @author James Aimonetti
 %%% @author Sponsored by Conversant Ltd, Implemented by SIPLABS, LLC (Ilya Ashchepkov)
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cf_util).
@@ -18,11 +23,10 @@
 -export([handle_bridge_failure/2, handle_bridge_failure/3]).
 -export([send_default_response/2]).
 
--export([get_operator_callflow/1]).
+-export([get_operator_callflow/1, get_operator_callflow/2]).
 -export([endpoint_id_by_sip_username/2]).
 -export([owner_ids_by_sip_username/2]).
 -export([apply_dialplan/2]).
--export([ccvs_by_privacy_mode/1]).
 
 -export([sip_users_from_device_ids/2]).
 
@@ -87,7 +91,7 @@ token_check(Call, Flow) ->
     end.
 
 -spec bucket_info(kapps_call:call(), kz_json:object()) ->
-                         {kz_term:ne_binary(), pos_integer()}.
+          {kz_term:ne_binary(), pos_integer()}.
 bucket_info(Call, Flow) ->
     case kz_json:get_value(<<"pvt_bucket_name">>, Flow) of
         'undefined' -> {bucket_name_from_call(Call, Flow), bucket_cost(Flow)};
@@ -144,7 +148,7 @@ maybe_presence_parking_slot_resp(Username, Realm, AccountDb) ->
 
 -spec maybe_presence_parking_flow(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok' | 'not_found'.
 maybe_presence_parking_flow(Username, Realm, AccountDb) ->
-    AccountId = kz_util:format_account_id(AccountDb, 'raw'),
+    AccountId = kzs_util:format_account_id(AccountDb),
     _ = cf_flow:lookup(Username, AccountId),
     case kz_cache:fetch_local(?CACHE_NAME, ?CF_FLOW_CACHE_KEY(Username, AccountDb)) of
         {'error', 'not_found'} -> 'not_found';
@@ -206,13 +210,13 @@ manual_presence_resp(Username, Realm, JObj) ->
 -spec presence_mwi_query(kz_json:object(), kz_term:proplist()) -> 'ok'.
 presence_mwi_query(JObj, _Props) ->
     'true' = kapi_presence:mwi_query_v(JObj),
-    _ = kz_util:put_callid(JObj),
+    _ = kz_log:put_callid(JObj),
     mwi_query(JObj).
 
 -spec notification_register(kz_json:object(), kz_term:proplist()) -> 'ok'.
 notification_register(JObj, _Props) ->
     'true' = kapi_notifications:register_v(JObj),
-    _ = kz_util:put_callid(JObj),
+    _ = kz_log:put_callid(JObj),
     mwi_query(JObj).
 
 -spec mwi_query(kz_json:object()) -> 'ok'.
@@ -246,14 +250,14 @@ mwi_resp(Username, _Realm, AccountDb, _JObj) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec unsolicited_owner_mwi_update(kz_term:api_binary(), kz_term:api_binary()) ->
-                                          'ok' |
-                                          {'error', atom()} |
-                                          kz_datamgr:data_error().
+          'ok' |
+          {'error', atom()} |
+          kz_datamgr:data_error().
 unsolicited_owner_mwi_update(AccountDb, OwnerId) ->
     kvm_mwi:notify_owner(AccountDb, OwnerId).
 
 -spec unsolicited_endpoint_mwi_update(kz_term:api_binary(), kz_term:api_binary()) ->
-                                             'ok' | {'error', any()}.
+          'ok' | {'error', any()}.
 unsolicited_endpoint_mwi_update(AccountDb, EndpointId) ->
     kvm_mwi:notify_endpoint(AccountDb, EndpointId).
 
@@ -311,8 +315,8 @@ dialpad_digit(WXYZ) when WXYZ =:= $w
 %% @end
 %%------------------------------------------------------------------------------
 -spec owner_ids_by_sip_username(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                       {'ok', kz_term:ne_binaries()} |
-                                       {'error', any()}.
+          {'ok', kz_term:ne_binaries()} |
+          {'error', any()}.
 owner_ids_by_sip_username(AccountDb, Username) ->
     case kz_cache:peek_local(?CACHE_NAME, ?SIP_USER_OWNERS_KEY(AccountDb, Username)) of
         {'ok', _}=Ok -> Ok;
@@ -321,8 +325,8 @@ owner_ids_by_sip_username(AccountDb, Username) ->
     end.
 
 -spec get_owner_ids_by_sip_username(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                           {'ok', kz_term:ne_binaries()} |
-                                           {'error', any()}.
+          {'ok', kz_term:ne_binaries()} |
+          {'error', any()}.
 get_owner_ids_by_sip_username(AccountDb, Username) ->
     ViewOptions = [{'key', Username}],
     case kz_datamgr:get_single_result(AccountDb, <<"attributes/sip_username">>, ViewOptions) of
@@ -342,8 +346,8 @@ get_owner_ids_by_sip_username(AccountDb, Username) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec endpoint_id_by_sip_username(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                         {'ok', kz_term:ne_binary()} |
-                                         {'error', 'not_found'}.
+          {'ok', kz_term:ne_binary()} |
+          {'error', 'not_found'}.
 endpoint_id_by_sip_username(AccountDb, Username) ->
     case kz_cache:peek_local(?CACHE_NAME, ?SIP_ENDPOINT_ID_KEY(AccountDb, Username)) of
         {'ok', _}=Ok -> Ok;
@@ -352,8 +356,8 @@ endpoint_id_by_sip_username(AccountDb, Username) ->
     end.
 
 -spec get_endpoint_id_by_sip_username(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                             {'ok', kz_term:ne_binary()} |
-                                             {'error', 'not_found'}.
+          {'ok', kz_term:ne_binary()} |
+          {'error', 'not_found'}.
 get_endpoint_id_by_sip_username(AccountDb, Username) ->
     ViewOptions = [{'key', Username}],
     case kz_datamgr:get_single_result(AccountDb, <<"attributes/sip_username">>, ViewOptions) of
@@ -372,16 +376,19 @@ get_endpoint_id_by_sip_username(AccountDb, Username) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_operator_callflow(kz_term:ne_binary()) -> {'ok', kz_json:object()} |
-                                                    kz_datamgr:data_error().
-get_operator_callflow(Account) ->
-    AccountDb = kz_util:format_account_db(Account),
-    Options = [{'key', ?OPERATOR_KEY}
-              ,'include_docs'
-              ,'first_when_multiple'
-              ],
-    case kz_datamgr:get_single_result(AccountDb, ?LIST_BY_NUMBER, Options) of
-        {'ok', JObj} ->
-            {'ok', kz_json:get_value([<<"doc">>, <<"flow">>], JObj, kz_json:new())};
+          {'error', any()}.
+get_operator_callflow(Account) -> get_operator_callflow(Account, 'undefined').
+
+-spec get_operator_callflow(kz_term:ne_binary(), kz_term:api_ne_binary()) -> {'ok', kz_json:object()} |
+          {'error', any()}.
+get_operator_callflow(Account, 'undefined') -> get_operator_callflow(Account, ?OPERATOR_KEY);
+get_operator_callflow(Account, OpNum) ->
+    case cf_flow:lookup(OpNum, Account) of
+        {'ok', _, 'true'} ->
+            lager:warning("unable to find operator callflow in ~s: lookup only returned no_match", [Account]),
+            {'error', 'no_match'};
+        {'ok', JObj, _} ->
+            {'ok', kz_json:get_json_value(<<"flow">>, JObj, kz_json:new())};
         {'error', _R}=E ->
             lager:warning("unable to find operator callflow in ~s: ~p", [Account, _R]),
             E
@@ -393,7 +400,7 @@ get_operator_callflow(Account) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_bridge_failure({'fail', kz_json:object()} | kz_term:api_binary(), kapps_call:call()) ->
-                                   'ok' | 'not_found'.
+          'ok' | 'not_found'.
 handle_bridge_failure({'fail', Reason}, Call) ->
     {Cause, Code} = kapps_util:get_call_termination_reason(Reason),
     handle_bridge_failure(Cause, Code, Call);
@@ -409,7 +416,7 @@ handle_bridge_failure(Failure, Call) ->
     end.
 
 -spec handle_bridge_failure(kz_term:api_binary(), kz_term:api_binary(), kapps_call:call()) ->
-                                   'ok' | 'not_found'.
+          'ok' | 'not_found'.
 handle_bridge_failure(Cause, Code, Call) ->
     lager:info("attempting to find failure branch for ~s:~s", [Code, Cause]),
     case (handle_bridge_failure(Cause, Call) =:= 'ok')
@@ -486,7 +493,7 @@ load_system_dialplans(Names) ->
     lists:foldl(fold_system_dialplans(LowerNames), kz_json:new(), Plans).
 
 -spec fold_system_dialplans(kz_term:ne_binaries()) ->
-                                   fun(({kz_term:ne_binary(), kz_json:object()}, kz_json:object()) -> kz_json:object()).
+          fun(({kz_term:ne_binary(), kz_json:object()}, kz_json:object()) -> kz_json:object()).
 fold_system_dialplans(Names) ->
     fun({Key, Val}, Acc) when is_list(Val) ->
             lists:foldl(fun(ValElem, A) -> maybe_dialplan_suits({Key, ValElem}, A, Names) end, Acc, Val);
@@ -521,7 +528,7 @@ index_of(Value, List) ->
     end.
 
 -spec start_event_listener(kapps_call:call(), atom(), list()) ->
-                                  {'ok', pid()} | {'error', any()}.
+          {'ok', pid()} | {'error', any()}.
 start_event_listener(Call, Mod, Args) ->
     lager:debug("starting evt listener ~p", [Mod]),
     Name = event_listener_name(Call, Mod),
@@ -566,7 +573,7 @@ find_group_endpoints(GroupId, Call) ->
     end.
 
 -spec find_endpoints(kz_term:ne_binaries(), kz_json:object(), kapps_call:call()) ->
-                            kz_term:ne_binaries().
+          kz_term:ne_binaries().
 find_endpoints(Ids, GroupEndpoints, Call) ->
     {DeviceIds, UserIds} =
         lists:partition(fun(Id) ->
@@ -575,7 +582,7 @@ find_endpoints(Ids, GroupEndpoints, Call) ->
     find_user_endpoints(UserIds, lists:sort(DeviceIds), Call).
 
 -spec find_user_endpoints(kz_term:ne_binaries(), kz_term:ne_binaries(), kapps_call:call()) ->
-                                 kz_term:ne_binaries().
+          kz_term:ne_binaries().
 find_user_endpoints([], DeviceIds, _) -> DeviceIds;
 find_user_endpoints(UserIds, DeviceIds, Call) ->
     UserDeviceIds = kz_attributes:owned_by(UserIds, <<"device">>, Call),
@@ -601,7 +608,7 @@ find_channels(Usernames, Call) ->
     end.
 
 -spec check_value_of_fields(kz_term:proplist(), boolean(), kz_json:object(), kapps_call:call()) ->
-                                   boolean().
+          boolean().
 check_value_of_fields(Perms, Def, Data, Call) ->
     case lists:dropwhile(fun({K, _F}) ->
                                  kz_json:get_value(K, Data) =:= 'undefined'
@@ -621,7 +628,7 @@ sip_users_from_device_ids(EndpointIds, Call) ->
                ).
 
 -spec sip_users_from_device_id(kz_term:ne_binary(), kz_term:ne_binaries(), kapps_call:call()) ->
-                                      kz_term:ne_binaries().
+          kz_term:ne_binaries().
 sip_users_from_device_id(EndpointId, Acc, Call) ->
     case sip_user_from_device_id(EndpointId, Call) of
         'undefined' -> Acc;
@@ -637,8 +644,8 @@ sip_user_from_device_id(EndpointId, Call) ->
     end.
 
 -spec wait_for_noop(kapps_call:call(), kz_term:ne_binary()) ->
-                           {'ok', kapps_call:call()} |
-                           {'error', 'channel_hungup' | kz_json:object()}.
+          {'ok', kapps_call:call()} |
+          {'error', 'channel_hungup' | kz_json:object()}.
 wait_for_noop(Call, NoopId) ->
     case kapps_call_command:receive_event(?MILLISECONDS_IN_DAY) of
         {'ok', JObj} ->
@@ -649,8 +656,8 @@ wait_for_noop(Call, NoopId) ->
     end.
 
 -spec process_event(kapps_call:call(), kz_term:ne_binary(), kz_json:object()) ->
-                           {'ok', kapps_call:call()} |
-                           {'error', any()}.
+          {'ok', kapps_call:call()} |
+          {'error', any()}.
 process_event(Call, NoopId, JObj) ->
     MsgId = kz_api:msg_id(JObj),
     case kapps_call_command:get_event_type(JObj) of
@@ -701,7 +708,7 @@ start_task(Fun, Args, Call) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec mailbox(kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', kz_json:object()} |
-                                                           {'error', any()}.
+          {'error', any()}.
 mailbox(AccountDb, VMNumber) ->
     try kz_term:to_integer(VMNumber) of
         Number -> maybe_cached_mailbox(AccountDb, Number)
@@ -710,7 +717,7 @@ mailbox(AccountDb, VMNumber) ->
     end.
 
 -spec maybe_cached_mailbox(kz_term:ne_binary(), integer()) -> {'ok', kz_json:object()} |
-                                                              {'error', any()}.
+          {'error', any()}.
 maybe_cached_mailbox(AccountDb, VMNumber) ->
     case kz_cache:peek_local(?CACHE_NAME, ?VM_CACHE_KEY(AccountDb, VMNumber)) of
         {'ok', _}=Ok -> Ok;
@@ -718,7 +725,7 @@ maybe_cached_mailbox(AccountDb, VMNumber) ->
     end.
 
 -spec get_mailbox(kz_term:ne_binary(), integer()) -> {'ok', kz_json:object()} |
-                                                     {'error', any()}.
+          {'error', any()}.
 get_mailbox(AccountDb, VMNumber) ->
     ViewOptions = [{'key', VMNumber}, 'include_docs'],
     case kz_datamgr:get_single_result(AccountDb, <<"vmboxes/listing_by_mailbox">>, ViewOptions) of
@@ -735,32 +742,6 @@ get_mailbox(AccountDb, VMNumber) ->
             lager:warning("unable to lookup voicemail number ~b in account ~s: ~p", [VMNumber, AccountDb, _R]),
             E
     end.
-
--spec ccvs_by_privacy_mode(kz_term:api_ne_binary()) -> kz_term:proplist().
-ccvs_by_privacy_mode('undefined') ->
-    ccvs_by_privacy_mode(<<"full">>);
-ccvs_by_privacy_mode(<<"full">>) ->
-    [{<<"Caller-Screen-Bit">>, 'true'}
-    ,{<<"Caller-Privacy-Hide-Number">>, 'true'}
-    ,{<<"Caller-Privacy-Hide-Name">>, 'true'}
-    ];
-ccvs_by_privacy_mode(<<"yes">>) ->
-    ccvs_by_privacy_mode(<<"full">>);
-ccvs_by_privacy_mode(<<"name">>) ->
-    [{<<"Caller-Screen-Bit">>, 'true'}
-    ,{<<"Caller-Privacy-Hide-Name">>, 'true'}
-    ,{<<"Caller-Privacy-Hide-Number">>, 'false'}
-    ];
-ccvs_by_privacy_mode(<<"number">>) ->
-    [{<<"Caller-Screen-Bit">>, 'true'}
-    ,{<<"Caller-Privacy-Hide-Number">>, 'true'}
-    ,{<<"Caller-Privacy-Hide-Name">>, 'false'}
-    ];
-%% returns empty list so that callflow settings override
-ccvs_by_privacy_mode(<<"none">>) -> [];
-ccvs_by_privacy_mode(_Else) ->
-    lager:debug("unsupported privacy mode ~s, forcing full privacy", [_Else]),
-    ccvs_by_privacy_mode(<<"full">>).
 
 -spec flush_control_queue(kapps_call:call()) -> 'ok'.
 flush_control_queue(Call) ->
@@ -800,7 +781,7 @@ normalize_capture_group(<<>>, _) ->
     'undefined';
 normalize_capture_group(CaptureGroup, 'undefined') ->
     knm_converters:normalize(CaptureGroup);
-normalize_capture_group(CaptureGroup, ?NE_BINARY=AccountId) ->
+normalize_capture_group(CaptureGroup, <<AccountId/binary>>) ->
     knm_converters:normalize(CaptureGroup, AccountId);
 normalize_capture_group(CaptureGroup, Call) ->
     normalize_capture_group(CaptureGroup, kapps_call:account_id(Call)).

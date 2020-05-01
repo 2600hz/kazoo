@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
-%%% @doc Listing of all expected v1 callbacks
+%%% @copyright (C) 2011-2020, 2600Hz
+%%% @doc Crossbar API for alerts.
 %%% @author Peter Defebvre
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cb_alerts).
@@ -15,16 +20,18 @@
         ]).
 
 -ifdef(TEST).
--export([check_port_requests/1
+-export([do_check_port_requests/2
+        ,maybe_check_financials/1
         ,check_low_balance/1
         ,check_payment_token/1
         ]).
 -endif.
 
 -include("crossbar.hrl").
--include_lib("kazoo_number_manager/include/knm_port_request.hrl").
+-include_lib("kazoo_numbers/include/knm_port_request.hrl").
 
 -define(AVAILABLE_LIST, <<"alerts/available">>).
+-define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".alerts">>).
 
 %%%=============================================================================
 %%% API
@@ -98,7 +105,7 @@ validate(Context, Id) ->
 %%------------------------------------------------------------------------------
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
-    Context1 = cb_context:set_account_db(Context, ?KZ_ALERTS_DB),
+    Context1 = cb_context:set_db_name(Context, ?KZ_ALERTS_DB),
     crossbar_doc:save(Context1).
 
 %%------------------------------------------------------------------------------
@@ -172,7 +179,7 @@ create(Context) ->
 %%------------------------------------------------------------------------------
 -spec read(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
-    Context1 = cb_context:set_account_db(Context, ?KZ_ALERTS_DB),
+    Context1 = cb_context:set_db_name(Context, ?KZ_ALERTS_DB),
     crossbar_doc:load(Id, Context1, ?TYPE_CHECK_OPTION(<<"alert">>)).
 
 %%------------------------------------------------------------------------------
@@ -182,7 +189,7 @@ read(Id, Context) ->
 %%------------------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    Context1 = load_summary(Context),
+    Context1 = load_summary(cb_port_requests:set_port_authority(Context)),
     case cb_context:resp_status(Context1) of
         'success' ->
             fix_envelope(Context1);
@@ -196,10 +203,9 @@ summary(Context) ->
 %%------------------------------------------------------------------------------
 -spec load_summary(cb_context:context()) -> cb_context:context().
 load_summary(Context) ->
-    Routines = [fun check_port_requests/1
-               ,fun check_low_balance/1
-               ,fun check_payment_token/1
-               ,fun check_system_alerts/1
+    Routines = [fun maybe_check_port_requests/1
+               ,fun maybe_check_financials/1
+               ,fun maybe_check_system_alerts/1
                ,fun set_success_resp_status/1
                ],
     lists:foldl(fun(F, C) -> F(C) end
@@ -219,53 +225,116 @@ set_success_resp_status(Context) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec check_port_requests(cb_context:context()) -> cb_context:context().
-check_port_requests(Context) ->
-    case get_active_port_requests(Context) of
-        {'error', _R} ->
-            lager:debug("unable to fetch port requests: ~p", [_R]),
-            Context;
-        {'ok', PortRequests} ->
-            check_port_requests(PortRequests, Context)
+-spec maybe_check_port_requests(cb_context:context()) -> cb_context:context().
+maybe_check_port_requests(Context) ->
+    case kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"check_port_requests">>, 'true') of
+        'false' -> Context;
+        'true' ->
+            maybe_check_port_requests(Context, cb_context:account_id(Context))
     end.
 
--spec check_port_requests(kz_json:objects(), cb_context:context()) ->
-                                 cb_context:context().
-check_port_requests([], Context) ->
+-spec maybe_check_port_requests(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
+maybe_check_port_requests(Context, AccountId) ->
+    MasterId = cb_context:master_account_id(Context),
+    AuthId = cb_context:auth_account_id(Context),
+    case AuthId =:= MasterId of
+        'true' ->
+            %% Authenticated account is master
+            %% show only masqueraded account's port alerts
+            lager:debug("auth account is master ~p, showing port alerts for account path", [MasterId]),
+            do_check_port_requests(fetch_account_active_ports(AccountId), Context);
+        'false' ->
+            IsReseller = kz_services_reseller:is_reseller(AuthId),
+            IsPortAuthority = cb_context:fetch(Context, 'is_port_authority'),
+            maybe_check_port_requests(Context, IsReseller, IsPortAuthority)
+    end.
+
+-spec maybe_check_port_requests(cb_context:context(), boolean(), boolean()) -> cb_context:context().
+maybe_check_port_requests(Context, 'true', 'true') ->
+    %% Authenticated account is both reseller AND port authority
+    %% Show only masqueraded account's port alerts.
+    %% (This is because reseller is port authority who rejects ports and makes action required
+    %% comments on the ports, so it shouldn't get alerted for all its sub-account for its own doing!
+    %% we're just nice to show them the alerts for current account they're masquerading.)
+    lager:debug("auth account is both reseller and port authority, showing account path port alerts"),
+    do_check_port_requests(fetch_account_active_ports(cb_context:account_id(Context)), Context);
+maybe_check_port_requests(Context, 'true', 'false') ->
+    %% Authenticated account is reseller lets always show alerts
+    %% from its own account and all descendants ports
+    ResellerId = cb_context:auth_account_id(Context),
+    Ports = fetch_account_active_ports(ResellerId)
+        ++ get_active_ports(knm_port_request:descendant_active_ports(ResellerId)),
+    lager:debug("auth account is reseller, showing the reseller and descendants port alerts"),
+    do_check_port_requests(Ports, Context);
+maybe_check_port_requests(Context, 'false', _) ->
+    %% Authenticated account is neither master or reseller
+    %% show alerts if its reseller is not hiding port app
+    AccountId = cb_context:account_id(Context),
+    ResellerId = cb_context:reseller_id(Context),
+    case should_hide_port(ResellerId) of
+        'true' ->
+            lager:debug("reseller is hiding port app, not showing alerts"),
+            Context;
+        'false' -> do_check_port_requests(fetch_account_active_ports(AccountId), Context)
+    end.
+
+-spec should_hide_port(kz_term:api_ne_binary() | {'ok', kz_json:object()} | kz_datamgr:data_error()) -> boolean().
+should_hide_port('undefined') ->
+    'false';
+should_hide_port(<<ResellerId/binary>>) ->
+    should_hide_port(kzd_whitelabel:fetch(ResellerId));
+should_hide_port({'ok', Whitelabel}) ->
+    kzd_whitelabel:hide_port(Whitelabel);
+should_hide_port({'error', _}) ->
+    'false'.
+
+-spec fetch_account_active_ports(kz_term:api_ne_binary()) -> kz_json:objects().
+fetch_account_active_ports('undefined') -> [];
+fetch_account_active_ports(AccountId) ->
+    get_active_ports(knm_port_request:account_active_ports(AccountId))
+        ++ get_active_ports(knm_port_request:account_ports_by_state(AccountId, ?PORT_UNCONFIRMED)).
+
+-spec get_active_ports({'ok', kz_json:objects()} | kz_datamgr:data_error()) -> kz_json:objects().
+get_active_ports({'ok', Active}) ->
+    Active;
+get_active_ports(_) ->
+    [].
+
+-spec do_check_port_requests(kz_json:objects(), cb_context:context()) -> cb_context:context().
+do_check_port_requests([], Context) ->
     Context;
-check_port_requests([PortRequest|PortRequests], Context) ->
-    Routines = [fun check_port_action_required/2
-               ,fun check_port_suspended/2
+do_check_port_requests([PortRequest|PortRequests], Context) ->
+    Routines = [fun maybe_check_port_action_required/2
+               ,fun maybe_check_port_suspended/2
                ],
     Context1 = lists:foldl(fun(F, C) -> F(PortRequest, C) end
                           ,Context
                           ,Routines
                           ),
-    check_port_requests(PortRequests, Context1).
-
--spec get_active_port_requests(cb_context:context()) -> {'ok', kz_json:objects()} |
-                                                        {'error', 'not_found'}.
-get_active_port_requests(Context) ->
-    AuthAccountId = cb_context:auth_account_id(Context),
-    case kz_services_reseller:is_reseller(AuthAccountId) of
-        'true' -> knm_port_request:descendant_active_ports(AuthAccountId);
-        'false' -> knm_port_request:account_active_ports(cb_context:account_id(Context))
-    end.
+    do_check_port_requests(PortRequests, Context1).
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+-spec maybe_check_port_action_required(kzd_port_requests:doc(), cb_context:context()) ->
+          cb_context:context().
+maybe_check_port_action_required(PortRequest, Context) ->
+    case kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"check_port_action_required">>, 'true') of
+        'false' -> Context;
+        'true' -> check_port_action_required(PortRequest, Context)
+    end.
+
 -spec check_port_action_required(kzd_port_requests:doc(), cb_context:context()) ->
-                                        cb_context:context().
+          cb_context:context().
 check_port_action_required(PortRequest, Context) ->
-    LastComment = port_request_last_comment(PortRequest),
-    case kz_json:get_boolean_value(<<"action_required">>, LastComment, 'false') of
+    LastComment = port_request_last_comment(Context, PortRequest),
+    case kzd_comment:action_required(LastComment) of
         'false' -> Context;
         'true' ->
             Metadata = kz_json:from_list(
                          [{<<"name">>, kzd_port_requests:name(PortRequest)}
-                         ,{<<"state">>, kzd_port_requests:port_state(PortRequest)}
+                         ,{<<"state">>, kzd_port_requests:pvt_port_state(PortRequest)}
                          ]
                         ),
             From = kz_json:from_list(
@@ -286,28 +355,40 @@ check_port_action_required(PortRequest, Context) ->
             append_alert(Context, PortAlert)
     end.
 
--spec port_request_last_comment(kzd_port_requests:doc()) -> kz_json:object().
-port_request_last_comment(PortRequest) ->
-    case kzd_port_requests:comments(PortRequest) of
-        'undefined' -> kz_json:new();
+-spec port_request_last_comment(cb_context:context(), kzd_port_requests:doc()) -> kz_json:object().
+port_request_last_comment(Context, PortRequest) ->
+    JObj = cb_port_requests:filter_private_comments(Context, PortRequest),
+    case kzd_port_requests:comments(JObj, []) of
         [] -> kz_json:new();
-        Comments -> hd(lists:reverse(Comments))
+        Comments -> lists:last(Comments)
     end.
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+-spec maybe_check_port_suspended(kzd_port_requests:doc(), cb_context:context()) ->
+          cb_context:context().
+maybe_check_port_suspended(PortRequest, Context) ->
+    case kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"check_port_suspended">>, 'true') of
+        'false' -> Context;
+        'true' -> check_port_suspended(PortRequest, Context)
+    end.
+
 -spec check_port_suspended(kzd_port_requests:doc(), cb_context:context()) ->
-                                  cb_context:context().
+          cb_context:context().
 check_port_suspended(PortRequest, Context) ->
-    State = kzd_port_requests:port_state(PortRequest),
-    case lists:member(State, ?PORT_SUSPENDED_STATES) of
+    State = kzd_port_requests:pvt_port_state(PortRequest),
+    Transition = kzd_port_requests:get_transition(PortRequest, State),
+    case lists:member(State, ?PORT_SUSPENDED_STATES)
+        andalso Transition =/= []
+    of
         'false' -> Context;
         'true' ->
             Metadata = kz_json:from_list(
                          [{<<"name">>, kzd_port_requests:name(PortRequest)}
                          ,{<<"state">>, State}
+                         ,{<<"transition">>, hd(Transition)}
                          ]
                         ),
             From = kz_json:from_list(
@@ -337,6 +418,32 @@ check_port_suspended_message(_) ->
     <<"The port request requires you attention to continue.">>.
 
 %%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec maybe_check_financials(cb_context:context()) -> cb_context:context().
+maybe_check_financials(Context) ->
+    case kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"check_financials">>, 'true') of
+        'false' -> Context;
+        'true' -> check_financials(Context)
+    end.
+
+-spec check_financials(cb_conteext:context()) -> cb_context:context().
+check_financials(Context) ->
+    Services = kz_services:fetch(cb_context:account_id(Context)),
+    case kz_services_plans:is_empty(kz_services:plans(Services)) of
+        'true' -> Context;
+        'false' ->
+            Routines = [fun maybe_check_low_balance/1
+                       ,fun maybe_check_payment_token/1
+                       ],
+            lists:foldl(fun(F, C) -> F(C) end
+                       ,Context
+                       ,Routines
+                       )
+    end.
+
+%%------------------------------------------------------------------------------
 %% @doc Return a low_balance alert when any of the following scenarios is met:
 %% - If threshold is configured then create an alert if their balance is below that amount.
 %% - If not threshold configured and post pay is not enabled create an alert if their
@@ -345,6 +452,13 @@ check_port_suspended_message(_) ->
 %%   is less than or equal to the maximum post pay amount.
 %% @end
 %%------------------------------------------------------------------------------
+-spec maybe_check_low_balance(cb_context:context()) -> cb_context:context().
+maybe_check_low_balance(Context) ->
+    case kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"check_low_balance">>, 'true') of
+        'false' -> Context;
+        'true' -> check_low_balance(Context)
+    end.
+
 -spec check_low_balance(cb_context:context()) -> cb_context:context().
 check_low_balance(Context) ->
     AccountId = cb_context:account_id(Context),
@@ -353,7 +467,7 @@ check_low_balance(Context) ->
     check_low_balance(Context, AvailableDollars, ThresholdDollars).
 
 -spec check_low_balance(cb_context:context(), kz_currency:available_dollars_return(), float() | 'undefined') ->
-                               cb_context:context().
+          cb_context:context().
 check_low_balance(Context, {'error', _R}, _Threshold) ->
     lager:debug("unable to get current balance: ~p", [_R]),
     Context;
@@ -378,7 +492,7 @@ check_low_balance(Context, {'ok', AvailableDollars}, ThresholdDollars)
 check_low_balance(Context, {'ok', _AvailableDollars}, _ThresholdDollars) ->
     Context.
 
--spec low_balance_alert(cb_context:context(), float(), float() | 'undefined') -> cb_context:context().
+-spec low_balance_alert(cb_context:context(), kz_currency:dollars(), number() | 'undefined') -> cb_context:context().
 low_balance_alert(Context, AvailableDollars, ThresholdDollars) ->
     AccountId = cb_context:account_id(Context),
     Metadata = kz_json:from_list(
@@ -412,16 +526,18 @@ low_balance_alert(Context, AvailableDollars, ThresholdDollars) ->
 %%   token with an expiration that has expired or will expire within the 60 days.
 %% @end
 %%------------------------------------------------------------------------------
+-spec maybe_check_payment_token(cb_context:context()) -> cb_context:context().
+maybe_check_payment_token(Context) ->
+    case kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"check_payment_token">>, 'true') of
+        'false' -> Context;
+        'true' -> check_payment_token(Context)
+    end.
+
 -spec check_payment_token(cb_context:context()) -> cb_context:context().
 check_payment_token(Context) ->
     Services = kz_services:fetch(cb_context:account_id(Context)),
-    case kz_services_plans:is_empty(kz_services:plans(Services)) of
-        'true' ->
-            Context;
-        'false' ->
-            DefaultTokens = kz_json:values(kz_services_payment_tokens:defaults(Services)),
-            check_payment_token(Context, DefaultTokens)
-    end.
+    DefaultTokens = kz_json:values(kz_services_payment_tokens:defaults(Services)),
+    check_payment_token(Context, DefaultTokens).
 
 -spec check_payment_token(cb_context:context(), kz_json:objects()) -> cb_context:context().
 check_payment_token(Context, []) ->
@@ -484,6 +600,13 @@ payment_token_alert(ExpiredToken, Context) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+-spec maybe_check_system_alerts(cb_context:context()) -> cb_context:context().
+maybe_check_system_alerts(Context) ->
+    case kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"check_system_alerts">>, 'true') of
+        'false' -> Context;
+        'true' -> check_system_alerts(Context)
+    end.
+
 -spec check_system_alerts(cb_context:context()) -> cb_context:context().
 check_system_alerts(Context) ->
     ViewOptions = [{'keys', view_keys(Context)}],
@@ -547,7 +670,7 @@ should_filter_alert(Alert) ->
     case kzd_alert:expired(Alert) of
         'false' -> 'true';
         'true' ->
-            _ = kz_util:spawn(fun kapps_alert:delete/1, [kzd_alert:id(Alert)]),
+            _ = kz_process:spawn(fun kapps_alert:delete/1, [kzd_alert:id(Alert)]),
             'false'
     end.
 

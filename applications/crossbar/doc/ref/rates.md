@@ -56,16 +56,6 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/rates
 ```
 
-## Change
-
-> POST /v2/rates
-
-```shell
-curl -v -X POST \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/rates
-```
-
 ## Fetch
 
 > GET /v2/rates/{RATE_ID}
@@ -104,6 +94,16 @@ curl -v -X PATCH \
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/rates/{RATE_ID}
+```
+
+## Fetch
+
+> GET /v2/rates/ratedecks
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/rates/ratedecks
 ```
 
 ## Fetch

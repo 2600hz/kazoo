@@ -1,0 +1,3 @@
+<definition name="presence-id">
+	<field name="variable_presence_id" as="Presence-ID" />
+</definition>

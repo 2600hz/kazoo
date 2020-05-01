@@ -1,0 +1,35 @@
+{
+    "_id": "+18122154006",
+    "_rev": "1-deada1523e81a4e3c2689140ed3a8e69",
+    "cnam": {
+        "display_name": "Rose Bud",
+        "inbound_lookup": true
+    },
+    "prepend": {
+        "enabled": true,
+        "name": "Citizen",
+        "number": "75657869"
+    },
+    "pvt_assigned_to": "account0000000000000000000000002",
+    "pvt_created": 63565911001,
+    "pvt_db_name": "numbers%2F%2B1812",
+    "pvt_features": {
+        "inbound_cnam": {
+            "inbound_lookup": true
+        },
+        "outbound_cnam": {
+            "display_name": "Rose Bud"
+        },
+        "prepend": {
+            "enabled": true,
+            "name": "Citizen",
+            "number": "75657869"
+        }
+    },
+    "pvt_modified": 63565911000,
+    "pvt_module_name": "knm_vitelity",
+    "pvt_reserve_history": [
+        "account0000000000000000000000002"
+    ],
+    "pvt_state": "in_service"
+}

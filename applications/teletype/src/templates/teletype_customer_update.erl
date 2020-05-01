@@ -1,8 +1,13 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2014-2019, 2600Hz
+%%% @copyright (C) 2014-2020, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
 %%% @author Kirill Sysoev
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(teletype_customer_update).
@@ -41,7 +46,7 @@
 
 -spec init() -> 'ok'.
 init() ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
                                           ,{'subject', ?TEMPLATE_SUBJECT}
                                           ,{'category', ?TEMPLATE_CATEGORY}
@@ -105,7 +110,7 @@ process_account(AccountId, DataJObj) ->
             {'ok', UserJObj} = kzd_users:fetch(AccountId, UserId),
             [send_update_to_user(UserJObj, DataJObj)];
         _ ->
-            AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+            AccountDb = kzs_util:format_account_db(AccountId),
             {'ok', Users} = kz_datamgr:get_results(AccountDb, ?ACC_USERS_LIST, []),
             lists:flatten(select_users_to_update([kz_json:get_value(<<"value">>, User) || User <- Users], DataJObj))
     end.
@@ -158,7 +163,7 @@ build_macro_data(UserJObj, DataJObj) ->
     end.
 
 -spec maybe_add_macro_key(kz_term:ne_binary(), kz_term:proplist(), kz_json:object()) ->
-                                 kz_term:proplist().
+          kz_term:proplist().
 maybe_add_macro_key(<<"user.", UserKey/binary>>, Acc, UserJObj) ->
     maybe_add_user_data(UserKey, Acc, UserJObj);
 maybe_add_macro_key(_Key, Acc, _UserJObj) ->
@@ -166,7 +171,7 @@ maybe_add_macro_key(_Key, Acc, _UserJObj) ->
     Acc.
 
 -spec maybe_add_user_data(kz_term:ne_binary(), kz_term:proplist(), kz_json:object()) ->
-                                 kz_term:proplist().
+          kz_term:proplist().
 maybe_add_user_data(Key, Acc, UserJObj) ->
     UserMacros = props:get_value(<<"user">>, Acc, []),
     case kz_json:get_value(Key, UserJObj) of

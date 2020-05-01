@@ -2,6 +2,11 @@
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows.move",
     "description": "Validator for the move callflow data object",
-    "properties": {},
+    "properties": {
+        "skip_module": {
+            "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+            "type": "boolean"
+        }
+    },
     "type": "object"
 }

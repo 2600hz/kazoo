@@ -1,8 +1,13 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2019, 2600Hz
+%%% @copyright (C) 2013-2020, 2600Hz
 %%% @doc Conference participant process
 %%% @author Karl Anderson
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(conf_participant).
@@ -228,7 +233,7 @@ handle_cast('pivoted', Participant) ->
 handle_cast({'channel_replaced', NewCallId}
            ,#participant{call=Call}=Participant
            ) ->
-    kz_util:put_callid(NewCallId),
+    kz_log:put_callid(NewCallId),
     NewCall = kapps_call:set_call_id(NewCallId, Call),
     lager:info("updated call to use ~s instead", [NewCallId]),
     gen_listener:add_binding(self(), 'call', [{'callid', NewCallId}]),
@@ -312,9 +317,9 @@ handle_info({'EXIT', Consumer, _R}, #participant{call_event_consumers=Consumers}
     Cs = [C || C <- Consumers, C =/= Consumer],
     {'noreply', P#participant{call_event_consumers=Cs}, 'hibernate'};
 handle_info('sanity_check', #participant{call=Call}=State) ->
-    _ = case kapps_call_command:b_channel_status(Call) of
-            {'ok', _} -> start_sanity_check_timer();
-            {'error', 'not_found'} ->
+    _ = case kapps_call_events:is_destroyed(Call) of
+            'false' -> start_sanity_check_timer();
+            'true' ->
                 lager:info("channel not found, going down"),
                 gen_listener:cast(self(), 'hungup')
         end,
@@ -397,7 +402,7 @@ terminate(_Reason, #participant{name_pronounced = Name}) ->
 
 -spec maybe_clear(conf_pronounced_name:name_pronounced()) -> 'ok'.
 maybe_clear({'temp_doc_id', AccountId, MediaId}) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kzs_util:format_account_db(AccountId),
     lager:debug("deleting doc: ~s/~s", [AccountDb, MediaId]),
     _ = kz_datamgr:del_doc(AccountDb, MediaId),
     'ok';
@@ -432,7 +437,7 @@ sync_participant(<<"conference-destroyed">>, _JObj, _Call, Participant) -> Parti
 sync_participant(_Event, _JObj, _Call, Participant) -> Participant.
 
 -spec sync_participant(kz_json:objects(), kapps_call:call(), participant()) ->
-                              participant().
+          participant().
 sync_participant(JObj, Call, #participant{in_conference='false'
                                          ,conference=Conference
                                          ,discovery_event=DiscoveryEvent
@@ -440,11 +445,11 @@ sync_participant(JObj, Call, #participant{in_conference='false'
     ParticipantId = kz_json:get_value(<<"Participant-ID">>, JObj),
     IsModerator = kz_json:is_true([<<"Conference-Channel-Vars">>, <<"Is-Moderator">>], JObj),
     log_conference_join(IsModerator, ParticipantId, Conference),
-    _ = kz_util:spawn(fun notify_requestor/4, [kapps_call:controller_queue(Call)
-                                              ,ParticipantId
-                                              ,DiscoveryEvent
-                                              ,kapps_conference:id(Conference)
-                                              ]),
+    _ = kz_process:spawn(fun notify_requestor/4, [kapps_call:controller_queue(Call)
+                                                 ,ParticipantId
+                                                 ,DiscoveryEvent
+                                                 ,kapps_conference:id(Conference)
+                                                 ]),
     Muted = kz_json:is_false([<<"Conference-Channel-Vars">>, <<"Speak">>], JObj),
     Deaf = kz_json:is_false([<<"Conference-Channel-Vars">>, <<"Hear">>], JObj),
     Participant#participant{in_conference='true'

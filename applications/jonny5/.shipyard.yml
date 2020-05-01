@@ -1,0 +1,21 @@
+---
+name: kazoo-application-jonny5
+base_branch: origin/master
+metapackage:
+  - name: meta-kazoo-applications
+    type: required
+    branch: master
+    package: kazoo-application-jonny5
+base_core: kazoo
+template: kazoo-application.spec.tmpl
+package:
+  centos7:
+    name: kazoo-application-jonny5
+    summary: Kazoo core application
+    description: |
+      Provides account call limit tracking and authorization services
+    app_name: jonny5
+    license: MPL 2.0
+    group: Productivity/Telephony
+    url: https://2600hz.org/
+    vendor: 2600Hz

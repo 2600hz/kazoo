@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
 %%% @author OnNet (Kirill Sysoev github.com/onnet)
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cb_cccps).
@@ -137,7 +142,7 @@ send_new_camping(JObj, AccountId) ->
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
     Context2 = crossbar_doc:save(Context),
-    kz_datamgr:ensure_saved(<<"cccps">>, cb_context:doc(Context2)),
+    _ = kz_datamgr:ensure_saved(<<"cccps">>, cb_context:doc(Context2)),
     Context2.
 
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
@@ -152,7 +157,7 @@ put(Context, ?AUTODIAL) ->
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _) ->
     Context2 = crossbar_doc:save(Context),
-    kz_datamgr:ensure_saved(<<"cccps">>, cb_context:doc(Context2)),
+    _ = kz_datamgr:ensure_saved(<<"cccps">>, cb_context:doc(Context2)),
     Context2.
 
 %%------------------------------------------------------------------------------
@@ -204,7 +209,7 @@ update(Id, Context) ->
 %%------------------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
+    crossbar_view:load(Context, ?CB_LIST, [{'mapper', crossbar_view:get_value_fun()}]).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -215,14 +220,6 @@ on_successful_validation('undefined', Context) ->
     cb_context:set_doc(Context, kz_doc:set_type(cb_context:doc(Context), <<"cccp">>));
 on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context, ?TYPE_CHECK_OPTION(<<"cccp">>)).
-
-%%------------------------------------------------------------------------------
-%% @doc Normalizes the results of a view
-%% @end
-%%------------------------------------------------------------------------------
--spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
-normalize_view_results(JObj, Acc) ->
-    [kz_json:get_value(<<"value">>, JObj)|Acc].
 
 %%------------------------------------------------------------------------------
 %% @doc Checks whether cid and pin are unique
@@ -264,7 +261,7 @@ error_pin_exists(Context) ->
                                    ).
 
 -spec error_number_is_not_reconcilable(cb_context:context(), kz_term:ne_binary()) ->
-                                              cb_context:context().
+          cb_context:context().
 error_number_is_not_reconcilable(Context, CID) ->
     cb_context:add_validation_error(<<"cccp">>
                                    ,<<"unique">>
@@ -302,9 +299,9 @@ unique_pin(Context) ->
     end.
 
 -spec authorize_listing(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                               {'ok', kz_json:object() | kz_json:objects()} |
-                               'empty' |
-                               'error'.
+          {'ok', kz_json:object() | kz_json:objects()} |
+          'empty' |
+          'error'.
 authorize_listing(Value, View) ->
     ViewOptions = [{'key', Value}],
     case kz_datamgr:get_results(?KZ_CCCPS_DB, View, ViewOptions) of

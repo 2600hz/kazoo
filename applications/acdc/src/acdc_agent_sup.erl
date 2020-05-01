@@ -1,8 +1,13 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
 %%% @author Daniel Finke
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(acdc_agent_sup).
@@ -13,11 +18,9 @@
 -define(SERVER, ?MODULE).
 
 %% API
--export([start_link/1, start_link/2, start_link/4
-        ,restart/1
+-export([start_link/2, start_link/3, start_link/4
         ,listener/1
         ,fsm/1
-        ,stop/1
         ,status/1
         ]).
 
@@ -36,27 +39,17 @@
 %% @doc Starts the supervisor.
 %% @end
 %%------------------------------------------------------------------------------
-
--spec start_link(kz_json:object()) -> kz_types:startlink_ret().
-start_link(AgentJObj) ->
-    supervisor:start_link(?SERVER, [AgentJObj]).
-
 -spec start_link(kapps_call:call(), kz_term:ne_binary()) -> kz_types:startlink_ret().
 start_link(ThiefCall, QueueId) ->
     supervisor:start_link(?SERVER, [ThiefCall, QueueId]).
 
+-spec start_link(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> kz_types:startlink_ret().
+start_link(AcctId, AgentId, AgentJObj) ->
+    supervisor:start_link(?SERVER, [AcctId, AgentId, AgentJObj]).
+
 -spec start_link(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binaries()) -> kz_types:startlink_ret().
 start_link(AcctId, AgentId, AgentJObj, Queues) ->
     supervisor:start_link(?SERVER, [AcctId, AgentId, AgentJObj, Queues]).
-
--spec stop(pid()) -> 'ok' | {'error', 'not_found'}.
-stop(Supervisor) ->
-    supervisor:terminate_child('acdc_agents_sup', Supervisor).
-
--spec restart(pid()) -> kz_types:sup_startchild_ret().
-restart(Supervisor) ->
-    _ = stop(Supervisor),
-    supervisor:restart_child('acdc_agents_sup', Supervisor).
 
 -spec status(pid()) -> 'ok'.
 status(Supervisor) ->
@@ -71,8 +64,7 @@ status(Supervisor) ->
             ?PRINT("  FSM: ~p", [FSM]),
             print_status(augment_status(Status, LPid));
         _ ->
-            ?PRINT("Agent Supervisor ~p is dead, stopping", [Supervisor]),
-            stop(Supervisor)
+            ?PRINT("Agent Supervisor ~p is dead", [Supervisor])
     end.
 
 -define(AGENT_INFO_FIELDS, kapps_config:get(?CONFIG_CAT, <<"agent_info_fields">>

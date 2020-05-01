@@ -1,7 +1,11 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
 %%% @author Karl Anderson
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kapps_conference_command).
@@ -31,8 +35,8 @@
 -export([play_macro/2]).
 
 -spec search(kapps_conference:conference()) ->
-                    {'ok', kz_json:object()} |
-                    {'error', any()}.
+          {'ok', kz_json:object()} |
+          {'error', any()}.
 search(Conference) ->
     AppName = kapps_conference:application_name(Conference),
     AppVersion = kapps_conference:application_version(Conference),
@@ -53,8 +57,8 @@ search(Conference) ->
     end.
 
 -spec conference_search_filter(kz_json:objects(), kz_term:ne_binary()) ->
-                                      {'ok', kz_json:object()} |
-                                      {'error', 'not_found'}.
+          {'ok', kz_json:object()} |
+          {'error', 'not_found'}.
 conference_search_filter([], ConferenceId) ->
     lager:info("received invalid conference search response for ~s", [ConferenceId]),
     {'error', 'not_found'};
@@ -121,7 +125,6 @@ get_media_prompt(Media, Conference) ->
     Call = kapps_conference:call(Conference),
     kapps_call:get_prompt(Call, Media).
 
-
 -spec play_command(kz_term:ne_binary()) -> kz_term:proplist().
 play_command(Media) ->
     play_command(Media, 'undefined').
@@ -132,7 +135,6 @@ play_command(Media, ParticipantId) ->
     ,{<<"Media-Name">>, Media}
     ,{<<"Participant-ID">>, ParticipantId}
     ].
-
 
 -spec play(kz_term:ne_binary(), kapps_conference:conference()) -> 'ok'.
 play(Media, Conference) ->
@@ -153,7 +155,6 @@ recordstop(Conference) ->
     Command = [{<<"Application-Name">>, <<"recordstop">>}],
     send_command(Command, Conference).
 
-
 -spec relate_participants(non_neg_integer(), non_neg_integer(), kapps_conference:conference()) -> 'ok'.
 relate_participants(ParticipantId, OtherParticipantId, Conference) ->
     relate_participants(ParticipantId, OtherParticipantId, 'undefined', Conference).
@@ -167,14 +168,13 @@ relate_participants(ParticipantId, OtherParticipantId, Relationship, Conference)
               ],
     send_command(Command, Conference).
 
-
 -spec stop_play(kapps_conference:conference()) -> 'ok'.
 stop_play(Conference) ->
     stop_play('undefined', Conference).
 
 -spec stop_play(non_neg_integer() | 'undefined', kapps_conference:conference()) -> 'ok'.
 stop_play(ParticipantId, Conference) ->
-    stop_play(ParticipantId, undefined, Conference).
+    stop_play(ParticipantId, 'undefined', Conference).
 
 -spec stop_play(non_neg_integer() | 'undefined', kz_term:api_binary(), kapps_conference:conference()) -> 'ok'.
 stop_play(ParticipantId, Affects, Conference) ->

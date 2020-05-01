@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2014-2019, 2600Hz
+%%% @copyright (C) 2014-2020, 2600Hz
 %%% @doc
 %%% @author Pierre Fenoll
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(teletype_low_balance).
@@ -56,7 +61,7 @@ reply_to() -> teletype_util:default_reply_to().
 
 -spec init() -> 'ok'.
 init() ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     teletype_templates:init(?MODULE),
     teletype_bindings:bind(id(), ?MODULE, 'handle_req').
 
@@ -130,14 +135,14 @@ build_macro_data(DataJObj) ->
                  ).
 
 -spec maybe_add_macro_key(kz_term:ne_binary(), kz_term:proplist(), kz_json:object()) ->
-                                 kz_term:proplist().
+          kz_term:proplist().
 maybe_add_macro_key(<<"user.", UserKey/binary>>, Acc, DataJObj) ->
     maybe_add_user_data(UserKey, Acc, DataJObj);
 maybe_add_macro_key(_Key, Acc, _DataJObj) ->
     Acc.
 
 -spec maybe_add_user_data(kz_term:ne_binary(), kz_term:proplist(), kz_json:object()) ->
-                                 kz_term:proplist().
+          kz_term:proplist().
 maybe_add_user_data(Key, Acc, DataJObj) ->
     User = get_user(DataJObj),
     case kz_json:get_value(Key, User) of

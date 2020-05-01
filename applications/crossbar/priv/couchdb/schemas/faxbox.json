@@ -42,6 +42,14 @@
             "support_level": "supported",
             "type": "string"
         },
+        "flags": {
+            "description": "Flags set by external applications",
+            "items": {
+                "type": "string"
+            },
+            "support_level": "supported",
+            "type": "array"
+        },
         "media": {
             "default": {},
             "description": "The faxbox media parameters",
@@ -89,6 +97,7 @@
                                 },
                                 "url": {
                                     "description": "The URL to call back with the results",
+                                    "kazoo-validation": true,
                                     "pattern": "^https?://",
                                     "type": "string"
                                 }
@@ -168,6 +177,7 @@
                                 },
                                 "url": {
                                     "description": "The URL to call back with the results",
+                                    "kazoo-validation": true,
                                     "pattern": "^https?://",
                                     "type": "string"
                                 }

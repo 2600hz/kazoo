@@ -1,0 +1,8 @@
+<event name="CHANNEL_DATA">
+	<filters>
+		<filter type="exclude" compare="exists" name="API-Command" />
+	</filters>
+	<fields verbose="true">
+		<field name="call_event" type="reference" />
+	</fields>
+</event>

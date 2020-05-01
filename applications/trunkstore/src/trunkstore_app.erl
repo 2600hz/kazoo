@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(trunkstore_app).
@@ -9,7 +14,10 @@
 -behaviour(application).
 
 %% Application callbacks
--export([start/2, stop/1]).
+-export([start/2
+        ,prep_stop/1
+        ,stop/1
+        ]).
 
 -include("ts.hrl").
 
@@ -26,10 +34,14 @@ start(_StartType, _StartArgs) ->
     _ = declare_exchanges(),
     trunkstore_sup:start_link().
 
+-spec prep_stop(any()) -> 'ok'.
+prep_stop(_State) ->
+    kz_nodes:unbind_for_pool_state('kz_amqp_sup', whereis('trunkstore_sup')),
+    'ok'.
+
 -spec stop(any()) -> any().
 stop(_State) ->
     'ok'.
-
 
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->

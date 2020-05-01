@@ -1,7 +1,11 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
 %%% @author Hesaam Farhang
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kvm_migrate_account).
@@ -15,10 +19,12 @@
 -include("kz_voicemail.hrl").
 
 -define(DEFAULT_VM_EXTENSION
-       ,kapps_config:get_ne_binary(?VM_CONFIG_CAT, [?KEY_VOICEMAIL, <<"extension">>], <<"mp3">>)).
+       ,kapps_config:get_ne_binary(?VM_CONFIG_CAT, [?KEY_VOICEMAIL, <<"extension">>], <<"mp3">>)
+       ).
 
 -define(MAX_BULK_INSERT
-       ,kapps_config:get_integer(?VM_CONFIG_CAT, [?KEY_VOICEMAIL, <<"migrate_max_bulk_insert">>], kz_datamgr:max_bulk_insert())).
+       ,kapps_config:get_integer(?VM_CONFIG_CAT, [?KEY_VOICEMAIL, <<"migrate_max_bulk_insert">>], kz_datamgr:max_bulk_insert())
+       ).
 
 -define(LEGACY_MSG_LISTING, <<"vmboxes/legacy_msg_by_timestamp">>).
 
@@ -56,8 +62,8 @@
 -spec start_worker(next_account(), pid()) -> 'ok'.
 start_worker({AccountId, FirstOfMonth, LastOfMonth}, Server) ->
     migration_loop(#ctx{mode = <<"worker">>
-                       ,account_id = kz_util:format_account_id(AccountId)
-                       ,account_db = kz_util:format_account_db(AccountId)
+                       ,account_id = kzs_util:format_account_id(AccountId)
+                       ,account_db = kzs_util:format_account_db(AccountId)
                        ,startkey = FirstOfMonth
                        ,endkey = LastOfMonth
                        ,server = Server
@@ -70,11 +76,11 @@ start_worker({AccountId, FirstOfMonth, LastOfMonth}, Server) ->
 %%------------------------------------------------------------------------------
 -spec manual_account_migrate(kz_term:ne_binary()) -> kz_term:proplist().
 manual_account_migrate(Account) ->
-    AccountId = kz_util:format_account_id(Account),
+    AccountId = kzs_util:format_account_id(Account),
     ?SUP_LOG_INFO(":: beginning migrating voicemails for account ~s", [AccountId]),
     migration_loop(#ctx{mode = <<"account">>
                        ,account_id = AccountId
-                       ,account_db = kz_util:format_account_db(AccountId)
+                       ,account_db = kzs_util:format_account_db(AccountId)
                        }
                   ).
 
@@ -86,11 +92,11 @@ manual_account_migrate(Account) ->
 manual_vmbox_migrate(Account, ?NE_BINARY = BoxId) ->
     manual_vmbox_migrate(Account, [BoxId]);
 manual_vmbox_migrate(Account, BoxIds) ->
-    AccountId = kz_util:format_account_id(Account),
+    AccountId = kzs_util:format_account_id(Account),
     ?SUP_LOG_INFO(":: beginning migrating voicemails for ~b mailbox(es) in account ~s", [length(BoxIds), AccountId]),
     migration_loop(#ctx{mode = <<"vmboxes">>
                        ,account_id = AccountId
-                       ,account_db = kz_util:format_account_db(AccountId)
+                       ,account_db = kzs_util:format_account_db(AccountId)
                        ,manual_vmboxes = BoxIds
                        }
                   ).
@@ -98,12 +104,16 @@ manual_vmbox_migrate(Account, BoxIds) ->
 %% @doc Main migration loop
 %% @end
 -spec migration_loop(ctx()) -> 'ok' | kz_term:proplist().
-migration_loop(#ctx{account_id = _AccountId, retries = Retries, last_error = LastError}=Ctx) when Retries > 3 ->
+migration_loop(#ctx{account_id = _AccountId
+                   ,retries = Retries
+                   ,last_error = LastError
+                   }=Ctx
+              ) when Retries > 3 ->
     Reason = case LastError of
                  'undefined' -> <<"maximum retries">>;
                  _ -> <<"maximum retries, last error was ", LastError/binary>>
              end,
-    ?SUP_LOG_WARNING("  [~s] reached to ~s", [_AccountId, Reason]),
+    ?SUP_LOG_WARNING("  [~s] retries exhausted: last error: ~s", [_AccountId, Reason]),
     account_is_failed(Ctx, Reason);
 migration_loop(Ctx) ->
     handle_result(Ctx, get_messages(Ctx)).
@@ -111,8 +121,10 @@ migration_loop(Ctx) ->
 %% @doc Get legacy messages from DB
 %% @end
 -spec get_messages(ctx()) -> db_ret().
-get_messages(#ctx{mode = <<"worker">>, account_db = AccountDb
-                 ,startkey = StartKey, endkey = EndKey
+get_messages(#ctx{mode = <<"worker">>
+                 ,account_db = AccountDb
+                 ,startkey = StartKey
+                 ,endkey = EndKey
                  }) ->
     ViewOpts = props:filter_empty(
                  [{'limit', ?MAX_BULK_INSERT}
@@ -310,7 +322,7 @@ update_message_array(BoxJObj, MODbFailed, Failed, NoTimestamp) ->
     NewMessages = lists:foldl(Fun, [], kz_json:get_value(<<"messages">>, BoxJObj, [])),
     kz_json:set_value(?VM_KEY_MESSAGES, NewMessages, BoxJObj).
 
--spec update_vmbox_message(kz_json:object(), sets:set(), map(), map(), kz_term:binary(), kz_time:api_seconds()) -> kz_term:api_object().
+-spec update_vmbox_message(kz_json:object(), sets:set(), map(), map(), kz_term:api_ne_binary(), kz_time:api_seconds()) -> kz_term:api_object().
 update_vmbox_message(Message, _, _, _, 'undefined', _) ->
     %% no media_id = no migration
     kz_json:set_value(<<"migration_error">>, <<"no_media_id">>, Message);
@@ -346,7 +358,7 @@ get_messages_from_vmboxes(AccountDb, ExpectedBoxIds) ->
     case kz_datamgr:open_cache_docs(AccountDb, ExpectedBoxIds) of
         {'ok', JObjs} -> {'ok', normalize_mailbox_results(JObjs)};
         {'error', _E} = Error ->
-            ?SUP_LOG_ERROR("  [~s] failed to open mailbox(es)", [kz_util:format_account_id(AccountDb)]),
+            ?SUP_LOG_ERROR("  [~s] failed to open mailbox(es)", [kzs_util:format_account_id(AccountDb)]),
             Error
     end.
 
@@ -443,7 +455,7 @@ process_messages(Ctx0, JObjs) ->
     {Ctx3, sets:to_list(BoxSet), MsgMap1}.
 
 -spec check_create_and_map(kz_json:object(), {ctx(), sets:set(), map(), kz_json:objects()}) ->
-                                  {ctx(), sets:set(), map(), kz_json:objects()}.
+          {ctx(), sets:set(), map(), kz_json:objects()}.
 check_create_and_map(JObj, {Ctx, BoxSet, MsgMap, NoTimestamp}) ->
     Value = kz_json:get_value(<<"value">>, JObj),
     MediaId = kz_json:get_ne_binary_value([<<"metadata">>, <<"media_id">>], Value),
@@ -483,7 +495,7 @@ create_message(#ctx{account_id = AccountId
 
     %% setting a db_link as attachment
     AttName = <<(kz_binary:rand_hex(16))/binary, ".", DefaultExt/binary>>,
-    AttHandlerProps = [{<<"att_dbname">>, kz_util:format_account_db(AccountId)}
+    AttHandlerProps = [{<<"att_dbname">>, kzs_util:format_account_db(AccountId)}
                       ,{<<"att_docid">>, kzd_box_message:media_id(Metadata)}
                       ],
     AttHandler = kz_json:from_list([{<<"kz_att_link">>, kz_json:from_list(AttHandlerProps)}]),

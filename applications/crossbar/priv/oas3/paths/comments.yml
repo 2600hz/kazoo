@@ -1,0 +1,82 @@
+paths:
+  /accounts/{ACCOUNT_ID}/comments:
+    delete:
+      operationId: DeleteAccountsAccountIdComments
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of comments
+      tags:
+        - comments
+    get:
+      operationId: GetAccountsAccountIdComments
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get all comments
+      tags:
+        - comments
+    put:
+      operationId: PutAccountsAccountIdComments
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/comments'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of comments
+      tags:
+        - comments
+  /accounts/{ACCOUNT_ID}/comments/{COMMENT_ID}:
+    delete:
+      operationId: DeleteAccountsAccountIdCommentsCommentId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/COMMENT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of comments
+      tags:
+        - comments
+    get:
+      operationId: GetAccountsAccountIdCommentsCommentId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/COMMENT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a comments by ID
+      tags:
+        - comments
+    post:
+      operationId: PostAccountsAccountIdCommentsCommentId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/COMMENT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/comments'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of comments
+      tags:
+        - comments

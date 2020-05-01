@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2019, 2600Hz
+%%% @copyright (C) 2013-2020, 2600Hz
 %%% @doc Provides a similar interface to the SUP command-line utility. Maps to SUP
 %%% commands most are familiar with already.
 %%%
@@ -15,6 +15,11 @@
 %%%
 %%%
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cb_sup).
@@ -57,7 +62,7 @@ start_link() ->
 
 -spec init_io(pid()) -> any().
 init_io(Parent) ->
-    kz_util:put_callid(<<"cb_sup_io_server">>),
+    kz_log:put_callid(<<"cb_sup_io_server">>),
     register(?SERVER, self()),
     lager:debug("acking to ~p", [Parent]),
     Debug = sys:debug_options([]),
@@ -130,7 +135,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.sup">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.sup">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.validate.sup">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
+    _ = crossbar_bindings:bind(<<"*.authorize.sup">>, ?MODULE, 'authorize'),
     Ret.
 
 %%------------------------------------------------------------------------------

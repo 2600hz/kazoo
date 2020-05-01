@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Provide a menu to caller.
 %%%
 %%% <h4>Data options:</h4>
@@ -12,6 +12,11 @@
 %%% </dl>
 %%%
 %%% @author Karl Anderson
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cf_menu).
@@ -238,7 +243,7 @@ hunt_for_callflow(Digits, Menu, Call) ->
                     ],
             UpdatedCall = kapps_call:kvs_store_proplist(Props, Call),
             cf_exe:set_call(UpdatedCall),
-            cf_exe:branch(kz_json:get_value(<<"flow">>, Flow, kz_json:new()), UpdatedCall),
+            cf_exe:branch(kzd_callflows:flow(Flow, kz_json:new()), UpdatedCall),
             'true';
         _ ->
             lager:info("callflow hunt failed"),
@@ -250,8 +255,8 @@ hunt_for_callflow(Digits, Menu, Call) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec record_greeting(binary(), menu(), kapps_call:call()) ->
-                             {'ok', menu()} |
-                             {'error', kz_json:object()}.
+          {'ok', menu()} |
+          {'error', kz_json:object()}.
 record_greeting(AttachmentName, #cf_menu_data{greeting_id='undefined'}=Menu, Call) ->
     MediaId = recording_media_doc(<<"greeting">>, Menu, Call),
     record_greeting(AttachmentName, Menu#cf_menu_data{greeting_id=MediaId}, Call);
@@ -292,8 +297,8 @@ record_greeting(AttachmentName, #cf_menu_data{greeting_id=MediaId}=Menu, Call) -
 %% @end
 %%------------------------------------------------------------------------------
 -spec play_invalid_prompt(menu(), kapps_call:call()) ->
-                                 {'ok', kz_json:object()} |
-                                 {'error', atom()}.
+          {'ok', kz_json:object()} |
+          {'error', atom()}.
 play_invalid_prompt(#cf_menu_data{invalid_media='false'}, _) ->
     {'ok', kz_json:new()};
 play_invalid_prompt(#cf_menu_data{invalid_media='true'}, Call) ->
@@ -306,8 +311,8 @@ play_invalid_prompt(#cf_menu_data{invalid_media=Id}, Call) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec play_transferring_prompt(menu(), kapps_call:call()) ->
-                                      {'ok', kz_json:object()} |
-                                      {'error', atom()}.
+          {'ok', kz_json:object()} |
+          {'error', atom()}.
 play_transferring_prompt(#cf_menu_data{transfer_media='false'}, _) ->
     {'ok', kz_json:new()};
 play_transferring_prompt(#cf_menu_data{transfer_media='true'}, Call) ->
@@ -320,8 +325,8 @@ play_transferring_prompt(#cf_menu_data{transfer_media=Id}, Call) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec play_exit_prompt(menu(), kapps_call:call()) ->
-                              {'ok', kz_json:object()} |
-                              {'error', atom()}.
+          {'ok', kz_json:object()} |
+          {'error', atom()}.
 play_exit_prompt(#cf_menu_data{exit_media='false'}, _) ->
     {'ok', kz_json:new()};
 play_exit_prompt(#cf_menu_data{exit_media='true'}, Call) ->
@@ -344,8 +349,8 @@ get_prompt(#cf_menu_data{greeting_id=Id}, Call) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec store_recording(kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) ->
-                             {'ok', kz_json:object()} |
-                             {'error', kz_json:object()}.
+          {'ok', kz_json:object()} |
+          {'error', kz_json:object()}.
 store_recording(AttachmentName, MediaId, Call) ->
     lager:info("storing recording ~s as media ~s", [AttachmentName, MediaId]),
     CallerIdName = kapps_call:caller_id_name(Call),
@@ -393,7 +398,7 @@ tmp_file() ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec review_recording(kz_term:ne_binary(), menu(), kapps_call:call()) ->
-                              {'ok', 'record' | 'save' | 'no_selection'}.
+          {'ok', 'record' | 'save' | 'no_selection'}.
 review_recording(MediaName, #cf_menu_data{keys=#menu_keys{listen=ListenKey
                                                          ,record=RecordKey
                                                          ,save=SaveKey
@@ -443,7 +448,7 @@ recording_media_doc(Type, #cf_menu_data{name=MenuName
 %%------------------------------------------------------------------------------
 
 -spec update_doc(kz_term:text(), kz_json:json_term(), menu() | kz_term:ne_binary(),  kapps_call:call() | kz_term:ne_binary()) ->
-                        'ok' | {'error', atom()}.
+          'ok' | {'error', atom()}.
 update_doc(Key, Value, #cf_menu_data{menu_id=Id}, Db) ->
     update_doc(Key, Value, Id, Db);
 update_doc(Key, Value, Id, <<_/binary>> = Db) ->
@@ -460,7 +465,7 @@ update_doc(Key, Value, Id, Call) ->
     update_doc(Key, Value, Id, kapps_call:account_db(Call)).
 
 -spec update_doc(kz_term:proplist(), kz_term:ne_binary(), kapps_call:call() | kz_term:ne_binary()) ->
-                        'ok' | {'error', atom()}.
+          'ok' | {'error', atom()}.
 update_doc(Updates, Id, <<_/binary>> = Db) ->
     case kz_datamgr:open_doc(Db, Id) of
         {'error', _}=E -> lager:info("unable to update ~s in ~s, ~p", [Id, Db, E]);

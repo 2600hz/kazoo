@@ -1,7 +1,11 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc
 %%% @author Karl Anderson
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kapps_call_util).
@@ -22,7 +26,7 @@
 -spec base_call_cost(kz_currency:units() | kz_currency:dollars()
                     ,kz_currency:units() | kz_currency:dollars()
                     ,kz_currency:units() | kz_currency:dollars()) ->
-                            kz_currency:units().
+          kz_currency:units().
 base_call_cost(RateCost, 0, RateSurcharge) ->
     base_call_cost(RateCost, 60, RateSurcharge);
 base_call_cost(RateCost, RateMin, RateSurcharge)

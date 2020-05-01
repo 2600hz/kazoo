@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Kazoo API Helpers.
 %%% Most API functions take a proplist, filter it against required headers
 %%% and optional headers, and return either the JSON string if all
@@ -13,6 +13,10 @@
 %%%
 %%% @author James Aimonetti
 %%% @author Karl Anderson
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_api).
@@ -68,6 +72,12 @@
 -export([has_any/2, has_all/2]).
 -endif.
 
+-export_type([api_formatter_return/0
+             ,api_headers/0
+             ,api_types/0
+             ,api_valid_values/0
+             ]).
+
 %%%=============================================================================
 %%% API
 %%%=============================================================================
@@ -84,11 +94,15 @@ server_id(JObj) ->
 queue_id(JObj) ->
     kz_json:get_ne_binary_value(?KEY_QUEUE_ID, JObj, server_id(JObj)).
 
--spec event_category(kz_json:object()) -> kz_term:api_binary().
+-spec event_category(kz_term:api_terms()) -> kz_term:api_binary().
+event_category(Props) when is_list(Props) ->
+    props:get_value(?KEY_EVENT_CATEGORY, Props);
 event_category(JObj) ->
     kz_json:get_value(?KEY_EVENT_CATEGORY, JObj).
 
--spec event_name(kz_json:object()) -> kz_term:api_binary().
+-spec event_name(kz_term:api_terms()) -> kz_term:api_binary().
+event_name(Props) when is_list(Props) ->
+    props:get_value(?KEY_EVENT_NAME, Props);
 event_name(JObj) ->
     kz_json:get_value(?KEY_EVENT_NAME, JObj).
 
@@ -135,7 +149,7 @@ call_id(Props, Default) when is_list(Props) ->
 call_id(JObj, Default) ->
     kz_json:get_ne_binary_value(?KEY_API_CALL_ID, JObj, Default).
 
--spec defer_response(kz_term:api_terms()) -> kz_term:api_binary().
+-spec defer_response(kz_term:api_terms()) -> boolean().
 defer_response(Props) when is_list(Props) ->
     props:get_is_true(?KEY_DEFER_RESPONSE, Props);
 defer_response(JObj) ->
@@ -178,13 +192,14 @@ default_headers(EvtCat, EvtName, AppName, AppVsn) ->
 
 -spec default_headers(kz_term:api_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:proplist().
 default_headers(ServerID, EvtCat, EvtName, AppName, AppVsn) ->
-    [{?KEY_SERVER_ID, ServerID}
-    ,{?KEY_EVENT_CATEGORY, EvtCat}
-    ,{?KEY_EVENT_NAME, EvtName}
-    ,{?KEY_APP_NAME, AppName}
-    ,{?KEY_APP_VERSION, AppVsn}
-    ,{?KEY_NODE, kz_term:to_binary(node())}
-    ].
+    props:filter_empty(
+      [{?KEY_SERVER_ID, ServerID}
+      ,{?KEY_EVENT_CATEGORY, EvtCat}
+      ,{?KEY_EVENT_NAME, EvtName}
+      ,{?KEY_APP_NAME, AppName}
+      ,{?KEY_APP_VERSION, AppVsn}
+      ,{?KEY_NODE, kz_term:to_binary(node())}
+      ]).
 
 -spec default_headers_v(kz_term:api_terms()) -> boolean().
 
@@ -221,7 +236,7 @@ prepare_api_payload(Prop, HeaderValues) ->
     prepare_api_payload(Prop, HeaderValues, []).
 
 -spec prepare_api_payload(kz_term:api_terms(), kz_term:proplist(), api_formatter_fun() | prepare_options()) ->
-                                 api_formatter_return() | kz_term:proplist().
+          api_formatter_return() | kz_term:proplist().
 prepare_api_payload(Prop, HeaderValues, FormatterFun) when is_function(FormatterFun, 1) ->
     prepare_api_payload(Prop, HeaderValues, [{'formatter', FormatterFun}]);
 prepare_api_payload(Prop, HeaderValues, Options) when is_list(Prop) ->
@@ -413,8 +428,8 @@ build_message(JObj, ReqH, OptH) ->
     build_message(kz_json:to_proplist(JObj), ReqH, OptH).
 
 -spec build_message_specific_headers(kz_term:proplist() | {api_headers(), kz_term:proplist()}, api_headers(), api_headers()) ->
-                                            {'ok', kz_term:proplist()} |
-                                            {'error', string()}.
+          {'ok', kz_term:proplist()} |
+          {'error', string()}.
 build_message_specific_headers({Headers, Prop}, ReqH, OptH) ->
     case update_required_headers(Prop, ReqH, Headers) of
         {'error', _Reason} = Error ->
@@ -430,7 +445,7 @@ build_message_specific_headers(Prop, ReqH, OptH) ->
     build_message_specific_headers({[], Prop}, ReqH, OptH).
 
 -spec build_message_specific(kz_term:proplist() | {api_headers(), kz_term:proplist()}, api_headers(), api_headers()) ->
-                                    api_formatter_return().
+          api_formatter_return().
 build_message_specific({Headers, Prop}, ReqH, OptH) ->
     case update_required_headers(Prop, ReqH, Headers) of
         {'error', _Reason} = Error ->
@@ -447,7 +462,7 @@ build_message_specific(Prop, ReqH, OptH) ->
 
 -spec headers_to_json(kz_term:proplist()) -> api_formatter_return().
 headers_to_json([_|_]=HeadersProp) ->
-    _ = kz_util:kz_log_md_put('msg_id', msg_id(HeadersProp)),
+    _ = kz_log:kz_log_md_put('msg_id', msg_id(HeadersProp)),
     try kz_json:encode(kz_json:from_list(HeadersProp)) of
         JSON -> {'ok', JSON}
     catch
@@ -458,8 +473,8 @@ headers_to_json([_|_]=HeadersProp) ->
 %% defaults(PassedProps, MessageHeaders) -> { Headers, NewPropList } | {error, Reason}
 
 -spec defaults(kz_term:api_terms(), api_headers()) ->
-                      {kz_term:proplist(), kz_term:proplist()} |
-                      {'error', string()}.
+          {kz_term:proplist(), kz_term:proplist()} |
+          {'error', string()}.
 defaults(Prop, MsgHeaders) -> defaults(Prop, expand_headers(MsgHeaders), []).
 defaults(Prop, MsgHeaders, Headers) ->
     case update_required_headers(Prop, ?DEFAULT_HEADERS -- MsgHeaders, Headers) of
@@ -480,8 +495,8 @@ expand_header(Headers, Acc)
   when is_list(Headers) -> expand_headers(Headers) ++ Acc.
 
 -spec update_required_headers(kz_term:proplist(), api_headers(), kz_term:proplist()) ->
-                                     {kz_term:proplist(), kz_term:proplist()} |
-                                     {'error', string()}.
+          {kz_term:proplist(), kz_term:proplist()} |
+          {'error', string()}.
 update_required_headers(Prop, Fields, Headers) ->
     case has_all(Prop, Fields) of
         'true' -> add_headers(Prop, Fields, Headers);
@@ -489,7 +504,7 @@ update_required_headers(Prop, Fields, Headers) ->
     end.
 
 -spec update_optional_headers(kz_term:proplist(), api_headers(), kz_term:proplist()) ->
-                                     {kz_term:proplist(), kz_term:proplist()}.
+          {kz_term:proplist(), kz_term:proplist()}.
 update_optional_headers(Prop, Fields, Headers) ->
     case has_any(Prop, Fields) of
         'true' -> add_optional_headers(Prop, Fields, Headers);
@@ -498,7 +513,7 @@ update_optional_headers(Prop, Fields, Headers) ->
 
 %% add [Header] from Prop to HeadProp
 -spec add_headers(kz_term:proplist(), api_headers(), kz_term:proplist()) ->
-                         {kz_term:proplist(), kz_term:proplist()}.
+          {kz_term:proplist(), kz_term:proplist()}.
 add_headers(Prop, Fields, Headers) ->
     lists:foldl(fun(K, {Headers1, KVs}) when is_list(K) ->
                         K1 = [Ki || Ki <- K, props:is_defined(Ki, KVs)],
@@ -508,7 +523,7 @@ add_headers(Prop, Fields, Headers) ->
                 end, {Headers, Prop}, Fields).
 
 -spec add_optional_headers(kz_term:proplist(), api_headers(), kz_term:proplist()) ->
-                                  {kz_term:proplist(), kz_term:proplist()}.
+          {kz_term:proplist(), kz_term:proplist()}.
 add_optional_headers(Prop, Fields, Headers) ->
     lists:foldl(fun(K, {Headers1, KVs}) ->
                         case props:get_value(K, KVs) of

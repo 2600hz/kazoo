@@ -4,11 +4,11 @@
 -include_lib("kazoo_stdlib/include/kz_databases.hrl").
 -include_lib("kazoo_events/include/kz_hooks.hrl").
 
--define(APP, webhooks).
--define(APP_NAME, (atom_to_binary(?APP, utf8))).
+-define(APP, 'webhooks').
+-define(APP_NAME, (atom_to_binary(?APP, 'utf8'))).
 -define(APP_VERSION, <<"4.0.0">>).
 
--type http_verb() :: 'get' | 'post'.
+-type http_verb() :: 'get' | 'post' | 'put'.
 -type hook_retries() :: 1..5.
 
 -record(webhook, {id :: kz_term:api_ne_binary() | '_'
@@ -22,6 +22,7 @@
                  ,include_loopback = 'true' :: boolean() | '_'
                  ,custom_data :: kz_term:api_object() | '_'
                  ,modifiers :: kz_term:api_object() | '_'
+                 ,format = 'form-data' :: 'form-data' | 'json' | '_'
                  }).
 -type webhook() :: #webhook{}.
 -type webhooks() :: [webhook()].

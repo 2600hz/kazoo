@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Listener for route requests that can be fulfilled by Callflows.
 %%% @author Karl Anderson
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cf_shared_listener).
@@ -12,7 +17,7 @@
         ,handle_call/3
         ,handle_cast/2
         ,handle_info/2
-        ,handle_event/2
+        ,handle_event/3
         ,terminate/2
         ,code_change/3
         ]).
@@ -109,9 +114,10 @@ handle_info(_Info, State) ->
 %% @doc Handling AMQP event objects
 %% @end
 %%------------------------------------------------------------------------------
--spec handle_event(kz_json:object(), kz_term:proplist()) -> gen_listener:handle_event_return().
-handle_event(_JObj, _State) ->
-    {'reply', []}.
+-spec handle_event(kz_json:object(), kz_term:proplist(), state()) -> gen_listener:handle_event_return().
+handle_event(JObj, Props, State) ->
+    Msg = kapi:delivery_message(JObj, Props),
+    handle_msg(Msg, State).
 
 %%------------------------------------------------------------------------------
 %% @doc This function is called by a `gen_listener' when it is about to
@@ -136,3 +142,14 @@ code_change(_OldVsn, State, _Extra) ->
 %%%=============================================================================
 %%% Internal functions
 %%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+handle_msg({_, {'callflow', 'resume'}, _} = Msg, _State) ->
+    _ = cf_listener_sup:forward(Msg),
+    'ignore';
+
+handle_msg(_, _State) ->
+    {'reply', []}.

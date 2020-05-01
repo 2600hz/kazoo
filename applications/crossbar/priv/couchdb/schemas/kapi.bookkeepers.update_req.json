@@ -1,0 +1,48 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.bookkeepers.update_req",
+    "description": "AMQP API for bookkeepers.update_req",
+    "properties": {
+        "Account-ID": {
+            "type": "string"
+        },
+        "Audit-Log": {
+            "type": "string"
+        },
+        "Bookkeeper-ID": {
+            "type": "string"
+        },
+        "Bookkeeper-Type": {
+            "type": "string"
+        },
+        "Dry-Run": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "bookkeepers"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "update_req"
+            ],
+            "type": "string"
+        },
+        "Invoice": {
+            "type": "string"
+        },
+        "Vendor-ID": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Account-ID",
+        "Bookkeeper-ID",
+        "Bookkeeper-Type",
+        "Invoice",
+        "Vendor-ID"
+    ],
+    "type": "object"
+}

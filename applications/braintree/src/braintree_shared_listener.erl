@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(braintree_shared_listener).
@@ -26,7 +30,10 @@
 -define(BINDINGS, [{'bookkeepers', []}
                   ,{'self', []}
                   ]).
--define(RESPONDERS, [{'braintree_sale'
+-define(RESPONDERS, [{'braintree_collect_recurring_req'
+                     ,[{<<"bookkeepers">>, <<"collect_recurring_req">>}]
+                     }
+                    ,{'braintree_sale'
                      ,[{<<"bookkeepers">>, <<"sale_req">>}]
                      }
                     ,{'braintree_refund'
@@ -34,6 +41,9 @@
                      }
                     ,{'braintree_update_req'
                      ,[{<<"bookkeepers">>, <<"update_req">>}]
+                     }
+                    ,{'braintree_standing_req'
+                     ,[{<<"bookkeepers">>, <<"standing_req">>}]
                      }
                     ]).
 -define(QUEUE_NAME, <<"braintree_shared_listener">>).

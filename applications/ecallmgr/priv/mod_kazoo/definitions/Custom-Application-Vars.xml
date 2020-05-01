@@ -1,0 +1,10 @@
+<definition name="Custom-Application-Vars">
+	<field name="Custom-Application-Vars" type="static" serialize-as="object">
+		<filters>
+			<filter name="ecallmgr" type="include" compare="prefix" value="variable_cav_" />
+		</filters>
+		<fields verbose="false">
+			<field name="variable_cav_" type="prefix" exclude-prefix="true" />
+		</fields>
+	</field>
+</definition>

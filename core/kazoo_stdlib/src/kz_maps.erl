@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc map utilities
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_maps).
@@ -12,6 +16,7 @@
 -export([merge/2, merge/3]).
 -export([get/2, get/3]).
 -export([keys_to_atoms/1, keys_to_atoms/2]).
+-export([exec/2]).
 
 %% if you want specific merge functionality, first arg to merge/3
 -export([merge_left/2, merge_right/2]).
@@ -105,6 +110,20 @@ keys_to_atoms_fold(K, V, Acc) when is_map(V) ->
     Acc#{kz_term:to_atom(K, 'true') => keys_to_atoms(V)};
 keys_to_atoms_fold(K, V, Acc) ->
     Acc#{kz_term:to_atom(K, 'true') => V}.
+
+-spec exec(list(), map()) -> map().
+exec(Routines, Map) ->
+    lists:foldl(fun exec_fold/2, Map, Routines).
+
+exec_fold(Fun, Map)
+  when is_function(Fun, 1) ->
+    Fun(Map);
+exec_fold({Fun, Arg}, Map)
+  when is_function(Fun, 2) ->
+    Fun(Arg, Map);
+exec_fold({Fun, Arg1, Arg2}, Map)
+  when is_function(Fun, 3) ->
+    Fun(Arg1, Arg2, Map).
 
 %%==============================================================================
 %% Internal functions

@@ -28,7 +28,9 @@ Key | Description | Type | Default | Required | Support Level
 `ignore_early_media` | Toggle whether to ignore early media | `boolean()` | `false` | `false` |  
 `outbound_flags.[]` |   | `string()` |   | `false` |  
 `outbound_flags` | List of flags to use when matching resources to route the call | `array(string())` | `[]` | `false` |  
+`resource_type` | sets a custom resource type for the published amqp message | `string()` |   | `false` |  
 `ringback` | Tone or file to play while waiting for the leg to be answered | `string()` |   | `false` |  
+`skip_module` | When set to true this callflow action is skipped, advancing to the wildcard branch (if any) | `boolean()` |   | `false` |  
 `timeout` | How long, in seconds, to wait for the call to be answered | `integer()` |   | `false` |  
 `to_did` | Statically set the DID to dial | `string()` |   | `false` |  
 `use_local_resources` | Toggle whether to use the account's (or hunt_account_id's) resources vs the system resources | `boolean()` | `true` | `false` |  

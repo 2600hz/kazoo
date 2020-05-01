@@ -14,8 +14,8 @@ IP addresses assigned to the account
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`ips.[]` |   | `string()` |   | `false` |  
-`ips` | List of IP addresses | `array(string())` |   | `false` |  
+`ips.[]` |   | `string()|string()` |   |   |  
+`ips` | List of IP addresses | `array()` |   | `false` |  
 
 
 
@@ -53,24 +53,38 @@ curl -v -X GET \
 ```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -d '{"data":["1.2.3.4"]}' \
+    -d '{"data": {"ips" :["1.2.3.4", "5.6.7.8"]}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ips
 ```
 
 ```json
 {
     "auth_token": "{AUTH_TOKEN}",
-    "data": [
-        {
-            "assigned_to": "{ACCOUNT_ID}",
-            "host": "proxy1.us-east.myswitch.com",
-            "id": "1.2.3.4",
-            "ip": "1.2.3.4",
-            "status": "assigned",
-            "type": "dedicated_ip",
-            "zone": "us-east"
-        }
-    ],
+    "data": {
+        "ips": ["1.2.3.4", "5.6.7.8"]
+    },
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
+    "status": "success"
+}
+```
+
+## Remove IPs from Account
+
+> DELETE /v2/accounts/{ACCOUNT_ID}/ips
+
+```shell
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ips
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "ips": ["1.2.3.4", "5.6.7.8"]
+    },
     "request_id": "{REQUEST_ID}",
     "revision": "{REVISION}",
     "status": "success"
@@ -244,9 +258,9 @@ added IP 1.2.3.4 to available dedicated ips
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
-`{IP}` | The IP address of the proxy | `string` |   | `true`
-`{ZONE}` | The Kazoo zone this proxy is assigned  | `string` |   | `true`
-`{HOST}` | The Hostname associated with the IP | `string` | | `true`
+`{IP}` | The IP address of the proxy | `string()` |   | `true`
+`{ZONE}` | The Kazoo zone this proxy is assigned  | `string()` |   | `true`
+`{HOST}` | The Hostname associated with the IP | `string()` | | `true`
 
 Once you've added IPs to the system, you can assign those to different customer accounts to proxy their calls through using the below Crossbar APIs.
 

@@ -1,0 +1,29 @@
+paths:
+  /accounts/{ACCOUNT_ID}/limits:
+    get:
+      operationId: GetAccountsAccountIdLimits
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get all limits
+      tags:
+        - limits
+    post:
+      operationId: PostAccountsAccountIdLimits
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/limits'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of limits
+      tags:
+        - limits

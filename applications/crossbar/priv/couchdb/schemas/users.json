@@ -129,7 +129,7 @@
             "description": "The email of the user",
             "format": "email",
             "maxLength": 254,
-            "minLength": 1,
+            "minLength": 3,
             "support_level": "supported",
             "type": "string"
         },
@@ -149,6 +149,14 @@
             "minLength": 1,
             "support_level": "supported",
             "type": "string"
+        },
+        "flags": {
+            "description": "Flags set by external applications",
+            "items": {
+                "type": "string"
+            },
+            "support_level": "supported",
+            "type": "array"
         },
         "formatters": {
             "$ref": "formatters",

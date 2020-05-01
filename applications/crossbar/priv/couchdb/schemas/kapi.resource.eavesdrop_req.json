@@ -9,6 +9,9 @@
         "Application-Data": {
             "type": "string"
         },
+        "Application-Name": {
+            "type": "string"
+        },
         "Asserted-Identity-Name": {
             "type": "string"
         },
@@ -23,6 +26,9 @@
         },
         "Bridge-Actions": {
             "type": "object"
+        },
+        "Call-Context": {
+            "type": "string"
         },
         "Call-Restrictions-Enabled": {
             "type": "string"
@@ -46,6 +52,9 @@
             "type": "string"
         },
         "Confirm-Key": {
+            "type": "string"
+        },
+        "Continue-After": {
             "type": "string"
         },
         "Continue-On-Fail": {
@@ -91,6 +100,13 @@
         },
         "Endpoint-ID": {
             "type": "string"
+        },
+        "Endpoints": {
+            "items": {
+                "$ref": "kapi.dialplan.bridge_endpoint",
+                "type": "object"
+            },
+            "type": "array"
         },
         "Event-Category": {
             "enum": [
@@ -174,6 +190,15 @@
             "type": "string"
         },
         "Outbound-Caller-ID-Number": {
+            "type": "string"
+        },
+        "Privacy-Hide-Name": {
+            "type": "string"
+        },
+        "Privacy-Hide-Number": {
+            "type": "string"
+        },
+        "Privacy-Method": {
             "type": "string"
         },
         "Ringback": {

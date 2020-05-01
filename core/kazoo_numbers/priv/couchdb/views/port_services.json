@@ -1,0 +1,68 @@
+{
+    "_id": "_design/port_services",
+    "kazoo": {
+        "view_map": [
+            {
+                "database": "port_requests"
+            }
+        ]
+    },
+    "language": "javascript",
+    "views": {
+        "account_quantities": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'port_request' || doc.pvt_deleted) return;",
+                "  var quantity = 0;",
+                "  var transitionCount = 0;",
+                "  var numbers = doc.numbers || {};",
+                "  var currentState = doc.pvt_port_state || 'unconfirmed';",
+                "  var transitions = doc.pvt_transitions || [];",
+                "  for (var index = 0; index < transitions.length; index++) {",
+                "    var transitionObj = transitions[index];",
+                "    var transition = transitionObj.transition || {};",
+                "    if ((transition.new || 'unconfirmed') === currentState) transitionCount++;",
+                "  }",
+                "  for (var number in numbers)",
+                "    if (numbers.hasOwnProperty(number)) quantity++;",
+                "  if (transitionCount === 1) {",
+                "    emit([doc.pvt_account_id, currentState], quantity);",
+                "    emit([doc.pvt_account_id, 'first_' + currentState], quantity);",
+                "  } else {",
+                "    emit([doc.pvt_account_id, currentState], quantity);",
+                "  }",
+                "}"
+            ],
+            "reduce": "_sum"
+        },
+        "cascade_quantities": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'port_request' || doc.pvt_deleted) return;",
+                "  var quantity = 0;",
+                "  var transitionCount = 0;",
+                "  var numbers = doc.numbers || {};",
+                "  var currentState = doc.pvt_port_state || 'unconfirmed';",
+                "  var transitions = doc.pvt_transitions || [];",
+                "  for (var index = 0; index < transitions.length; index++) {",
+                "    var transitionObj = transitions[index];",
+                "    var transition = transitionObj.transition || {};",
+                "    if ((transition.new || 'unconfirmed') === currentState) transitionCount++;",
+                "  }",
+                "  for (var number in numbers)",
+                "    if (numbers.hasOwnProperty(number)) quantity++;",
+                "  accountTree = doc.pvt_tree || [];",
+                "  for (var accountIndex = 0; accountIndex < accountTree.length; accountIndex++) {",
+                "    if (transitionCount === 1) {",
+                "      emit([accountTree[accountIndex], currentState], quantity);",
+                "      emit([accountTree[accountIndex], 'first_' + currentState], quantity);",
+                "    } else {",
+                "      emit([accountTree[accountIndex], currentState], quantity);",
+                "    }",
+                "  }",
+                "}"
+            ],
+            "reduce": "_sum"
+        }
+    }
+}

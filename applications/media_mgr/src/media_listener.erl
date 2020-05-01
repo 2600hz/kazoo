@@ -1,8 +1,13 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
 %%% @author Karl Anderson
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(media_listener).
@@ -49,7 +54,7 @@ start_link() ->
 -spec handle_media_req(kz_json:object(), kz_term:proplist()) -> kz_amqp_worker:cast_return().
 handle_media_req(JObj, _Props) ->
     'true' = kapi_media:req_v(JObj),
-    _ = kz_util:put_callid(JObj),
+    _ = kz_log:put_callid(JObj),
     lager:debug("recv media req for msg id: ~s", [kz_api:msg_id(JObj)]),
     MediaName = kz_json:get_value(<<"Media-Name">>, JObj),
     case kz_media_url:playback(MediaName, JObj) of
@@ -127,7 +132,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec send_error_resp(kz_json:object(), atom() | kz_term:ne_binary()) ->
-                             kz_amqp_worker:cast_return().
+          kz_amqp_worker:cast_return().
 send_error_resp(JObj, ErrMsg) ->
     MediaName = kz_json:get_value(<<"Media-Name">>, JObj),
     Error = [{<<"Media-Name">>, MediaName}
@@ -142,7 +147,7 @@ send_error_resp(JObj, ErrMsg) ->
     kz_amqp_worker:cast(Error, Publisher).
 
 -spec send_media_resp(kz_json:object(), kz_term:ne_binary()) ->
-                             kz_amqp_worker:cast_return().
+          kz_amqp_worker:cast_return().
 send_media_resp(JObj, StreamURL) ->
     lager:debug("media stream URL: ~s", [StreamURL]),
     Resp = [{<<"Media-Name">>, kz_json:get_value(<<"Media-Name">>, JObj)}

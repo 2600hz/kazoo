@@ -1,8 +1,13 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
 %%% @author Karl Anderson
 %%% @author Michael Dunton
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(notify_maintenance).
@@ -31,7 +36,7 @@
 %%------------------------------------------------------------------------------
 -spec check_initial_call(kz_term:ne_binary()) -> 'ok'.
 check_initial_call(Account) when is_binary(Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kzs_util:format_account_id(Account),
     case kzd_accounts:fetch(AccountId) of
         {'ok', JObj} ->
             case kz_json:is_true([<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_call">>], JObj) of
@@ -48,7 +53,7 @@ check_initial_call(Account) when is_binary(Account) ->
 %%------------------------------------------------------------------------------
 -spec check_initial_registration(kz_term:ne_binary()) -> 'ok'.
 check_initial_registration(Account) when is_binary(Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kzs_util:format_account_id(Account),
     case kzd_accounts:fetch(AccountId) of
         {'ok', JObj} ->
             case kz_json:is_true([<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_registration">>], JObj) of
@@ -64,7 +69,7 @@ check_initial_registration(Account) when is_binary(Account) ->
 %%------------------------------------------------------------------------------
 -spec configure_smtp_relay(kz_term:ne_binary()) -> 'ok' | 'failed'.
 configure_smtp_relay(Value) ->
-    {'ok', _} = update_smtp_client_document(<<"relay">>, Value),
+    _ = kapps_config:set_string(?SMTP_CLIENT_DOC, <<"relay">>, Value),
     'ok'.
 %%------------------------------------------------------------------------------
 %% @doc Configures the username key of the SMTP_Client System Config document.
@@ -72,7 +77,7 @@ configure_smtp_relay(Value) ->
 %%------------------------------------------------------------------------------
 -spec configure_smtp_username(kz_term:ne_binary()) -> 'ok' | 'failed'.
 configure_smtp_username(Value) ->
-    {'ok', _} = update_smtp_client_document(<<"username">>, Value),
+    _ = kapps_config:set_string(?SMTP_CLIENT_DOC, <<"username">>, Value),
     'ok'.
 
 %%------------------------------------------------------------------------------
@@ -81,7 +86,7 @@ configure_smtp_username(Value) ->
 %%------------------------------------------------------------------------------
 -spec configure_smtp_password(kz_term:ne_binary()) -> 'ok' | 'failed'.
 configure_smtp_password(Value) ->
-    {'ok', _} = update_smtp_client_document(<<"password">>, Value),
+    _ = kapps_config:set_string(?SMTP_CLIENT_DOC, <<"password">>, Value),
     'ok'.
 
 %%------------------------------------------------------------------------------
@@ -90,7 +95,7 @@ configure_smtp_password(Value) ->
 %%------------------------------------------------------------------------------
 -spec configure_smtp_auth(kz_term:ne_binary()) -> 'ok' | 'failed'.
 configure_smtp_auth(Value) ->
-    {'ok', _} = update_smtp_client_document(<<"auth">>, Value),
+    _ = kapps_config:set_string(?SMTP_CLIENT_DOC, <<"auth">>, Value),
     'ok'.
 
 %%------------------------------------------------------------------------------
@@ -99,7 +104,7 @@ configure_smtp_auth(Value) ->
 %%------------------------------------------------------------------------------
 -spec configure_smtp_port(kz_term:ne_binary()) -> 'ok' | 'failed'.
 configure_smtp_port(Value) ->
-    {'ok', _} = update_smtp_client_document(<<"port">>, Value),
+    _ = kapps_config:set_integer(?SMTP_CLIENT_DOC, <<"port">>, Value),
     'ok'.
 
 %%------------------------------------------------------------------------------
@@ -278,8 +283,8 @@ compare_template_system_config([{Key, FileTemplate}|Props], JObj) ->
     end.
 
 -spec compare_template_system_config(kz_term:api_binaries(), kz_term:api_binary(), kz_term:api_binary()) ->
-                                            'default' | 'file' |
-                                            'doc' | 'ok'.
+          'default' | 'file' |
+          'doc' | 'ok'.
 compare_template_system_config('undefined', _, _) ->
     io:format("default template is undefined~n");
 compare_template_system_config(_, 'undefined', _) ->
@@ -331,12 +336,3 @@ open_system_config(Id) ->
         {'error', 'not_found'} -> 'not_found';
         {'error', _R} -> 'error'
     end.
-
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec update_smtp_client_document(kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', kz_json:object()}.
-update_smtp_client_document(Key, Value) ->
-    kapps_config:set(?SMTP_CLIENT_DOC, Key, Value).

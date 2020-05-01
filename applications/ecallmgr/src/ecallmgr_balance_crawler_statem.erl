@@ -1,10 +1,15 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Ecallmgr module (`statem') for disconnecting calls when account
 %%% balance drops below zero.
 %%%
 %%% @author Dinkor (Sergey Korobkov)
 %%% @author Daniel Finke
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(ecallmgr_balance_crawler_statem).
@@ -64,7 +69,7 @@ start_link() ->
 -spec init(list()) -> {'ok', 'idle', 'undefined'}.
 init(_Args) ->
     process_flag('trap_exit', 'true'),
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     _ = timer:apply_after(?CRAWLER_CYCLE_MS, 'gen_statem', 'cast', [self(), 'start_cycle']),
     {'ok', 'idle', 'undefined'}.
 
@@ -122,5 +127,5 @@ worker_timeout('info', Evt, State) ->
 %%------------------------------------------------------------------------------
 spawn_worker(Timeout) when Timeout >= 10 * ?MILLISECONDS_IN_SECOND ->
     _ = timer:apply_after(Timeout, 'gen_statem', 'cast', [self(), 'start_cycle']),
-    kz_util:spawn_link(fun ecallmgr_balance_crawler_worker:start/0);
+    kz_process:spawn_link(fun ecallmgr_balance_crawler_worker:start/0);
 spawn_worker(_) -> spawn_worker(?MILLISECONDS_IN_MINUTE).

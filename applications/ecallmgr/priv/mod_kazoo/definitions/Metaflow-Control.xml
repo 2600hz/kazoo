@@ -1,0 +1,12 @@
+<definition name="Metaflow-Control">
+	<field name="Metaflow-Control" type="static" serialize-as="object">
+		<filters>
+			<filter name="ecallmgr" type="include" compare="prefix"
+				value="variable_Metaflow-Control-" />
+		</filters>
+		<fields verbose="false">
+			<field name="variable_Metaflow-Control-" type="prefix"
+				exclude-prefix="true" />
+		</fields>
+	</field>
+</definition>

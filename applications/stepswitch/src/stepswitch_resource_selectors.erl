@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(stepswitch_resource_selectors).
@@ -47,7 +51,7 @@
 -spec endpoints(kz_term:ne_binary(), kapi_offnet_resource:req()) -> kz_json:objects().
 endpoints(Number, OffnetJObj) ->
     HuntAccountId  = maybe_get_hunt_account(OffnetJObj),
-    SelectorsDb = kz_util:format_resource_selectors_db(HuntAccountId),
+    SelectorsDb = kzs_util:format_resource_selectors_db(HuntAccountId),
     case get_selector_rules(HuntAccountId) of
         {'ok', SelectorRules} ->
             Resources = foldl_modules(Number, OffnetJObj, SelectorsDb, SelectorRules),
@@ -65,7 +69,7 @@ foldl_modules(Number, OffnetJObj, SelectorsDb, SelectorRules) ->
                ).
 
 -spec rule_to_resource(kz_json:object(), stepswitch_resources:resources(), kz_term:ne_binary(), kapi_offnet_resource:req(), kz_term:ne_binary()) ->
-                              stepswitch_resources:resources().
+          stepswitch_resources:resources().
 rule_to_resource(Rule, Resources, Number, OffnetJObj, SelectorsDb) ->
     [Module|_] = kz_json:get_keys(Rule),
     ModuleName = real_module_name(Module),
@@ -85,11 +89,10 @@ rule_to_resource(Rule, Resources, Number, OffnetJObj, SelectorsDb) ->
                       ),
             Res
     catch
-        'error':R ->
-            ST = erlang:get_stacktrace(),
-            lager:error("failed to run module: ~p, error: ~p",[Module, R]),
-            kz_util:log_stacktrace(ST),
-            [];
+        ?STACKTRACE('error', R, ST)
+        lager:error("failed to run module: ~p, error: ~p",[Module, R]),
+        kz_log:log_stacktrace(ST),
+        [];
         'throw':T ->
             lager:error("module ~p (~p) throw exception: ~p",[Module, ModuleName, T]),
             []
@@ -108,10 +111,10 @@ maybe_get_hunt_account(OffnetJObj) ->
     end.
 
 -spec get_selector_rules(kz_term:api_binary()) ->
-                                {'ok', kz_json:objects()} |
-                                {'error', any()}.
+          {'ok', kz_json:objects()} |
+          {'error', any()}.
 get_selector_rules(HuntAccountId) ->
-    Db = kz_util:format_account_db(HuntAccountId),
+    Db = kzs_util:format_account_db(HuntAccountId),
     case kz_datamgr:open_doc(Db, ?SRS_RULES_DOC) of
         {'ok', Doc} ->
             Rules = kz_json:get_list_value(<<"rules">>, Doc, ?DEFAULT_SRS_RULES),

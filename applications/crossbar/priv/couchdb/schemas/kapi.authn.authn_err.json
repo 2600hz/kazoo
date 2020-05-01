@@ -1,0 +1,20 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.authn.authn_err",
+    "description": "AMQP API for authn.authn_err",
+    "properties": {
+        "Event-Category": {
+            "enum": [
+                "directory"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "authn_err"
+            ],
+            "type": "string"
+        }
+    },
+    "type": "object"
+}

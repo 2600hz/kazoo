@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2019, 2600Hz
+%%% @copyright (C) 2013-2020, 2600Hz
 %%% @doc
 %%% @author Pierre Fenoll
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kt_cleanup).
@@ -56,7 +61,7 @@ cleanup_soft_deletes(Account) ->
 %%------------------------------------------------------------------------------
 -spec cleanup_account_soft_deletes(kz_term:ne_binary()) -> 'ok'.
 cleanup_account_soft_deletes(Account) ->
-    AccountDb = kz_util:format_account_id(Account, 'encoded'),
+    AccountDb = kzs_util:format_account_db(Account),
     do_cleanup(AccountDb).
 
 -spec do_cleanup(kz_term:ne_binary()) -> 'ok'.

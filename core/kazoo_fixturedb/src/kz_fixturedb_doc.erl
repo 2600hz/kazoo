@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_fixturedb_doc).
@@ -96,7 +100,7 @@ ensure_saved(Server, DbName, Doc, Options) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec perform_save_doc(server_map(), kz_term:ne_binary(), kz_json:object(), kz_data:options()) ->
-                              kz_json:object().
+          kz_json:object().
 perform_save_doc(Server, DbName, JObj, Options) ->
     prepare_bulk_save_response(save_doc(Server, DbName, JObj, Options), JObj).
 

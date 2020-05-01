@@ -1,0 +1,135 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.registration.reg_success",
+    "description": "AMQP API for registration.reg_success",
+    "properties": {
+        "AOR": {
+            "type": "string"
+        },
+        "Account-DB": {
+            "type": "string"
+        },
+        "Account-ID": {
+            "type": "string"
+        },
+        "Authorizing-ID": {
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Contact": {
+            "type": "string"
+        },
+        "Custom-Channel-Vars": {
+            "type": "object"
+        },
+        "Event-Category": {
+            "enum": [
+                "directory"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "reg_success"
+            ],
+            "type": "string"
+        },
+        "Event-Timestamp": {
+            "type": "string"
+        },
+        "Expires": {
+            "type": "string"
+        },
+        "First-Registration": {
+            "type": "string"
+        },
+        "FreeSWITCH-Hostname": {
+            "type": "string"
+        },
+        "FreeSWITCH-Nodename": {
+            "type": "string"
+        },
+        "From-Host": {
+            "type": "string"
+        },
+        "From-User": {
+            "type": "string"
+        },
+        "Network-IP": {
+            "type": "string"
+        },
+        "Network-Port": {
+            "type": "string"
+        },
+        "Original-Contact": {
+            "type": "string"
+        },
+        "Presence-Hosts": {
+            "type": "string"
+        },
+        "Profile-Name": {
+            "type": "string"
+        },
+        "Proxy-IP": {
+            "type": "string"
+        },
+        "Proxy-Path": {
+            "type": "string"
+        },
+        "Proxy-Port": {
+            "type": "string"
+        },
+        "Proxy-Protocol": {
+            "type": "string"
+        },
+        "RPid": {
+            "type": "string"
+        },
+        "RUID": {
+            "type": "string"
+        },
+        "Realm": {
+            "type": "string"
+        },
+        "Register-Overwrite-Notify": {
+            "type": "string"
+        },
+        "Registrar-Node": {
+            "type": "string"
+        },
+        "Source-IP": {
+            "type": "string"
+        },
+        "Source-Port": {
+            "type": "string"
+        },
+        "Status": {
+            "type": "string"
+        },
+        "Suppress-Unregister-Notify": {
+            "type": "string"
+        },
+        "To-Host": {
+            "type": "string"
+        },
+        "To-User": {
+            "type": "string"
+        },
+        "User-Agent": {
+            "type": "string"
+        },
+        "Username": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Contact",
+        "Event-Timestamp",
+        "Expires",
+        "Realm",
+        "Username"
+    ],
+    "type": "object"
+}

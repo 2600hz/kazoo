@@ -1,0 +1,26 @@
+                {{feature.name}} manual {{feature.action}} required for {{request.number}}
+
+
+Manual {{feature.action}} is required for number {{request.number}}.
+Following is the detailed information about this action.
+
+    Note: Changes to {{feature.name}} can take up to 48 hours to take effect based on your carrier.
+
+=== Action Request Details ===
+
+    Provider: {{feature.provider}}
+    Number: {{request.number}}
+    Feature: {{feature.name}}
+    Action: {{feature.action}}
+
+
+Account Information
+
+    Account ID: {{account.id}}
+    Account Name: {{account.name}}
+    Account Realm: {{account.realm}}
+
+
+
+
+Sent from {{system.encoded_node}}

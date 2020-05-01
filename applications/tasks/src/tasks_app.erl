@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2016-2019, 2600Hz
+%%% @copyright (C) 2016-2020, 2600Hz
 %%% @doc
 %%% @author Pierre Fenoll
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(tasks_app).
@@ -21,7 +26,7 @@ start(_Type, _Args) ->
     _ = kapi_tasks:declare_exchanges(),
     kapps_maintenance:bind_and_register_views(?APP, 'tasks_maintenance', 'register_views'),
     _ = kz_datamgr:db_create(?KZ_TASKS_DB),
-    kapps_maintenance:refresh(?KZ_TASKS_DB),
+    _ = kapps_maintenance:refresh(?KZ_TASKS_DB),
     Ok = tasks_sup:start_link(),
     _ = tasks_bindings:init(),
     Ok.

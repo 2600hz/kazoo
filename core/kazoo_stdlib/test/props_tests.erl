@@ -1,10 +1,15 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2018, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Mostly a drop-in replacement and extension of the proplists module,
 %%% but using the lists module to implement
 %%%
 %%% @author James Aimonetti
 %%% @author Karl Anderson
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(props_tests).
@@ -29,9 +34,20 @@ filter_empty_test_() ->
     ,?_assertEqual([], props:filter_empty([{'a', 0}, {'b', []}, {'c', <<>>}, {'z', 'undefined'}]))
     ,?_assertEqual(['a'], props:filter_empty(['a']))
     ,?_assertEqual(['a'], props:filter_empty(['a', {'b', 0}]))
-    ,?_assertEqual([], props:filter_empty([{<<"a">>, undefined}]))
-    ,?_assertEqual([{<<"a">>, false}], props:filter_empty([{<<"a">>, false}]))
-    ,?_assertEqual([{<<"a">>, true}], props:filter_empty([{<<"a">>, true}]))
+    ,?_assertEqual([], props:filter_empty([{<<"a">>, 'undefined'}]))
+    ,?_assertEqual([{<<"a">>, 'false'}], props:filter_empty([{<<"a">>, 'false'}]))
+    ,?_assertEqual([{<<"a">>, 'true'}], props:filter_empty([{<<"a">>, 'true'}]))
+    ].
+
+filter_empty_strings_test_() ->
+    [?_assertEqual([], props:filter_empty_strings([]))
+    ,?_assertEqual([{'a', 10}, {'b', 8}, {'c', 6}], props:filter_empty_strings([{'a', 10}, {'b', 8}, {'c', 6}]))
+    ,?_assertEqual([{'a', 0}, {'b', []}, {'z', 'undefined'}], props:filter_empty_strings([{'a', 0}, {'b', []}, {'c', <<>>}, {'z', 'undefined'}]))
+    ,?_assertEqual(['a'], props:filter_empty_strings(['a']))
+    ,?_assertEqual(['a', {'b', 0}], props:filter_empty_strings(['a', {'b', 0}]))
+    ,?_assertEqual([{<<"a">>, 'undefined'}], props:filter_empty_strings([{<<"a">>, 'undefined'}]))
+    ,?_assertEqual([{<<"a">>, 'false'}], props:filter_empty_strings([{<<"a">>, 'false'}]))
+    ,?_assertEqual([{<<"a">>, 'true'}], props:filter_empty_strings([{<<"a">>, 'true'}]))
     ].
 
 filter_undefined_test_() ->
@@ -40,12 +56,20 @@ filter_undefined_test_() ->
     ,?_assertEqual([], props:filter_undefined([]))
     ,?_assertEqual([{'a', 10}, {'b', 8}, {'c', 6}], props:filter_undefined([{'a', 10}, {'b', 8}, {'c', 6}]))
     ,?_assertEqual([{'a', 0}, {'b', []}, {'c', <<>>}], props:filter_undefined([{'a', 0}, {'b', []}, {'c', <<>>}, {'z', 'undefined'}]))
-    ,?_assertEqual([{<<"pouet">>, null}], props:filter_undefined([{<<"pouet">>, null}]))
+    ,?_assertEqual([{<<"pouet">>, 'null'}], props:filter_undefined([{<<"pouet">>, 'null'}]))
     ].
 
-unique_test() ->
+unique_test_() ->
     L = [{'a', 'b'}, {'a', 'b'}, {'a', 'c'}, {'b','c'}, {'b','d'}],
-    ?assertEqual([{'a', 'b'}, {'b', 'c'}], props:unique(L)).
+    [?_assertEqual([{'a', 'b'}, {'b', 'c'}], props:unique(L))
+    ,?_assertEqual([], props:unique([]))
+    ,?_assertEqual([{module_name, <<"my_module">>}]
+                  ,props:unique([{module_name, <<"my_module">>}
+                                ,{module_name, <<"blaaa">>}
+                                ,{module_name, false}
+                                ])
+                  )
+    ].
 
 delete_test_() ->
     L = [{'a', 1}, {'b', 2}, 'c', {'d', 3}],

@@ -1,10 +1,15 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Listen for CDR events and record them to the database
 %%% @author James Aimonetti
 %%% @author Edouard Swiac
 %%% @author Ben Wann
 %%% @author Sponsored by GTNetwork LLC, Implemented by SIPLABS LLC
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cdr_channel_destroy).
@@ -28,8 +33,7 @@
 -spec handle_req(kz_call_event:doc(), kz_term:proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = kapi_call:event_v(JObj),
-    _ = kz_util:put_callid(JObj),
-    kz_datamgr:suppress_change_notice(),
+    _ = kz_log:put_callid(JObj),
     Routines = [fun maybe_ignore_app/1
                ,fun maybe_ignore_loopback/1
                ],
@@ -89,6 +93,8 @@ prepare_and_save(AccountId, Timestamp, JObj) ->
                ,fun set_recording_url/3
                ,fun set_call_priority/3
                ,fun maybe_set_e164_destination/3
+               ,fun maybe_set_e164_origination/3
+               ,fun maybe_set_did_classifier/3
                ,fun is_conference/3
                ,fun set_interaction/3
                ,fun update_pvt_parameters/3 %% due to interaction-timestamp MUST be called LAST
@@ -101,15 +107,15 @@ prepare_and_save(AccountId, Timestamp, JObj) ->
     'ok'.
 
 -spec update_pvt_parameters(kz_term:api_ne_binary(), kz_time:gregorian_seconds(), kz_call_event:doc()) ->
-                                   kz_call_event:doc().
+          kz_call_event:doc().
 update_pvt_parameters('undefined', _, JObj) ->
     Props = [{'type', 'cdr'}
             ,{'crossbar_doc_vsn', 2}
             ],
     kz_doc:update_pvt_parameters(JObj, ?KZ_ANONYMOUS_CDR_DB, Props);
 update_pvt_parameters(AccountId, Timestamp, JObj) ->
-    CorrectTimetamp = kz_json:get_integer_value(<<"Interaction-Time">>, JObj, Timestamp),
-    AccountMODb = kz_util:format_account_id(AccountId, CorrectTimetamp),
+    CorrectTimestamp = kz_json:get_integer_value(<<"Interaction-Time">>, JObj, Timestamp),
+    AccountMODb = kzs_util:format_account_id(AccountId, CorrectTimestamp),
     Props = [{'type', 'cdr'}
             ,{'crossbar_doc_vsn', 2}
             ,{'account_id', AccountId}
@@ -117,7 +123,7 @@ update_pvt_parameters(AccountId, Timestamp, JObj) ->
     kz_doc:update_pvt_parameters(JObj, AccountMODb, Props).
 
 -spec update_ccvs(kz_term:api_ne_binary(), kz_time:gregorian_seconds(), kz_call_event:doc()) ->
-                         kz_call_event:doc().
+          kz_call_event:doc().
 update_ccvs(_, _, JObj) ->
     CCVs = kz_call_event:custom_channel_vars(JObj, kz_json:new()),
     {UpdatedJobj, UpdatedCCVs} =
@@ -128,8 +134,8 @@ update_ccvs(_, _, JObj) ->
     kz_json:set_value(?CHANNEL_VARS, UpdatedCCVs, UpdatedJobj).
 
 -spec update_ccvs_foldl(kz_json:get_key(), kz_json:json_term(), {kz_call_event:doc(), kz_json:object()}) ->
-                               {kz_call_event:doc(), kz_json:object()}.
-update_ccvs_foldl(Key, Value,  {JObj, CCVs}=Acc) ->
+          {kz_call_event:doc(), kz_json:object()}.
+update_ccvs_foldl(Key, Value, {JObj, CCVs}=Acc) ->
     case kz_doc:is_private_key(Key) of
         'false' -> Acc;
         'true' ->
@@ -139,7 +145,7 @@ update_ccvs_foldl(Key, Value,  {JObj, CCVs}=Acc) ->
     end.
 
 -spec set_doc_id(kz_term:api_ne_binary(), kz_time:gregorian_seconds(), kz_call_event:doc()) ->
-                        kz_call_event:doc().
+          kz_call_event:doc().
 set_doc_id(_AcctId, Timestamp, JObj) ->
     CallId = kz_call_event:call_id(JObj),
     %% we should consider this because there is a lost channel in case of
@@ -166,6 +172,14 @@ set_recording_url(_AccountId, _Timestamp, JObj) ->
 maybe_set_e164_destination(_AccountId, _Timestamp, JObj) ->
     maybe_leak_ccv(JObj, <<"E164-Destination">>).
 
+-spec maybe_set_e164_origination(kz_term:api_ne_binary(), kz_time:gregorian_seconds(), kz_call_event:doc()) -> kz_call_event:doc().
+maybe_set_e164_origination(_AccountId, _Timestamp, JObj) ->
+    maybe_leak_ccv(JObj, <<"E164-Origination">>).
+
+-spec maybe_set_did_classifier(kz_term:api_ne_binary(), kz_time:gregorian_seconds(), kz_call_event:doc()) -> kz_call_event:doc().
+maybe_set_did_classifier(_AccountId, _Timestamp, JObj) ->
+    maybe_leak_ccv(JObj, <<"DID-Classifier">>).
+
 -spec is_conference(kz_term:api_ne_binary(), kz_time:gregorian_seconds(), kz_call_event:doc()) -> kz_call_event:doc().
 is_conference(_AccountId, _Timestamp, JObj) ->
     maybe_leak_ccv(JObj, <<"Is-Conference">>, {fun kz_json:is_true/3, 'false'}).
@@ -186,7 +200,7 @@ maybe_leak_ccv(JObj, Key, {GetFun, Default}) ->
     end.
 
 -spec set_interaction(kz_term:api_ne_binary(), kz_time:gregorian_seconds(), kz_call_event:doc()) ->
-                             kz_call_event:doc().
+          kz_call_event:doc().
 set_interaction(_AccountId, _Timestamp, JObj) ->
     %% See {@link prepare_and_save/3} for an edge case for Timestamp
     Interaction = kz_call_event:custom_channel_var(JObj, <<?CALL_INTERACTION_ID>>, ?CALL_INTERACTION_DEFAULT),
@@ -202,8 +216,7 @@ set_interaction(_AccountId, _Timestamp, JObj) ->
                       ,kz_json:delete_key(?CCV(<<?CALL_INTERACTION_ID>>), kz_doc:set_id(JObj, DocId))
                       ).
 
--spec save_cdr(kz_term:api_ne_binary(), kz_time:gregorian_seconds(), kz_call_event:doc()) ->
-                      kz_call_event:doc().
+-spec save_cdr(kz_term:api_ne_binary(), kz_time:gregorian_seconds(), kz_call_event:doc()) -> 'ok'.
 save_cdr(_AcctId, _Timestamp, JObj) ->
     CDRDb = kz_doc:account_db(JObj),
     case cdr_util:save_cdr(CDRDb, kz_json:normalize_jobj(JObj)) of

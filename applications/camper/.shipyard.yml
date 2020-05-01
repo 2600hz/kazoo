@@ -1,0 +1,22 @@
+---
+name: kazoo-application-camper
+base_branch: origin/master
+metapackage:
+  - name: meta-kazoo-applications
+    type: related
+    branch: master
+    package: kazoo-application-camper
+base_core: kazoo
+template: kazoo-application.spec.tmpl
+package:
+  centos7:
+    name: kazoo-application-camper
+    summary: Kazoo core application
+    description: |
+      Provides camping facilities for callers to wait for busy callees to become
+      available.
+    app_name: camper
+    license: MPL 2.0
+    group: Productivity/Telephony
+    url: https://github.com/kazoo-community/kazoo-camper
+    vendor: Kazoo-Community

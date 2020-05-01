@@ -10,8 +10,8 @@ IP addresses assigned to the account
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`ips.[]` |   | `string()` |   | `false` |  
-`ips` | List of IP addresses | `array(string())` |   | `false` |  
+`ips.[]` |   | `string()|string()` |   |   |  
+`ips` | List of IP addresses | `array()` |   | `false` |  
 
 
 
@@ -41,6 +41,16 @@ curl -v -X PUT \
 
 ```shell
 curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ips
+```
+
+## Remove
+
+> DELETE /v2/accounts/{ACCOUNT_ID}/ips
+
+```shell
+curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ips
 ```

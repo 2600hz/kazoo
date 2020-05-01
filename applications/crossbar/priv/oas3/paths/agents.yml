@@ -1,0 +1,125 @@
+paths:
+  /accounts/{ACCOUNT_ID}/agents:
+    get:
+      operationId: GetAccountsAccountIdAgents
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get all agents
+      tags:
+        - agents
+  /accounts/{ACCOUNT_ID}/agents/stats:
+    get:
+      operationId: GetAccountsAccountIdAgentsStats
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get stats of agents
+      tags:
+        - agents
+  /accounts/{ACCOUNT_ID}/agents/status:
+    get:
+      operationId: GetAccountsAccountIdAgentsStatus
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get status of agents
+      tags:
+        - agents
+  /accounts/{ACCOUNT_ID}/agents/status/{USER_ID}:
+    get:
+      operationId: GetAccountsAccountIdAgentsStatusUserId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/USER_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a agents by ID
+      tags:
+        - agents
+    post:
+      operationId: PostAccountsAccountIdAgentsStatusUserId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/USER_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of agents
+      tags:
+        - agents
+  /accounts/{ACCOUNT_ID}/agents/{USER_ID}:
+    get:
+      operationId: GetAccountsAccountIdAgentsUserId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/USER_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a agents by ID
+      tags:
+        - agents
+  /accounts/{ACCOUNT_ID}/agents/{USER_ID}/queue_status:
+    get:
+      operationId: GetAccountsAccountIdAgentsUserIdQueueStatus
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/USER_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get queue_status of agents
+      tags:
+        - agents
+    post:
+      operationId: PostAccountsAccountIdAgentsUserIdQueueStatus
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/USER_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of agents
+      tags:
+        - agents
+  /accounts/{ACCOUNT_ID}/agents/{USER_ID}/status:
+    get:
+      operationId: GetAccountsAccountIdAgentsUserIdStatus
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/USER_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get status of agents
+      tags:
+        - agents
+    post:
+      operationId: PostAccountsAccountIdAgentsUserIdStatus
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/USER_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of agents
+      tags:
+        - agents

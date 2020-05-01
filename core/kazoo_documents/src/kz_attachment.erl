@@ -1,7 +1,11 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Account document
 %%% @author Peter Defebvre
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_attachment).
@@ -27,7 +31,7 @@ decode_base64(Base64) ->
             {'undefined', corrected_base64_decode(strip_base64(Base64))}
     end.
 
--spec get_content_type(kz_term:ne_binary()) -> kz_term:api_binary().
+-spec get_content_type(kz_term:ne_binary()) -> kz_term:api_binary() | {'error', 'badarg'}.
 get_content_type(CT) ->
     %% stripping white-spaces for lazy developers
     MediaType = binary:replace(CT, <<$\s>>, <<>>, [global]),

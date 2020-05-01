@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(media_mgr_sup).
@@ -15,7 +20,10 @@
 -export([start_link/0]).
 -export([init/1]).
 
--define(CHILDREN, [?WORKER('media_listener')]).
+-define(CHILDREN, [?WORKER('media_listener')
+                  ,?SUPER('media_recording_sup')
+                  ,?WORKER('media_proxy')
+                  ]).
 
 %%==============================================================================
 %% API functions

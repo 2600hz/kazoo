@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2017-2019, 2600Hz
+%%% @copyright (C) 2017-2020, 2600Hz
 %%% @doc Google Storage for attachments.
 %%% @author Luis Azedo
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_att_google_storage).
@@ -105,7 +110,7 @@ do_fetch_attachment(Authorization, Bucket, {'name', Name}, HandlerProps, DbName,
     ContentId = <<(?DRV_BASE_FETCH_URL(Bucket))/binary, "/", Name/binary>>,
     do_fetch_attachment(Authorization, Bucket, ContentId, HandlerProps, DbName, DocId, AName);
 do_fetch_attachment({'ok', #{'token' := #{'authorization' := Authorization}}}
-                   ,Bucket, ContentId, HandlerProps, DbName, DocId, AName) ->
+                   ,_Bucket, ContentId, HandlerProps, DbName, DocId, AName) ->
     Headers = [{<<"Authorization">>, Authorization}],
     case kz_http:get(ContentId, Headers) of
         {'ok', 200, _ResponseHeaders, ResponseBody} ->
@@ -152,9 +157,9 @@ gstorage_token(#{'oauth_app_id' := AppId}) ->
     kz_auth_client:token_for_app(AppId, ?DRV_TOKEN_OPTIONS).
 
 -spec send_attachment(binary(), kz_term:ne_binary(), kz_term:ne_binary(), binary(), kz_term:proplist(), binary()) ->
-                             {'ok', kz_term:proplist()} |
-                             {'ok', kz_term:ne_binary(), kz_term:proplist()} |
-                             {'error', kz_term:ne_binary(), kz_http:ret()}.
+          {'ok', kz_term:proplist()} |
+          {'ok', kz_term:ne_binary(), kz_term:proplist()} |
+          {'error', kz_term:ne_binary(), kz_http:ret()}.
 send_attachment(Authorization, Bucket, AName, CT, Options, Contents) ->
     JObj = kz_json:from_list(
              props:filter_empty(

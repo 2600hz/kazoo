@@ -15,6 +15,7 @@ Key | Description | Type | Default | Required | Support Level
 `moderator` | Is the caller entering the conference as a moderator | `boolean()` |   | `false` |  
 `play_entry_tone` | Should the Entry Tone be played | `boolean() | string()` |   | `false` |  
 `play_exit_tone` | Should the Exit Tone be played | `boolean() | string()` |   | `false` |  
+`skip_module` | When set to true this callflow action is skipped, advancing to the wildcard branch (if any) | `boolean()` |   | `false` |  
 `welcome_prompt.media_id` | Media to play, either Kazoo media ID or URL | `string()` |   | `false` |  
 `welcome_prompt.play` | Should the Welcome Prompt be played | `boolean()` | `true` | `false` |  
 `welcome_prompt` | Describes how the caller is greeted on entering a conference | `object()` |   | `false` |  
@@ -33,6 +34,8 @@ Key | Description | Type | Default | Required | Support Level
 `conference_numbers` | Defines conference numbers that can be used by members or moderators | `array(string())` | `[]` | `false` |  
 `controls` | controls | `object()` |   | `false` |  
 `domain` | domain | `string()` |   | `false` |  
+`flags.[]` |   | `string()` |   | `false` | `supported`
+`flags` | Flags set by external applications | `array(string())` |   | `false` | `supported`
 `focus` | This is a read-only property indicating the media server hosting the conference | `string()` |   | `false` |  
 `language` | Prompt language to play in the conference | `string()` |   | `false` |  
 `max_members_media` | Media to play when the conference is full | `string()` |   | `false` |  

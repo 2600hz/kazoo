@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Stat util functions
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(acdc_stats_util).
@@ -65,4 +70,4 @@ get_query_limit(JObj, 'false') ->
 
 -spec db_name(kz_term:ne_binary()) -> kz_term:ne_binary().
 db_name(Account) ->
-    kz_util:format_account_mod_id(Account).
+    kzs_util:format_account_mod_id(Account).

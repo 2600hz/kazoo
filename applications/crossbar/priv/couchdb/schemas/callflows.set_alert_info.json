@@ -6,6 +6,10 @@
         "alert_info": {
             "description": "Set `Alert-Info` header inside b-leg channel. Used for distinctive ring.",
             "type": "string"
+        },
+        "skip_module": {
+            "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+            "type": "boolean"
         }
     },
     "required": [

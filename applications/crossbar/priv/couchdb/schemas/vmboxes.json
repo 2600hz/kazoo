@@ -3,6 +3,12 @@
     "_id": "vmboxes",
     "description": "Schema for a voicemail box",
     "properties": {
+        "announcement_only": {
+            "default": false,
+            "description": "Determine if the mailbox should only play announcements",
+            "support_level": "unsupported",
+            "type": "boolean"
+        },
         "check_if_owner": {
             "default": true,
             "description": "Determines if when the user calls their own voicemail they should be prompted to sign in",
@@ -15,10 +21,35 @@
             "support_level": "supported",
             "type": "boolean"
         },
+        "flags": {
+            "description": "Flags set by external applications",
+            "items": {
+                "type": "string"
+            },
+            "support_level": "supported",
+            "type": "array"
+        },
+        "include_message_on_notify": {
+            "default": true,
+            "description": "Whether or not to include the attachment when sending a new voicemail to email notification",
+            "support_level": "supported",
+            "type": "boolean"
+        },
+        "include_transcription_on_notify": {
+            "default": true,
+            "description": "Whether or not to include the transcription when sending a new voicemail to email notification",
+            "support_level": "supported",
+            "type": "boolean"
+        },
         "is_setup": {
             "default": false,
             "description": "Determines if the user has completed the initial configuration",
             "support_level": "supported",
+            "type": "boolean"
+        },
+        "is_voicemail_ff_rw_enabled": {
+            "default": false,
+            "description": "callflow allow fastforward and rewind during voicemail message playback",
             "type": "boolean"
         },
         "mailbox": {
@@ -86,6 +117,23 @@
             "support_level": "supported",
             "type": "array"
         },
+        "oldest_message_first": {
+            "default": false,
+            "description": "Play older voicemail messages before new ones",
+            "support_level": "supported",
+            "type": "boolean"
+        },
+        "operator_number": {
+            "description": "Alternate/override number to use when calling operator from voicemail",
+            "oneOf": [
+                {
+                    "type": "integer"
+                },
+                {
+                    "type": "string"
+                }
+            ]
+        },
         "owner_id": {
             "description": "The ID of the user object that 'owns' the voicemail box",
             "maxLength": 32,
@@ -95,7 +143,7 @@
         },
         "pin": {
             "description": "The pin number for the voicemail box",
-            "maxLength": 15,
+            "maxLength": 6,
             "minLength": 4,
             "support_level": "supported",
             "type": "string"
@@ -111,6 +159,12 @@
             "description": "Move the voicemail to save folder after the notification has been sent (This setting will override delete_after_notify)",
             "support_level": "supported",
             "type": "boolean"
+        },
+        "seek_duration_ms": {
+            "default": 10000,
+            "description": "callflow fastforward and rewind seek duration",
+            "minimum": 0,
+            "type": "integer"
         },
         "skip_envelope": {
             "default": false,
@@ -136,6 +190,12 @@
             "minLength": 5,
             "support_level": "supported",
             "type": "string"
+        },
+        "transcribe": {
+            "default": false,
+            "description": "Transcribe voicemail using ASR engine",
+            "support_level": "alpha",
+            "type": "boolean"
         }
     },
     "required": [

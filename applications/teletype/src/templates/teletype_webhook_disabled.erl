@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2015-2019, 2600Hz
+%%% @copyright (C) 2015-2020, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(teletype_webhook_disabled).
@@ -38,7 +43,7 @@
 
 -spec init() -> 'ok'.
 init() ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
                                           ,{'subject', ?TEMPLATE_SUBJECT}
                                           ,{'category', ?TEMPLATE_CATEGORY}
@@ -109,12 +114,12 @@ process_req(DataJObj) ->
         {'error', Reason} -> teletype_util:notification_failed(?TEMPLATE_ID, Reason)
     end.
 
--spec hook_data(kzd_webhook:doc()) -> kz_term:proplist().
+-spec hook_data(kzd_webhooks:doc()) -> kz_term:proplist().
 hook_data(HookJObj) ->
     props:filter_undefined(
       [{<<"id">>, kz_doc:id(HookJObj)}
-      ,{<<"name">>, kzd_webhook:name(HookJObj)}
-      ,{<<"uri">>, kzd_webhook:uri(HookJObj)}
-      ,{<<"event">>, kzd_webhook:event(HookJObj)}
-      ,{<<"disable_reason">>, kzd_webhook:disabled_message(HookJObj)}
+      ,{<<"name">>, kzd_webhooks:name(HookJObj)}
+      ,{<<"uri">>, kzd_webhooks:uri(HookJObj)}
+      ,{<<"event">>, kzd_webhooks:hook(HookJObj)}
+      ,{<<"disable_reason">>, kzd_webhooks:disabled_message(HookJObj)}
       ]).

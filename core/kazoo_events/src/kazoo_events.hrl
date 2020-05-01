@@ -8,7 +8,12 @@
 -define(APP_NAME, <<"kazoo_events">>).
 -define(APP_VERSION, <<"4.0.0">>).
 -define(APP, 'kazoo_events').
+-define(CONFIG_CAT, <<"kazoo_events">>).
 
+-type bind_fun() :: {module(), atom(), list()} |
+                    fun().
+
+-define(KZ_CALL_EVENTS_EXCHANGE, list_to_binary(["kz_events_", kz_term:to_binary(node())])).
 
 -define(KAZOO_EVENTS_HRL, 'true').
 -endif.

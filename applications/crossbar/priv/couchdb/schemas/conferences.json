@@ -33,6 +33,14 @@
             "description": "domain",
             "type": "string"
         },
+        "flags": {
+            "description": "Flags set by external applications",
+            "items": {
+                "type": "string"
+            },
+            "support_level": "supported",
+            "type": "array"
+        },
         "focus": {
             "description": "This is a read-only property indicating the media server hosting the conference",
             "type": "string"

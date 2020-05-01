@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kzd_webhooks).
@@ -8,6 +12,7 @@
 -export([new/0]).
 -export([custom_data/1, custom_data/2, set_custom_data/2]).
 -export([enabled/1, enabled/2, set_enabled/2]).
+-export([format/1, format/2, set_format/2]).
 -export([hook/1, hook/2, set_hook/2]).
 -export([http_verb/1, http_verb/2, set_http_verb/2]).
 -export([include_internal_legs/1, include_internal_legs/2, set_include_internal_legs/2]).
@@ -16,17 +21,32 @@
 -export([retries/1, retries/2, set_retries/2]).
 -export([uri/1, uri/2, set_uri/2]).
 
+-export([disable/1, disable/2
+        ,disabled_message/1, disabled_message/2
+        ,disable_updates/1
+        ,enable/1
+        ,is_auto_disabled/1
+        ,type/0, type/1
+        ,enable_subaccounts/1, disable_subaccounts/1
+        ,modifiers/1, set_modifiers/2
+        ]).
 
 -include("kz_documents.hrl").
 
 -type doc() :: kz_json:object().
--export_type([doc/0]).
+-type hook_format() :: 'form-data' | 'json'.
 
+-export_type([doc/0
+             ,hook_format/0
+             ]).
+
+-define(TYPE, <<"webhook">>).
 -define(SCHEMA, <<"webhooks">>).
+-define(DISABLED_MESSAGE, <<"pvt_disabled_message">>).
 
 -spec new() -> doc().
 new() ->
-    kz_json_schema:default_object(?SCHEMA).
+    kz_doc:set_type(kz_json_schema:default_object(?SCHEMA), type()).
 
 -spec custom_data(doc()) -> kz_term:api_object().
 custom_data(Doc) ->
@@ -51,6 +71,30 @@ enabled(Doc, Default) ->
 -spec set_enabled(doc(), boolean()) -> doc().
 set_enabled(Doc, Enabled) ->
     kz_json:set_value([<<"enabled">>], Enabled, Doc).
+
+-spec format(doc()) -> hook_format().
+format(Doc) ->
+    format(Doc, <<"form-data">>).
+
+-spec format(doc(), Default) -> hook_format() | Default.
+format(Doc, Default) ->
+    case kz_json:get_value([<<"format">>], Doc) of
+        'undefined' -> Default;
+        Format -> safe_formats(kz_term:to_lower_binary(Format), Default)
+    end.
+
+-spec safe_formats(kz_term:api_binary(), hook_format()) -> hook_format().
+safe_formats(<<"form-data">>, _Default) -> 'form-data';
+safe_formats(<<"json">>, _Default) -> 'json';
+safe_formats(_, Default) -> Default.
+
+-spec set_format(doc(), kz_term:ne_binary() | hook_format()) -> doc().
+set_format(Hook, <<Format/binary>>) ->
+    set_format(Hook, safe_formats(Format, 'form-data'));
+set_format(Hook, Format) when Format =:= 'form-data'
+                              orelse Format =:= 'json'
+                              ->
+    kz_json:set_value([<<"format">>], kz_term:to_binary(Format), Hook).
 
 -spec hook(doc()) -> kz_term:api_binary().
 hook(Doc) ->
@@ -112,13 +156,22 @@ name(Doc, Default) ->
 set_name(Doc, Name) ->
     kz_json:set_value([<<"name">>], Name, Doc).
 
--spec retries(doc()) -> integer().
+-type retry_range() :: 1..5.
+
+-spec retries(doc()) -> retry_range().
 retries(Doc) ->
     retries(Doc, 2).
 
--spec retries(doc(), Default) -> integer() | Default.
+-spec retries(doc(), Default) -> retry_range() | Default.
 retries(Doc, Default) ->
-    kz_json:get_integer_value([<<"retries">>], Doc, Default).
+    constrain_retries(kz_json:get_integer_value([<<"retries">>], Doc, Default)).
+
+-spec constrain_retries(integer() | Default) -> retry_range() | Default.
+constrain_retries(Default) when not is_integer(Default) -> Default;
+constrain_retries(N) when N < 1 -> 1;
+constrain_retries(N) when N > 5 -> 5;
+constrain_retries(N) when is_integer(N) -> N.
+
 
 -spec set_retries(doc(), integer()) -> doc().
 set_retries(Doc, Retries) ->
@@ -135,3 +188,63 @@ uri(Doc, Default) ->
 -spec set_uri(doc(), binary()) -> doc().
 set_uri(Doc, Uri) ->
     kz_json:set_value([<<"uri">>], Uri, Doc).
+
+-spec enable(doc()) -> doc().
+enable(Hook) ->
+    kz_json:set_value([<<"enabled">>]
+                     ,'true'
+                     ,kz_json:delete_key(?DISABLED_MESSAGE, Hook)
+                     ).
+
+-spec disable(doc()) -> doc().
+disable(Hook) ->
+    disable(Hook, 'undefined').
+
+-spec disable(doc(), kz_term:api_binary()) -> doc().
+disable(Hook, Reason) ->
+    kz_json:set_values(disable_updates(Reason), Hook).
+
+-spec disable_updates(kz_term:api_ne_binary()) -> kz_json:flat_proplist().
+disable_updates('undefined') ->
+    [{[<<"enabled">>], 'false'}];
+disable_updates(Reason) ->
+    [{[<<"enabled">>], 'false'}
+    ,{[?DISABLED_MESSAGE], Reason}
+    ].
+
+-spec disabled_message(doc()) -> kz_term:api_binary().
+disabled_message(Hook) ->
+    disabled_message(Hook, 'undefined').
+
+-spec disabled_message(doc(), Default) -> kz_term:ne_binary() | Default.
+disabled_message(Hook, Default) ->
+    kz_json:get_value(?DISABLED_MESSAGE, Hook, Default).
+
+-spec is_auto_disabled(doc()) -> boolean().
+is_auto_disabled(Hook) ->
+    enabled(Hook) =:= 'false'
+        andalso disabled_message(Hook) =/= 'undefined'.
+
+-spec type() -> kz_term:ne_binary().
+type() -> ?TYPE.
+
+-spec type(doc()) -> kz_term:api_binary().
+type(Hook) ->
+    kz_doc:type(Hook).
+
+
+-spec enable_subaccounts(doc()) -> doc().
+enable_subaccounts(Hook) ->
+    kz_json:set_value(<<"include_subaccounts">>, 'true', Hook).
+
+-spec disable_subaccounts(doc()) -> doc().
+disable_subaccounts(Hook) ->
+    kz_json:set_value(<<"include_subaccounts">>, 'false', Hook).
+
+-spec modifiers(doc()) -> kz_term:api_object().
+modifiers(Hook) ->
+    kz_json:get_ne_json_value([<<"modifiers">>], Hook).
+
+-spec set_modifiers(doc(), kz_json:object()) -> doc().
+set_modifiers(Hook, Modifiers) ->
+    kz_json:set_value([<<"modifiers">>], Modifiers, Hook).

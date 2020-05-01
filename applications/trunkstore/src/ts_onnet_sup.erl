@@ -1,13 +1,21 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Manage onnet calls
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(ts_onnet_sup).
 -behaviour(supervisor).
 
 %% API
--export([start_link/0, start_handler/2, stop_handler/1]).
+-export([start_link/0
+        ,start_handler/3
+        ,stop_handler/1
+        ]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -30,11 +38,11 @@
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec start_handler(kz_term:ne_binary(), kapi_route:req()) -> kz_types:sup_startchild_ret().
-start_handler(CallID, RouteReqJObj) ->
+-spec start_handler(kz_term:ne_binary(), kapi_route:req(), pid()) -> kz_types:sup_startchild_ret().
+start_handler(CallID, RouteReqJObj, AMQPWorker) ->
     supervisor:start_child(?SERVER, ?WORKER_NAME_ARGS_TYPE(<<"onnet-", CallID/binary>>
                                                           ,'ts_from_onnet'
-                                                          ,[RouteReqJObj]
+                                                          ,[RouteReqJObj, AMQPWorker]
                                                           ,'temporary'
                                                           )).
 

@@ -1,0 +1,43 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "system_config.crossbar.alerts",
+    "description": "Schema for crossbar.alerts system_config",
+    "properties": {
+        "check_financials": {
+            "default": true,
+            "description": "crossbar alerts check_financials",
+            "type": "boolean"
+        },
+        "check_low_balance": {
+            "default": true,
+            "description": "crossbar alerts check_low_balance",
+            "type": "boolean"
+        },
+        "check_payment_token": {
+            "default": true,
+            "description": "crossbar alerts check_payment_token",
+            "type": "boolean"
+        },
+        "check_port_action_required": {
+            "default": true,
+            "description": "crossbar alerts check_port_action_required",
+            "type": "boolean"
+        },
+        "check_port_requests": {
+            "default": true,
+            "description": "crossbar alerts check_port_requests",
+            "type": "boolean"
+        },
+        "check_port_suspended": {
+            "default": true,
+            "description": "crossbar alerts check_port_suspended",
+            "type": "boolean"
+        },
+        "check_system_alerts": {
+            "default": true,
+            "description": "crossbar alerts check_system_alerts",
+            "type": "boolean"
+        }
+    },
+    "type": "object"
+}

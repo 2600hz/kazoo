@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(acdc_handlers).
@@ -14,7 +19,7 @@
 -spec handle_route_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_route_req(JObj, Props) ->
     'true' = kapi_route:req_v(JObj),
-    _ = kz_util:put_callid(JObj),
+    _ = kz_log:put_callid(JObj),
 
     Call = kapps_call:set_controller_queue(props:get_value('queue', Props)
                                           ,kapps_call:from_route_req(JObj)
@@ -97,7 +102,7 @@ update_acdc_actor(Call, AgentId, <<"user">>) ->
     AcctId = kapps_call:account_id(Call),
 
     case acdc_agent_util:most_recent_status(AcctId, AgentId) of
-        {'ok', <<"logout">>} ->
+        {'ok', <<"logged_out">>} ->
             update_acdc_agent(Call, AcctId, AgentId, <<"login">>, fun kapi_acdc_agent:publish_login/1);
         {'ok', <<"pause">>} ->
             update_acdc_agent(Call, AcctId, AgentId, <<"resume">>, fun kapi_acdc_agent:publish_resume/1);
@@ -151,7 +156,7 @@ update_agent_device(Call, AgentId, <<"logout">>) ->
 update_agent_device(_, _, _) -> {'ok', 'ok'}.
 
 -spec move_agent_device(kapps_call:call(), kz_term:ne_binary(), kz_json:object()) ->
-                               {'ok', kz_json:object()}.
+          {'ok', kz_json:object()}.
 move_agent_device(Call, AgentId, Device) ->
     DeviceId = kz_doc:id(Device),
 

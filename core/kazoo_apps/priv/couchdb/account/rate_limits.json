@@ -10,10 +10,38 @@
     "language": "javascript",
     "views": {
         "crossbar_listing": {
-            "map": "function(doc) {if (doc.pvt_type != 'rate_limits' || doc.pvt_deleted) return;var emit_records = function(Name, Type, Limits) {for (SipMethod in Limits.per_minute) {emit([Name, SipMethod], {'type': Type,'per_minute': Limits.per_minute[SipMethod]})};for (SipMethod in Limits.per_second) {emit([Name, SipMethod], {'type': Type,'per_second': Limits.per_second[SipMethod]})};};if (doc.pvt_owner_type == 'account') {emit_records('device-default-rate-limits', 'device', doc.device);emit_records(doc.pvt_queryname, 'realm', doc.account);}if (doc.pvt_owner_type == 'device') emit_records(doc.pvt_queryname, 'device', doc);};"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'rate_limits' || doc.pvt_deleted) return;",
+                "  var emit_records = function(Name, Type, Limits) {",
+                "    for (SipMethod in Limits.per_minute) {",
+                "      emit([Name, SipMethod], {",
+                "        'type': Type,",
+                "        'per_minute': Limits.per_minute[SipMethod]",
+                "      })",
+                "    };",
+                "    for (SipMethod in Limits.per_second) {",
+                "      emit([Name, SipMethod], {",
+                "        'type': Type,",
+                "        'per_second': Limits.per_second[SipMethod]",
+                "      })",
+                "    };",
+                "  };",
+                "  if (doc.pvt_owner_type == 'account') {",
+                "    emit_records('device-default-rate-limits', 'device', doc.device);",
+                "    emit_records(doc.pvt_queryname, 'realm', doc.account);",
+                "  }",
+                "  if (doc.pvt_owner_type == 'device') emit_records(doc.pvt_queryname, 'device', doc);",
+                "};"
+            ]
         },
         "list_by_owner": {
-            "map": "function(doc) {if (doc.pvt_type != 'rate_limits' || doc.pvt_deleted) return; emit(doc.pvt_owner_id);}"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'rate_limits' || doc.pvt_deleted) return;",
+                "  emit(doc.pvt_owner_id);",
+                "}"
+            ]
         }
     }
 }

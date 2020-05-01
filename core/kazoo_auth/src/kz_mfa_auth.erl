@@ -1,7 +1,11 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2017-2019, 2600Hz
+%%% @copyright (C) 2017-2020, 2600Hz
 %%% @doc Module to authenticate a user with a multi factor provider.
 %%% @author Hesaam Farhang
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_mfa_auth).
@@ -72,7 +76,7 @@ get_configs(JObj) ->
 get_account_configs('undefined', _ConfigId) -> get_system_configs();
 get_account_configs(_AccountId, 'undefined') -> get_system_configs();
 get_account_configs(AccountId, ConfigId) ->
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kzs_util:format_account_db(AccountId),
     case kz_datamgr:open_cache_doc(AccountDb, ConfigId) of
         {'ok', JObj} ->
             lager:debug("fetched authentication factor config from ~s/~s"

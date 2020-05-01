@@ -1,13 +1,16 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_fixturedb_util).
 
 %% Driver callbacks
--export([format_error/1
-        ]).
+-export([format_error/1]).
 
 %% API
 -export([open_json/2, doc_path/2
@@ -32,9 +35,13 @@
         ,update_pvt_doc_hash/0, update_pvt_doc_hash/1
 
         ,start_me/0, start_me/1, stop_me/1
+
+        ,view_index_to_disk/3
         ]).
 
 -include("kz_fixturedb.hrl").
+
+-type binary_or_error() :: {'ok', binary()} | {'error', 'not_found' | any()}.
 
 %%%=============================================================================
 %%% Driver callbacks
@@ -45,10 +52,10 @@
 %% @end
 %%------------------------------------------------------------------------------
 -spec format_error(any()) -> any().
-format_error(timeout) -> timeout;
-format_error(conflict) -> conflict;
-format_error(not_found) -> not_found;
-format_error(db_not_found) -> db_not_found;
+format_error('timeout') -> 'timeout';
+format_error('conflict') -> 'conflict';
+format_error('not_found') -> 'not_found';
+format_error('db_not_found') -> 'db_not_found';
 format_error(Other) -> Other.
 
 %%%=============================================================================
@@ -63,7 +70,7 @@ format_error(Other) -> Other.
 open_json(Db, DocId) ->
     read_json(doc_path(Db, DocId)).
 
--spec open_attachment(db_map(), kz_term:ne_binary(), kz_term:ne_binary()) -> {ok, binary()} | {error, not_found}.
+-spec open_attachment(db_map(), kz_term:ne_binary(), kz_term:ne_binary()) -> binary_or_error().
 open_attachment(Db, DocId, AName) ->
     read_file(att_path(Db, DocId, AName)).
 
@@ -79,7 +86,7 @@ doc_path(#{server := #{url := Url}, name := DbName}, DocId) ->
 
 -spec att_path(db_map(), kz_term:ne_binary(), kz_term:ne_binary()) -> file:filename_all().
 att_path(#{server := #{url := Url}, name := DbName}, DocId, AName) ->
-    AttName = kz_binary:hexencode(crypto:hash(md5, <<DocId/binary, AName/binary>>)),
+    AttName = kz_binary:hexencode(crypto:hash('md5', <<DocId/binary, AName/binary>>)),
     filename:join(kz_term:to_list(Url) ++ "/" ++ kz_term:to_list(DbName)
                  ,["docs/", kz_term:to_list(AttName), ".att"]
                  ).
@@ -98,11 +105,11 @@ encode_query_filename(Design, Options) ->
 
 -spec docs_dir(db_map()) -> kz_term:text().
 docs_dir(#{server := #{url := Url}, name := DbName}) ->
-    kz_term:to_list(<<Url/binary, "/", DbName/binary, "/docs">>).
+    kz_term:to_list(filename:join([Url, DbName, "docs"])).
 
 -spec views_dir(db_map()) -> kz_term:text().
 views_dir(#{server := #{url := Url}, name := DbName}) ->
-    kz_term:to_list(<<Url/binary, "/", DbName/binary, "/views">>).
+    kz_term:to_list(filename:join([Url, DbName, "views"])).
 
 -spec update_doc(kz_json:object()) -> kz_json:object().
 update_doc(JObj) ->
@@ -114,8 +121,8 @@ update_doc(JObj) ->
 
 -spec update_revision(kz_json:object()) -> kz_json:object().
 update_revision(JObj) ->
-    case kz_json:get_value(<<"_rev">>, JObj) of
-        undefined ->
+    case kz_doc:revision(JObj) of
+        'undefined' ->
             kz_doc:set_revision(JObj, <<"1-", (kz_binary:rand_hex(16))/binary>>);
         Rev ->
             [RevPos|_] = binary:split(Rev, <<"-">>),
@@ -138,11 +145,16 @@ start_me() ->
 -spec start_me(boolean()) -> pid().
 start_me(SilentLager) ->
     ?LOG_DEBUG(":: Starting up Kazoo FixtureDB"),
-    {'ok', _} = application:ensure_all_started('kazoo_config'),
+
+    {'ok', _Started} = application:ensure_all_started('kazoo_config'),
+
+    ?LOG_DEBUG("started all apps ~p", [_Started]),
+
     Pid = case kazoo_data_link_sup:start_link() of
               {'ok', P} -> P;
               {'error', {'already_started', P}} -> P
           end,
+
     'ignore' = kazoo_data_bootstrap:start_link(),
 
     _ = case SilentLager of
@@ -162,109 +174,104 @@ stop_me(Pid) ->
 
 -spec get_doc_path(kz_term:ne_binary(), kz_term:ne_binary()) -> file:filename_all().
 get_doc_path(DbName, DocId) ->
-    Plan = kz_fixturedb_server:get_dummy_plan(),
-    get_doc_path(Plan, DbName, DocId).
+    get_doc_path(kz_fixturedb_maintenance:new_connection(), DbName, DocId).
 
--spec get_doc_path(map(), kz_term:ne_binary(), kz_term:ne_binary()) -> file:filename_all().
-get_doc_path(#{server := {_, Conn}}=_Plan, DbName, DocId) ->
+-spec get_doc_path(server_map(), kz_term:ne_binary(), kz_term:ne_binary()) -> file:filename_all().
+get_doc_path(Conn, DbName, DocId) ->
     doc_path(kz_fixturedb_server:get_db(Conn, DbName), DocId).
 
 -spec get_att_path(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> file:filename_all().
 get_att_path(DbName, DocId, AName) ->
-    Plan = kz_fixturedb_server:get_dummy_plan(),
-    get_att_path(Plan, DbName, DocId, AName).
+    get_att_path(kz_fixturedb_maintenance:new_connection(), DbName, DocId, AName).
 
--spec get_att_path(map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> file:filename_all().
-get_att_path(#{server := {_, Conn}}=_Plan, DbName, DocId, AName) ->
+-spec get_att_path(server_map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> file:filename_all().
+get_att_path(Conn, DbName, DocId, AName) ->
     att_path(kz_fixturedb_server:get_db(Conn, DbName), DocId, AName).
 
 -spec get_view_path(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> file:filename_all().
 get_view_path(DbName, Design, Options) ->
-    Plan = kz_fixturedb_server:get_dummy_plan(),
-    get_view_path(Plan, DbName, Design, Options).
+    get_view_path(kz_fixturedb_maintenance:new_connection(), DbName, Design, Options).
 
--spec get_view_path(map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> file:filename_all().
-get_view_path(#{server := {_, Conn}}=_Plan, DbName, Design, Options) ->
+-spec get_view_path(server_map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> file:filename_all().
+get_view_path(Conn, DbName, Design, Options) ->
     view_path(kz_fixturedb_server:get_db(Conn, DbName), Design, Options).
 
--spec add_att_to_index(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> {ok, binary()} | {error, any()}.
+-spec add_att_to_index(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok' | {'error', any()}.
 add_att_to_index(DbName, DocId, AName) ->
-    Plan = kz_fixturedb_server:get_dummy_plan(),
-    add_att_to_index(Plan, DbName, DocId, AName).
+    add_att_to_index(kz_fixturedb_maintenance:new_connection(), DbName, DocId, AName).
 
--spec add_att_to_index(map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> {ok, binary()} | {error, any()}.
-add_att_to_index(#{server := {_, Conn}}=_Plan, DbName, DocId, AName) ->
+-spec add_att_to_index(server_map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> binary_or_error().
+add_att_to_index(Conn, DbName, DocId, AName) ->
     #{server := #{url := Url}} = Db = kz_fixturedb_server:get_db(Conn, DbName),
     AttPath = att_path(Db, DocId, AName),
     Row = kz_term:to_binary(io_lib:format("~s, ~s, ~s", [DocId, AName, filename:basename(AttPath)])),
     Header = <<"doc_id, attachment_name, attachment_file_name">>,
 
     IndexPath = index_file_path("attachment", Url, DbName),
-    case write_index_file(IndexPath, Header, Row) of
-        {ok, _} -> maybe_symlink_att_file(AName, AttPath, Row);
-        {error, _}=Error -> Error
+    case update_index_file(IndexPath, Header, Row) of
+        {'ok', _} ->
+            maybe_symlink_att_file(AName, AttPath),
+            {'ok', Row};
+        {'error', _}=Error -> Error
     end.
 
--spec maybe_symlink_att_file(kz_term:ne_binary(), kz_term:ne_binary(), {ok, binary()} | {error, any()}) -> {ok, binary()} | {error, any()}.
-maybe_symlink_att_file(_, _, {error, _}=Error) -> Error;
-maybe_symlink_att_file(AName, AttPath, OK) ->
-    case filelib:is_regular(filename:join([code:priv_dir(kazoo_fixturedb), "media_files/", AName])) of
-        true ->
+-spec maybe_symlink_att_file(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
+maybe_symlink_att_file(AName, AttPath) ->
+    case filelib:is_regular(filename:join([code:priv_dir('kazoo_fixturedb'), "media_files/", AName])) of
+        'true' ->
             case file:make_symlink(<<"../../../media_files/", AName/binary>>, AttPath) of
-                ok ->
+                'ok' ->
                     ?DEV_LOG("created a sym-link for ~s to kazoo_fixturedb/priv/media_files/~s", [filename:basename(AttPath), AName]);
-                {error, enotsup} ->
+                {'error', 'enotsup'} ->
                     ?DEV_LOG("creating sym-link is not supported by your platform");
-                {error, _Reason} ->
+                {'error', _Reason} ->
                     ?DEV_LOG("Existing ~p~nAttPath ~p", [<<"../../../media_files/", AName/binary>>, AttPath]),
                     ?DEV_LOG("failed to create sym-link for attachment to kazoo_fixturedb/priv/media_files/~s: ~p", [AName, _Reason]),
                     ?DEV_LOG("you have to create the attachment manually.")
-            end,
-            OK;
-        false -> OK
+            end;
+        'false' ->
+            ?DEV_LOG("attchment ~s file doesn't exists", [AName])
     end.
 
-
--spec add_view_to_index(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> {ok, binary()} | {error, any()}.
+-spec add_view_to_index(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> binary_or_error().
 add_view_to_index(DbName, Design, Options) ->
-    Plan = kz_fixturedb_server:get_dummy_plan(),
-    add_view_to_index(Plan, DbName, Design, Options).
+    add_view_to_index(kz_fixturedb_maintenance:new_connection(), DbName, Design, Options).
 
--spec add_view_to_index(map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> {ok, binary()} | {error, any()}.
-add_view_to_index(#{server := {_, Conn}}=_Plan, DbName, Design, Options) ->
+-spec add_view_to_index(server_map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> binary_or_error().
+add_view_to_index(Conn, DbName, Design, Options) ->
     #{server := #{url := Url}} = Db = kz_fixturedb_server:get_db(Conn, DbName),
     ViewPath = view_path(Db, Design, Options),
     Row = kz_term:to_binary(io_lib:format("~s, ~1000p, ~s", [Design, Options, filename:basename(ViewPath)])),
     Header = <<"view_name, view_options, view_file_name">>,
 
     IndexPath = index_file_path("view", Url, DbName),
-    case write_index_file(IndexPath, Header, Row) of
-        {ok, _}=OK -> OK;
-        {error, _}=Error -> Error
+    case update_index_file(IndexPath, Header, Row) of
+        {'ok', _} -> {'ok', Row};
+        {'error', _}=Error -> Error
     end.
 
 -spec index_file_path(kz_term:text(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:text().
 index_file_path(Mode, Url, DbName) ->
     kz_term:to_list(Url) ++ "/" ++ kz_term:to_list(DbName) ++ "/" ++ Mode ++ "-index.csv".
 
--spec update_pvt_doc_hash() -> ok.
+-spec update_pvt_doc_hash() -> 'ok'.
 update_pvt_doc_hash() ->
-    Paths = filelib:wildcard(code:priv_dir(kazoo_fixturedb) ++ "/dbs/*/docs/*.json"),
+    Paths = filelib:wildcard(code:priv_dir('kazoo_fixturedb') ++ "/dbs/*/docs/*.json"),
     _ = [update_pvt_doc_hash(Path) || Path <- Paths],
-    ok.
+    'ok'.
 
--spec update_pvt_doc_hash(kz_term:text() | kz_term:ne_binary()) -> ok | {error, any()}.
+-spec update_pvt_doc_hash(kz_term:text() | kz_term:ne_binary()) -> 'ok' | {'error', any()}.
 update_pvt_doc_hash(Path) ->
     case read_json(Path) of
-        {ok, JObj} ->
+        {'ok', JObj} ->
             NewJObj = kz_doc:set_document_hash(JObj, kz_doc:calculate_document_hash(JObj)),
-            file:write_file(Path, kz_json:encode(NewJObj, [pretty]));
-        {error, _}=Error -> Error
+            file:write_file(Path, kz_json:encode(NewJObj, ['pretty']));
+        {'error', _}=Error -> Error
     end.
 
 -spec get_default_fixtures_db(kz_term:ne_binary()) -> db_map().
 get_default_fixtures_db(DbName) ->
-    {ok, Server} = kz_fixturedb_server:new_connection(#{}),
+    {'ok', Server} = kz_fixturedb_server:new_connection(#{}),
     kz_fixturedb_server:get_db(Server, DbName).
 
 %%%=============================================================================
@@ -275,28 +282,31 @@ get_default_fixtures_db(DbName) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec read_json(file:filename_all()) -> {ok, kz_json:object() | kz_json:objects()} | {error, not_found}.
+-spec read_json(file:filename_all()) -> {'ok', kz_json:object() | kz_json:objects()} | {'error', 'not_found'}.
 read_json(Path) ->
-    case read_file(Path) of
-        {ok, Bin} -> {ok, kz_json:decode(Bin)};
-        {error, _} -> {error, not_found}
-    end.
+    process_read_json(read_file(Path)).
 
--spec read_file(file:filename_all()) -> {ok, binary()} | {error, not_found}.
+process_read_json({'ok', Bin}) -> {'ok', kz_json:decode(Bin)};
+process_read_json({'error', _}) -> {'error', 'not_found'}.
+
+-spec read_file(file:filename_all()) -> binary_or_error().
 read_file(Path) ->
-    case file:read_file(Path) of
-        {ok, _}=OK -> OK;
-        {error, _} -> {error, not_found}
-    end.
+    process_read_file(file:read_file(Path)).
 
--spec write_index_file(file:filename_all(), kz_term:ne_binary(), kz_term:ne_binary() | {ok, binary()} | {error, any()}) ->
-                              {ok, binary()} | {error, any()}.
-write_index_file(Path, Header, NewLine) when is_binary(NewLine) ->
-    write_index_file(Path, NewLine, read_index_file(Path, Header, NewLine));
-write_index_file(_, _, {error, _}=Error) ->
+process_read_file({'ok', _}=OK) -> OK;
+process_read_file({'error', _}) -> {'error', 'not_found'}.
+
+-spec update_index_file(file:filename_all(), kz_term:ne_binary(), kz_term:ne_binary()) ->
+          binary_or_error().
+update_index_file(Path, Header, NewLine) ->
+    write_index_file(Path, NewLine, read_index_file(Path, Header, NewLine)).
+
+-spec write_index_file(file:filename_all(), kz_term:ne_binary(), binary_or_error()) ->
+          binary_or_error().
+write_index_file(_, _, {'error', _}=Error) ->
     Error;
-write_index_file(Path, NewLine, {ok, IndexLines}) ->
-    [Header|Lines] = binary:split(IndexLines, <<"\n">>, [global]),
+write_index_file(Path, NewLine, {'ok', IndexLines}) ->
+    [Header|Lines] = binary:split(IndexLines, <<"\n">>, ['global']),
     ToWrite = [<<Header/binary, "\n">>
                    | [<<L/binary, "\n">>
                           || L <- lists:usort(Lines),
@@ -304,22 +314,22 @@ write_index_file(Path, NewLine, {ok, IndexLines}) ->
                      ]
               ],
     case file:write_file(Path, ToWrite) of
-        ok -> {ok, NewLine};
-        {error, _Reason}=Error ->
+        'ok' -> {'ok', NewLine};
+        {'error', _Reason}=Error ->
             ?DEV_LOG("failed to write index file ~s: ~p", [Path, _Reason]),
             Error
     end.
 
--spec read_index_file(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> {ok, binary()} | {error, any()}.
+-spec read_index_file(file:filename_all(), kz_term:ne_binary(), kz_term:ne_binary()) -> binary_or_error().
 read_index_file(Path, Header, NewLine) ->
     HSize = size(Header),
     case file:read_file(Path) of
-        {ok, <<>>} ->                              {ok, <<Header/binary  , "\n", NewLine/binary>>};
-        {ok, <<Header:HSize/binary, "\n">>=H} ->   {ok, <<H/binary       ,       NewLine/binary>>};
-        {ok, Header} ->                            {ok, <<Header/binary  , "\n", NewLine/binary>>};
-        {ok, IndexBin} ->                          {ok, <<IndexBin/binary, "\n", NewLine/binary>>};
-        {error, enoent} ->                         {ok, <<Header/binary  , "\n", NewLine/binary>>};
-        {error, _Reason}=Error ->
+        {'ok', <<>>} ->                              {'ok', <<Header/binary  , "\n", NewLine/binary>>};
+        {'ok', <<Header:HSize/binary, "\n">>=H} ->   {'ok', <<H/binary       ,       NewLine/binary>>};
+        {'ok', Header} ->                            {'ok', <<Header/binary  , "\n", NewLine/binary>>};
+        {'ok', IndexBin} ->                          {'ok', <<IndexBin/binary, "\n", NewLine/binary>>};
+        {'error', 'enoent'} ->                       {'ok', <<Header/binary  , "\n", NewLine/binary>>};
+        {'error', _Reason}=Error ->
             ?DEV_LOG("failed to open index file ~s: ~p", [Path, _Reason]),
             Error
     end.
@@ -330,12 +340,11 @@ encode_query_options(Design, [], _, []) ->
     kz_term:to_list(<<DesignView/binary, ".json">>);
 encode_query_options(Design, [], _, Acc) ->
     DesignView = design_view(Design),
-    QueryHash = kz_binary:hexencode(crypto:hash(md5, erlang:term_to_binary(Acc))),
-
+    QueryHash = kz_binary:hexencode(crypto:hash('md5', erlang:term_to_binary(Acc))),
     kz_term:to_list(<<DesignView/binary, "-", QueryHash/binary, ".json">>);
 encode_query_options(Design, [Key|Keys], Options, Acc) ->
-    case props:get_value(Key, Options, not_defined) of
-        not_defined -> encode_query_options(Design, Keys, Options, Acc);
+    case props:get_value(Key, Options, 'undefined') of
+        'undefined' -> encode_query_options(Design, Keys, Options, Acc);
         Value -> encode_query_options(Design, Keys, Options, ["&", Key, "=", Value | Acc])
     end.
 
@@ -345,3 +354,12 @@ design_view(Design) ->
         [DesignName] -> DesignName;
         [DesignName, ViewName|_] -> <<DesignName/binary, "+", ViewName/binary>>
     end.
+
+-spec view_index_to_disk(kz_term:ne_binary(), kz_term:ne_binary(), kz_datamgr:view_options()) -> 'ok'.
+view_index_to_disk(Database, ViewName, Options) ->
+    Path = get_view_path(Database, ViewName, Options),
+    'ok' = filelib:ensure_dir(Path),
+
+    {'ok', Results} = kz_datamgr:get_results(Database, ViewName, Options),
+    lager:info(" persisting view index ~s/~s to ~s", [Database, ViewName, Path]),
+    'ok' = file:write_file(Path, kz_json:encode(Results, ['pretty'])).

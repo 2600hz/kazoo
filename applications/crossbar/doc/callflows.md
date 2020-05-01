@@ -15,12 +15,18 @@ Key | Description | Type | Default | Required | Support Level
 `featurecode.name` |   | `string(1..128)` |   | `false` |  
 `featurecode.number` |   | `string(1..30)` |   | `false` |  
 `featurecode` | When the callflow is used as a featurecode this object tracks the intended match of the pattern and name of the feature | `object()` |   | `false` |  
+`flags.[]` |   | `string()` |   | `false` | `supported`
+`flags` | Flags set by external applications | `array(string())` |   | `false` | `supported`
 `flow` | A callflow node defines a module to execute, data to provide to that module, and zero or more children to branch to | [#/definitions/callflows.action](#callflowsaction) |   | `false` |  
 `metaflow` | Actions applied to a call outside of the normal callflow, initiated by the caller(s) | [#/definitions/metaflows](#metaflows) |   | `false` |  
+`name` | Friendly name of the callflow | `string()` |   | `false` |  
 `numbers.[]` |   | `string(1..36)` |   | `false` |  
 `numbers` | A list of static numbers that the callflow should execute for | `array(string(1..36))` | `[]` | `false` |  
 `patterns.[]` |   | `string(1..)` |   | `false` |  
 `patterns` | A list of regular expressions that the callflow should execute for, with optional capture groups | `array(string(1..))` | `[]` | `false` |  
+`ringback.early` | Media ID for the early ringback media | `string()` |   | `false` |  
+`ringback.transfer` | Media ID for transfer ringback media | `string()` |   | `false` |  
+`ringback` | Ringback settings for early media and transfers | `object()` |   | `false` |  
 
 ### callflows.action
 

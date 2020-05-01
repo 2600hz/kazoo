@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
 %%% @author Karl Anderson
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cf_task).
@@ -94,7 +99,7 @@ init([Call, Callback, Args]) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_call(any(), any(), state()) ->
-                         {'reply', {'error', 'not_implemented'}, state()}.
+          {'reply', {'error', 'not_implemented'}, state()}.
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -103,12 +108,11 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) ->
-                         {'noreply', state()} |
-                         {'stop', 'normal', state()}.
+          {'noreply', state()} |
+          {'stop', 'normal', state()}.
 handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
     {'noreply', State#state{queue=Q}};
 handle_cast({'gen_listener', {'is_consuming', 'true'}}, State) ->
-    lager:debug("ready to recv events, launching the task"),
     {'noreply', launch_task(State)};
 handle_cast('stop', State) ->
     {'stop', 'normal', State};
@@ -165,8 +169,9 @@ launch_task(#state{queue=Q
                   ,call=Call
                   ,callback=Callback
                   ,args=Args
-                  }=State) ->
-    {Pid, Ref} = kz_util:spawn_monitor(fun task_launched/5, [Q, Call, Callback, Args, self()]),
+                  }=State
+           ) ->
+    {Pid, Ref} = kz_process:spawn_monitor(fun task_launched/5, [Q, Call, Callback, Args, self()]),
     lager:debug("watching task execute in ~p (~p)", [Pid, Ref]),
     State#state{pid=Pid, ref=Ref}.
 

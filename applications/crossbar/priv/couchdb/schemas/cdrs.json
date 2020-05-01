@@ -14,7 +14,7 @@
         },
         "billing_seconds": {
             "description": "The number of seconds the call leg can be billed for (typically from when the call leg is answered",
-            "type": "string"
+            "type": "integer"
         },
         "call_direction": {
             "description": "Direction of the call, relative to the media switch",
@@ -43,6 +43,10 @@
         "caller_id_number": {
             "description": "The indicated number of the caller",
             "type": "string"
+        },
+        "custom_application_vars": {
+            "description": "Any custom-set values",
+            "type": "object"
         },
         "custom_channel_vars": {
             "additionalProperties": {
@@ -82,7 +86,7 @@
         },
         "duration_seconds": {
             "description": "The duration of the call leg, in seconds",
-            "type": "string"
+            "type": "integer"
         },
         "fax_bad_rows": {
             "type": "string"
@@ -112,6 +116,10 @@
             "description": "Built by Kazoo, depending on direction, to represent the From user",
             "type": "string"
         },
+        "from_tag": {
+            "description": "SIP From TAG",
+            "type": "string"
+        },
         "from_uri": {
             "description": "The From SIP URI",
             "type": "string"
@@ -122,6 +130,10 @@
         },
         "hangup_code": {
             "description": "The SIP hangup code, if available",
+            "type": "string"
+        },
+        "interaction_id": {
+            "description": "correlating ID among related call legs",
             "type": "string"
         },
         "local_sdp": {
@@ -170,14 +182,18 @@
         },
         "ringing_seconds": {
             "description": "How many seconds the leg was ringing (pre-answer)",
-            "type": "string"
+            "type": "integer"
         },
         "timestamp": {
             "description": "UTC timestamp, in Gregorian seconds, of when the CDR was generated",
-            "type": "string"
+            "type": "integer"
         },
         "to": {
             "description": "Built by Kazoo, depending on direction, to represent the To user",
+            "type": "string"
+        },
+        "to_tag": {
+            "description": "SIP TO Tag",
             "type": "string"
         },
         "to_uri": {

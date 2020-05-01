@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2016-2019, 2600Hz
+%%% @copyright (C) 2016-2020, 2600Hz
 %%% @doc Trigger jobs for execution
 %%% @author Pierre Fenoll
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_tasks_trigger).
@@ -9,7 +14,6 @@
 
 -export([start_link/0]).
 -export([status/0]).
--export([browse_dbs_for_triggers/1]).
 
 %%% gen_server callbacks
 -export([init/1
@@ -20,19 +24,28 @@
         ,terminate/2
         ]).
 
+-ifdef(TEST).
+-export([seconds_until_next_day/1
+        ,seconds_until_next_hour/1
+        ,seconds_until_next_minute/1
+        ]).
+-endif.
+
 -include("tasks.hrl").
 
--define(SERVER, {'via', 'kz_globals', ?MODULE}).
+-define(SERVER, ?MODULE).
 
 -record(state, {minute_ref = minute_timer() :: reference()
                ,hour_ref = hour_timer() :: reference()
                ,day_ref = day_timer() :: reference()
                ,browse_dbs_ref = browse_dbs_timer() :: reference() %%TODO: gen_listen for DB news!
                }).
+
 -type state() :: #state{}.
 
 -define(CLEANUP_TIMER
-       ,kapps_config:get_pos_integer(?CONFIG_CAT, <<"browse_dbs_interval_s">>, ?SECONDS_IN_DAY)).
+       ,kapps_config:get_pos_integer(?CONFIG_CAT, <<"browse_dbs_interval_s">>, ?SECONDS_IN_DAY)
+       ).
 
 %%%=============================================================================
 %%% API
@@ -52,13 +65,7 @@ status() ->
 %%------------------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->
-    case gen_server:start_link(?SERVER, ?MODULE, [], []) of
-        {'error', {'already_started', Pid}} ->
-            'true' = link(Pid),
-            {'ok', Pid};
-        Other -> Other
-    end.
-
+    gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
 
 %%%=============================================================================
 %%% gen_server callbacks
@@ -71,7 +78,7 @@ start_link() ->
 -spec init([]) -> {'ok', state()}.
 init([]) ->
     _ = process_flag('trap_exit', 'true'),
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     lager:debug("started ~s", [?MODULE]),
     {'ok', #state{}}.
 
@@ -102,7 +109,7 @@ handle_call(_Request, _From, State) ->
 %%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'cleanup_finished', Ref}, #state{browse_dbs_ref = Ref}=State) ->
-    lager:debug("cleanup finished for ~p, starting timer", [Ref]),
+    lager:info("cleanup finished for ~p, starting timer", [Ref]),
     {'noreply', State#state{browse_dbs_ref = browse_dbs_timer()}, 'hibernate'};
 
 handle_cast(_Msg, State) ->
@@ -114,28 +121,28 @@ handle_cast(_Msg, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
-handle_info({'EXIT', _Pid, normal}, State) ->
+handle_info({'EXIT', _Pid, 'normal'}, State) ->
     lager:debug("job ~p terminated normally", [_Pid]),
-    {noreply, State};
+    {'noreply', State};
 handle_info({'EXIT', _Pid, _Reason}, State) ->
     lager:error("job ~p crashed: ~p", [_Pid, _Reason]),
-    {noreply, State};
+    {'noreply', State};
 
-handle_info({timeout, Ref, _Msg}, #state{minute_ref = Ref}=State) ->
+handle_info({'timeout', Ref, _Msg}, #state{minute_ref = Ref}=State) ->
     spawn_jobs(Ref, ?TRIGGER_MINUTELY),
     {'noreply', State#state{minute_ref = minute_timer()}};
 
-handle_info({timeout, Ref, _Msg}, #state{hour_ref = Ref}=State) ->
+handle_info({'timeout', Ref, _Msg}, #state{hour_ref = Ref}=State) ->
     spawn_jobs(Ref, ?TRIGGER_HOURLY),
     {'noreply', State#state{hour_ref = hour_timer()}};
 
-handle_info({timeout, Ref, _Msg}, #state{day_ref = Ref}=State) ->
+handle_info({'timeout', Ref, _Msg}, #state{day_ref = Ref}=State) ->
     spawn_jobs(Ref, ?TRIGGER_DAILY),
     {'noreply', State#state{day_ref = day_timer()}};
 
-handle_info({timeout, Ref, _Msg}, #state{browse_dbs_ref = Ref}=State) ->
-    _Pid = kz_util:spawn(fun browse_dbs_for_triggers/1, [Ref]),
-    lager:debug("cleaning up in ~p(~p)", [_Pid, Ref]),
+handle_info({'timeout', Ref, _Msg}, #state{browse_dbs_ref = Ref}=State) ->
+    _ = kz_process:spawn(fun tasks_bindings:map/2, [?TRIGGER_AUTO_COMPACTION, Ref]),
+    lager:info("triggering auto compaction job with ref ~p", [Ref]),
     {'noreply', State};
 
 handle_info(_Info, State) ->
@@ -171,38 +178,60 @@ code_change(_OldVsn, State, _Extra) ->
 %%------------------------------------------------------------------------------
 -spec minute_timer() -> reference().
 minute_timer() ->
-    erlang:start_timer(?MILLISECONDS_IN_MINUTE, self(), ok).
+    erlang:start_timer(seconds_until_next_minute() * ?MILLISECONDS_IN_SECOND, self(), 'ok').
+
+-spec seconds_until_next_minute() -> 0..?SECONDS_IN_MINUTE.
+seconds_until_next_minute() ->
+    seconds_until_next_minute(calendar:universal_time()).
+
+-spec seconds_until_next_minute(kz_time:datetime()) -> 0..?SECONDS_IN_MINUTE.
+seconds_until_next_minute({_, {_H, _M, S}}) ->
+    ?SECONDS_IN_MINUTE - S.
 
 -spec hour_timer() -> reference().
 hour_timer() ->
-    erlang:start_timer(?MILLISECONDS_IN_HOUR, self(), ok).
+    erlang:start_timer(seconds_until_next_hour() * ?MILLISECONDS_IN_SECOND, self(), 'ok').
+
+-spec seconds_until_next_hour() -> 0..?SECONDS_IN_HOUR.
+seconds_until_next_hour() ->
+    seconds_until_next_hour(calendar:universal_time()).
+
+-spec seconds_until_next_hour(kz_time:datetime()) -> 0..?SECONDS_IN_HOUR.
+seconds_until_next_hour({_, {_H, M, S}}) ->
+    ((?MINUTES_IN_HOUR - M) * ?SECONDS_IN_MINUTE) - S.
 
 -spec day_timer() -> reference().
 day_timer() ->
-    erlang:start_timer(?MILLISECONDS_IN_DAY, self(), ok).
+    erlang:start_timer(seconds_until_next_day() * ?MILLISECONDS_IN_SECOND, self(), 'ok').
+
+-spec seconds_until_next_day() -> 0..?SECONDS_IN_DAY.
+seconds_until_next_day() ->
+    seconds_until_next_day(calendar:universal_time()).
+
+-spec seconds_until_next_day(kz_time:datetime()) -> 0..?SECONDS_IN_DAY.
+seconds_until_next_day({_, {H, M, S}}) ->
+    ((?HOURS_IN_DAY - H) * ?SECONDS_IN_HOUR) - (M * ?SECONDS_IN_MINUTE) - S.
 
 -spec browse_dbs_timer() -> reference().
 browse_dbs_timer() ->
     Expiry = ?CLEANUP_TIMER,
     lager:debug("starting cleanup timer for ~b s", [Expiry]),
-    erlang:start_timer(Expiry * ?MILLISECONDS_IN_SECOND, self(), ok).
+    erlang:start_timer(Expiry * ?MILLISECONDS_IN_SECOND, self(), 'ok').
 
-
--spec spawn_jobs(reference(), kz_term:ne_binary()) -> ok.
+-spec spawn_jobs(reference(), kz_term:ne_binary()) -> 'ok'.
 spawn_jobs(Ref, Binding) ->
-    CallId = make_callid(Ref, Binding),
-    _Pid = erlang:spawn_link(fun () ->
-                                     _ = kz_util:put_callid(CallId),
-                                     tasks_bindings:map(Binding, [])
-                             end),
+    kz_log:put_callid(make_callid(Ref, Binding)),
+    _Pid = kz_process:spawn_link(fun tasks_bindings:map/2, [Binding, []]),
+    kz_log:put_callid(?MODULE),
     lager:debug("binding ~s triggered ~p via ~p", [Binding, _Pid, Ref]).
 
 -spec make_callid(reference(), kz_term:ne_binary()) -> kz_term:ne_binary().
 make_callid(Ref, Binding) ->
-    Key = lists:last(binary:split(Binding, <<$.>>, [global])),
+    Key = lists:last(binary:split(Binding, <<$.>>, ['global'])),
     Id = ref_to_id(Ref),
     <<"task_", Key/binary, "_", Id/binary>>.
 
+-spec ref_to_id(reference()) -> kz_term:ne_binary().
 ref_to_id(Ref) ->
     Bin = list_to_binary(io_lib:format("~p", [Ref])),
     Start = <<"#Ref<">>,
@@ -210,40 +239,5 @@ ref_to_id(Ref) ->
     Size = byte_size(Bin) - StartSize - 1,
     <<Start:StartSize/binary, Id:Size/binary, ">">> = Bin,
     Id.
-
-
--spec browse_dbs_for_triggers(atom() | reference()) -> 'ok'.
-browse_dbs_for_triggers(Ref) ->
-    kz_util:put_callid(<<"cleanup_pass_", (kz_binary:rand_hex(4))/binary>>),
-    {'ok', Dbs} = kz_datamgr:db_info(),
-    Shuffled = kz_term:shuffle_list(Dbs),
-    lager:debug("starting cleanup pass of databases"),
-    lists:foreach(fun cleanup_pass/1, Shuffled),
-    lager:debug("pass completed for ~p", [Ref]),
-    gen_server:cast(?SERVER, {'cleanup_finished', Ref}).
-
--spec cleanup_pass(kz_term:ne_binary()) -> boolean().
-cleanup_pass(Db) ->
-    _ = tasks_bindings:map(db_to_trigger(Db), Db),
-    erlang:garbage_collect(self()).
-
--spec db_to_trigger(kz_term:ne_binary()) -> kz_term:ne_binary().
-db_to_trigger(Db) ->
-    Classifiers = [{fun kapps_util:is_account_db/1, ?TRIGGER_ACCOUNT}
-                  ,{fun kapps_util:is_account_mod/1, ?TRIGGER_ACCOUNT_MOD}
-                  ,{fun is_system_db/1, ?TRIGGER_SYSTEM}
-                  ],
-    db_to_trigger(Db, Classifiers).
-
-db_to_trigger(_Db, []) -> ?TRIGGER_OTHER;
-db_to_trigger(Db, [{Classifier, Trigger} | Classifiers]) ->
-    case Classifier(Db) of
-        'true' -> Trigger;
-        'false' -> db_to_trigger(Db, Classifiers)
-    end.
-
--spec is_system_db(kz_term:ne_binary()) -> boolean().
-is_system_db(Db) ->
-    lists:member(Db, ?KZ_SYSTEM_DBS).
 
 %%% End of Module.

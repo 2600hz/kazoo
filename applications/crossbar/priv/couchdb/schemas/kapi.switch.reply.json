@@ -1,0 +1,42 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.switch.reply",
+    "description": "AMQP API for switch.reply",
+    "properties": {
+        "Command": {
+            "type": "string"
+        },
+        "Error": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "switch_event"
+            ],
+            "type": "string"
+        },
+        "Event-Data": {
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "reply"
+            ],
+            "type": "string"
+        },
+        "FreeSWITCH-Node": {
+            "type": "string"
+        },
+        "Response": {
+            "type": "string"
+        },
+        "Result": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Command",
+        "Result"
+    ],
+    "type": "object"
+}

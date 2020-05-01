@@ -80,7 +80,7 @@ Only capturing the 9-digit subscriber number, "+33" is prepended to form the E16
 
 ### Examples
 
-See [the examples](./examples/number_manager) for user-contributed samples (and create pull requests of your own!).
+See [some examples](examples/number_manager/european_union.md) for user-contributed samples (and create pull requests of your own!).
 
 ## Classifiers
 
@@ -148,7 +148,7 @@ It is possible to set these regexps on an account, user, or device basis. All th
 !!! warning
     It is possible that these `dial_plan` rules will interfere with extension dialing within an account. Please take common extension length into consideration when creating these `dial_plan` rules.
 
-See [the examples](./examples/dial_plan) for user-contributed samples (and create pull requests of your own!).
+See [the examples](./examples/dialplan/IE_Local-National-Mobile.md) for user-contributed samples (and create pull requests of your own!).
 
 #### Example `dial_plan` object
 

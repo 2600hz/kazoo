@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_fixturedb_server).
@@ -20,9 +24,6 @@
         ,maybe_use_app_connection/2
         ]).
 
-%% Lazy Tools
--export([get_dummy_plan/0]).
-
 -include("kz_fixturedb.hrl").
 
 %%%=============================================================================
@@ -35,7 +36,7 @@
 %%------------------------------------------------------------------------------
 -spec new_connection(map()) -> {'ok', server_map()}.
 new_connection(Map) ->
-    Url = code:priv_dir(kazoo_fixturedb),
+    Url = code:priv_dir('kazoo_fixturedb'),
     {'ok', #{url => Url ++ "/dbs"
             ,options => Map
             }
@@ -61,7 +62,7 @@ server_url(#{url := Url}) ->
 -spec db_url(server_map(), kz_term:ne_binary()) -> kz_term:ne_binary().
 db_url(Server, DbName) ->
     #{url := Url} = maybe_use_app_connection(Server, DbName),
-    <<(kz_term:to_binary(Url))/binary, "/", DbName/binary>>.
+    kz_term:to_binary(filename:join([Url, DbName])).
 
 
 -spec server_info(server_map()) -> doc_resp().
@@ -84,7 +85,7 @@ server_info(_Server) ->
 %%------------------------------------------------------------------------------
 -spec get_app_connection(server_map()) -> server_map().
 get_app_connection(#{options := Options}=Server) ->
-    case maps:get(test_app, Options, 'undefined') of
+    case maps:get('test_app', Options, 'undefined') of
         'undefined' -> Server;
         AppName ->
             set_app_connection(Server, AppName)
@@ -92,8 +93,8 @@ get_app_connection(#{options := Options}=Server) ->
 
 -spec maybe_use_app_connection(server_map(), kz_term:ne_binary()) -> server_map().
 maybe_use_app_connection(#{options := Options}=Server, DbName) ->
-    case {maps:get(test_app, Options, 'undefined')
-         ,maps:get(test_db, Options, 'undefined')
+    case {maps:get('test_app', Options, 'undefined')
+         ,maps:get('test_db', Options, 'undefined')
          }
     of
         {'undefined', _} -> Server;
@@ -107,13 +108,6 @@ maybe_use_app_connection(#{options := Options}=Server, DbName) ->
             Server
     end.
 
-%% @doc For using kazoo_fixturedb directly without starting up kazoo_data, returns a dummy plan
-%% @end
--spec get_dummy_plan() -> map().
-get_dummy_plan() ->
-    {ok, Server} = new_connection(#{}),
-    #{server => {kazoo_fixturedb, Server}}.
-
 %%%=============================================================================
 %%% Internal functions
 %%%=============================================================================
@@ -124,7 +118,7 @@ get_dummy_plan() ->
 %%------------------------------------------------------------------------------
 -spec set_app_connection(server_map(), atom()) -> server_map().
 set_app_connection(#{options := Options}=Server, AppName) ->
-    Path = case maps:get(test_db_subdir, Options, 'undefined') of
+    Path = case maps:get('test_db_subdir', Options, 'undefined') of
                'undefined' -> code:priv_dir(AppName);
                P -> code:lib_dir(AppName, kz_term:to_atom(P, 'true'))
            end,

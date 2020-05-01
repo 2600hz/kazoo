@@ -1,10 +1,15 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Periodically checks the hangup stats for anomalies
 %%% Config values to set for threshold checks:
 %%%   "one", "five", "fifteen", "day", "mean"
 %%%
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(hangups_monitoring).
@@ -56,7 +61,7 @@ start_link() ->
 %%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     {'ok', #state{stat_timer_ref=start_timer()}}.
 
 %%------------------------------------------------------------------------------
@@ -82,7 +87,7 @@ handle_cast(_Msg, State) ->
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info(?STAT_CHECK_MSG, State) ->
-    _P = kz_util:spawn(fun check_stats/0),
+    _P = kz_process:spawn(fun check_stats/0),
     {'noreply', State#state{stat_timer_ref=start_timer()}, 'hibernate'};
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
@@ -123,7 +128,7 @@ start_timer() ->
 
 -spec check_stats() -> 'ok'.
 check_stats() ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     lists:foreach(fun check_stats/1, hangups_config:monitored_hangup_causes()).
 
 -spec check_stats(kz_term:ne_binary()) -> 'ok'.

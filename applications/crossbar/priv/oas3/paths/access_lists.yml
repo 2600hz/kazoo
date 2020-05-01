@@ -1,0 +1,40 @@
+paths:
+  /accounts/{ACCOUNT_ID}/access_lists:
+    delete:
+      operationId: DeleteAccountsAccountIdAccessLists
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of access_lists
+      tags:
+        - access_lists
+    get:
+      operationId: GetAccountsAccountIdAccessLists
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get all access_lists
+      tags:
+        - access_lists
+    post:
+      operationId: PostAccountsAccountIdAccessLists
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/access_lists'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of access_lists
+      tags:
+        - access_lists

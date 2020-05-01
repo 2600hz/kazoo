@@ -1,0 +1,6 @@
+<event name="sofia::transferee">
+	<fields verbose="false">
+		<field name="call_event" type="reference" />
+		<field name="Event-Name" type="static" value="CHANNEL_TRANSFEREE" />
+	</fields>
+</event>

@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
 %%% @author Karl Anderson <karl@2600hz.org>
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(notify_util).
@@ -36,9 +41,9 @@ send_email(_, 'undefined', _) -> lager:debug("no email to send to");
 send_email(_, <<>>, _) -> lager:debug("empty email to send to");
 send_email(From, To, Email) ->
     Encoded = mimemail:encode(Email),
-    Relay = kz_term:to_list(kapps_config:get_ne_binary(<<"smtp_client">>, <<"relay">>, <<"localhost">>)),
-    Username = kz_term:to_list(kapps_config:get_binary(<<"smtp_client">>, <<"username">>, <<>>)),
-    Password = kz_term:to_list(kapps_config:get_binary(<<"smtp_client">>, <<"password">>, <<>>)),
+    Relay = kapps_config:get_string(<<"smtp_client">>, <<"relay">>, "localhost"),
+    Username = kapps_config:get_string(<<"smtp_client">>, <<"username">>, <<>>),
+    Password = kapps_config:get_string(<<"smtp_client">>, <<"password">>, <<>>),
     Auth = kz_term:to_list(kapps_config:get_ne_binary(<<"smtp_client">>, <<"auth">>, <<"never">>)),
     Port = kapps_config:get_integer(<<"smtp_client">>, <<"port">>, 25),
 
@@ -55,7 +60,7 @@ send_email(From, To, Email) ->
                              ,{'auth', Auth}
                              ]
                             ,fun(X) ->
-                                     kz_util:put_callid(ReqId),
+                                     kz_log:put_callid(ReqId),
                                      lager:debug("email relay responded: ~p, send to ~p", [X, Self]),
                                      Self ! {'relay_response', X}
                              end),
@@ -150,7 +155,7 @@ compile_default_subject_template(TemplateModule, Category) ->
 
 -spec compile_default_template(atom(), kz_term:ne_binary(), atom()) -> {'ok', atom()}.
 compile_default_template(TemplateModule, Category, Key) ->
-    Template = case kapps_config:get_ne_binary(Category, Key) of
+    Template = case kapps_config:get_ne_binary(Category, kz_term:to_binary(Key)) of
                    'undefined' -> get_default_template(Category, Key);
                    Else -> Else
                end,
@@ -178,8 +183,8 @@ get_default_template(Category, Key) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec render_template(kz_term:api_binary(), atom(), kz_term:proplist()) ->
-                             {'ok', string()} |
-                             {'error', any()}.
+          {'ok', string()} |
+          {'error', any()}.
 render_template(Template, DefaultTemplate, Props) ->
     case do_render_template(Template, DefaultTemplate, Props) of
         {'ok', R} -> {'ok', binary_to_list(iolist_to_binary(R))};
@@ -187,8 +192,8 @@ render_template(Template, DefaultTemplate, Props) ->
     end.
 
 -spec do_render_template(kz_term:api_binary(), atom(), kz_term:proplist()) ->
-                                {'ok', string()} |
-                                {'error', any()}.
+          {'ok', string()} |
+          {'error', any()}.
 do_render_template('undefined', DefaultTemplate, Props) ->
     lager:debug("rendering default ~s template", [DefaultTemplate]),
     kz_template:render(DefaultTemplate, Props);
@@ -319,13 +324,13 @@ find_rep_email(JObj) ->
 find_admin('undefined') -> kz_json:new();
 find_admin([]) -> kz_json:new();
 find_admin(Account) when is_binary(Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kzs_util:format_account_id(Account),
     case kzd_accounts:fetch(Account) of
         {'error', _} -> find_admin([AccountId]);
         {'ok', JObj} -> find_admin([AccountId | lists:reverse(kzd_accounts:tree(JObj))])
     end;
 find_admin([AcctId|Tree]) ->
-    AccountDb = kz_util:format_account_id(AcctId, 'encoded'),
+    AccountDb = kzs_util:format_account_db(AcctId),
     ViewOptions = [{'key', <<"user">>}
                   ,'include_docs'
                   ],
@@ -355,9 +360,9 @@ find_admin(Account) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_account_doc(kz_json:object()) ->
-                             {'ok', kz_json:object()} |
-                             {'error', _} |
-                             'undefined'.
+          {'ok', kz_json:object()} |
+          {'error', _} |
+          'undefined'.
 get_account_doc(JObj) ->
     case kz_json:get_first_defined([<<"Account-DB">>
                                    ,<<"Account-ID">>
@@ -413,7 +418,7 @@ category_to_file(_) ->
 qr_code_image('undefined') -> 'undefined';
 qr_code_image(Text) ->
     lager:debug("create qr code for ~s", [Text]),
-    CHL = kz_util:uri_encode(Text),
+    CHL = kz_http_util:urlencode(Text),
     Url = <<"https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl=", CHL/binary, "&choe=UTF-8">>,
 
     case kz_http:get(kz_term:to_list(Url)) of

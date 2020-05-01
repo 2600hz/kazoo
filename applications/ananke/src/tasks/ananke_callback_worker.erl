@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
 %%% @author SIPLABS, LLC (Ilya Ashchepkov)
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(ananke_callback_worker).
@@ -161,7 +166,7 @@ stop_originate_timer(Timer) ->
     erlang:cancel_timer(Timer).
 
 -spec handle_originate_response(kz_json:object(), state()) -> {'stop', 'normal', state()} |
-                                                              state().
+          state().
 handle_originate_response(Resp, State) ->
     case kz_json:get_first_defined([<<"Application-Response">>, <<"Error-Message">>], Resp) of
         <<"SUCCESS">> ->

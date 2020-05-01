@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(webhooks_init).
@@ -15,8 +19,8 @@
 
 -spec start_link() -> 'ignore'.
 start_link() ->
-    kz_util:put_callid(?MODULE),
-    _ = kz_util:spawn(fun do_init/0),
+    kz_log:put_callid(?MODULE),
+    _ = kz_process:spawn(fun do_init/0),
     'ignore'.
 
 -spec do_init() -> 'ok'.
@@ -53,7 +57,7 @@ init_master_account_db() ->
 
 -spec init_master_account_db(kz_term:ne_binary()) -> 'ok'.
 init_master_account_db(MasterAccountDb) ->
-    kapps_maintenance:refresh(MasterAccountDb),
+    _ = kapps_maintenance:refresh(MasterAccountDb),
     lager:debug("loaded view into master db ~s", [MasterAccountDb]).
 
 -spec remove_old_notifications_webhooks(kz_term:ne_binary()) -> 'ok'.
@@ -88,11 +92,32 @@ init_module(Module) ->
 
 -spec existing_modules() -> kz_term:atoms().
 existing_modules() ->
-    existing_modules(code:lib_dir(kz_term:to_atom(?APP_NAME))).
+    KazooApplications =
+        sets:to_list(
+          sets:from_list(
+            kapps_controller:start_which_kapps() ++ [?APP_NAME]
+           )
+         ),
+    lists:foldl(fun existing_modules_fold/2, [], KazooApplications).
 
--spec existing_modules(string()) -> kz_term:atoms().
-existing_modules(WebhooksRoot) ->
-    ModulesDirectory = filename:join(WebhooksRoot, "ebin"),
+-spec existing_modules_fold(atom(), kz_term:atoms()) -> kz_term:atoms().
+existing_modules_fold(ApplicationName, Modules) ->
+    ApplicationModules = find_application_webhook_modules(ApplicationName),
+    _ = [lager:debug("found ~s webhook module ~s", [ApplicationName, ApplicationModule])
+         || ApplicationModule <- ApplicationModules
+        ],
+    ApplicationModules ++ Modules.
+
+-spec find_application_webhook_modules(kz_term:text()) -> kz_term:atoms().
+find_application_webhook_modules(ApplicationName) ->
+    case code:lib_dir(kz_term:to_atom(ApplicationName, 'true')) of
+        {'error', 'bad_name'} -> [];
+        BasePath -> find_path_webhook_modules(BasePath)
+    end.
+
+-spec find_path_webhook_modules(string()) -> kz_term:atoms().
+find_path_webhook_modules(BasePath) ->
+    EbinDirectory = filename:join(BasePath, "ebin"),
     Extension = ".beam",
     Utils = ["webhooks_app"
             ,"webhooks_channel_util"
@@ -105,7 +130,7 @@ existing_modules(WebhooksRoot) ->
             ,"webhooks_sup"
             ,"webhooks_util"
             ],
-    Pattern = filename:join(ModulesDirectory, "*"++Extension),
+    Pattern = filename:join(EbinDirectory, "webhooks_*" ++ Extension),
     [kz_term:to_atom(Module, 'true')
      || Path <- filelib:wildcard(Pattern),
         not lists:member((Module=filename:basename(Path, Extension)), Utils)

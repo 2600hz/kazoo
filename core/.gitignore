@@ -5,6 +5,6 @@
 /kazoo/src/kz_mime.erl
 /kazoo_auth/c_src/*
 /kazoo_auth/priv/kz_auth_rsa_drv.so
-/kazoo_number_manager/dialcodes.json
-/kazoo_number_manager/src/knm_iso3166a2_itu.erl
+/kazoo_numbers/dialcodes.json
+/kazoo_numbers/src/knm_iso3166a2_itu.erl
 /sup/sup

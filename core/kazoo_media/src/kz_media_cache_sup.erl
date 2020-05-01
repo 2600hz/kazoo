@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_media_cache_sup).
@@ -37,8 +42,8 @@ start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 -spec find_file_server(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                              {'ok', pid()} |
-                              {'error', 'no_file_server'}.
+          {'ok', pid()} |
+          {'error', 'no_file_server'}.
 find_file_server(Id, Doc, Attachment) ->
     Name = [Id, Doc, Attachment],
     case [P||{N,P,_,_} <- supervisor:which_children(?SERVER), N =:= Name, is_pid(P)] of
@@ -47,8 +52,8 @@ find_file_server(Id, Doc, Attachment) ->
     end.
 
 -spec start_file_server(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                               {'ok', pid()} |
-                               {'error', any()}.
+          {'ok', pid()} |
+          {'error', any()}.
 start_file_server(Id, Doc, Attachment) ->
     Name = [Id, Doc, Attachment],
     start_file_server(Id, Doc, Attachment, Name).
@@ -64,7 +69,7 @@ start_file_server(Id, Doc, Attachment, Name) ->
     end.
 
 -spec find_tts_server(any()) -> {'ok', pid()} |
-                                {'error', 'no_file_server'}.
+          {'error', 'no_file_server'}.
 find_tts_server(Id) ->
     case [P||{N,P,_,_} <- supervisor:which_children(?SERVER), N =:= Id, is_pid(P)] of
         [] -> {'error', 'no_file_server'};
@@ -72,8 +77,8 @@ find_tts_server(Id) ->
     end.
 
 -spec find_tts_server(kz_term:ne_binary(), kz_json:object()) ->
-                             {'ok', pid()} |
-                             {'error', any()}.
+          {'ok', pid()} |
+          {'error', any()}.
 find_tts_server(Id, JObj) ->
     ChildSpec = ?WORKER_NAME_ARGS_TYPE(Id, 'kz_media_tts_cache', [Id, JObj], 'temporary'),
     case supervisor:start_child(?SERVER, ChildSpec) of

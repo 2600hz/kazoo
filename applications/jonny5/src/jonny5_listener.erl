@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(jonny5_listener).
@@ -28,8 +32,18 @@
                     ,{'j5_balance_check_req', [{<<"authz">>, <<"balance_check_req">>}]}
                     ,{'j5_channel_destroy', [{<<"call_event">>, <<"CHANNEL_DESTROY">>}]}
                     ]).
--define(BINDINGS, [{'call', [{'restrict_to', [<<"CHANNEL_DESTROY">>]}]}
-                  ,{'authz', []}
+-define(BINDINGS, [{'call', [{'restrict_to', [<<"CHANNEL_DESTROY">>
+                                             ,<<"CHANNEL_DISCONNECTED">>
+                                             ]
+                             }
+                            ]
+                   }
+                  ,{'authz', [{'restrict_to', ['authorize'
+                                              ,'balance_check'
+                                              ]
+                              }
+                             ]
+                   }
                   ,{'self', []}
                   ]).
 -define(QUEUE_NAME, <<"jonny5_listener">>).

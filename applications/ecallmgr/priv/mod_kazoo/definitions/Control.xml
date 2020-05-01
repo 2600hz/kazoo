@@ -1,0 +1,4 @@
+<definition name="Control">
+	<field name="Call-Control" type="reference" />
+	<field name="Metaflow-Control" type="reference" />
+</definition>

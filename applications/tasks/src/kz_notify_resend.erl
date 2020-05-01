@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_notify_resend).
@@ -27,8 +31,7 @@
                }).
 -type state() :: #state{}.
 
--define(NAME, ?MODULE).
--define(SERVER, {'via', 'kz_globals', ?NAME}).
+-define(SERVER, ?MODULE).
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".notify_resend">>).
 -define(DEFAULT_TIMEOUT, 10 * ?MILLISECONDS_IN_SECOND).
@@ -96,13 +99,7 @@
 %%------------------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->
-    case gen_server:start_link(?SERVER, ?MODULE, [], []) of
-        {'error', {'already_started', Pid}}
-          when is_pid(Pid)->
-            erlang:link(Pid),
-            {'ok', Pid};
-        Other -> Other
-    end.
+    gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
 
 %%%=============================================================================
 %%% gen_server callbacks
@@ -114,19 +111,25 @@ start_link() ->
 %%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    kz_util:put_callid(?NAME),
-    lager:debug("~s has been started", [?NAME]),
+    kz_log:put_callid(?MODULE),
+    lager:debug("~s has been started", [?MODULE]),
     {'ok', #state{timer_ref = set_timer()}}.
 
--spec stop() -> ok.
+-spec stop() -> 'ok'.
 stop() ->
-    gen_server:cast(?SERVER, stop).
+    gen_server:cast(?SERVER, 'stop').
 
 -spec running() -> kz_json:objects().
 running() ->
-    case kz_globals:where_is(?NAME) of
-        'undefined' -> [];
-        _ -> gen_server:call(?SERVER, 'running')
+    running(whereis(?MODULE)).
+
+-spec running(kz_term:api_pid()) -> kz_json:objects().
+running('undefined') ->
+    [];
+running(Pid) ->
+    case is_process_alive(Pid) of
+        'true' -> gen_server:call(?SERVER, 'running');
+        'false' -> []
     end.
 
 -spec trigger_timeout() -> any().
@@ -141,7 +144,7 @@ set_timer() ->
 send_single(Id) ->
     case kz_datamgr:open_doc(?KZ_PENDING_NOTIFY_DB, Id) of
         {'ok', JObj} ->
-            kz_util:put_callid(kz_json:get_value(<<"payload">>, JObj)),
+            kz_log:put_callid(kz_json:get_value(<<"payload">>, JObj)),
             process_single(JObj);
         {'error', _}=Error -> Error
     end.
@@ -196,7 +199,7 @@ handle_info({'timeout', Ref, _Msg}, #state{timer_ref = Ref}=State) ->
             {'noreply', State#state{timer_ref = set_timer()}};
         {'ok', Pendings} ->
             lager:info("processing ~b pending notifications", [length(Pendings)]),
-            _ = kz_util:spawn(fun () -> process_then_next_cycle([kz_json:get_value(<<"doc">>, J) || J <- Pendings]) end),
+            _ = kz_process:spawn(fun () -> process_then_next_cycle([kz_json:get_value(<<"doc">>, J) || J <- Pendings]) end),
             {'noreply', State#state{running=Pendings}};
         {'error', 'not_found'} ->
             lager:error("unable to find pending view, this is not good..."),
@@ -219,7 +222,7 @@ handle_info(_Info, State) ->
 %%------------------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
-    lager:debug("terminating: ~p", [_Reason]).
+    lager:debug("~s terminating: ~p", [?MODULE, _Reason]).
 
 %%------------------------------------------------------------------------------
 %% @doc Convert process state when code is changed.
@@ -253,11 +256,11 @@ process_single(JObj) ->
 -spec process_then_next_cycle(kz_json:objects()) -> 'ok'.
 process_then_next_cycle(Pendings) ->
     save_result(
-      lists:foldl(fun(JObj, #{ko := KO}=Map) ->
+      lists:foldl(fun(JObj, #{'failed' := Failed}=Map) ->
                           try send_notification(JObj, Map)
                           catch
                               _T:_E ->
-                                  Map#{ko := [JObj|KO]}
+                                  Map#{'failed' := [JObj|Failed]}
                           end
                   end
                  ,new_results_map()
@@ -267,7 +270,7 @@ process_then_next_cycle(Pendings) ->
     next().
 
 -spec send_notification(kz_json:object(), map()) -> map().
-send_notification(JObj, #{ok := OK}=Map) ->
+send_notification(JObj, #{'succeeded' := Succeeded}=Map) ->
     API = kz_json:get_value(<<"payload">>, JObj, kz_json:new()),
     NotifyType = kz_json:get_ne_binary_value(<<"notification_type">>, JObj),
     PublishFun = map_to_publish_fun(NotifyType),
@@ -275,7 +278,7 @@ send_notification(JObj, #{ok := OK}=Map) ->
     case handle_result(call_collect(API, PublishFun)) of
         'true' ->
             maybe_send_mwi(NotifyType, JObj),
-            Map#{ok := [JObj|OK]};
+            Map#{'succeeded' := [JObj|Succeeded]};
         'false' -> maybe_reschedule(NotifyType, JObj, Map)
     end.
 
@@ -295,8 +298,8 @@ save_result(Map) ->
     save_reschedules_publish(Map).
 
 -spec delete_successful_publish(map()) -> 'ok'.
-delete_successful_publish(#{ok := OK}) ->
-    case kz_datamgr:del_docs(?KZ_PENDING_NOTIFY_DB, OK) of
+delete_successful_publish(#{'succeeded' := Succeeded}) ->
+    case kz_datamgr:del_docs(?KZ_PENDING_NOTIFY_DB, Succeeded) of
         {'ok', Js} ->
             {_Saved, _Failed} = lists:partition(fun db_bulk_result/1, Js),
             lager:debug("successfully deleted ~b jobs", [length(_Saved)]);
@@ -305,8 +308,8 @@ delete_successful_publish(#{ok := OK}) ->
     end.
 
 -spec save_reschedules_publish(map()) -> 'ok'.
-save_reschedules_publish(#{ko := KO}) ->
-    case kz_datamgr:save_docs(?KZ_PENDING_NOTIFY_DB, KO) of
+save_reschedules_publish(#{'failed' := Failed}) ->
+    case kz_datamgr:save_docs(?KZ_PENDING_NOTIFY_DB, Failed) of
         {'ok', Js} ->
             {_Saved, _Failed} = lists:partition(fun db_bulk_result/1, Js),
             lager:debug("~b notifications was rescheduled", [length(_Saved)]);
@@ -335,7 +338,7 @@ handle_result({'returned', _, Resp}) -> kapps_notify_publisher:is_completed(Resp
 handle_result({'timeout', Resp}) -> kapps_notify_publisher:is_completed(Resp).
 
 -spec maybe_reschedule(kz_term:ne_binary(), kz_json:object(), map()) -> map().
-maybe_reschedule(NotifyType, JObj, #{ko := KO}=Map) ->
+maybe_reschedule(NotifyType, JObj, #{'failed' := Failed}=Map) ->
     J = apply_reschedule_logic(NotifyType, JObj),
     Attempts = kz_json:get_integer_value(<<"attempts">>, J, 0),
     Retries = kz_json:get_integer_value(<<"retries">>, J, ?DEFAULT_RETRY_COUNT),
@@ -343,10 +346,10 @@ maybe_reschedule(NotifyType, JObj, #{ko := KO}=Map) ->
     case Retries - Attempts >= 1 of
         'true' ->
             lager:debug("notification is rescheduled"),
-            Map#{ko := [kz_json:set_value(<<"attempts">>, Attempts + 1, J)|KO]};
+            Map#{'failed' := [kz_json:set_value(<<"attempts">>, Attempts + 1, J)|Failed]};
         'false' ->
             lager:debug("max retires reached"),
-            Map#{ko := [kz_json:set_value(<<"max_retried">>, 'true', J)|KO]} %% attempts ++ 1
+            Map#{'failed' := [kz_json:set_value(<<"max_retried">>, 'true', J)|Failed]} %% attempts ++ 1
     end.
 
 -spec apply_reschedule_logic(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
@@ -370,8 +373,8 @@ apply_reschedule_logic(NotifyType, JObj) ->
     end.
 
 -spec apply_reschedule_rules(kz_term:ne_binary(),{kz_json:objects(), kz_json:path()}, kz_json:object()) ->
-                                    {'ok', kz_json:object()} |
-                                    {'no_rules', kz_json:object()}.
+          {'ok', kz_json:object()} |
+          {'no_rules', kz_json:object()}.
 apply_reschedule_rules(_NotifyType, {[], _}, JObj) -> {'no_rules', JObj};
 apply_reschedule_rules(NotifyType, {[Rule | Rules], [Key | Keys]}, JObj) ->
     Attempts = kz_json:get_integer_value(<<"attempts">>, JObj, 0),
@@ -413,8 +416,8 @@ map_to_publish_fun(Type) ->
 
 -spec new_results_map() -> map().
 new_results_map() ->
-    #{ok => []
-     ,ko => []
+    #{'succeeded' => []
+     ,'failed' => []
      }.
 
 maybe_send_mwi(<<"voicemail_new">>, JObj) ->

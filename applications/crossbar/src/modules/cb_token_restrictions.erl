@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Token auth module
 %%% This is a simple auth mechanism, once the user has acquired an
 %%% auth token this module will allow access.  This module should be
@@ -7,6 +7,11 @@
 %%%
 %%% @author Karl Anderson
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cb_token_restrictions).
@@ -50,7 +55,7 @@ default_method_restrictions() ->
 
 -spec method_restrictions(atom()) -> kz_term:api_object().
 method_restrictions(AuthModule) ->
-    kapps_config:get_json(?MOD_CONFIG_CAT, AuthModule).
+    kapps_config:get_json(?MOD_CONFIG_CAT, kz_term:to_binary(AuthModule)).
 
 %%%=============================================================================
 %%% API
@@ -60,7 +65,7 @@ method_restrictions(AuthModule) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec init() -> ok.
+-spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.token_restrictions">>, ?MODULE, 'allowed_methods'),
@@ -68,7 +73,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.validate.token_restrictions">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.post.token_restrictions">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.token_restrictions">>, ?MODULE, 'delete'),
-    ok.
+    'ok'.
 
 -spec allowed_methods() -> http_methods().
 allowed_methods() ->
@@ -130,8 +135,8 @@ delete(Context) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec authorize(cb_context:context()) ->
-                       'false' |
-                       {'true' | 'stop', cb_context:context()}.
+          'false' |
+          {'true' | 'stop', cb_context:context()}.
 authorize(Context) ->
     case maybe_deny_access(Context) of
         'false' -> 'false';
@@ -187,14 +192,14 @@ maybe_deny_access(Context, Restrictions) ->
     end.
 
 -spec match_endpoint(cb_context:context(), kz_term:api_object()) ->
-                            kz_term:api_object().
+          kz_term:api_object().
 match_endpoint(Context, Restrictions) ->
     [{ReqEndpoint, _}|_] = cb_context:req_nouns(Context),
 
     match_request_endpoint(Restrictions, ReqEndpoint).
 
 -spec match_request_endpoint(kz_term:api_object(), kz_term:ne_binary()) ->
-                                    kz_term:api_objects().
+          kz_term:api_objects().
 match_request_endpoint(Restrictions, ?CATCH_ALL = ReqEndpoint) ->
     kz_json:get_list_value(ReqEndpoint, Restrictions);
 match_request_endpoint(Restrictions, ReqEndpoint) ->
@@ -211,7 +216,7 @@ match_account(Context, EndpointRestrictions) ->
     find_endpoint_restrictions_by_account(AllowedAccounts, EndpointRestrictions).
 
 -spec find_endpoint_restrictions_by_account(kz_term:ne_binaries(), kz_json:objects()) ->
-                                                   kz_term:api_object().
+          kz_term:api_object().
 find_endpoint_restrictions_by_account(_Accounts, []) ->
     'undefined';
 find_endpoint_restrictions_by_account(AllowedAccounts
@@ -261,7 +266,7 @@ allowed_accounts(AuthAccountId, AccountId) ->
 -endif.
 
 -spec match_arguments(cb_context:context(), kz_term:api_object()) ->
-                             http_methods().
+          http_methods().
 match_arguments(_Context, 'undefined') -> [];
 match_arguments(Context, RulesJObj) ->
     [{_, ReqParams}|_] = cb_context:req_nouns(Context),
@@ -269,7 +274,7 @@ match_arguments(Context, RulesJObj) ->
     match_argument_patterns(ReqParams, RulesJObj, RuleKeys).
 
 -spec match_argument_patterns(req_nouns(), kz_json:object(), kz_term:ne_binaries()) ->
-                                     http_methods().
+          http_methods().
 match_argument_patterns(_ReqParams, _RulesJObj, []) -> [];
 match_argument_patterns(ReqParams, RulesJObj, RuleKeys) ->
     case match_rules(ReqParams, RuleKeys) of

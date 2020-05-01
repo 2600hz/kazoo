@@ -1,0 +1,13 @@
+paths:
+  /accounts/{ACCOUNT_ID}/parked_calls:
+    get:
+      operationId: GetAccountsAccountIdParkedCalls
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get all parked_calls
+      tags:
+        - parked_calls

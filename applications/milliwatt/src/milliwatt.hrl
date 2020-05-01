@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2018, 2600Hz
+%%% @copyright (C) 2013-2019, 2600Hz
 %%% @doc
 %%% @author Peter Defebvre
 %%% @end
@@ -9,7 +9,7 @@
 %% Typical includes needed
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 -include_lib("kazoo_stdlib/include/kz_log.hrl").
--include_lib("kazoo/include/kz_api_literals.hrl").
+-include_lib("kazoo_amqp/include/kz_api_literals.hrl").
 -include_lib("kazoo_stdlib/include/kz_databases.hrl").
 
 -define(APP_NAME, <<"milliwatt">>).
@@ -24,6 +24,13 @@
                         ])
        ).
 -define(TONE, kapps_config:get_json(?CONFIG_CAT, <<"tone">>, ?DEFAULT_TONE)).
+
+-define(DEFAULT_ECHO, kz_json:from_list(
+                        [{<<"caller_id">>,[]}
+                        ,{<<"number">>,[<<"5555555552">>]}
+                        ])
+       ).
+-define(ECHO, kapps_config:get_json(?CONFIG_CAT, <<"echo">>, ?DEFAULT_ECHO)).
 
 -define(MILLIWATT_HRL, 'true').
 -endif.

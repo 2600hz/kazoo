@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2019, 2600Hz
+%%% @copyright (C) 2013-2020, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(omnip_subscriptions).
@@ -15,8 +20,6 @@
 
 -export([handle_kamailio_subscribe/2
         ,handle_kamailio_notify/2
-        ,handle_mwi_update/2
-        ,handle_dialog_update/2
         ,table_id/0
         ,table_config/0
         ,subscription_to_json/1
@@ -75,16 +78,6 @@ handle_kamailio_notify(JObj, _Props) ->
     'true' = kapi_omnipresence:notify_v(JObj),
     gen_server:cast(?SERVER, {'notify', JObj}).
 
--spec handle_mwi_update(kz_json:object(), kz_term:proplist()) -> any().
-handle_mwi_update(JObj, _Props) ->
-    'true' = kapi_presence:mwi_update_v(JObj),
-    gen_server:cast(?SERVER, {'mwi', JObj}).
-
--spec handle_dialog_update(kz_json:object(), kz_term:proplist()) -> 'ok'.
-handle_dialog_update(JObj, _Props) ->
-    'true' = kapi_presence:dialog_v(JObj),
-    gen_server:cast(?SERVER, {'dialog', JObj}).
-
 -spec table_id() -> 'omnipresence_subscriptions'.
 table_id() -> 'omnipresence_subscriptions'.
 
@@ -104,7 +97,7 @@ table_config() ->
 %%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     {'ok', #state{expire_ref=start_expire_ref()}}.
 
 %%------------------------------------------------------------------------------
@@ -138,22 +131,16 @@ handle_cast({'notify', JObj}, State) ->
     _ = notify(JObj),
     {'noreply', State};
 
-handle_cast({'dialog', _JObj}, State) ->
-    {'noreply', State};
-
-handle_cast({'mwi', _JObj}, State) ->
-    {'noreply', State};
-
 handle_cast({'after', {'notify', Msg}}, State) ->
-    kz_util:spawn(fun on_notify/1, [Msg]),
+    kz_process:spawn(fun on_notify/1, [Msg]),
     {'noreply', State};
 
 handle_cast({'after', {'subscribe', Msg}}, State) ->
-    kz_util:spawn(fun on_subscribe/1, [Msg]),
+    kz_process:spawn(fun on_subscribe/1, [Msg]),
     {'noreply', State};
 
 handle_cast({'after', {'resubscribe', Msg}}, State) ->
-    kz_util:spawn(fun on_resubscribe/1, [Msg]),
+    kz_process:spawn(fun on_resubscribe/1, [Msg]),
     {'noreply', State};
 
 handle_cast({'after', _Msg}, State) ->
@@ -183,12 +170,6 @@ handle_info({'timeout', Ref, ?EXPIRE_MESSAGE}=_R, #state{expire_ref=Ref, ready='
 handle_info(?TABLE_READY(_Tbl), State) ->
     lager:debug("recv table_ready for ~p", [_Tbl]),
     {'noreply', State#state{ready='true'}, 'hibernate'};
-handle_info('check_sync', #state{sync_nodes=[]} = State) ->
-    omnipresence_shared_listener:start_listener(),
-    {'noreply', State};
-handle_info('check_sync', State) ->
-    erlang:send_after(5 * ?MILLISECONDS_IN_SECOND, self(), 'check_sync'),
-    {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
@@ -313,8 +294,8 @@ expire_old_subscriptions() ->
                                    }]).
 
 -spec find_subscription(kz_term:ne_binary()) ->
-                               {'ok', subscription()} |
-                               {'error', 'not_found'}.
+          {'ok', subscription()} |
+          {'error', 'not_found'}.
 find_subscription(CallId) ->
     case ets:lookup(table_id(), CallId) of
         [] -> {'error', 'not_found'};
@@ -322,8 +303,8 @@ find_subscription(CallId) ->
     end.
 
 -spec find_user_subscriptions(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                     {'ok', subscriptions()} |
-                                     {'error', 'not_found'}.
+          {'ok', subscriptions()} |
+          {'error', 'not_found'}.
 find_user_subscriptions(?OMNIPRESENCE_EVENT_ALL, User) ->
     U = kz_term:to_lower_binary(User),
     MatchSpec = [{#omnip_subscription{normalized_from='$1'
@@ -345,7 +326,7 @@ find_user_subscriptions(Event, User) ->
     find_subscriptions(MatchSpec).
 
 -spec find_subscriptions(ets:match_spec()) -> {'ok', subscriptions()} |
-                                              {'error', 'not_found'}.
+          {'error', 'not_found'}.
 find_subscriptions(MatchSpec) ->
     try ets:select(table_id(), MatchSpec) of
         [] -> {'error', 'not_found'};
@@ -488,7 +469,7 @@ maybe_probe(_, {<<"message-summary">> = Package, Username, Realm, _}) ->
 maybe_probe(_, {<<"dialog">>, <<"*", _/binary>> = Username, Realm, _}) ->
     case kapps_util:get_account_by_realm(Realm) of
         {'ok', Account} ->
-            VM = ?VM_NUMBER(kz_util:format_account_id(Account)),
+            VM = ?VM_NUMBER(kzs_util:format_account_id(Account)),
             S = size(VM),
             case Username of
                 <<VM:S/binary, New/binary>> -> omnip_util:request_probe(<<"message-summary">>, New, Realm);

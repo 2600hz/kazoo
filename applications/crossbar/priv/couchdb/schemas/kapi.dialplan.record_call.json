@@ -81,6 +81,9 @@
         "Record-Sample-Rate": {
             "type": "integer"
         },
+        "Recording-Variables": {
+            "type": "string"
+        },
         "Time-Limit": {
             "type": "integer"
         }

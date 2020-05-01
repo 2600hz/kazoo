@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_services_plan).
@@ -20,6 +24,8 @@
 -export([ratedeck_id/1]).
 -export([ratedeck_name/1]).
 -export([applications/1]).
+-export([asr/1]).
+-export([im/1]).
 -export([limits/1]).
 -export([jobj/1
         ,set_jobj/2
@@ -173,6 +179,22 @@ applications(Plan) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+-spec asr(plan()) -> kz_json:object().
+asr(Plan) ->
+    kzd_service_plan:asr(jobj(Plan)).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec im(plan()) -> kz_json:object().
+im(Plan) ->
+    kzd_service_plan:im(jobj(Plan)).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec limits(plan()) -> kz_json:object().
 limits(Plan) ->
     kzd_service_plan:limits(jobj(Plan)).
@@ -298,7 +320,7 @@ is_plan(_Else) -> 'false'.
 -spec fetch(kz_term:ne_binary(), kz_term:ne_binary()) -> 'undefined' | plan().
 fetch(VendorId, PlanId) ->
     lager:debug("fetching plan ~s/~s", [VendorId, PlanId]),
-    VendorDb = kz_util:format_account_db(VendorId),
+    VendorDb = kzs_util:format_account_db(VendorId),
     case kz_datamgr:open_cache_doc(VendorDb, PlanId) of
         {'ok', PlanJObj} ->
             create(VendorId, PlanId, PlanJObj);
@@ -343,22 +365,23 @@ assign(Services, PlanId) ->
 -spec assign(kz_services:services(), kz_term:ne_binary() | kz_json:object(), kz_term:proplist()) -> kz_services:services().
 assign(Services, PlanId, Options) when is_binary(PlanId) ->
     ResellerId = kz_services_reseller:get_id(Services),
-    Plan = kz_json:from_list(
-             [{<<"vendor_id">>, ResellerId}
-             ,{<<"overrides">>, kz_json:new()}
-             ]),
+    Plan = kz_json:from_list([{<<"vendor_id">>, ResellerId}]),
     assign(Services, PlanId, Plan, Options);
 assign(Services, JObj, Options) ->
     ResellerId = kz_services_reseller:get_id(Services),
     VendorId = kz_json:get_ne_binary_value(<<"vendor_id">>, JObj, ResellerId),
-    Overrides = kz_json:get_json_value(<<"overrides">>, JObj, kz_json:new()),
+    Overrides = kz_json:get_json_value(<<"overrides">>, JObj),
+    Contract = kz_json:get_json_value(<<"contract">>, JObj),
+
     case kz_doc:id(JObj) of
         'undefined' -> Services;
         PlanId ->
-            Props = [{<<"vendor_id">>, VendorId}
-                    ,{<<"overrides">>, Overrides}
-                    ],
-            Plan = kz_json:from_list(Props),
+            Plan = kz_json:from_list(
+                     [{<<"contract">>, Contract}
+                     ,{<<"vendor_id">>, VendorId}
+                     ,{<<"overrides">>, Overrides}
+                     ]
+                    ),
             assign(Services, PlanId, Plan, Options)
     end.
 
@@ -374,7 +397,7 @@ assign(Services, PlanId, Plan, Options) ->
                 ,PlanId
                 ]
                ),
-    Overrides = kz_json:get_json_value(<<"overrides">>, Plan, kz_json:new()),
+    Overrides = kz_json:get_json_value(<<"overrides">>, Plan),
     Overriden = maybe_override(ServicesJObj, PlanId, Overrides, Options),
     UpdatedServicesJObj =
         kzd_services:set_plan(ServicesJObj
@@ -415,7 +438,9 @@ override(Services, PlanId, Overrides, Options) ->
                                  ,kzd_services:set_plan_overrides(ServicesJObj, PlanId, Overriden)
                                  ).
 
--spec maybe_override(kz_json:object(), kz_term:ne_binary(), kz_json:object(), kz_term:proplist()) -> kz_json:object().
+-spec maybe_override(kz_json:object(), kz_term:ne_binary(), kz_term:api_object(), kz_term:proplist()) -> kz_json:object().
+maybe_override(ServicesJObj, PlanId, 'undefined', _Options) ->
+    kzd_services:plan_overrides(ServicesJObj, PlanId);
 maybe_override(ServicesJObj, PlanId, Overrides, Options) ->
     case kz_json:is_empty(kzd_services:plan_overrides(ServicesJObj, PlanId)) of
         'false' -> set_or_merge_override(ServicesJObj, PlanId, Overrides, Options);

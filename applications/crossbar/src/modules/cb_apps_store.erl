@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2019, 2600Hz
-%%% @doc Listing of all expected v1 callbacks
+%%% @copyright (C) 2013-2020, 2600Hz
+%%% @doc Crossbar API for apps store.
 %%% @author Peter Defebvre
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cb_apps_store).
@@ -9,8 +14,8 @@
 -export([init/0
         ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
         ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
-        ,authenticate/1
-        ,authorize/1
+        ,authenticate/1, authenticate/2, authenticate/3, authenticate/4
+        ,authorize/1, authorize/2, authorize/3, authorize/4
         ,validate/1, validate/2, validate/3, validate/4
         ,content_types_provided/3 ,content_types_provided/4
         ,put/2
@@ -37,8 +42,8 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.content_types_provided.apps_store">>, ?MODULE, 'content_types_provided'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.apps_store">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.apps_store">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
-    _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
+    _ = crossbar_bindings:bind(<<"*.authenticate.apps_store">>, ?MODULE, 'authenticate'),
+    _ = crossbar_bindings:bind(<<"*.authorize.apps_store">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.validate.apps_store">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.put.apps_store">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.apps_store">>, ?MODULE, 'post'),
@@ -92,7 +97,7 @@ resource_exists(_, _, _) -> 'true'.
 %%------------------------------------------------------------------------------
 
 -spec content_types_provided(cb_context:context(), path_token(), path_token()) ->
-                                    cb_context:context().
+          cb_context:context().
 content_types_provided(Context, Id, ?ICON) ->
     Context1 = load_app_from_master_account(Context, Id),
     case cb_context:resp_status(Context1) of
@@ -111,7 +116,7 @@ content_types_provided(Context, Id, ?ICON) ->
 content_types_provided(Context, _, _) -> Context.
 
 -spec content_types_provided(cb_context:context(), path_token(), path_token(), path_token()) ->
-                                    cb_context:context().
+          cb_context:context().
 content_types_provided(Context, Id, ?SCREENSHOT, Number) ->
     Context1 = load_app_from_master_account(Context, Id),
     case cb_context:resp_status(Context1) of
@@ -134,30 +139,54 @@ content_types_provided(Context, _, _, _) -> Context.
 
 -spec authenticate(cb_context:context()) -> boolean().
 authenticate(Context) ->
-    authenticate(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+    authenticate_nouns(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
--spec authenticate(http_method(), req_nouns()) -> boolean().
-authenticate(?HTTP_GET, [{<<"apps_store">>,[_Id, ?ICON]}]) ->
+-spec authenticate(cb_context:context(), path_token()) -> boolean().
+authenticate(Context, _) ->
+    authenticate_nouns(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+
+-spec authenticate(cb_context:context(), path_token(), path_token()) -> boolean().
+authenticate(Context, _, _) ->
+    authenticate_nouns(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+
+-spec authenticate(cb_context:context(), path_token(), path_token(), path_token()) -> boolean().
+authenticate(Context, _, _, _) ->
+    authenticate_nouns(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+
+-spec authenticate_nouns(http_method(), req_nouns()) -> boolean().
+authenticate_nouns(?HTTP_GET, [{<<"apps_store">>,[_Id, ?ICON]}]) ->
     lager:debug("authenticating request"),
     'true';
-authenticate(?HTTP_GET, [{<<"apps_store">>,[_Id, ?SCREENSHOT, _Number]}]) ->
+authenticate_nouns(?HTTP_GET, [{<<"apps_store">>,[_Id, ?SCREENSHOT, _Number]}]) ->
     lager:debug("authenticating request"),
     'true';
-authenticate(_Verb, _Nouns) ->
+authenticate_nouns(_Verb, _Nouns) ->
     'false'.
 
 -spec authorize(cb_context:context()) -> boolean().
 authorize(Context) ->
-    authorize(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+    authorize_nouns(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
--spec authorize(http_method(), req_nouns()) -> boolean().
-authorize(?HTTP_GET, [{<<"apps_store">>,[_Id, ?ICON]}]) ->
+-spec authorize(cb_context:context(), path_token()) -> boolean().
+authorize(Context, _) ->
+    authorize_nouns(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+
+-spec authorize(cb_context:context(), path_token(), path_token()) -> boolean().
+authorize(Context, _, _) ->
+    authorize_nouns(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+
+-spec authorize(cb_context:context(), path_token(), path_token(), path_token()) -> boolean().
+authorize(Context, _, _, _) ->
+    authorize_nouns(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+
+-spec authorize_nouns(http_method(), req_nouns()) -> boolean().
+authorize_nouns(?HTTP_GET, [{<<"apps_store">>,[_Id, ?ICON]}]) ->
     lager:debug("authorizing request"),
     'true';
-authorize(?HTTP_GET, [{<<"apps_store">>,[_Id, ?SCREENSHOT, _Number]}]) ->
+authorize_nouns(?HTTP_GET, [{<<"apps_store">>,[_Id, ?SCREENSHOT, _Number]}]) ->
     lager:debug("authorizing request"),
     'true';
-authorize(_Verb, _Nouns) ->
+authorize_nouns(_Verb, _Nouns) ->
     'false'.
 
 %%------------------------------------------------------------------------------
@@ -199,8 +228,8 @@ validate(Context, AppId, ?SCREENSHOT, Number) ->
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, ?BLACKLIST) ->
     ReqData = cb_context:req_data(Context),
-    Blacklist = kz_json:get_value(<<"blacklist">>, ReqData, []),
-    Doc = kz_json:set_value(<<"blacklist">>, Blacklist, cb_context:doc(Context)),
+    Blacklist = kzd_apps_store:blacklist(ReqData),
+    Doc = kzd_apps_store:set_blacklist(cb_context:doc(Context), Blacklist),
     return_only_blacklist(
       crossbar_doc:save(
         cb_context:set_doc(Context, Doc)
@@ -281,7 +310,7 @@ return_only_blacklist(Context) ->
     case cb_context:resp_status(Context) of
         'success' ->
             RespData = cb_context:resp_data(Context),
-            Blacklist = kz_json:get_value(<<"blacklist">>, RespData, []),
+            Blacklist = kzd_apps_store:blacklist(RespData),
             NewRespData =
                 kz_json:from_list([
                                    {<<"blacklist">>, Blacklist}
@@ -391,6 +420,7 @@ normalize_apps_result([App|Apps], Acc) ->
                   ,{<<"allowed_users">>, kzd_app:allowed_users(App)}
                   ,{<<"masqueradable">>, kzd_app:masqueradable(App)}
                   ,{<<"phase">>, kzd_app:phase(App)}
+                  ,{<<"extends">>, kzd_app:extends(App)}
                   ]),
             normalize_apps_result(Apps, [JObj|Acc])
     end.
@@ -415,14 +445,12 @@ load_app(Context, AppId) ->
 
 -spec load_app_from_master_account(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 load_app_from_master_account(Context, AppId) ->
-    {'ok', MasterAccountDb} = kapps_util:get_master_account_db(),
     {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
     DefaultApps = cb_apps_util:load_default_apps(),
     case [JObj || JObj <- DefaultApps, kz_doc:id(JObj) == AppId] of
         [AppJObj] ->
             cb_context:setters(Context
                               ,[{fun cb_context:set_account_id/2, MasterAccountId}
-                               ,{fun cb_context:set_account_db/2, MasterAccountDb}
                                ,{fun cb_context:set_doc/2, AppJObj}
                                ,{fun cb_context:set_resp_status/2, 'success'}
                                ]
@@ -521,8 +549,8 @@ get_icon(Context) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec maybe_get_screenshot(cb_context:context(), kz_term:ne_binary()) ->
-                                  'error' |
-                                  {'ok', kz_term:ne_binary(), kz_json:object()}.
+          'error' |
+          {'ok', kz_term:ne_binary(), kz_json:object()}.
 maybe_get_screenshot(Context, Number) ->
     JObj = cb_context:doc(Context),
     Screenshots = kz_json:get_value(<<"screenshots">>, JObj),
@@ -581,7 +609,7 @@ load_apps_store(Context) ->
 %%------------------------------------------------------------------------------
 
 -spec get_attachment(cb_context:context(), kz_term:ne_binary()) ->
-                            cb_context:context().
+          cb_context:context().
 get_attachment(Context, Id) ->
     JObj = cb_context:doc(Context),
     case kz_doc:attachment(JObj, Id) of
@@ -593,7 +621,7 @@ get_attachment(Context, Id) ->
     end.
 
 -spec get_attachment(cb_context:context(), kz_term:ne_binary(), kz_json:object(), kz_json:object()) ->
-                            cb_context:context().
+          cb_context:context().
 get_attachment(Context, Id, JObj, Attachment) ->
     Db = kz_doc:account_db(JObj),
     AppId = kz_doc:id(JObj),
@@ -607,7 +635,7 @@ get_attachment(Context, Id, JObj, Attachment) ->
     end.
 
 -spec add_attachment(cb_context:context(), kz_term:ne_binary(), kz_json:object(), binary()) ->
-                            cb_context:context().
+          cb_context:context().
 add_attachment(Context, Id, Attachment, AttachBin) ->
     RespHeaders =
         #{<<"content-disposition">> => <<"attachment; filename=", Id/binary>>

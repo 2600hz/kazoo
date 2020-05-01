@@ -95,7 +95,7 @@ curl -v -X PUT \
 }
 ```
 
-In the second method, you can use a single PUT request and send a [multi-part `content-type`](./multipart) to attach both the JSON metadata about the fax transmission and the document itself, in a single request. This avoids needing to have an external storage location for storing fax attachments prior to processing. This is a good solution for portals that upload documents.
+In the second method, you can use a single PUT request and send a [multi-part `content-type`](multipart.md) to attach both the JSON metadata about the fax transmission and the document itself, in a single request. This avoids needing to have an external storage location for storing fax attachments prior to processing. This is a good solution for portals that upload documents.
 
 ```shell
 curl -v -X PUT \

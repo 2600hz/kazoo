@@ -77,7 +77,7 @@
 -define(NO_OPTIONS, ['cookie', 'admin_port', 'compact_automatically']).
 -define(ATOM_OPTIONS, ['pool', 'pool_name']).
 
--type couch_version() :: 'couchdb_1_6' | 'couchdb_2' | 'bigcouch'.
+-type couch_version() :: 'couchdb_1_6' | 'couchdb_2' | 'couchdb_3' | 'bigcouch'.
 
 -define(KZ_COUCH_HRL, 'true').
 -endif.

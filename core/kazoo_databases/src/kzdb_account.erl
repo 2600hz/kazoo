@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2018-2019, 2600Hz
+%%% @copyright (C) 2018-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kzdb_account).
@@ -24,9 +28,9 @@
 -type delete_errors() :: [delete_error()].
 
 -spec delete(kz_term:api_ne_binary()) ->
-                    {'ok', kzd_accounts:doc() | 'undefined'} |
-                    kz_datamgr:data_error() |
-                    {'error', delete_errors()}.
+          {'ok', kzd_accounts:doc() | 'undefined'} |
+          kz_datamgr:data_error() |
+          {'error', delete_errors()}.
 delete('undefined') -> {'ok', 'undefined'};
 delete(?MATCH_ACCOUNT_RAW(AccountId)) ->
     case kzd_accounts:fetch(AccountId) of
@@ -37,8 +41,8 @@ delete(?MATCH_ACCOUNT_RAW(AccountId)) ->
     end.
 
 -spec delete(kz_term:ne_binary(), kzd_accounts:doc()) ->
-                    {'ok', kzd_accounts:doc()} |
-                    {'error', delete_errors()}.
+          {'ok', kzd_accounts:doc()} |
+          {'error', delete_errors()}.
 delete(_AccountId, AccountJObj) ->
     DeleteRoutines = [fun delete_remove_services/1
                      ,fun delete_free_numbers/1
@@ -53,7 +57,7 @@ delete(_AccountId, AccountJObj) ->
                     ,DeleteRoutines
                     )
     of
-        {DeletedAccount, []} -> {'ok', DeletedAccount};
+        {DeletedAccount, []} ->   {'ok', DeletedAccount};
         {_AccountJObj, Errors} -> {'error', Errors}
     end.
 
@@ -134,7 +138,7 @@ delete_remove_from_accounts({AccountJObj, Errors}=Acc) ->
 
 -spec create(kz_term:ne_binary(), kz_json:object()) -> kzd_accounts:doc() | 'undefined'.
 create(AccountId, ReqJObj) ->
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kzs_util:format_account_db(AccountId),
     case kapps_util:is_account_db(AccountDb)
         andalso kz_datamgr:db_create(AccountDb)
     of
@@ -187,7 +191,7 @@ load_initial_views(AccountDoc) ->
 
 -spec create_account_mod(kzd_accounts:doc()) -> kzd_accounts:doc().
 create_account_mod(AccountDoc) ->
-    Db = kz_util:format_account_mod_id(kz_doc:account_id(AccountDoc)),
+    Db = kzs_util:format_account_mod_id(kz_doc:account_id(AccountDoc)),
     case kazoo_modb:create(Db) of
         'true' ->
             lager:info("created this month's MODb for account"),

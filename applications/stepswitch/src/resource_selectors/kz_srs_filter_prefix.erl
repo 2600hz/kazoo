@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_srs_filter_prefix).
@@ -16,7 +20,7 @@
 -define(DEFAULT_FILTER_MODE, <<"empty_fail">>).
 
 -spec handle_req(stepswitch_resources:resources(), kz_term:ne_binary(), kapi_offnet_resource:req(), kz_term:ne_binary(), kz_json:object()) ->
-                        stepswitch_resources:resources().
+          stepswitch_resources:resources().
 handle_req(Resources, Number, OffnetJObj, DB, Params) ->
     SourceA = kz_srs_util:get_source(kz_json:get_value(<<"value_a">>, Params)),
     ValueA = kz_srs_util:get_value(SourceA, Resources, Number, OffnetJObj, DB, <<>>),

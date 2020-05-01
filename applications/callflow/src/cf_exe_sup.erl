@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc
 %%% @author Karl Anderson
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cf_exe_sup).
@@ -14,7 +19,7 @@
 
 %% API
 -export([start_link/0]).
--export([new/1]).
+-export([new/1, new/3]).
 -export([workers/0]).
 
 %% Supervisor callbacks
@@ -34,9 +39,19 @@
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec new(kapps_call:call()) -> kz_types:sup_startchild_ret().
-new(Call) ->
-    supervisor:start_child(?SERVER, [Call]).
+-spec new(map()) -> kz_types:sup_startchild_ret().
+new(Map) ->
+    supervisor:start_child(?SERVER, [Map]).
+
+-type handler_fun() :: fun((kapi_route:req(), kz_term:proplist()) -> 'ok').
+
+-spec new(kz_json:object(), kz_term:proplist(), handler_fun()) -> kz_types:sup_startchild_ret().
+new(JObj, Props, Fun) ->
+    Map = #{request => JObj
+           ,props => Props
+           ,callback => Fun
+           },
+    supervisor:start_child(?SERVER, [Map]).
 
 -spec workers() -> kz_term:pids().
 workers() ->

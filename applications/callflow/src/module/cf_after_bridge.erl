@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc Sets `[park|transfer|hangup]_after_bridge' variable.
 %%%
 %%% <h4>Data options:</h4>
@@ -13,6 +13,11 @@
 %%% </dl>
 %%%
 %%% @author SIPLABS LLC (Maksim Krzhemenevskiy)
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cf_after_bridge).

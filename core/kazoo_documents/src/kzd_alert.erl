@@ -1,7 +1,11 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2015-2019, 2600Hz
+%%% @copyright (C) 2015-2020, 2600Hz
 %%% @doc Alert document
 %%% @author Peter Defebvre
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kzd_alert).
@@ -68,7 +72,7 @@ id(JObj) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec fetch(kz_term:api_binary()) -> {'ok', doc()} |
-                                     {'error', any()}.
+          {'error', any()}.
 fetch('undefined') ->
     {'error', 'invalid_db_name'};
 fetch(<<_/binary>> = AlertId) ->

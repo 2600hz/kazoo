@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kazoo_oauth_service).
@@ -26,12 +30,12 @@ service_token(#oauth_service_app{private_key=_PrivateKey
                                 ,provider=#oauth_provider{auth_url=URL}
                                 }=ServiceApp, Scopes) ->
     Assertion = kazoo_oauth_util:jwt(ServiceApp, Scopes),
-    GrantType = kz_term:to_list(kz_util:uri_encode(?OAUTH_GRANT_TYPE)),
+    GrantType = kz_term:to_list(kz_http_util:urlencode(?OAUTH_GRANT_TYPE)),
     Headers = [{"Content-Type","application/x-www-form-urlencoded"}
               ,{"User-Agent", "Kazoo"}
               ],
     Fields = [{"grant_type", GrantType}
-             ,{"assertion", kz_term:to_list(kz_util:uri_encode(Assertion))}
+             ,{"assertion", kz_term:to_list(kz_http_util:urlencode(Assertion))}
              ],
     Body = string:join(lists:append(lists:map(fun({K,V}) -> [string:join([K,V], "=") ] end, Fields)),"&"),
     case kz_http:post(kz_term:to_list(URL), Headers, Body) of

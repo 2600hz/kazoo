@@ -1,8 +1,13 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc
 %%% @author Karl Anderson
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cf_group).
@@ -31,7 +36,7 @@ handle(Data, Call) ->
 attempt_group(Data, Call) ->
     GroupId = kz_json:get_ne_binary_value(<<"id">>, Data),
     AccountId = kapps_call:account_id(Call),
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kzs_util:format_account_db(AccountId),
     case kz_datamgr:open_cache_doc(AccountDb, GroupId) of
         {'ok', JObj} -> attempt_endpoints(JObj, Data, Call);
         {'error', _R} ->
@@ -91,7 +96,7 @@ build_endpoints(JObj, Call) ->
 -type endpoints_acc() :: [{kz_term:ne_binary(), {'ok', kz_json:objects()}}].
 
 -spec build_device_endpoints(endpoints_acc(), kz_term:proplist(), kapps_call:call()) ->
-                                    endpoints_acc().
+          endpoints_acc().
 build_device_endpoints(Endpoints, [], _) -> Endpoints;
 build_device_endpoints(Endpoints, [{MemberId, Member} | Members], Call) ->
     case kz_json:get_value(<<"type">>, Member, <<"device">>) =:= <<"device">>

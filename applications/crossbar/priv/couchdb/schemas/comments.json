@@ -1,0 +1,15 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "comments",
+    "description": "Schema for comments",
+    "properties": {
+        "comments": {
+            "description": "The history of comments made on a object",
+            "items": {
+                "$ref": "comment"
+            },
+            "type": "array"
+        }
+    },
+    "type": "object"
+}

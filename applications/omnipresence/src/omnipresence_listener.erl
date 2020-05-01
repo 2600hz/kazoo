@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2019, 2600Hz
+%%% @copyright (C) 2013-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(omnipresence_listener).
@@ -30,7 +34,6 @@
 
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS, [{'self', []}
-                  ,{'presence', [{'restrict_to', ['dialog', 'mwi_update']}]}
                   ,{'omnipresence', [{'restrict_to', ['subscribe', 'notify']}]}
                   ]).
 -define(RESPONDERS, [{{'omnip_subscriptions', 'handle_kamailio_subscribe'}
@@ -38,12 +41,6 @@
                      }
                     ,{{'omnip_subscriptions', 'handle_kamailio_notify'}
                      ,[{<<"presence">>, <<"notify">>}]
-                     }
-                    ,{{'omnip_subscriptions', 'handle_mwi_update'}
-                     ,[{<<"presence">>, <<"mwi_update">>}]
-                     }
-                    ,{{'omnip_subscriptions', 'handle_dialog_update'}
-                     ,[{<<"presence">>, <<"dialog_update">>}]
                      }
                     ]).
 
@@ -80,7 +77,7 @@ start_link() ->
 %%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     gen_listener:cast(self(), 'find_subscriptions_srv'),
     lager:debug("omnipresence_listener started"),
     {'ok', #state{}}.
@@ -128,9 +125,8 @@ handle_cast('send_sync', #state{queue='undefined'}=State) ->
     {'noreply', State};
 handle_cast('send_sync', #state{consuming='false'}=State) ->
     {'noreply', State};
-handle_cast('send_sync', #state{subs_pid=Pid, queue=Queue, consuming='true', sync='false'} = State) ->
+handle_cast('send_sync', #state{queue=Queue, consuming='true', sync='false'} = State) ->
     maybe_sync_subscriptions(?SUBSCRIPTIONS_SYNC_ENABLED, Queue),
-    erlang:send_after(2 * ?MILLISECONDS_IN_SECOND, Pid, 'check_sync'),
     {'noreply', State#state{sync='true'}};
 handle_cast(_Msg, State) ->
     {'noreply', State}.

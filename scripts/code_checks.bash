@@ -1,6 +1,6 @@
 #!/bin/bash
 
-[[ $# -eq 0 ]] && echo "Usage: $0  ‹path to check›+" && exit 0
+[[ $# -eq 0 ]] && echo "no changes for code checking" && echo "Usage: $0  ‹path to check›+" && exit 0
 # find applications core -iname '*.erl' -or -iname '*.hrl' -or -iname '*.escript' -or -iname '*.app.src'
 
 function P () {

@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Look up caller ID number for spam score using Nomorobo.
 %%%
 %%% <h4>Data options:</h4>
@@ -40,6 +40,11 @@
 %%%
 %%% The `_' child key is equivalent to "0" in this case.
 %%%
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cf_nomorobo).
@@ -74,7 +79,7 @@ handle(Data, Call) ->
     end.
 
 -spec nomorobo_score(kz_json:object(), kapps_call:call()) ->
-                            kz_term:api_integer().
+          kz_term:api_integer().
 nomorobo_score(Data, Call) ->
     URI = nomorobo_uri(Call),
 

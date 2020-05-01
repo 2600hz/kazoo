@@ -30,6 +30,9 @@
         "Bridge-Actions": {
             "type": "object"
         },
+        "Call-Context": {
+            "type": "string"
+        },
         "Call-ID": {
             "type": "string"
         },
@@ -52,6 +55,9 @@
             "type": "string"
         },
         "Confirm-Key": {
+            "type": "string"
+        },
+        "Continue-After": {
             "type": "string"
         },
         "Continue-On-Fail": {
@@ -116,6 +122,9 @@
         "Force-Fax": {
             "type": "string"
         },
+        "From": {
+            "type": "string"
+        },
         "From-Realm": {
             "type": "string"
         },
@@ -161,6 +170,15 @@
         "Outbound-Caller-ID-Number": {
             "type": "string"
         },
+        "Privacy-Hide-Name": {
+            "type": "string"
+        },
+        "Privacy-Hide-Number": {
+            "type": "string"
+        },
+        "Privacy-Method": {
+            "type": "string"
+        },
         "Ringback": {
             "type": "string"
         },
@@ -169,8 +187,8 @@
         },
         "Route-Type": {
             "enum": [
-                "on-net",
-                "off-net"
+                "onnet",
+                "offnet"
             ],
             "type": "string"
         },
@@ -195,6 +213,9 @@
             "type": "string"
         },
         "Timeout": {
+            "type": "string"
+        },
+        "To": {
             "type": "string"
         },
         "To-Realm": {

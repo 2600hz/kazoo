@@ -14,7 +14,7 @@ The call_inspector application retrieves SIP packets in two ways:
 1. by parsing FreeSWITCH and/or Kamailio log files (slower)
     * Note: if you want this app to parse Kamailio logs, they have to have the following format (note the timestamp formatting and [the presence of **cseq**](http://www.kamailio.org/wiki/cookbooks/4.0.x/pseudovariables#cseq))
     ```
-    Oct  4 20:58:22 wef kamailio[7421]: INFO: <script>: uncj0soi900etthorbq57j|start|received ws request REGISTER sip:wefwefwefwef.2600hz.com
+    Oct  4 20:58:22 wef kamailio[7421]: INFO: <script>: UNIX0soi900etthorbq57j|start|received ws request REGISTER sip:wefwefwefwef.2600hz.com
     Oct  4 20:58:22 wef kamailio[7421]: INFO: <script>: uncj0soi900etthorbq57j|log|source 192.168.11.43:33278
     Oct  4 20:58:22 wef kamailio[7421]: INFO: <script>: uncj0soi900etthorbq57j|log|from sip:user_wpxnx7am9w@wefwefwefwef.2600hz.com
     Oct  4 20:58:22 wef kamailio[7421]: INFO: <script>: uncj0soi900etthorbq57j|log|to sip:user_wpxnx7am9w@wefwefwefwef.2600hz.com
@@ -62,8 +62,7 @@ A chunk in JSON format looks like this:
       "timestamp": 63601204677.8817
       }
 
-Find more example chunks in [the test suite](applications/call_inspector/test/ci_chunk_tests.erl).
-
+Find more example chunks in [the test suite](https://github.com/2600hz/kazoo/blob/master/applications/call_inspector/test/ci_chunk_tests.erl).
 
 ### Analysis
 

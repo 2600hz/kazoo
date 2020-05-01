@@ -1,0 +1,50 @@
+paths:
+  /accounts/{ACCOUNT_ID}/channels:
+    get:
+      operationId: GetAccountsAccountIdChannels
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get all channels
+      tags:
+        - channels
+  /accounts/{ACCOUNT_ID}/channels/{UUID}:
+    get:
+      operationId: GetAccountsAccountIdChannelsUuid
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/UUID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a channels by ID
+      tags:
+        - channels
+    post:
+      operationId: PostAccountsAccountIdChannelsUuid
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/UUID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of channels
+      tags:
+        - channels
+    put:
+      operationId: PutAccountsAccountIdChannelsUuid
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/UUID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of channels
+      tags:
+        - channels

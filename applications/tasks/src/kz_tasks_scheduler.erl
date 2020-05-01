@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2016-2019, 2600Hz
-%%% @doc Schedule one-off tasks only once per cluster
+%%% @copyright (C) 2016-2020, 2600Hz
+%%% @doc Schedule one-off tasks
 %%% @author Pierre Fenoll
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_tasks_scheduler).
@@ -26,6 +31,7 @@
         ,output_path/1
         ,finish_task/2
         ,cleanup_task/2
+        ,attempt_upload/4, attempt_upload/6
         ]).
 
 %%% gen_server callbacks
@@ -41,7 +47,7 @@
 -include_lib("kazoo_tasks/include/task_fields.hrl").
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 
--define(SERVER, {'via', 'kz_globals', ?MODULE}).
+-define(SERVER, ?MODULE).
 
 -define(WAIT_AFTER_ROW
        ,kapps_config:get_non_neg_integer(?CONFIG_CAT, <<"wait_after_row_ms">>, 500)
@@ -80,19 +86,14 @@
 %%------------------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->
-    case gen_server:start_link(?SERVER, ?MODULE, [], []) of
-        {'error', {'already_started', Pid}} ->
-            'true' = link(Pid),
-            {'ok', Pid};
-        Other -> Other
-    end.
+    gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
 -spec start(kz_tasks:id()) -> {'ok', kz_json:object()} |
-                              {'error', 'not_found' | 'already_started' | any()}.
+          {'error', 'not_found' | 'already_started' | any()}.
 start(TaskId=?NE_BINARY) ->
     gen_server:call(?SERVER, {'start_task', TaskId}).
 
@@ -101,18 +102,18 @@ start(TaskId=?NE_BINARY) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec stop(kz_tasks:id()) -> {'ok', kz_json:object()} |
-                             {'error', 'not_found' | 'not_running'}.
+          {'error', 'not_found' | 'not_running'}.
 stop(TaskId=?NE_BINARY) ->
     gen_server:call(?SERVER, {'stop_task', TaskId}).
 
 
 %% Not for public use
 -spec restart(kz_tasks:id()) -> {'ok', kz_json:object()} |
-                                {'error'
-                                ,'not_found' |
-                                 'already_started' |
-                                 any()
-                                }.
+          {'error'
+          ,'not_found' |
+           'already_started' |
+           any()
+          }.
 restart(TaskId = ?NE_BINARY) ->
     gen_server:call(?SERVER, {'restart_task', TaskId}).
 
@@ -121,7 +122,7 @@ restart(TaskId = ?NE_BINARY) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec remove(kz_tasks:id()) -> {'ok', kz_json:object()} |
-                               {'error', 'not_found' | 'task_running'}.
+          {'error', 'not_found' | 'task_running'}.
 remove(TaskId=?NE_BINARY) ->
     gen_server:call(?SERVER, {'remove_task', TaskId}).
 
@@ -151,7 +152,7 @@ worker_pause() ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec worker_maybe_send_update(kz_tasks:id(), pos_integer(), pos_integer()) -> 'ok'.
+-spec worker_maybe_send_update(kz_tasks:id(), non_neg_integer(), non_neg_integer()) -> 'ok'.
 worker_maybe_send_update(TaskId, Succeeded, Failed) ->
     gen_server:cast(?SERVER, {'worker_update_processed', TaskId, Succeeded, Failed}).
 
@@ -180,11 +181,11 @@ try_to_salvage_output(TaskId=?NE_BINARY) ->
 
 try_maybe_strip_columns(Columns, CSVPath) ->
     try maybe_strip_columns(Columns, CSVPath)
-    catch _E:_R ->
-            ST = erlang:get_stacktrace(),
-            lager:warning("stripping empty columns failed: ~p:~p", [_E, _R]),
-            kz_util:log_stacktrace(ST)
-    end.
+    catch
+        ?STACKTRACE(_E, _R, ST)
+        lager:warning("stripping empty columns failed: ~p:~p", [_E, _R]),
+        kz_log:log_stacktrace(ST)
+        end.
 
 maybe_strip_columns(Columns, CSVPath) ->
     maybe_strip_columns(Columns, CSVPath, sets:size(Columns)).
@@ -231,6 +232,14 @@ tac(OutputPath) ->
     lager:debug("mv ~s ~s", [Tmp, OutputPath]),
     'ok' = file:rename(Tmp, OutputPath).
 
+-spec attempt_upload(kz_term:ne_binary(), kz_term:ne_binary(), iodata(), file:filename_all()) ->
+          'ok' | {'error', 'conflict'}.
+attempt_upload(TaskId, AName, CSV, CSVPath) ->
+    Max = ?UPLOAD_ATTEMPTS,
+    attempt_upload(TaskId, AName, CSV, CSVPath, Max, Max).
+
+-spec attempt_upload(kz_term:ne_binary(), kz_term:ne_binary(), iodata(), file:filename_all(), non_neg_integer(), pos_integer()) ->
+          'ok' | {'error', 'conflict'}.
 attempt_upload(_TaskId, _AName, _, _, 0, _) ->
     lager:error("failed saving ~s/~s: last failing attempt", [_TaskId, _AName]),
     {'error', 'conflict'};
@@ -318,7 +327,7 @@ cleanup_task(API, Data) ->
 -spec init([]) -> {'ok', state()}.
 init([]) ->
     _ = process_flag('trap_exit', 'true'),
-    lager:info("ensuring db ~s exists", [?KZ_TASKS_DB]),
+    lager:info("started ~s", [?MODULE]),
     {'ok', #state{}}.
 
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
@@ -361,7 +370,7 @@ handle_call({'stop_task', TaskId}, _From, State) ->
                     {'ok', JObj} = update_task(Task1),
                     State1 = remove_task(TaskId, State),
                     State2 = remove_last_worker_update(TaskId, State1),
-                    kz_util:spawn(fun try_to_salvage_output/1, [TaskId]),
+                    kz_process:spawn(fun try_to_salvage_output/1, [TaskId]),
                     ?REPLY_FOUND(State2, JObj)
             end
     end;
@@ -479,7 +488,7 @@ handle_info({'EXIT', Pid, _Reason}, State) ->
     {'ok', _JObj} = update_task(Task1),
     State1 = remove_task(TaskId, State),
     State2 = remove_last_worker_update(TaskId, State1),
-    kz_util:spawn(fun try_to_salvage_output/1, [TaskId]),
+    kz_process:spawn(fun try_to_salvage_output/1, [TaskId]),
     {'noreply', State2};
 
 handle_info(_Info, State) ->
@@ -561,7 +570,7 @@ handle_call_start_task(Task=#{id := TaskId
                  },
     lager:debug("extra args: ~p", [ExtraArgs]),
     %% Task needs to run where App is started.
-    try kz_util:spawn_link(fun Worker:start/3, [TaskId, API, ExtraArgs]) of
+    try kz_process:spawn_link(fun Worker:start/3, [TaskId, API, ExtraArgs]) of
         Pid ->
             Task1 = Task#{started => kz_time:now_s()
                          ,worker_pid => Pid
@@ -591,7 +600,7 @@ add_task(Task=#{id := TaskId}, State=#state{tasks = Tasks}) ->
     State#state{tasks = maps:put(TaskId, Task, Tasks)}.
 
 -spec update_task(kz_tasks:task()) -> {'ok', kz_json:object()} |
-                                      {'error', any()}.
+          {'error', any()}.
 update_task(Task = #{id := TaskId}) ->
     Updates = kz_json:to_proplist(kz_tasks:to_json(Task)),
     UpdateOptions = [{'update', Updates}
@@ -624,8 +633,8 @@ task_api(Category, Action) ->
 -spec worker_module(kz_json:object()) -> module().
 worker_module(API) ->
     case kz_tasks:input_mime(API) of
-        <<"none">> -> 'kz_task_worker_noinput';
-        _TextCSV -> 'kz_task_worker'
+        <<"none">> -> 'kt_task_worker_noinput';
+        _TextCSV -> 'kt_task_worker'
     end.
 
 %%% End of Module.

@@ -3,7 +3,12 @@
     "language": "javascript",
     "views": {
         "listing_by_name": {
-            "map": "function(doc){if(doc.pvt_type!='webseq'||doc.pvt_deleted)return;emit(doc.name, null);}"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'webseq' || doc.pvt_deleted) return;",
+                "  emit(doc.name, null);",
+                "}"
+            ]
         }
     }
 }

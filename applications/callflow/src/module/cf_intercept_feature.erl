@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Intercept a call in the specified device/user/extension.
 %%%
 %%% <h4>Data options:</h4>
@@ -48,6 +48,11 @@
 %%%
 %%% @author SIPLABS LLC (Mikhail Rodionov)
 %%% @author SIPLABS LLC (Maksim Krzhemenevskiy)
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cf_intercept_feature).
@@ -139,8 +144,8 @@ device_has_same_owner(Call, DeviceDoc, TargetDeviceId) ->
     end.
 
 -spec build_intercept_params(kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) ->
-                                    {'ok', kz_term:proplist()} |
-                                    {'error', kz_term:ne_binary()}.
+          {'ok', kz_term:proplist()} |
+          {'error', kz_term:ne_binary()}.
 build_intercept_params(Number, <<"device">>, Call) ->
     AccountDb = kapps_call:account_db(Call),
     case cf_util:endpoint_id_by_sip_username(AccountDb, Number) of
@@ -162,8 +167,8 @@ build_intercept_params(_, Other, _) ->
     {'error', <<Other/binary," not implemented">>}.
 
 -spec params_from_data(kz_term:ne_binary(), kz_json:object(), kapps_call:call()) ->
-                              {'ok', kz_term:proplist()} |
-                              {'error', kz_term:ne_binary()}.
+          {'ok', kz_term:proplist()} |
+          {'error', kz_term:ne_binary()}.
 params_from_data(<<"user">>, Data, _Call) ->
     EndpointId = kz_doc:id(Data),
     {'ok', [{<<"user_id">>, EndpointId}]};

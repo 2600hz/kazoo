@@ -1,0 +1,13 @@
+<profile name="dialplan" profile-type="fetch">
+
+	<fields verbose="false">
+		<field name="voice_dialplan" type="reference" />
+		<field name="debug-call" type="reference" />
+	</fields>
+
+	<params>
+		<param name="fetch-timeout" value="3500000" />
+		<param name="fetch-section" value="dialplan" />
+	</params>
+
+</profile>

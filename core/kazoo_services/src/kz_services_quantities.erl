@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_services_quantities).
@@ -21,12 +25,13 @@
 
 -include("services.hrl").
 
--type billable() :: kz_json:api_object().
+-type billable() :: kz_term:api_object().
 -type billables() :: kz_json:objects().
 -type quantity_kv() :: {kz_term:ne_binaries(), integer()}.
 -type quantities_prop() :: [quantity_kv()].
 -export_type([quantities_prop/0
              ,billables/0
+             ,billable/0
              ]).
 
 %%------------------------------------------------------------------------------
@@ -37,16 +42,58 @@
 fetch_account(Services) ->
     AccountId = kz_services:account_id(Services),
     lager:debug("fetching account quantities for ~s", [AccountId]),
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kzs_util:format_account_db(AccountId),
     ViewOptions = ['reduce'
                   ,'group'
                   ],
-    fetch(AccountDb, <<"services/quantify">>, ViewOptions).
+    AccountQuantities = fetch(AccountDb, <<"services/quantify">>, ViewOptions),
+    PortQuantities = fetch_account_port(AccountId),
+    kz_json:merge([AccountQuantities, PortQuantities]).
 
 -spec fetch_cascade(kz_services:services()) -> kz_json:object().
 fetch_cascade(Services) ->
     AccountId = kz_services:account_id(Services),
     lager:debug("fetching cascade quantities for ~s", [AccountId]),
+    AccountQuantities = fetch_account_cascade(AccountId),
+    PortQuantities = fetch_account_port_cascade(AccountId),
+    kz_json:merge([AccountQuantities, PortQuantities]).
+
+-spec fetch_account_port(kz_term:ne_binary()) -> kz_json:object().
+fetch_account_port(AccountId) ->
+    fetch_port(AccountId, <<"port_services/account_quantities">>).
+
+-spec fetch_account_port_cascade(kz_term:ne_binary()) -> kz_json:object().
+fetch_account_port_cascade(AccountId) ->
+    fetch_port(AccountId, <<"port_services/cascade_quantities">>).
+
+-spec fetch_port(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:object().
+fetch_port(AccountId, View) ->
+    ViewOptions = ['reduce'
+                  ,'group'
+                  ,{'group_level', 2}
+                  ,{'startkey', [AccountId]}
+                  ,{'endkey', [AccountId, kz_json:new()]}
+                  ],
+    case kz_datamgr:get_results(?KZ_PORT_REQUESTS_DB, View, ViewOptions) of
+        {'ok', JObjs} ->
+            Quantities = [{port_key(kz_json:get_value(<<"key">>, JObj))
+                          ,kz_json:get_integer_value(<<"value">>, JObj, 0)
+                          }
+                          || JObj <- JObjs
+                         ],
+            kz_json:set_values(Quantities, kz_json:new());
+        {'error', _Message} ->
+            ?SUP_LOG_ERROR("failed to query port quantities account: ~s with error: ~p", [AccountId, _Message]),
+            kz_json:new()
+    end.
+
+
+-spec port_key(kz_term:ne_binaries()) -> kz_term:ne_binaries().
+port_key([_AccountId, State]) ->
+    [<<"port_request">>, State].
+
+-spec fetch_account_cascade(kz_term:ne_binary()) -> kz_json:object().
+fetch_account_cascade(AccountId) ->
     ViewOptions = ['reduce'
                   ,'group'
                   ,{'startkey', [AccountId]}
@@ -57,18 +104,16 @@ fetch_cascade(Services) ->
 -spec fetch(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> kz_json:object().
 fetch(Database, View, ViewOptions) ->
     case kz_datamgr:get_results(Database, View, ViewOptions) of
-        {'error', _Reason} ->
-            lager:info("unable to fetch quantities from ~s:~s: ~p"
-                      ,[Database, View, _Reason]
-                      ),
-            kz_json:new();
         {'ok', JObjs} ->
             Quantities = [{kz_json:get_value(<<"key">>, JObj)
                           ,kz_json:get_integer_value(<<"value">>, JObj, 0)
                           }
                           || JObj <- JObjs
                          ],
-            fetch_to_json(Quantities)
+            fetch_to_json(Quantities);
+        {'error', _Message} ->
+            ?SUP_LOG_ERROR("failed to query account quantities: ~s with error: ~p", [Database, _Message]),
+            kz_json:new()
     end.
 
 -spec fetch_to_json(quantities_prop()) -> kz_json:object().
@@ -218,7 +263,7 @@ cascade_item(Services, CategoryName, ItemName) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec calculate_updates(kz_services:services(), billable() | billables(), billable() | billables()) ->
-                               kz_json:object().
+          kz_json:object().
 calculate_updates(Services, 'undefined', ProposedJObjs) ->
     lager:debug("calculating service updates for addition(s)", []),
     calculate_updates(Services, [], ProposedJObjs);
@@ -260,7 +305,7 @@ calculate_updates(Services, CurrentJObjs, [ProposedJObj|RemainingProposedJObjs],
                      ,sum_updates(Props, Updates)
                      ).
 
--spec split_jobjs(kz_json:objects(), kz_term:ne_binary()) -> {kz_json:api_object(), kz_json:objects()}.
+-spec split_jobjs(kz_json:objects(), kz_term:ne_binary()) -> {kz_term:api_object(), kz_json:objects()}.
 split_jobjs(JObjs, Id) ->
     case lists:splitwith(fun(JObj) ->
                                  kz_doc:id(JObj) =:= Id
@@ -272,7 +317,7 @@ split_jobjs(JObjs, Id) ->
             {CurrentJObj, RemainingJObjs}
     end.
 
--spec calculate_updates(kz_services:services(), kz_json:api_object()) -> kz_term:proplist().
+-spec calculate_updates(kz_services:services(), kz_term:api_object()) -> kz_term:proplist().
 calculate_updates(_Services, 'undefined') -> [];
 calculate_updates(Services, JObj) ->
     case kz_json:is_false(<<"enabled">>, JObj)
@@ -293,6 +338,7 @@ calculate_updates(Services, JObj) ->
                        ,fun calculate_vmbox_updates/2
                        ,fun calculate_faxbox_updates/2
                        ,fun calculate_conference_updates/2
+                       ,fun calculate_port_request_updates/2
                        ],
             Updates = lists:foldl(fun(F, Updates) ->
                                           F(JObj, Updates)
@@ -490,7 +536,8 @@ calculate_qubicle_queue_updates(JObj, Updates) ->
     case kz_doc:type(JObj) =:= <<"qubicle_queue">> of
         'false' -> Updates;
         'true' ->
-            Key = [<<"qubicle">>, <<"queues">>],
+            Offering = kz_json:get_ne_value(<<"pvt_offering">>, JObj, <<"basic">>),
+            Key = [<<"qubicle">>, <<Offering/binary, "_queue">>],
             [{Key, 1} | Updates]
     end.
 
@@ -501,7 +548,8 @@ calculate_qubicle_recipient_updates(JObj, Updates) ->
     of
         'false' -> Updates;
         'true' ->
-            Key = [<<"qubicle">>, <<"recipients">>],
+            Offering = kz_json:get_ne_value([<<"qubicle">>, <<"recipient">>, <<"offering">>], JObj, <<"basic">>),
+            Key = [<<"qubicle">>, <<Offering/binary, "_recipient">>],
             [{Key, 1} | Updates]
     end.
 
@@ -510,8 +558,21 @@ calculate_vmbox_updates(JObj, Updates) ->
     case kz_doc:type(JObj) =:= <<"vmbox">> of
         'false' -> Updates;
         'true' ->
-            Key = [<<"voicemails">>, <<"mailbox">>],
-            [{Key, 1} | Updates]
+            Keys = [<<"mailbox">>, <<"transcription">>],
+            Fun = calculate_vmbox_updates_foldl(JObj),
+            lists:foldl(Fun, Updates, Keys)
+    end.
+
+-spec calculate_vmbox_updates_foldl(kz_json:object()) -> fun((kz_term:ne_binary(), kz_term:proplist()) -> kz_term:proplist()).
+calculate_vmbox_updates_foldl(JObj) ->
+    fun(<<"transcription">> = Key, Updates) ->
+            case kz_json:get_boolean_value(<<"transcribe">>, JObj, 'false') of
+                'true' ->
+                    [{[<<"voicemails">>, Key], 1} | Updates];
+                _ -> Updates
+            end;
+       (Key, Updates) ->
+            [{[<<"voicemails">>, Key], 1} | Updates]
     end.
 
 -spec calculate_faxbox_updates(kz_json:object(), kz_term:proplist()) -> kz_term:proplist().
@@ -531,6 +592,32 @@ calculate_conference_updates(JObj, Updates) ->
             Key = [<<"conferences">>, <<"conference">>],
             [{Key, 1} | Updates]
     end.
+
+-spec calculate_port_request_updates(kz_json:object(), kz_term:proplist()) -> kz_term:proplist().
+calculate_port_request_updates(JObj, Updates) ->
+    case kz_doc:type(JObj) =:= <<"port_request">> of
+        'false' -> Updates;
+        'true' ->
+            Key = get_port_request_key(JObj),
+            Numbers = kzd_port_requests:numbers(JObj, kz_json:new()),
+            [{Key, length(kz_json:get_keys(Numbers))} | Updates]
+    end.
+
+-spec get_port_request_key(kz_json:object()) -> kz_term:ne_binaries().
+get_port_request_key(JObj) ->
+    State = kzd_port_requests:pvt_port_state(JObj, <<"unconfirmed">>),
+    case is_first_transition_to_state(JObj) of
+        'true' -> [<<"port_request">>, <<"first_", State/binary>>];
+        'false' -> [<<"port_request">>, State]
+    end.
+
+-spec is_first_transition_to_state(kz_json:object()) -> boolean().
+is_first_transition_to_state(JObj) ->
+    StateTransitions =
+        kzd_port_requests:get_transition(JObj
+                                        ,kzd_port_requests:pvt_port_state(JObj)
+                                        ),
+    length(StateTransitions) =:= 1.
 
 %%------------------------------------------------------------------------------
 %% @doc

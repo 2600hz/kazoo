@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2017-2019, 2600Hz
+%%% @copyright (C) 2017-2020, 2600Hz
 %%% @doc Sends a notification for missed call.
 %%%
 %%% <h4>Data options:</h4>
@@ -14,6 +14,11 @@
 %%%     </ul>
 %%%   </dd>
 %%% </dl>
+%%%
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
 %%%
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -62,14 +67,18 @@ maybe_add_handle(_Data, Call, _Wat) ->
 %%      or voicemail message left flags are set
 %% @end
 %%------------------------------------------------------------------------------
--spec handle_termination(kapps_call:call(), kz_json:object(), kz_json:object()) -> kapps_call:call().
-handle_termination(Call, Notify, Data) ->
-    case should_handle_termination(Call)
-        andalso find_email_addresses(Call, kz_json:get_value(<<"recipients">>, Data, []))
-    of
-        'false' -> Call;
-        [] -> send_missed_alert(Call, Notify, 'undefined');
-        Emails -> send_missed_alert(Call, Notify, Emails)
+-spec handle_termination(kapps_call:call(), kz_json:object(), kz_json:object()) -> 'ok'.
+handle_termination(Call, JObj, Data) ->
+    handle_termination(Call, JObj, Data, should_handle_termination(Call)).
+
+-spec handle_termination(kapps_call:call(), kz_json:object(), kz_json:object(), boolean()) -> 'ok'.
+handle_termination(_, _, _, 'false') ->
+    lager:debug("doing nothing, call has been bridged or a message was left");
+handle_termination(Call, JObj, Data, 'true') ->
+    lager:debug("call went unanswered and left no voicemail message"),
+    case find_email_addresses(Call, kz_json:get_value(<<"recipients">>, Data, [])) of
+        [] -> send_missed_alert(Call, JObj, 'undefined');
+        Emails -> send_missed_alert(Call, JObj, Emails)
     end.
 
 %%%=============================================================================
@@ -116,8 +125,7 @@ send_missed_alert(Call, Notify, Emails) ->
 %%------------------------------------------------------------------------------
 -spec find_email_addresses(kapps_call:call(), kz_json:objects()) -> kz_term:ne_binaries().
 find_email_addresses(Call, Recipients) ->
-    AccountDb = kz_util:format_account_db(kapps_call:account_id(Call)),
-    lager:debug("call went unanswered and left no voicemail message, finding configured email addresses"),
+    AccountDb = kzs_util:format_account_db(kapps_call:account_id(Call)),
     lists:flatten(
       [Emails
        || JObj <- Recipients,

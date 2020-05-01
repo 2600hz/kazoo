@@ -1,8 +1,13 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc User auth module
 %%% @author Karl Anderson
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cb_user_auth).
@@ -10,8 +15,8 @@
 -export([init/0
         ,allowed_methods/0, allowed_methods/1
         ,resource_exists/0, resource_exists/1
-        ,authorize/1
-        ,authenticate/1
+        ,authorize/1, authorize/2
+        ,authenticate/1, authenticate/2
         ,validate/1, validate/2
         ,put/1, put/2
         ,post/2
@@ -46,16 +51,16 @@
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec init() -> ok.
+-spec init() -> 'ok'.
 init() ->
-    _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
-    _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
+    _ = crossbar_bindings:bind(<<"*.authenticate.user_auth">>, ?MODULE, 'authenticate'),
+    _ = crossbar_bindings:bind(<<"*.authorize.user_auth">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.user_auth">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.user_auth">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.validate.user_auth">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.put.user_auth">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.user_auth">>, ?MODULE, 'post'),
-    ok.
+    'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc This function determines the verbs that are appropriate for the
@@ -81,7 +86,7 @@ allowed_methods(_AuthToken) -> [?HTTP_GET].
 -spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
 
--spec resource_exists(path_tokens()) -> boolean().
+-spec resource_exists(path_token()) -> boolean().
 resource_exists(?RECOVERY) -> 'true';
 resource_exists(_AuthToken) -> 'true'.
 
@@ -91,6 +96,10 @@ resource_exists(_AuthToken) -> 'true'.
 %%------------------------------------------------------------------------------
 -spec authorize(cb_context:context()) -> boolean() | {'stop', cb_context:context()}.
 authorize(Context) ->
+    authorize_nouns(Context, cb_context:req_nouns(Context), cb_context:req_verb(Context)).
+
+-spec authorize(cb_context:context(), path_token()) -> boolean() | {'stop', cb_context:context()}.
+authorize(Context, _) ->
     authorize_nouns(Context, cb_context:req_nouns(Context), cb_context:req_verb(Context)).
 
 -spec authorize_nouns(cb_context:context(), req_nouns(), req_verb()) -> boolean() | {'stop', cb_context:context()}.
@@ -111,7 +120,7 @@ authorize_nouns(Context
             lager:debug("authorizing request"),
             'true';
         'false' ->
-            lager:error("non-admin user ~s in non super-duper admin account tries to impersonate user ~s in account ~s"
+            lager:error("non-admin user ~s in non super-duper admin account ~s tried to impersonate user ~s in account ~s"
                        ,[cb_context:auth_user_id(Context), cb_context:auth_account_id(Context), UserId, AccountId]
                        ),
             {'stop', cb_context:add_system_error('forbidden', Context)}
@@ -146,6 +155,10 @@ authorize_nouns(_, _Nouns, _) -> 'false'.
 %%------------------------------------------------------------------------------
 -spec authenticate(cb_context:context()) -> boolean().
 authenticate(Context) ->
+    authenticate_nouns(cb_context:req_nouns(Context)).
+
+-spec authenticate(cb_context:context(), path_token()) -> boolean().
+authenticate(Context, _) ->
     authenticate_nouns(cb_context:req_nouns(Context)).
 
 authenticate_nouns([{<<"user_auth">>, []}]) -> 'true';
@@ -210,7 +223,7 @@ validate(Context, ?RECOVERY) ->
     end,
     cb_context:validate_request_data(Schema, Context, OnSuccess);
 validate(Context, AuthToken) ->
-    Context1 = cb_context:set_account_db(Context, ?KZ_TOKEN_DB),
+    Context1 = cb_context:set_db_name(Context, ?KZ_TOKEN_DB),
     maybe_get_auth_token(Context1, AuthToken).
 
 -spec put(cb_context:context()) -> cb_context:context().
@@ -229,7 +242,7 @@ post(Context, ?RECOVERY) ->
     Context1 = crossbar_doc:save(Context),
     DocForCreation =
         kz_json:from_list(
-          [{<<"account_id">>, kz_util:format_account_id(cb_context:account_db(Context1))}
+          [{<<"account_id">>, kzs_util:format_account_id(cb_context:db_name(Context1))}
           ,{<<"owner_id">>, kz_doc:id(cb_context:doc(Context1))}
           ]),
     Context2 = cb_context:set_doc(Context1, DocForCreation),
@@ -258,7 +271,7 @@ maybe_get_auth_token(Context, AuthToken) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec create_auth_resp(cb_context:context(), kz_term:ne_binary(),  kz_term:ne_binary()) ->
-                              cb_context:context().
+          cb_context:context().
 create_auth_resp(Context, AccountId, AccountId) ->
     lager:debug("account ~s is same as auth account", [AccountId]),
     crossbar_util:response(crossbar_util:response_auth(cb_context:auth_doc(Context))
@@ -282,10 +295,10 @@ create_auth_resp(Context, _AccountId, _AuthAccountId) ->
 -spec maybe_authenticate_user(cb_context:context()) -> cb_context:context().
 maybe_authenticate_user(Context) ->
     JObj = cb_context:doc(Context),
-    Credentials = kz_json:get_value(<<"credentials">>, JObj),
-    Method = kz_json:get_value(<<"method">>, JObj, <<"md5">>),
+    Credentials = kzd_user_auth:credentials(JObj),
+    Method = kzd_user_auth:method(JObj),
     AccountName = kzd_accounts:normalize_name(kz_json:get_value(<<"account_name">>, JObj)),
-    PhoneNumber = kz_json:get_ne_value(<<"phone_number">>, JObj),
+    PhoneNumber = kzd_user_auth:phone_number(JObj),
     AccountRealm = kz_json:get_first_defined([<<"account_realm">>, <<"realm">>], JObj),
     case find_account(PhoneNumber, AccountRealm, AccountName, Context) of
         {'error', _} ->
@@ -297,13 +310,12 @@ maybe_authenticate_user(Context) ->
     end.
 
 -spec maybe_authenticate_user(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                     cb_context:context().
+          cb_context:context().
 maybe_authenticate_user(Context, Credentials, <<"md5">>, ?NE_BINARY=Account) ->
-    AccountDb = kz_util:format_account_db(Account),
-    Context1 = crossbar_doc:load_view(?ACCT_MD5_LIST
-                                     ,[{'key', Credentials}]
-                                     ,cb_context:set_account_db(Context, AccountDb)
-                                     ),
+    Options = [{'key', Credentials}
+              ,{'databases', [kzs_util:format_account_db(Account)]}
+              ],
+    Context1 = crossbar_view:load(Context, ?ACCT_MD5_LIST, Options),
     case cb_context:resp_status(Context1) of
         'success' -> load_md5_results(Context1, cb_context:doc(Context1), Account);
         _Status ->
@@ -314,11 +326,10 @@ maybe_authenticate_user(Context, Credentials, <<"md5">>, ?NE_BINARY=Account) ->
             cb_context:add_system_error('invalid_credentials', Context1)
     end;
 maybe_authenticate_user(Context, Credentials, <<"sha">>, ?NE_BINARY=Account) ->
-    AccountDb = kz_util:format_account_db(Account),
-    Context1 = crossbar_doc:load_view(?ACCT_SHA1_LIST
-                                     ,[{'key', Credentials}]
-                                     ,cb_context:set_account_db(Context, AccountDb)
-                                     ),
+    Options = [{'key', Credentials}
+              ,{'databases', [kzs_util:format_account_db(Account)]}
+              ],
+    Context1 = crossbar_view:load(Context, ?ACCT_SHA1_LIST, Options),
     case cb_context:resp_status(Context1) of
         'success' -> load_sha1_results(Context1, cb_context:doc(Context1), Account);
         _Status ->
@@ -334,7 +345,7 @@ maybe_authenticate_user(Context, _Creds, _Method, Account) ->
     cb_context:add_system_error('invalid_credentials', Context).
 
 -spec maybe_auth_account(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                cb_context:context().
+          cb_context:context().
 maybe_auth_account(Context, Credentials, Method, Account) ->
     Context1 = maybe_authenticate_user(Context, Credentials, Method, Account),
     case cb_context:resp_status(Context1) of
@@ -344,7 +355,7 @@ maybe_auth_account(Context, Credentials, Method, Account) ->
     end.
 
 -spec maybe_auth_accounts(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binaries()) ->
-                                 cb_context:context().
+          cb_context:context().
 maybe_auth_accounts(Context, _, _, []) ->
     lager:debug("no account(s) specified"),
     cb_context:add_system_error('invalid_credentials', Context);
@@ -362,7 +373,7 @@ maybe_account_is_expired(Context, Account) ->
     case kzd_accounts:is_expired(Account) of
         'false' -> maybe_account_is_enabled(Context, Account);
         {'true', Expired} ->
-            _ = kz_util:spawn(fun crossbar_util:maybe_disable_account/1, [Account]),
+            _ = kz_process:spawn(fun crossbar_util:maybe_disable_account/1, [Account]),
             Cause =
                 kz_json:from_list(
                   [{<<"message">>, <<"account expired">>}
@@ -390,7 +401,7 @@ maybe_account_is_enabled(Context, Account) ->
     end.
 
 -spec load_sha1_results(cb_context:context(), kz_json:objects() | kz_json:object(), kz_term:ne_binary())->
-                               cb_context:context().
+          cb_context:context().
 load_sha1_results(Context, [JObj|_], _Account)->
     lager:debug("found more that one user with SHA1 creds, using ~s", [kz_doc:id(JObj)]),
     cb_context:set_doc(Context, kz_json:get_value(<<"value">>, JObj));
@@ -404,7 +415,7 @@ load_sha1_results(Context, JObj, _Account)->
     cb_context:set_doc(cb_context:store(Context, 'auth_type', <<"credentials">>), kz_json:get_value(<<"value">>, JObj)).
 
 -spec load_md5_results(cb_context:context(), kz_json:objects() | kz_json:object(), kz_term:ne_binary()) ->
-                              cb_context:context().
+          cb_context:context().
 load_md5_results(Context, [JObj|_], _Account) ->
     lager:debug("found more that one user with MD5 creds, using ~s", [kz_doc:id(JObj)]),
     cb_context:set_doc(Context, kz_json:get_value(<<"value">>, JObj));
@@ -422,7 +433,7 @@ load_md5_results(Context, JObj, _Account) ->
 maybe_load_user_doc_via_creds(Context) ->
     JObj = cb_context:doc(Context),
     AccountName = kzd_accounts:normalize_name(kz_json:get_value(<<"account_name">>, JObj)),
-    PhoneNumber = kz_json:get_ne_value(<<"phone_number">>, JObj),
+    PhoneNumber = kzd_user_auth:phone_number(JObj),
     AccountRealm = kz_json:get_first_defined([<<"account_realm">>, <<"realm">>], JObj),
     case find_account(PhoneNumber, AccountRealm, AccountName, Context) of
         {'error', C} -> C;
@@ -433,7 +444,7 @@ maybe_load_user_doc_via_creds(Context) ->
 -spec maybe_load_user_doc_by_username(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 maybe_load_user_doc_by_username(Account, Context) ->
     JObj = cb_context:doc(Context),
-    AccountDb = kz_util:format_account_db(Account),
+    AccountDb = kzs_util:format_account_db(Account),
     lager:debug("attempting to lookup user name in db: ~s", [AccountDb]),
     AuthType = <<"user_auth_recovery">>,
     Username = kz_json:get_value(<<"username">>, JObj),
@@ -446,7 +457,7 @@ maybe_load_user_doc_by_username(Account, Context) ->
                 'false' ->
                     lager:debug("user name '~s' was found and is not disabled, continue", [Username]),
                     Doc = kz_json:get_value(<<"doc">>, User),
-                    cb_context:setters(Context, [{fun cb_context:set_account_db/2, Account}
+                    cb_context:setters(Context, [{fun cb_context:set_db_name/2, Account}
                                                 ,{fun cb_context:set_doc/2, Doc}
                                                 ,{fun cb_context:set_resp_status/2, 'success'}
                                                 ,{fun cb_context:store/3, 'auth_type', AuthType}
@@ -475,7 +486,7 @@ maybe_load_user_doc_by_username(Account, Context) ->
 
 -spec save_reset_id_then_send_email(cb_context:context()) -> cb_context:context().
 save_reset_id_then_send_email(Context) ->
-    MoDb = kazoo_modb:get_modb(cb_context:account_db(Context)),
+    MoDb = kazoo_modb:get_modb(cb_context:db_name(Context)),
     ResetId = reset_id(MoDb),
     UserDoc = cb_context:doc(Context),
     UserId = kz_doc:id(UserDoc),
@@ -516,7 +527,7 @@ maybe_load_user_doc_via_reset_id(Context) ->
             lager:debug("found password reset doc"),
             AccountDb = ?MATCH_ACCOUNT_ENCODED(A, B, Rest),
             Context1 = crossbar_doc:load(kz_json:get_value(<<"pvt_userid">>, ResetIdDoc)
-                                        ,cb_context:set_account_db(Context, AccountDb)
+                                        ,cb_context:set_db_name(Context, AccountDb)
                                         ,?TYPE_CHECK_OPTION(kzd_users:type())
                                         ),
             NewUserDoc =
@@ -579,8 +590,8 @@ create_resetid_doc(ResetId, UserId) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec find_account(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), cb_context:context()) ->
-                          {'ok', kz_term:ne_binary() | kz_term:ne_binaries()} |
-                          {'error', cb_context:context()}.
+          {'ok', kz_term:ne_binary() | kz_term:ne_binaries()} |
+          {'error', cb_context:context()}.
 find_account('undefined', 'undefined', 'undefined', Context) ->
     {'error', Context};
 find_account('undefined', 'undefined', AccountName, Context) ->
@@ -607,9 +618,9 @@ find_account('undefined', AccountRealm, AccountName, Context) ->
             find_account('undefined', 'undefined', AccountName, ErrorContext)
     end;
 find_account(PhoneNumber, AccountRealm, AccountName, Context) ->
-    case knm_number:lookup_account(PhoneNumber) of
+    case knm_numbers:lookup_account(PhoneNumber) of
         {'ok', AccountId, _} ->
-            AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+            AccountDb = kzs_util:format_account_db(AccountId),
             lager:debug("found account by phone number '~s': ~s", [PhoneNumber, AccountDb]),
             {'ok', AccountDb};
         {'error', _} ->

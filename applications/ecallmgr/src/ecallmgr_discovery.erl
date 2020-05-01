@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(ecallmgr_discovery).
@@ -16,11 +20,13 @@
         ,code_change/3
         ]).
 
+-export([discover/0]).
+
 -include("ecallmgr.hrl").
 
 -define(SERVER, ?MODULE).
 
--type state() :: kz_time:gregorian_seconds().
+-type state() :: kz_time:start_time().
 
 %%%=============================================================================
 %%% API
@@ -43,10 +49,10 @@ start_link() ->
 %%
 %% @end
 %%------------------------------------------------------------------------------
--spec init(list()) -> {'ok', state(), pos_integer()}.
+-spec init(list()) -> {'ok', state(), ?MILLISECONDS_IN_SECOND}.
 init([]) ->
     lager:info("starting discovery"),
-    {'ok', kz_time:now_s(), ?MILLISECONDS_IN_SECOND}.
+    {'ok', kz_time:start_time(), ?MILLISECONDS_IN_SECOND}.
 
 %%------------------------------------------------------------------------------
 %% @doc Handling call messages
@@ -55,7 +61,7 @@ init([]) ->
 %%------------------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Request, _From, Startup) ->
-    {'reply', {'error', 'not_implemented'}, next_timeout(kz_time:elapsed_s(Startup))}.
+    {'reply', {'error', 'not_implemented'}, Startup, next_timeout(kz_time:elapsed_s(Startup))}.
 
 %%------------------------------------------------------------------------------
 %% @doc Handling cast messages
@@ -63,6 +69,10 @@ handle_call(_Request, _From, Startup) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
+handle_cast('discovery', Startup) ->
+    lager:warning("starting discovery"),
+    _ = sbc_discovery(),
+    {'noreply', Startup, next_timeout(kz_time:elapsed_s(Startup))};
 handle_cast(_Msg, Startup) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', Startup, next_timeout(kz_time:elapsed_s(Startup))}.
@@ -92,8 +102,8 @@ handle_info(_Msg, Startup) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
-terminate(Reason, _State) ->
-    lager:debug("ecallmgr discovery terminating: ~p",[Reason]).
+terminate(Reason, _Startup) ->
+    lager:debug("ecallmgr discovery terminating after ~ps: ~p", [kz_time:elapsed_s(_Startup), Reason]).
 
 %%------------------------------------------------------------------------------
 %% @doc Convert process state when code is changed
@@ -101,8 +111,8 @@ terminate(Reason, _State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec code_change(any(), state(), any()) -> {'ok', state()}.
-code_change(_OldVsn, State, _Extra) ->
-    {'ok', State}.
+code_change(_OldVsn, Startup, _Extra) ->
+    {'ok', Startup}.
 
 %%%=============================================================================
 %%% Internal functions
@@ -112,6 +122,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+-spec next_timeout(integer()) -> integer().
 next_timeout(Elapsed)
   when Elapsed < ?SECONDS_IN_MINUTE * 5 -> ?MILLISECONDS_IN_SECOND;
 next_timeout(Elapsed)
@@ -124,7 +135,7 @@ sbc_acl_filter({_K, V}) ->
     kz_json:get_ne_binary_value(<<"network-list-name">>, V) =:= <<"authoritative">>.
 
 sbc_cidr(_, JObj, Acc) ->
-    [kz_json:get_value(<<"cidr">>, JObj) | Acc].
+    [{kz_json:get_value(<<"cidr">>, JObj), kz_json:get_value(<<"ports">>, JObj, [])} | Acc].
 
 sbc_cidrs(ACLs) ->
     SBCs = kz_json:filter(fun sbc_acl_filter/1, ACLs),
@@ -145,8 +156,16 @@ sbc_addresses(#kz_node{roles=Roles}) ->
 sbc_node(#kz_node{node=Name}=Node) ->
     {kz_term:to_binary(Name), sbc_addresses(Node)}.
 
-sbc_verify_ip({IP, _}, CIDRs) ->
-    lists:any(fun(CIDR) -> kz_network_utils:verify_cidr(IP, CIDR) end, CIDRs).
+sbc_verify_ip({IP, Ports}, CIDRs) ->
+    lists:any(fun({CIDR, CIDRPorts}) when is_list(CIDR) ->
+                      lists:all(fun(CIDR_IP) -> kz_network_utils:verify_cidr(IP, CIDR_IP) end, CIDR)
+                          andalso Ports -- CIDRPorts  =:= []
+                          andalso CIDRPorts -- Ports =:= [];
+                 ({CIDR, CIDRPorts}) ->
+                      kz_network_utils:verify_cidr(IP, CIDR)
+                          andalso CIDRPorts -- Ports =:= []
+                          andalso Ports -- CIDRPorts  =:= []
+              end, CIDRs).
 
 sbc_discover({Node, IPs}, CIDRs, Acc) ->
     case lists:filter(fun(IP) -> not sbc_verify_ip(IP, CIDRs) end, IPs) of
@@ -201,3 +220,7 @@ sbc_discovery(ConfigNode, CurrentACLs) ->
             _ = kapps_config:set_node(?APP_NAME, <<"acls">>, NewAcls, ConfigNode),
             ecallmgr_maintenance:reload_acls()
     end.
+
+-spec discover() -> 'ok'.
+discover() ->
+    gen_server:cast(?MODULE, 'discovery').

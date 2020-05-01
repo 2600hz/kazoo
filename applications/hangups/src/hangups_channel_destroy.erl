@@ -1,8 +1,13 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
 %%% @author Karl Anderson
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(hangups_channel_destroy).
@@ -63,7 +68,7 @@ maybe_add_hangup_specific(_HangupCause, JObj) ->
 maybe_add_number_info(JObj) ->
     Destination = find_destination(JObj),
     Props = kz_json:recursive_to_proplist(JObj),
-    try knm_number:lookup_account(Destination) of
+    try knm_numbers:lookup_account(Destination) of
         {'ok', AccountId, _Props} ->
             Tree = build_account_tree(AccountId),
             props:set_value(<<"Account-Tree">>, Tree, Props);

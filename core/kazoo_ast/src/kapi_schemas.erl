@@ -1,7 +1,11 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2015-2019, 2600Hz
+%%% @copyright (C) 2015-2020, 2600Hz
 %%% @doc Generate schema for Kazoo AMQP APIs.
 %%% @author James Aimonetti
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kapi_schemas).
@@ -11,10 +15,11 @@
         ]).
 
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
+-include_lib("kazoo_stdlib/include/kz_log.hrl").
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 -include_lib("kazoo_ast/include/kz_ast.hrl").
--include_lib("kazoo_amqp/src/api/kapi_presence.hrl").
--include_lib("kazoo_amqp/src/api/kapi_route.hrl").
+-include_lib("kazoo_amqp/src/api/kapi_route.hrl"). %% ?ROUTE_REQ_COST_PARAMS
+-include_lib("kazoo_amqp/include/kapi_definition.hrl").
 
 -define(DEBUG(_Fmt, _Args), 'ok').
 %%-define(DEBUG(Fmt, Args), io:format([$~, $p, $  | Fmt], [?LINE | Args])).
@@ -26,6 +31,10 @@
              ,schema_dir = kz_ast_util:default_schema_priv_dir() :: file:filename_all()
              }).
 -type acc() :: #acc{}.
+
+-ifdef(TEST).
+-export([base_schema/2]).
+-endif.
 
 -spec to_schemas() -> 'ok'.
 to_schemas() ->
@@ -81,6 +90,7 @@ process() ->
     Options = [{'expression', fun expression_to_schema/2}
               ,{'function', fun set_function/3}
               ,{'module', fun print_dot/2}
+              ,{'after_module', fun maybe_definitions/2}
               ,{'accumulator', #acc{}}
               ,{'application', fun add_app_config/2}
               ,{'after_application', fun add_schemas_to_bucket/2}
@@ -95,6 +105,7 @@ process_app(App) ->
     Options = [{'expression', fun expression_to_schema/2}
               ,{'function', fun set_function/3}
               ,{'module', fun print_dot/2}
+              ,{'after_module', fun maybe_definitions/2}
               ,{'accumulator', #acc{}}
               ,{'application', fun add_app_config/2}
               ,{'after_application', fun add_schemas_to_bucket/2}
@@ -109,6 +120,7 @@ process_module(KapiModule) ->
     Options = [{'expression', fun expression_to_schema/2}
               ,{'function', fun set_function/3}
               ,{'module', fun print_dot/2}
+              ,{'after_module', fun maybe_definitions/2}
               ,{'accumulator', #acc{}}
               ,{'application', fun add_app_config/2}
               ,{'after_application', fun add_schemas_to_bucket/2}
@@ -120,8 +132,8 @@ process_module(KapiModule) ->
     Schemas.
 
 -spec print_dot(kz_term:ne_binary() | module(), acc()) ->
-                       acc() |
-                       {'skip', acc()}.
+          acc() |
+          {'skip', acc()}.
 print_dot(<<"kapi_fs">>, #acc{}=Acc) ->
     {'skip', Acc};
 print_dot(<<"kapi_schemas">>, #acc{}=Acc) ->
@@ -164,7 +176,7 @@ add_schemas_to_bucket(_App, #acc{schema_dir = PrivDir
            }.
 
 -spec set_function(kz_term:ne_binary() | function(), integer(), acc()) -> acc().
-set_function(<<_/binary>> = Function, 0, #acc{kapi_name = <<"notifications">>}=Acc) ->
+set_function(<<Function/binary>>, 0, #acc{kapi_name = <<"notifications">>}=Acc) ->
     case kz_binary:reverse(Function) of
         <<"noitinifed_", Nuf/binary>> ->
             ?DEBUG("api definition for ~s~n", [Function]),
@@ -173,13 +185,18 @@ set_function(<<_/binary>> = Function, 0, #acc{kapi_name = <<"notifications">>}=A
             ?DEBUG("ignoring non api definition function ~p/0~n", [Function]),
             {'skip', Acc}
     end;
-set_function(<<_/binary>> = _Function, _Arity, #acc{kapi_name = <<"notifications">>}=Acc) ->
+set_function(<<_Function/binary>>, _Arity, #acc{kapi_name = <<"notifications">>}=Acc) ->
     ?DEBUG("ignoring non api definition function ~p/~p~n", [_Function, _Arity]),
     {'skip', Acc};
-set_function(<<_/binary>> = Function, _Arity, #acc{}=Acc) ->
+set_function(<<"api_definitions">>, 0, #acc{}=Acc) ->
+    {'skip', Acc};
+set_function(<<Function/binary>>, _Arity, #acc{}=Acc) ->
     case kz_binary:reverse(Function) of
         <<"v_", Nuf/binary>> ->
             ?DEBUG("validator ~s~n", [Function]),
+            Acc#acc{api_name=kz_binary:reverse(Nuf)};
+        <<"noitinifed_", Nuf/binary>> ->
+            ?DEBUG("api definition for ~s~n", [Function]),
             Acc#acc{api_name=kz_binary:reverse(Nuf)};
         _ ->
             ?DEBUG("builder ~s~n", [Function]),
@@ -189,6 +206,7 @@ set_function(Function, Arity, Acc) ->
     set_function(kz_term:to_binary(Function), Arity, Acc).
 
 expression_to_schema(?RECORD('kapi_definition', Fields), Acc) ->
+    ?DEBUG("kapi_definition: ~p~n", [Fields]),
     kapi_definition_to_schema(Fields, Acc);
 expression_to_schema(_, #acc{kapi_name = <<"notifications">>}=Acc) ->
     Acc;
@@ -209,18 +227,36 @@ expression_to_schema(?MOD_FUN_ARGS('kz_api', 'validate_message', [_Prop, _Requir
 expression_to_schema(_Expr, Acc) ->
     Acc.
 
-kapi_definition_to_schema(Fields, Acc) ->
-    lists:foldl(fun kapi_definition_field_to_schema/2, Acc, Fields).
+kapi_definition_to_schema([_|_]=Fields, #acc{}=Acc) ->
+    lists:foldl(fun kapi_definition_field_to_schema/2, Acc, Fields);
+kapi_definition_to_schema(#kapi_definition{}=Def, Acc) ->
+    Fields = record_info('fields', 'kapi_definition'),
+    [_, Name|Values] = tuple_to_list(Def),
+    ?DEBUG("kapi: ~s: ~p~n", [Name, Def]),
+    kapi_definition_to_schema(lists:zip(Fields, [Name|Values]), Acc#acc{api_name=Name}).
 
 kapi_definition_field_to_schema(?RECORD_FIELD_BIND('required_headers', Required), Acc) ->
+    kapi_definition_field_to_schema({'required_headers', Required}, Acc);
+kapi_definition_field_to_schema({'required_headers', Required}, Acc) ->
     properties_to_schema(kz_ast_util:ast_to_list_of_binaries(Required), [], Acc);
+
 kapi_definition_field_to_schema(?RECORD_FIELD_BIND('optional_headers', Optional), Acc) ->
+    kapi_definition_field_to_schema({'optional_headers', Optional}, Acc);
+kapi_definition_field_to_schema({'optional_headers', Optional}, Acc) ->
     properties_to_schema([], optional_validators(Optional), Acc);
+
 kapi_definition_field_to_schema(?RECORD_FIELD_BIND('values', Values), Acc) ->
+    kapi_definition_field_to_schema({'values', Values}, Acc);
+kapi_definition_field_to_schema({'values', Values}, Acc) ->
     validators_to_schema(ast_to_proplist(Values), [], Acc);
+
 kapi_definition_field_to_schema(?RECORD_FIELD_BIND('types', Types), Acc) ->
+    kapi_definition_field_to_schema({'types', Types}, Acc);
+kapi_definition_field_to_schema({'types', Types}, Acc) ->
     validators_to_schema([], ast_to_proplist(Types), Acc);
-kapi_definition_field_to_schema(_, Acc) ->
+
+kapi_definition_field_to_schema(_Field, Acc) ->
+    ?DEBUG("ignoring field ~p~n", [_Field]),
     Acc.
 
 optional_validators(?EMPTY_LIST) -> [];
@@ -266,10 +302,17 @@ kapi_schema(#acc{app_schemas=Schemas
         Schema -> Schema
     end.
 
-base_schema(KAPI, API) ->
+-spec base_schema(kz_term:ne_binary(), kapi_definition:name()) -> kz_json:object().
+base_schema(<<KAPI/binary>>, <<API/binary>>) ->
     kz_json:from_list([{<<"_id">>, <<"kapi.", KAPI/binary, ".", API/binary>>}
                       ,{<<"$schema">>, <<"http://json-schema.org/draft-04/schema#">>}
                       ,{<<"description">>, <<"AMQP API for ", KAPI/binary, ".", API/binary>>}
+                      ,{<<"type">>, <<"object">>}
+                      ]);
+base_schema(<<KAPI/binary>>, _) ->
+    kz_json:from_list([{<<"_id">>, <<"kapi.", KAPI/binary>>}
+                      ,{<<"$schema">>, <<"http://json-schema.org/draft-04/schema#">>}
+                      ,{<<"description">>, <<"AMQP API for ", KAPI/binary>>}
                       ,{<<"type">>, <<"object">>}
                       ]).
 
@@ -438,6 +481,12 @@ validator_properties({'kz_term', 'is_ne_binary', 1}) ->
     kz_json:from_list([{<<"type">>, <<"string">>}
                       ,{<<"minLength">>, 1}
                       ]);
+validator_properties({'kz_term', 'is_ne_binaries', 1}) ->
+    kz_json:from_list([{<<"type">>, <<"array">>}
+                      ,{<<"items">>
+                       ,kz_json:from_list([{<<"type">>, <<"string">>}])
+                       }
+                      ]);
 validator_properties({'kapi_dialplan', 'terminators_v', 1}) ->
     kz_json:from_list([{<<"type">>, <<"array">>}
                       ,{<<"items">>
@@ -449,6 +498,12 @@ validator_properties({'kapi_dialplan', 'terminators_v', 1}) ->
 validator_properties({'kz_term', 'is_ne_list', 1}) ->
     kz_json:from_list([{<<"type">>, <<"array">>}
                       ,{<<"minItems">>, 1}
+                      ]);
+validator_properties({'kz_term', 'is_ne_binary_or_binaries', 1}) ->
+    kz_json:from_list([{<<"type">>, [<<"string">>, <<"array">>]}
+                      ,{<<"items">>
+                       ,kz_json:from_list([{<<"type">>, <<"string">>}])
+                       }
                       ]);
 validator_properties({'kapi_dialplan', 'b_leg_events_v', 1}) ->
     kz_json:from_list([{<<"type">>, <<"array">>}
@@ -480,8 +535,10 @@ validator_properties({'function', 'has_cost_parameters', 1}) ->
                       ]);
 validator_properties({'function', 'store_media_content_v', 1}) ->
     kz_json:from_list([{<<"type">>, <<"string">>}]);
+validator_properties({'kz_api', 'event_name', 1}) ->
+    kz_json:from_list([{<<"type">>, <<"string">>}]);
 validator_properties({'function', _F, _A}) ->
-    io:format("  no properties for fun ~p/~p~n", [_F, _A]),
+    ?DEBUG("  no properties for fun ~p/~p~n", [_F, _A]),
     kz_json:from_list([{<<"type">>, <<"string">>}]).
 
 cost_parameters_schema() ->
@@ -495,6 +552,8 @@ cost_parameter_schema(Parameter) ->
 ast_to_proplist(ASTList) ->
     ast_to_proplist(ASTList, []).
 
+ast_to_proplist(List, Acc) when is_list(List) ->
+    lists:foldl(fun ast_to_kv/2, Acc, List);
 ast_to_proplist(?EMPTY_LIST, Acc) ->
     lists:reverse(Acc);
 ast_to_proplist(?VAR(_), Acc) ->
@@ -510,13 +569,22 @@ ast_to_proplist(?LIST(H, ?MOD_FUN_ARGS('props', 'delete_keys', [ASTKeys, ASTProp
 ast_to_proplist(?LIST(H, T), Acc) ->
     ast_to_proplist(T, [ast_to_kv(H) | Acc]).
 
-ast_to_kv(?TUPLE([Key, Value])) ->
+ast_to_kv(KV, Acc) ->
+    [ast_to_kv(KV) | Acc].
+
+ast_to_kv({Key, Value}) ->
     {kz_ast_util:binary_match_to_binary(Key)
     ,ast_to_value(Value)
-    }.
+    };
+ast_to_kv(?TUPLE([Key, Value])) ->
+    ast_to_kv({Key, Value}).
 
+ast_to_value(Fun) when is_function(Fun) ->
+    value_from_fun(Fun);
+ast_to_value(<<Bin/binary>>) -> Bin;
+ast_to_value(Bins) when is_list(Bins) -> Bins;
 ast_to_value(?MOD_FUN_ARGS('kapi_presence', 'presence_states', [])) ->
-    ?PRESENCE_STATES;
+    lists:usort(kapi_presence:presence_states());
 ast_to_value(?BINARY(_)=Bin) ->
     kz_ast_util:binary_match_to_binary(Bin);
 ast_to_value(?FA(F, A)) ->
@@ -530,6 +598,19 @@ ast_to_value(?ANON(Clauses)) ->
 ast_to_value(?VAR(_)) ->
     'undefined'.
 
+value_from_fun(Fun) ->
+    Info = erlang:fun_info(Fun),
+    value_from_fun(props:get_value('module', Info)
+                  ,props:get_value('name', Info)
+                  ,props:get_value('arity', Info)
+                  ,props:get_value('type', Info)
+                  ).
+
+value_from_fun(Module, Function, Arity, 'external') ->
+    {Module, Function, Arity};
+value_from_fun(_Module, Function, Arity, 'local') ->
+    {'function', Function, Arity}.
+
 clauses_to_value(?CLAUSE([?BINARY_STRING(Value)
                          ,?BINARY_VAR('_')
                          ]
@@ -538,3 +619,21 @@ clauses_to_value(?CLAUSE([?BINARY_STRING(Value)
                 ) ->
     {'regex', list_to_binary([$^, kz_term:to_binary(Value), ".+$"])};
 clauses_to_value(_Clause) -> 'undefined'.
+
+maybe_definitions(Module, Acc) ->
+    case kz_module:is_exported(Module, 'api_definitions', 0) of
+        'true' -> definitions(Module, Acc);
+        'false' -> Acc
+    end.
+
+definitions(Module, Acc) ->
+    definitions(Module, Acc, kz_term:to_binary(Module)).
+
+definitions(Module, Acc, <<"kapi_", Kapi/binary>>) ->
+    ?DEBUG("adding definitions from ~p~n", [Module]),
+    lists:foldl(fun kapi_definition_to_schema/2
+               ,Acc#acc{kapi_name=Kapi}
+               ,Module:api_definitions()
+               );
+definitions(_M, Acc, _Kapi) ->
+    {'skip', Acc}.

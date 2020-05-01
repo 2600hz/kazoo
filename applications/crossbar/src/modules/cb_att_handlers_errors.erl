@@ -1,6 +1,11 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2018-2019, 2600Hz
+%%% @copyright (C) 2018-2020, 2600Hz
 %%% @doc API for retrieving attachment handlers errors.
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cb_att_handlers_errors).
@@ -29,7 +34,6 @@ init() ->
     Bindings = [{<<"*.allowed_methods">>, 'allowed_methods'}
                ,{<<"*.resource_exists">>, 'resource_exists'}
                ,{<<"*.validate">>, 'validate'}
-               ,{<<"*.execute.get">>, 'get'}
                ],
     _ = [crossbar_bindings:bind(<<Binding/binary, ".att_handlers_errors">>, ?MODULE, Fun)
          || {Binding, Fun} <- Bindings
@@ -106,12 +110,12 @@ validate_request(Context, Resource, Id, ?HTTP_GET) ->
 -spec read(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 read(<<Year:4/binary, Month:2/binary, _/binary>> = Id, Context) ->
     MODB = kazoo_modb:get_modb(cb_context:account_id(Context), Year, Month),
-    Context1 = cb_context:set_account_db(Context, MODB),
+    Context1 = cb_context:set_db_name(Context, MODB),
     crossbar_doc:load(Id, Context1, ?TYPE_CHECK_OPTION(<<"attachment_handler_error">>)).
 
 -spec read(kz_term:ne_binary(), kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 read(<<"handler">>, HandlerId, Context) ->
-    Options = [{'mapper', crossbar_view:map_value_fun()}
+    Options = [{'mapper', crossbar_view:get_value_fun()}
               ,{'range_keymap', [HandlerId]}
               ],
     crossbar_view:load_modb(Context, ?CB_LIST_BY_HANDLER, Options).
@@ -122,5 +126,5 @@ read(<<"handler">>, HandlerId, Context) ->
 %%------------------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    Options = [{'mapper', crossbar_view:map_value_fun()}],
+    Options = [{'mapper', crossbar_view:get_value_fun()}],
     crossbar_view:load_modb(Context, ?CB_LIST_ALL, Options).

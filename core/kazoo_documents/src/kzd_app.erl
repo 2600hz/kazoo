@@ -1,9 +1,13 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Account document
 %%% @author Peter Defebvre
 %%% @author Karl Anderson
 %%% @author Pierre Fenoll
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kzd_app).
@@ -32,6 +36,7 @@
 -export([urls/1, urls/2, set_urls/2]).
 -export([users/1, users/2, set_users/2]).
 -export([version/1, version/2, set_version/2]).
+-export([extends/1, extends/2]).
 
 -include("kz_documents.hrl").
 
@@ -272,6 +277,14 @@ version(Doc, Default) ->
 set_version(Doc, Version) ->
     kz_json:set_value([<<"version">>], Version, Doc).
 
+-spec extends(doc()) -> [binary()] | 'undefined'.
+extends(Doc) ->
+    extends(Doc, 'undefined').
+
+-spec extends(doc(), Default) -> [binary()] | Default.
+extends(Doc, Default) ->
+    kz_json:get_list_value(<<"extends">>, Doc, Default).
+
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
@@ -282,4 +295,4 @@ fetch('undefined', _) ->
 fetch(_, 'undefined') ->
     {'error', 'app_id_undefined'};
 fetch(Account, Id) ->
-    kz_datamgr:open_cache_doc(kz_util:format_account_db(Account), Id).
+    kz_datamgr:open_cache_doc(kzs_util:format_account_db(Account), Id).

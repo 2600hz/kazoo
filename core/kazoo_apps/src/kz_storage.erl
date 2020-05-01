@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_storage).
@@ -46,7 +50,7 @@ store_file_args(Filename, UrlFun) ->
     ].
 
 -spec store_file(kz_term:ne_binary(), kz_term:ne_binary() | function(), pos_integer(), timeout(), map()) ->
-                        'ok' | {'error', any()}.
+          'ok' | {'error', any()}.
 store_file(Filename, Url, Tries, Timeout, #{media_server := Node}=Map) ->
     Msg = case kz_maps:get('alert_msg', Map) of
               'undefined' ->
@@ -57,16 +61,21 @@ store_file(Filename, Url, Tries, Timeout, #{media_server := Node}=Map) ->
     API = fun() -> [{<<"Command">>, <<"send_http">>}
                    ,{<<"Args">>, kz_json:from_list(store_file_args(Filename, Url))}
                    ,{<<"FreeSWITCH-Node">>, Node}
-                    | kz_api:default_headers(AppName, AppVersion)
+                   | kz_api:default_headers(AppName, AppVersion)
                    ]
           end,
     do_store_file(Tries, Timeout, API, Msg, Map).
 
 -spec do_store_file(pos_integer(), timeout(), function(), kz_term:ne_binary(), map()) ->
-                           'ok' | {'error', any()}.
+          'ok' | {'error', any()}.
 do_store_file(Tries, Timeout, API, Msg, #{media_server := Node}=Map) ->
     Payload = API(),
-    case kz_amqp_worker:call(Payload, fun kapi_switch:publish_command/1, fun kapi_switch:fs_reply_v/1, Timeout) of
+    case kz_amqp_worker:call(Payload
+                            ,fun kapi_switch:publish_fs_command/1
+                            ,fun kapi_switch:fs_reply_v/1
+                            ,Timeout
+                            )
+    of
         {'ok', JObj} ->
             case kz_json:get_ne_binary_value(<<"Result">>, JObj) of
                 <<"success">> -> 'ok';
@@ -90,7 +99,7 @@ do_store_file(Tries, Timeout, API, Msg, #{media_server := Node}=Map) ->
 
 -spec retry_store_file(integer(), timeout(), kz_term:proplist() | function()
                       ,kz_term:ne_binary(), kz_term:ne_binary(), map()) ->
-                              'ok' | {'error', any()}.
+          'ok' | {'error', any()}.
 retry_store_file(0, _Timeout, _API, Msg, Error, Map) ->
     lager:critical("~s : ~s", [Msg, Error]),
     kz_notify:detailed_alert(kz_term:to_binary(Msg)

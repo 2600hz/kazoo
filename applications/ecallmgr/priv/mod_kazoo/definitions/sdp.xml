@@ -1,0 +1,4 @@
+<definition name="sdp">
+	<field name="variable_switch_r_sdp" as="Remote-SDP" />
+	<field name="variable_rtp_local_sdp_str" as="Local-SDP" />
+</definition>

@@ -1,11 +1,16 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Acess lists
 %%% /accounts/{account_id}/access_lists - manip account's access lists
 %%% /accounts/{account_id}/devices/{device_id}/access_lists - manip user's access lists
 %%%
 %%%
 %%% @author SIPLABS, LLC (Maksim Krzhemenevskiy)
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cb_access_lists).
@@ -142,7 +147,7 @@ validate_delete_acls(Context, Doc) ->
     Context1.
 
 -spec validate_set_acls(cb_context:context()) ->
-                               cb_context:context().
+          cb_context:context().
 validate_set_acls(Context) ->
     lager:debug("access lists data is valid, setting on thing"),
     validate_set_acls(thing_doc(Context), cb_context:doc(Context)).
@@ -154,7 +159,7 @@ validate_set_acls(Context, AccessLists) ->
     end.
 
 -spec validate_set_acls(cb_context:context(), kz_json:object(), kz_term:api_object()) ->
-                               cb_context:context().
+          cb_context:context().
 validate_set_acls(Context, AccessLists, Doc) ->
     Doc1 = kz_json:set_value(<<"access_lists">>, AccessLists, Doc),
     Context1 = crossbar_util:response(AccessLists

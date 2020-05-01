@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc Helpers for manipulating the `#cb_context{}' record.
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cb_context).
@@ -27,56 +32,60 @@
         ,is_account_admin/1, is_account_admin/2
         ,set_is_account_admin/2
 
+        ,master_account_id/1, set_master_account_id/2
+
         ,system_error/2
 
          %% Getters / Setters
         ,setters/2
+        ,validators/2
         ,new/0
 
-        ,account_id/1, set_account_id/2
+        ,account_id/1, set_account_id/2, account_modb/1
         ,account_name/1, set_account_name/2
-        ,account_db/1, set_account_db/2
-        ,user_id/1, set_user_id/2
-        ,device_id/1, set_device_id/2
-        ,account_modb/1, account_modb/2, account_modb/3
-        ,set_account_modb/3, set_account_modb/4
-        ,reseller_id/1, set_reseller_id/2
-        ,account_realm/1
-        ,account_doc/1
-        ,auth_token_type/1, set_auth_token_type/2
-        ,auth_token/1, set_auth_token/2
-        ,auth_doc/1, set_auth_doc/2
-        ,auth_account_id/1, set_auth_account_id/2
-        ,auth_account_doc/1
-        ,auth_user_id/1
-        ,req_verb/1, set_req_verb/2
-        ,req_data/1, set_req_data/2
-        ,req_id/1, set_req_id/2
-        ,req_files/1, set_req_files/2
-        ,req_nouns/1, set_req_nouns/2
-        ,req_headers/1, set_req_headers/2
-        ,req_header/2, set_req_header/3
-        ,query_string/1, set_query_string/2
-        ,client_ip/1, set_client_ip/2
-        ,doc/1, set_doc/2, update_doc/2
-        ,load_merge_bypass/1, set_load_merge_bypass/2
-        ,start/1, set_start/2
-        ,pretty_print/1
-        ,resp_file/1, set_resp_file/2
-        ,resp_data/1, set_resp_data/2
-        ,resp_status/1, set_resp_status/2
-        ,resp_expires/1, set_resp_expires/2
-        ,api_version/1, set_api_version/2
-        ,resp_etag/1, set_resp_etag/2
-        ,resp_envelope/1, set_resp_envelope/2
         ,allow_methods/1, set_allow_methods/2
         ,allowed_methods/1, set_allowed_methods/2
-        ,method/1, set_method/2
-        ,path_tokens/1
+        ,api_version/1, set_api_version/2
+        ,auth_account_id/1, set_auth_account_id/2
+        ,auth_doc/1, set_auth_doc/2
+        ,auth_token/1, set_auth_token/2
+        ,auth_token_type/1, set_auth_token_type/2
+        ,client_ip/1, set_client_ip/2
+        ,db_name/1, set_db_name/2
+        ,device_id/1, set_device_id/2
+        ,doc/1, set_doc/2, update_doc/2
+        ,load_merge_bypass/1, set_load_merge_bypass/2
         ,magic_pathed/1, set_magic_pathed/2
+        ,method/1, set_method/2
+        ,query_string/1, set_query_string/2
+        ,req_data/1, set_req_data/2
+        ,req_files/1, set_req_files/2, add_req_file/2
+        ,req_header/2, set_req_header/3
+        ,req_header_first_defined/2
+        ,req_headers/1, set_req_headers/2
+        ,req_id/1, set_req_id/2
+        ,req_nouns/1, set_req_nouns/2
+        ,req_verb/1, set_req_verb/2
+        ,reseller_id/1, set_reseller_id/2
+        ,resp_data/1, set_resp_data/2
+        ,resp_envelope/1, set_resp_envelope/2
+        ,resp_etag/1, set_resp_etag/2
+        ,resp_expires/1, set_resp_expires/2
+        ,resp_file/1, set_resp_file/2
+        ,resp_status/1, set_resp_status/2
+        ,start/1, set_start/2
+        ,user_id/1, set_user_id/2
+
+        ,pretty_print/1
+        ,path_tokens/1
         ,should_soft_delete/1
         ,should_paginate/1, set_should_paginate/2
         ,pagination_page_size/0, pagination_page_size/1
+        ,auth_account_doc/1
+        ,auth_user_id/1
+
+        ,account_realm/1
+        ,account_doc/1
 
         ,req_json/1, set_req_json/2
         ,resp_error_code/1, set_resp_error_code/2
@@ -132,6 +141,7 @@
              ,setter_fun_1/0
              ,setter_fun_2/0
              ,setter_fun_3/0
+             ,setters/0
              ]).
 
 -type setter_kv() :: setter_fun_1() |
@@ -178,11 +188,26 @@ set_accepting_charges(#cb_context{req_json = ReqJObj} = Context) ->
 -spec account_id(context()) -> kz_term:api_ne_binary().
 account_id(#cb_context{account_id=AcctId}) -> AcctId.
 
+-spec account_modb(context()) -> kz_term:ne_binary().
+account_modb(#cb_context{account_id=AcctId}) -> kzs_util:format_account_modb(AcctId, 'encoded').
+
 -spec account_name(context()) -> kz_term:api_ne_binary().
 account_name(#cb_context{account_name=Name}) -> Name.
 
 -spec user_id(context()) -> kz_term:api_ne_binary().
 user_id(#cb_context{user_id=UserId}) -> UserId.
+
+-spec db_name(context()) -> kz_term:api_ne_binary().
+db_name(#cb_context{db_name='undefined'
+                   ,account_id='undefined'
+                   }) ->
+    'undefined';
+db_name(#cb_context{db_name='undefined'
+                   ,account_id=AccountId
+                   }) ->
+    kzs_util:to_database(AccountId);
+db_name(#cb_context{db_name=DbName}) ->
+    DbName.
 
 -spec device_id(context()) -> kz_term:api_ne_binary().
 device_id(#cb_context{device_id=DeviceId}) -> DeviceId.
@@ -190,43 +215,39 @@ device_id(#cb_context{device_id=DeviceId}) -> DeviceId.
 -spec reseller_id(context()) -> kz_term:api_ne_binary().
 reseller_id(#cb_context{reseller_id=AcctId}) -> AcctId.
 
--spec account_db(context()) -> kz_term:api_ne_binary().
-account_db(#cb_context{db_name=AcctDb}) -> AcctDb.
-
 -spec profile_id(context()) -> kz_term:api_ne_binary().
 profile_id(#cb_context{profile_id = Value}) -> Value.
-
--spec account_modb(context()) -> kz_term:api_ne_binary().
-account_modb(Context) ->
-    kazoo_modb:get_modb(account_id(Context)).
-
--spec account_modb(context(), kz_time:now() | timeout()) -> kz_term:api_ne_binary().
-account_modb(Context, {_,_,_}=Timestamp) ->
-    kazoo_modb:get_modb(account_id(Context), Timestamp);
-account_modb(Context, Timestamp) when is_integer(Timestamp), Timestamp > 0 ->
-    kazoo_modb:get_modb(account_id(Context), Timestamp).
-
--spec account_modb(context(), kz_time:year(), kz_time:month()) -> kz_term:api_ne_binary().
-account_modb(Context, Year, Month) ->
-    kazoo_modb:get_modb(account_id(Context), Year, Month).
 
 -spec account_realm(context()) -> kz_term:api_ne_binary().
 account_realm(Context) ->
     kzd_accounts:realm(account_doc(Context)).
 
 -spec account_doc(context()) -> kz_term:api_object().
-account_doc(#cb_context{account_id = undefined}) -> undefined;
+account_doc(#cb_context{account_id = 'undefined'}) -> 'undefined';
 account_doc(#cb_context{account_id = AccountId}) ->
     case kzd_accounts:fetch(AccountId) of
-        {ok, AccountJObj} -> AccountJObj;
-        {error, _R} ->
+        {'ok', AccountJObj} -> AccountJObj;
+        {'error', _R} ->
             lager:warning("error fetching account doc for ~p: ~p", [AccountId,_R]),
-            undefined
+            'undefined'
     end.
 
 -spec is_authenticated(context()) -> boolean().
 is_authenticated(#cb_context{auth_doc='undefined'}) -> 'false';
 is_authenticated(#cb_context{}) -> 'true'.
+
+-spec master_account_id(context()) -> kz_term:api_ne_binary().
+master_account_id(#cb_context{master_account_id = <<MasterId/binary>>}) ->
+    MasterId;
+master_account_id(_) ->
+    case kapps_util:get_master_account_id() of
+        {'ok', Id} -> Id;
+        {'error', _} -> 'undefined'
+    end.
+
+-spec set_master_account_id(context(), kz_term:api_ne_binary()) -> context().
+set_master_account_id(#cb_context{}=Context, MasterId) ->
+    Context#cb_context{master_account_id = MasterId}.
 
 %%------------------------------------------------------------------------------
 %% @doc Returns true if the request contains a system admin module.
@@ -235,8 +256,21 @@ is_authenticated(#cb_context{}) -> 'true'.
 -spec is_superduper_admin(kz_term:api_ne_binary() | context()) -> boolean().
 is_superduper_admin('undefined') -> 'false';
 is_superduper_admin(AccountId=?NE_BINARY) ->
-    lager:debug("checking if the requester is superduper admin: ~s", [AccountId]),
-    case kzd_accounts:is_superduper_admin(AccountId) of
+    check_requestor_is_superduper(AccountId, 'undefined');
+is_superduper_admin(#cb_context{is_superduper_admin=Bol}) when is_boolean(Bol) ->
+    Bol;
+is_superduper_admin(Context) ->
+    case fetch(Context, 'is_superduper_admin') of
+        Bol when is_boolean(Bol) -> Bol;
+        _ ->
+            check_requestor_is_superduper(auth_account_id(Context), master_account_id(Context))
+    end.
+
+-spec check_requestor_is_superduper(kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> boolean().
+check_requestor_is_superduper('undefined', _) -> 'false';
+check_requestor_is_superduper(AuthId, 'undefined') ->
+    lager:debug("checking if the requester is superduper admin: ~s", [AuthId]),
+    case kzd_accounts:is_superduper_admin(AuthId) of
         'true' ->
             lager:debug("the requestor is a superduper admin"),
             'true';
@@ -244,13 +278,8 @@ is_superduper_admin(AccountId=?NE_BINARY) ->
             lager:debug("the requestor is not a superduper admin"),
             'false'
     end;
-is_superduper_admin(#cb_context{is_superduper_admin=Bol}) when is_boolean(Bol) ->
-    Bol;
-is_superduper_admin(Context) ->
-    case fetch(Context, 'is_superduper_admin') of
-        Bol when is_boolean(Bol) -> Bol;
-        _ -> is_superduper_admin(auth_account_id(Context))
-    end.
+check_requestor_is_superduper(MasterId, MasterId) -> 'true';
+check_requestor_is_superduper(_, _) -> 'false'.
 
 -spec is_account_admin(context()) -> boolean().
 is_account_admin(#cb_context{is_account_admin=Bol}) when is_boolean(Bol) ->
@@ -272,7 +301,7 @@ is_account_admin(_, 'undefined') ->
     lager:debug("auth user id is undefined, ignoring checking account admin..."),
     'false';
 is_account_admin(AuthAccountId, AuthUserId) ->
-    lager:debug("checking if user ~s is account admin of ~s", [AuthAccountId, AuthUserId]),
+    lager:debug("checking if user ~s is account admin of ~s", [AuthUserId, AuthAccountId]),
     case kzd_users:is_account_admin(AuthAccountId, AuthUserId) of
         'true' ->
             lager:debug("the requestor is an account admin"),
@@ -282,7 +311,7 @@ is_account_admin(AuthAccountId, AuthUserId) ->
             'false'
     end.
 
--spec auth_token_type(context()) -> 'x-auth-token' | 'basic' | 'oauth' | 'unknown'.
+-spec auth_token_type(context()) -> 'x-auth-token' | 'basic' | 'bearer' | 'unknown'.
 auth_token_type(#cb_context{auth_token_type=AuthTokenType}) -> AuthTokenType.
 
 -spec auth_token(context()) -> kz_term:api_ne_binary().
@@ -295,13 +324,13 @@ auth_doc(#cb_context{auth_doc=AuthDoc}) -> AuthDoc.
 auth_account_id(#cb_context{auth_account_id=AuthBy}) -> AuthBy.
 
 -spec auth_account_doc(context()) -> kz_term:api_object().
-auth_account_doc(#cb_context{auth_account_id = undefined}) -> undefined;
+auth_account_doc(#cb_context{auth_account_id = 'undefined'}) -> 'undefined';
 auth_account_doc(#cb_context{auth_account_id = AccountId}) ->
     case kzd_accounts:fetch(AccountId) of
-        {ok, AuthAccountJObj} -> AuthAccountJObj;
-        {error, _R} ->
+        {'ok', AuthAccountJObj} -> AuthAccountJObj;
+        {'error', _R} ->
             lager:warning("error fetching auth account doc for ~p: ~p", [AccountId,_R]),
-            undefined
+            'undefined'
     end.
 
 -spec auth_user_id(context()) -> kz_term:api_ne_binary().
@@ -327,8 +356,17 @@ req_nouns(#cb_context{req_nouns=ReqNouns}) -> ReqNouns.
 -spec req_headers(context()) -> cowboy:http_headers().
 req_headers(#cb_context{req_headers=Hs}) -> Hs.
 
--spec req_header(context(), binary()) -> iodata() | 'undefined'.
+-spec req_header(context(), binary()) -> kz_term:api_ne_binary().
 req_header(#cb_context{req_headers=Hs}, K) -> maps:get(K, Hs, 'undefined').
+
+-spec req_header_first_defined(context(), [binary()]) -> kz_term:api_ne_binary().
+req_header_first_defined(#cb_context{}, []) ->
+    'undefined';
+req_header_first_defined(#cb_context{req_headers=Hs}=Context, [Key | Keys]) ->
+    case maps:get(Key, Hs, 'undefined') of
+        'undefined' -> req_header_first_defined(Context, Keys);
+        Value -> Value
+    end.
 
 -spec query_string(context()) -> kz_json:object().
 query_string(#cb_context{query_json=Q}) -> Q.
@@ -345,13 +383,13 @@ client_ip(#cb_context{client_ip=IP}) -> IP.
 -spec req_id(context()) -> kz_term:ne_binary().
 req_id(#cb_context{req_id=ReqId}) -> ReqId.
 
--spec doc(context()) -> kz_term:api_object() | kz_json:objects().
+-spec doc(context()) -> kz_json:api_json_term().
 doc(#cb_context{doc=Doc}) -> Doc.
 
 -spec load_merge_bypass(context()) -> kz_term:api_object().
 load_merge_bypass(#cb_context{load_merge_bypass=ByPass}) -> ByPass.
 
--spec start(context()) -> kz_time:now().
+-spec start(context()) -> kz_time:start_time().
 start(#cb_context{start=Start}) -> Start.
 
 -spec resp_file(context()) -> binary().
@@ -391,12 +429,11 @@ method(#cb_context{method=M}) -> M.
 pretty_print(#cb_context{pretty_print = PrettyPrint}) -> PrettyPrint.
 
 -spec path_token(binary()) -> binary().
-path_token(Token) ->
-    kz_util:uri_decode(Token).
+path_token(Token) -> kz_http_util:urldecode(Token).
 
 -spec path_tokens(context()) -> kz_term:ne_binaries().
 path_tokens(#cb_context{raw_path=Path}) ->
-    [path_token(kz_util:uri_decode(Token))
+    [path_token(Token)
      || Token <- binary:split(Path, <<"/">>, ['global', 'trim'])
     ].
 
@@ -404,14 +441,11 @@ path_tokens(#cb_context{raw_path=Path}) ->
 magic_pathed(#cb_context{magic_pathed=MP}) -> MP.
 
 -spec should_paginate(context()) -> boolean().
-should_paginate(#cb_context{api_version=?VERSION_1}) ->
-    lager:debug("pagination disabled in this API version"),
-    'false';
 should_paginate(#cb_context{should_paginate='undefined'}=Context) ->
     case req_value(Context, <<"paginate">>) of
         'undefined' -> 'true';
         ShouldPaginate ->
-            lager:debug("request has paginate flag: ~s", [ShouldPaginate]),
+            lager:debug("request has paginate flag = '~s'", [ShouldPaginate]),
             kz_term:is_true(ShouldPaginate)
     end;
 should_paginate(#cb_context{should_paginate=Should}) -> Should.
@@ -420,13 +454,8 @@ should_paginate(#cb_context{should_paginate=Should}) -> Should.
 pagination_page_size() ->
     ?PAGINATION_PAGE_SIZE.
 
--spec pagination_page_size(context()) -> kz_term:api_pos_integer().
+-spec pagination_page_size(context()) -> pos_integer().
 pagination_page_size(Context) ->
-    pagination_page_size(Context, api_version(Context)).
-
--spec pagination_page_size(context(), kz_term:ne_binary()) -> kz_term:api_pos_integer().
-pagination_page_size(_Context, ?VERSION_1) -> 'undefined';
-pagination_page_size(Context, _Version) ->
     case req_value(Context, <<"page_size">>) of
         'undefined' -> pagination_page_size();
         V ->
@@ -478,12 +507,29 @@ setters(#cb_context{}=Context, []) -> Context;
 setters(#cb_context{}=Context, [_|_]=Setters) ->
     lists:foldl(fun setters_fold/2, Context, Setters).
 
--spec setters_fold(setter_kv(), context() | kz_json:object()) ->
-                          context() | kz_json:object().
-setters_fold({F, V}, C) -> F(C, V);
-setters_fold({F, K, V}, C) -> F(C, K, V);
-setters_fold(F, C) when is_function(F, 1) -> F(C).
+-spec setters_fold(setter_kv(), context()) ->
+          context().
+setters_fold({F, V}, #cb_context{}=C) -> #cb_context{} = F(C, V);
+setters_fold({F, K, V}, #cb_context{}=C) -> #cb_context{} = F(C, K, V);
+setters_fold(F, #cb_context{}=C) when is_function(F, 1) -> #cb_context{} = F(C).
 
+%%------------------------------------------------------------------------------
+%% @doc Loop over a list of functions and values to validate `cb_context()'.
+%% @end
+%%------------------------------------------------------------------------------
+-spec validators(context(), setters()) -> context().
+validators(#cb_context{}=Context, []) -> Context;
+validators(#cb_context{}=Context, [_|_]=Setters) ->
+    validators_fold(Context, Setters).
+
+-spec validators_fold(context(), setters()) -> context().
+validators_fold(Context, []) -> Context;
+validators_fold(Context, [Setter | Setters]) ->
+    NewContext = setters_fold(Setter, Context),
+    case resp_status(NewContext) of
+        'success' -> validators_fold(NewContext, Setters);
+        _Else -> NewContext
+    end.
 
 -spec set_account_id(context(), kz_term:ne_binary()) -> context().
 set_account_id(#cb_context{}=Context, AcctId) ->
@@ -497,6 +543,10 @@ set_account_name(#cb_context{}=Context, Name) ->
 set_user_id(#cb_context{}=Context, UserId) ->
     Context#cb_context{user_id=UserId}.
 
+-spec set_db_name(context(), kz_term:ne_binary()) -> context().
+set_db_name(#cb_context{}=Context, DbName) ->
+    Context#cb_context{db_name=DbName}.
+
 -spec set_device_id(context(), kz_term:ne_binary()) -> context().
 set_device_id(#cb_context{}=Context, DeviceId) ->
     Context#cb_context{device_id=DeviceId}.
@@ -505,19 +555,7 @@ set_device_id(#cb_context{}=Context, DeviceId) ->
 set_reseller_id(#cb_context{}=Context, AcctId) ->
     Context#cb_context{reseller_id=AcctId}.
 
--spec set_account_db(context(), kz_term:ne_binary()) -> context().
-set_account_db(#cb_context{}=Context, AcctDb) ->
-    Context#cb_context{db_name=AcctDb}.
-
--spec set_account_modb(context(), kz_time:year() | kz_term:ne_binary(), kz_time:month() | kz_term:ne_binary()) -> context().
-set_account_modb(#cb_context{}=Context, Year, Month) ->
-    Context#cb_context{db_name=kazoo_modb:get_modb(account_id(Context), Year, Month)}.
-
--spec set_account_modb(context(), kz_term:ne_binary(), kz_time:year() | kz_term:ne_binary(), kz_time:month() | kz_term:ne_binary()) -> context().
-set_account_modb(#cb_context{}=Context, AcctId, Year, Month) ->
-    Context#cb_context{db_name=kazoo_modb:get_modb(AcctId, Year, Month)}.
-
--spec set_auth_token_type(context(), 'x-auth-token' | 'basic' | 'oauth' | 'unknown') -> context().
+-spec set_auth_token_type(context(), 'x-auth-token' | 'basic' | 'bearer' | 'unknown') -> context().
 set_auth_token_type(#cb_context{}=Context, AuthTokenType) ->
     Context#cb_context{auth_token_type=AuthTokenType}.
 
@@ -553,6 +591,10 @@ set_req_data(#cb_context{}=Context, ReqData) ->
 set_req_files(#cb_context{}=Context, ReqFiles) ->
     Context#cb_context{req_files=ReqFiles}.
 
+-spec add_req_file(context(), req_file()) -> context().
+add_req_file(#cb_context{req_files=ReqFiles}=Context, ReqFile) ->
+    Context#cb_context{req_files=ReqFiles++[ReqFile]}.
+
 -spec set_req_nouns(context(), req_nouns()) -> context().
 set_req_nouns(#cb_context{}=Context, ReqNouns) ->
     Context#cb_context{req_nouns=ReqNouns}.
@@ -573,7 +615,7 @@ set_query_string(#cb_context{}=Context, Q) ->
 set_req_id(#cb_context{}=Context, ReqId) ->
     Context#cb_context{req_id=ReqId}.
 
--spec set_doc(context(), kz_json:api_json_term() | kz_json:objects()) -> context().
+-spec set_doc(context(), kz_json:api_json_term()) -> context().
 set_doc(#cb_context{}=Context, Doc) ->
     Context#cb_context{doc=Doc}.
 
@@ -581,7 +623,7 @@ set_doc(#cb_context{}=Context, Doc) ->
 set_load_merge_bypass(#cb_context{}=Context, JObj) ->
     Context#cb_context{load_merge_bypass=JObj}.
 
--spec set_start(context(), kz_time:now()) -> context().
+-spec set_start(context(), kz_time:start_time()) -> context().
 set_start(#cb_context{}=Context, Start) ->
     Context#cb_context{start=Start}.
 
@@ -631,11 +673,29 @@ set_req_json(#cb_context{}=Context, RJ) ->
 
 -spec set_content_types_accepted(context(), crossbar_content_handlers()) -> context().
 set_content_types_accepted(#cb_context{}=Context, CTAs) ->
-    Context#cb_context{content_types_accepted=CTAs}.
+    Context#cb_context{content_types_accepted=maybe_fix_content_handlers(CTAs)}.
 
 -spec set_content_types_provided(context(), crossbar_content_handlers()) -> context().
 set_content_types_provided(#cb_context{}=Context, CTPs) ->
-    Context#cb_context{content_types_provided=CTPs}.
+    Context#cb_context{content_types_provided=maybe_fix_content_handlers(CTPs)}.
+
+maybe_fix_content_handlers(ContentHandlers) ->
+    lists:foldr(fun maybe_fix_content_handler/2, [], ContentHandlers).
+
+maybe_fix_content_handler({HandlerFun, ContentTypes}, ContentHandlers) ->
+    [{HandlerFun, maybe_fix_content_types(ContentTypes)} | ContentHandlers].
+
+maybe_fix_content_types(ContentTypes) ->
+    lists:foldr(fun maybe_fix_content_type/2, [], ContentTypes).
+
+maybe_fix_content_type({Type, SubType}, ContentTypes) ->
+    [{Type, SubType, []} | ContentTypes];
+maybe_fix_content_type(<<ContentType/binary>>, ContentTypes) ->
+    [ContentType | ContentTypes];
+maybe_fix_content_type({_Type, _SubType, _Props}=ContentType, ContentTypes) ->
+    [ContentType | ContentTypes].
+
+
 
 -spec set_languages_provided(context(), kz_term:ne_binaries()) -> context().
 set_languages_provided(#cb_context{}=Context, LP) ->
@@ -725,24 +785,22 @@ set_profile_id(#cb_context{}=Context, Value) ->
 -spec update_doc(context(), setter_kv() | setters()) -> context().
 update_doc(#cb_context{doc=Doc}=Context, Updaters)
   when is_list(Updaters) ->
-    Context#cb_context{doc=lists:foldl(fun setters_fold/2, Doc, Updaters)};
-update_doc(#cb_context{doc=Doc}=Context, Updater) ->
-    Context#cb_context{doc=setters_fold(Updater, Doc)}.
+    Context#cb_context{doc=kz_json:exec_first(Updaters, Doc)};
+update_doc(#cb_context{}=Context, Updater) ->
+    update_doc(Context, [Updater]).
 
 %% % Helpers
 
--spec add_content_types_provided(context(), crossbar_content_handler() | crossbar_content_handlers()) ->
-                                        context().
-add_content_types_provided(#cb_context{content_types_provided=CTPs}=Context, [_|_]=NewCTPs) ->
-    Context#cb_context{content_types_provided = NewCTPs ++ CTPs};
-add_content_types_provided(#cb_context{}=Context, {_, _}=NewCTP) ->
-    add_content_types_provided(Context,[NewCTP]).
+-spec add_content_types_provided(context(), crossbar_content_handlers()) ->
+          context().
+add_content_types_provided(#cb_context{content_types_provided=CTPs}=Context, NewCTPs) when is_list(NewCTPs) ->
+    Context#cb_context{content_types_provided = NewCTPs ++ CTPs}.
 
 -spec add_content_types_accepted(context(), crossbar_content_handler() | crossbar_content_handlers()) ->
-                                        context().
+          context().
 add_content_types_accepted(#cb_context{content_types_accepted=CTAs}=Context, [_|_]=NewCTAs) ->
     Context#cb_context{content_types_accepted = NewCTAs ++ CTAs};
-add_content_types_accepted(#cb_context{}=Context, {_, _}=NewCTA) ->
+add_content_types_accepted(#cb_context{}=Context, NewCTA) ->
     add_content_types_provided(Context,[NewCTA]).
 
 -spec add_attachment_content_type(context(), kz_term:ne_binary(), kz_term:ne_binary()) -> context().
@@ -761,7 +819,7 @@ maybe_add_content_type_provided(Context, AttachmentId) ->
         ContentType ->
             lager:debug("found content type ~s", [ContentType]),
             [Type, SubType] = binary:split(ContentType, <<"/">>),
-            add_content_types_provided(Context, [{'to_binary', [{Type, SubType}]}])
+            add_content_types_provided(Context, [{'to_binary', [{Type, SubType, '*'}]}])
     end.
 
 %%------------------------------------------------------------------------------
@@ -794,7 +852,7 @@ fetch(#cb_context{storage=Storage}, Key, Default) ->
 %%------------------------------------------------------------------------------
 -spec put_reqid(context()) -> 'ok'.
 put_reqid(#cb_context{req_id=ReqId}) ->
-    kz_util:put_callid(ReqId).
+    kz_log:put_callid(ReqId).
 
 -spec has_errors(context()) -> boolean().
 has_errors(#cb_context{validation_errors=JObj
@@ -815,8 +873,8 @@ import_errors(#cb_context{}=Context) ->
                               }
     end.
 
--spec response(context()) -> {ok, kz_json:object()} |
-                             {error, {pos_integer(), kz_term:ne_binary(), kz_json:object()}}.
+-spec response(context()) -> {'ok', kz_json:object()} |
+          {'error', {pos_integer(), kz_term:ne_binary(), kz_json:object()}}.
 response(#cb_context{resp_status='success'
                     ,resp_data=JObj
                     }) ->
@@ -848,23 +906,23 @@ response(#cb_context{resp_error_code=Code
 %% @end
 %%------------------------------------------------------------------------------
 -spec validate_request_data(kz_term:ne_binary() | kz_term:api_object(), context()) ->
-                                   context().
+          context().
 validate_request_data(SchemaId, Context) ->
     validate_request_data(SchemaId, Context, 'undefined').
 
 -spec validate_request_data(kz_term:ne_binary() | kz_term:api_object(), context(), after_fun()) ->
-                                   context().
+          context().
 validate_request_data(SchemaId, Context, OnSuccess) ->
     validate_request_data(SchemaId, Context, OnSuccess, 'undefined').
 
 -spec validate_request_data(kz_term:ne_binary() | kz_term:api_object(), context(), after_fun(), after_fun()) ->
-                                   context().
+          context().
 validate_request_data(SchemaId, Context, OnSuccess, OnFailure) ->
     SchemaRequired = fetch(Context, 'ensure_valid_schema', ?SHOULD_ENSURE_SCHEMA_IS_VALID),
     validate_request_data(SchemaId, Context, OnSuccess, OnFailure, SchemaRequired).
 
 -spec validate_request_data(kz_term:ne_binary() | kz_term:api_object(), context(), after_fun(), after_fun(), boolean()) ->
-                                   context().
+          context().
 validate_request_data('undefined', Context, OnSuccess, _OnFailure, 'false') ->
     lager:error("schema id or schema JSON not defined, continuing anyway"),
     validate_passed(Context, OnSuccess);
@@ -898,16 +956,15 @@ validate_request_data(SchemaJObj, Context, OnSuccess, OnFailure, _SchemaRequired
             lager:debug("validation errors but not strictly validating, trying to fix request"),
             maybe_fix_js_types(SchemaJObj, Context, OnSuccess, OnFailure, Errors)
     catch
-        'error':'function_clause' ->
-            ST = erlang:get_stacktrace(),
-            lager:debug("function clause failure"),
-            kz_util:log_stacktrace(ST),
-            Context#cb_context{resp_status = 'fatal'
-                              ,resp_error_code = 500
-                              ,resp_data = kz_json:new()
-                              ,resp_error_msg = <<"validation failed to run on the server">>
-                              }
-    end.
+        ?STACKTRACE('error', 'function_clause', ST)
+        lager:debug("function clause failure"),
+        kz_log:log_stacktrace(ST),
+        Context#cb_context{resp_status = 'fatal'
+                          ,resp_error_code = 500
+                          ,resp_data = kz_json:new()
+                          ,resp_error_msg = <<"validation failed to run on the server">>
+                          }
+        end.
 
 -spec validate_failed(kz_json:object(), context(), validation_errors(), after_fun()) -> context().
 validate_failed(SchemaJObj, Context, Errors, OnFailure) ->
@@ -958,9 +1015,9 @@ failed_error(Error, Context) ->
 
 -spec passed(context()) -> context().
 passed(Context) ->
-    Context1 = case error =:= resp_status(Context) of
-                   true -> Context;
-                   false -> set_resp_status(Context, success)
+    Context1 = case 'error' =:= resp_status(Context) of
+                   'true' -> Context;
+                   'false' -> set_resp_status(Context, 'success')
                end,
     case kz_doc:id(req_data(Context1)) of
         'undefined' -> Context1;
@@ -989,6 +1046,8 @@ add_system_error('account_cant_create_tree', Context) ->
     build_system_error(500, 'account_cant_create_tree', <<"account creation fault">>, Context);
 add_system_error('account_has_descendants', Context) ->
     build_system_error(500, 'account_has_descendants', <<"account has descendants">>, Context);
+add_system_error('not_implemented', Context) ->
+    build_system_error(501, 'not_implemented', <<"not implemented">>, Context);
 add_system_error('faulty_request', Context) ->
     build_system_error(404, 'faulty_request', <<"faulty request">>, Context);
 
@@ -1086,7 +1145,7 @@ build_system_error(Code, Error, JObj, Context) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec add_validation_error(kz_json:get_key(), kz_term:ne_binary(), kz_term:ne_binary() | kz_json:object(), context()) ->
-                                  context().
+          context().
 add_validation_error(<<_/binary>> = Property, Code, Message, Context) ->
     add_validation_error([Property], Code, Message, Context);
 add_validation_error(Property, Code, <<_/binary>> = Message, Context) ->
@@ -1102,7 +1161,6 @@ add_validation_error(Property, Code, Message, Context) ->
                                          )
                                        ),
     ErrorsJObj = validation_errors(Context),
-
     Context#cb_context{validation_errors=kz_json:merge_jobjs(ErrorJObj, ErrorsJObj)
                       ,resp_status='error'
                       ,resp_error_code=ErrorCode

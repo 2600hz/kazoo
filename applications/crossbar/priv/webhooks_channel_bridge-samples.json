@@ -1,0 +1,31 @@
+[
+    {
+        "account_id": "91eb05e5c68d7ca05e7618b6821d2d16",
+        "authorizing_id": "7f2b66a620cf9523d349cc5de8f21f37",
+        "authorizing_type": "device",
+        "call_direction": "inbound",
+        "call_forwarded": false,
+        "call_id": "NDlkNGI3OTZlMDgzNWQxNGYxNTA3NjQ4NDZjNDFkOTc",
+        "callee_id_name": "Caller Test",
+        "callee_id_number": "+15556783945",
+        "caller_id_name": "Test Man",
+        "caller_id_number": "+15556783945",
+        "custom_application_vars": {},
+        "custom_channel_vars": {},
+        "emergency_resource_used": false,
+        "from": "+15556783945@matrix.test.com",
+        "hook_event": "channel_bridge",
+        "inception": "+15556783945@matrix.test.com",
+        "is_internal_leg": false,
+        "local_resource_id": "d88c4e753d18755ca71adbae784e5f10",
+        "local_resource_used": true,
+        "original_number": "+15556783945",
+        "other_leg_call_id": "af1e1e12f1bcf519a96f2235ab8eeec4",
+        "other_leg_destination_number": "+15552345678",
+        "owner_id": "d860229e722bf8f738737365b0b1e333",
+        "request": "+15552345678@matrix.test.com",
+        "reseller_id": "026f4f0a6d99f9a19b6aa4aa75501d7d",
+        "timestamp": "63724349409",
+        "to": "+15552345678@matrix.test.com"
+    }
+]

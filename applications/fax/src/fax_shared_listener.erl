@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(fax_shared_listener).
@@ -28,49 +33,12 @@
 
 -define(SERVER, ?MODULE).
 
--define(NOTIFY_RESTRICT, ['outbound_fax'
-                         ,'outbound_fax_error'
-                         ]).
-
--define(FAXBOX_RESTRICT, [{'db', <<"faxes">>}
-                         ,{'doc_type', <<"faxbox">>}
-                         ]).
-
--define(RESPONDERS, [{{'fax_cloud', 'handle_job_notify'}
-                     ,[{<<"notification">>, <<"outbound_fax">>}]
-                     }
-                    ,{{'fax_cloud', 'handle_job_notify'}
-                     ,[{<<"notification">>, <<"outbound_fax_error">>}]
-                     }
-                    ,{{'fax_cloud', 'handle_push'}
-                     ,[{<<"xmpp_event">>, <<"push">>}]
-                     }
-                    ,{{'fax_cloud', 'handle_faxbox_created'}
-                     ,[{<<"configuration">>, ?DOC_CREATED}]
-                     }
-                    ,{{'fax_cloud', 'handle_faxbox_edited'}
-                     ,[{<<"configuration">>, ?DOC_EDITED}]
-                     }
-                    ,{{'fax_cloud', 'handle_faxbox_deleted'}
-                     ,[{<<"configuration">>, ?DOC_DELETED}]
-                     }
-                    ,{{'fax_request', 'new_request'}
+-define(RESPONDERS, [{{'fax_request', 'new_request'}
                      ,[{<<"dialplan">>, <<"fax_req">>}]
-                     }
-                    ,{{'fax_xmpp', 'handle_printer_start'}
-                     ,[{<<"xmpp_event">>, <<"start">>}]
-                     }
-                    ,{{'fax_xmpp', 'handle_printer_stop'}
-                     ,[{<<"xmpp_event">>, <<"stop">>}]
                      }
                     ]).
 
--define(BINDINGS, [{'notifications', [{'restrict_to', ?NOTIFY_RESTRICT}]}
-                  ,{'xmpp',[{'restrict_to',['push']}]}
-                  ,{'xmpp', [{'restrict_to', ['start']}, 'federate']}
-                  ,{'conf',?FAXBOX_RESTRICT}
-                  ,{'fax', [{'restrict_to', ['req']}]}
-                  ,{'self', []}
+-define(BINDINGS, [{'fax', [{'restrict_to', ['req']}]}
                   ]).
 -define(QUEUE_NAME, <<"fax_shared_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
@@ -121,6 +89,8 @@ handle_call(_Request, _From, State) ->
 handle_cast({'gen_listener',{'created_queue',_Queue}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
+    {'noreply', State};
+handle_cast({'gen_listener',{'federators_consuming', _AreFederatorsConsuming}}, State) ->
     {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),

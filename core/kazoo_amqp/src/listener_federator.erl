@@ -1,13 +1,17 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2019, 2600Hz
+%%% @copyright (C) 2013-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(listener_federator).
 
 -behaviour(gen_listener).
 
--export([start_link/3
+-export([start_link/4
         ,stop/1
         ,broker/1
         ]).
@@ -15,7 +19,7 @@
         ,handle_call/3
         ,handle_cast/2
         ,handle_info/2
-        ,handle_event/4
+        ,handle_event/3
         ,terminate/2
         ,code_change/3
         ]).
@@ -26,7 +30,7 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {parent :: pid()
+-record(state, {parent :: {pid(), reference()}
                ,broker :: kz_term:ne_binary()
                ,self_binary = kz_term:to_binary(pid_to_list(self())) :: kz_term:ne_binary()
                ,zone :: kz_term:ne_binary()
@@ -41,9 +45,9 @@
 %% @doc Starts the server.
 %% @end
 %%------------------------------------------------------------------------------
--spec start_link(pid(), kz_term:ne_binary(), kz_term:proplist()) -> kz_types:startlink_ret().
-start_link(Parent, Broker, Params) ->
-    gen_listener:start_link(?SERVER, Params, [Parent, Broker]).
+-spec start_link(pid(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> kz_types:startlink_ret().
+start_link(Parent, ParentCallId, Broker, Params) ->
+    gen_listener:start_link(?SERVER, Params, [Parent, ParentCallId, Broker]).
 
 -spec broker(kz_types:server_ref()) -> kz_term:ne_binary().
 broker(Pid) ->
@@ -62,11 +66,17 @@ stop(Pid) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec init([pid() | kz_term:ne_binary()]) -> {'ok', state()}.
-init([Parent, Broker]=L) ->
-    lager:debug("federating listener ~p on broker ~s", L),
+init([Parent, ParentCallId, Broker]=L) ->
+    lager:debug("federating listener ~p(~s) on broker ~s", L),
     _ = kz_amqp_channel:consumer_broker(Broker),
     Zone = kz_term:to_binary(kz_amqp_connections:broker_zone(Broker)),
-    {'ok', #state{parent=Parent
+
+    CallId = kz_binary:join([ParentCallId, Zone], <<"-">>),
+    kz_log:put_callid(CallId),
+
+    gen_listener:notify_of_federator_listener(Parent, {Broker, self()}),
+
+    {'ok', #state{parent={Parent, monitor('process', Parent)}
                  ,broker=Broker
                  ,zone=Zone
                  }}.
@@ -76,7 +86,7 @@ init([Parent, Broker]=L) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_call(any(), any(), state()) -> kz_types:handle_call_ret_state(state()).
-handle_call({'stop', Parent}, _From, #state{parent=Parent}=State) ->
+handle_call({'stop', Parent}, _From, #state{parent={Parent, _Ref}}=State) ->
     {'stop', 'normal', 'ok', State};
 handle_call('get_broker', _From, #state{broker=Broker}=State) ->
     {'reply', Broker, State};
@@ -90,10 +100,15 @@ handle_call(_Request, _From, State) ->
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'gen_listener', {'created_queue', _}}, State) ->
     {'noreply', State};
-handle_cast({'gen_listener', {'is_consuming', 'true'}}, #state{parent=Parent, broker=Broker}=State) ->
+handle_cast({'gen_listener', {'is_consuming', 'true'}}
+           ,#state{parent={Parent, _Ref}
+                  ,broker=Broker
+                  }=State
+           ) ->
     gen_server:cast(Parent, {'federator_is_consuming', Broker, 'true'}),
     {'noreply', State};
 handle_cast(_Msg, State) ->
+    lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
 
 %%------------------------------------------------------------------------------
@@ -101,15 +116,21 @@ handle_cast(_Msg, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
+handle_info({'DOWN', Ref, 'process', Parent, _Reason}
+           ,#state{parent={Parent, Ref}}=State
+           ) ->
+    lager:info("parent gen_listener ~p down: ~p", [Parent, _Reason]),
+    {'stop', 'normal', State};
 handle_info(_Info, State) ->
+    lager:info("unhandled message: ~p", [_Info]),
     {'noreply', State}.
 
--spec handle_event(kz_json:object(), gen_listener:basic_deliver(), amqp_basic(), state()) -> gen_listener:handle_event_return().
-handle_event(JObj, BasicDeliver, BasicData, #state{parent=Parent
-                                                  ,broker=Broker
-                                                  ,self_binary=Self
-                                                  ,zone=Zone
-                                                  }) ->
+-spec handle_event(kz_json:object(), kz_term:proplist(), state()) -> gen_listener:handle_event_return().
+handle_event(JObj, Props, #state{parent={Parent, _Ref}
+                                ,broker=Broker
+                                ,self_binary=Self
+                                ,zone=Zone
+                                }) ->
     lager:debug("relaying federated ~s event (~p) ~s from ~s to ~p with consumer pid ~p",
                 [kz_api:event_category(JObj), kz_api:msg_id(JObj), kz_api:event_name(JObj), Zone, Parent, Self]
                ),
@@ -124,8 +145,7 @@ handle_event(JObj, BasicDeliver, BasicData, #state{parent=Parent
                                                     ]
                                                    ,JObj
                                                    )
-                                ,BasicDeliver
-                                ,BasicData
+                                ,Props
                                 ),
     'ignore'.
 
@@ -138,6 +158,7 @@ handle_event(JObj, BasicDeliver, BasicData, #state{parent=Parent
 %% @end
 %%------------------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
+terminate('shutdown', _State) -> 'ok';
 terminate(_Reason, _State) ->
     lager:debug("listener federator terminating: ~p", [_Reason]).
 

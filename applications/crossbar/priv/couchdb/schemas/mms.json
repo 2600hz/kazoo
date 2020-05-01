@@ -1,0 +1,24 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "mms",
+    "description": "mms document",
+    "properties": {
+        "body": {
+            "description": "mime encoded mms message",
+            "minLength": 1,
+            "type": "string"
+        },
+        "from": {
+            "description": "caller-id-number, taken from user if absent",
+            "type": "string"
+        },
+        "to": {
+            "description": "callee-id-number",
+            "type": "string"
+        }
+    },
+    "required": [
+        "to"
+    ],
+    "type": "object"
+}

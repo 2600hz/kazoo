@@ -1,0 +1,21 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "system_config.kazoo_im",
+    "description": "Schema for kazoo_im system_config",
+    "properties": {
+        "connector": {
+            "properties": {
+                "connections": {
+                    "description": "kazoo_im connector connections",
+                    "type": "object"
+                }
+            }
+        },
+        "onnet_listeners": {
+            "default": 1,
+            "description": "kazoo_im onnet_listeners",
+            "type": "integer"
+        }
+    },
+    "type": "object"
+}

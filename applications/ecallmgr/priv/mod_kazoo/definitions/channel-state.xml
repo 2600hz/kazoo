@@ -1,0 +1,7 @@
+<definition name="channel-state">
+	<field name="Channel-State" type="expand"
+		value="${regex(${Channel-State}|^CS_(.*)$|%1)}" />
+	<field name="Channel-Call-State" />
+	<field name="Channel-Name" />
+	<field name="Answer-State" as="Channel-Answer-State" />
+</definition>

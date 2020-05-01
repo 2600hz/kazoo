@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2014-2019, 2600Hz
+%%% @copyright (C) 2014-2020, 2600Hz
 %%% @doc Transfers caller to the extension extracted in the regex
 %%% Data = {
 %%%   "takeback_dtmf":"2" // Transferor can cancel the transfer request
@@ -9,6 +9,11 @@
 %%% }
 %%%
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(konami_transfer).
@@ -136,11 +141,10 @@ handle(Data, Call) ->
         _ -> 'ok'
     catch
         'exit':'normal' -> 'ok';
-        _E:_R ->
-            ST = erlang:get_stacktrace(),
-            lager:info("statem terminated abnormally: ~s: ~p", [_E, _R]),
-            kz_util:log_stacktrace(ST)
-    end.
+        ?STACKTRACE(_E, _R, ST)
+        lager:info("statem terminated abnormally: ~s: ~p", [_E, _R]),
+        kz_log:log_stacktrace(ST)
+        end.
 
 -spec get_extension(kz_term:ne_binaries() | kz_term:ne_binary()) -> kz_term:ne_binary().
 get_extension([Ext|_]) -> Ext;
@@ -1166,8 +1170,8 @@ connect(Flags, Call) ->
 
 -type dtmf_next_state() :: 'attended_wait' | 'attended_answer' | 'takeback'.
 -spec handle_transferor_dtmf(kz_json:object(), dtmf_next_state(), state()) ->
-                                    {'stop', 'normal', state()} |
-                                    {'next_state', dtmf_next_state(), state()}.
+          {'stop', 'normal', state()} |
+          {'next_state', dtmf_next_state(), state()}.
 handle_transferor_dtmf(Evt
                       ,NextState
                       ,#state{target_call=TargetCall
@@ -1354,7 +1358,7 @@ issue_transferee_event(Target, Call) ->
 %% When the A-leg is the transferor, its ecallmgr control will be down at this
 %% point so use Target's call record; otherwise use the A-leg's.
 -spec how_to_transfer(kapps_call:call(), kapps_call:call(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                             {kz_term:ne_binary(), kapps_call:call()}.
+          {kz_term:ne_binary(), kapps_call:call()}.
 how_to_transfer(OriginalCall, TargetCall, Transferor, Target, Transferee) ->
     case kapps_call:call_id(OriginalCall) of
         Transferor ->

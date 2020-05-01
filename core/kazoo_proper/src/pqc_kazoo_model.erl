@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(pqc_kazoo_model).
@@ -52,7 +57,7 @@
 
 %% #{"prefix" => cost}
 -type rate_data() :: #{kz_term:ne_binary() => non_neg_integer()}.
--type service_plans() :: [{kz_term:ne_binary(), kzd_service_plan:plan()}].
+-type service_plans() :: [{kz_term:ne_binary(), kzd_service_plan:doc()}].
 
 -type account_data() :: #{'name' => kz_term:ne_binary()
                          ,'service_plans' => service_plans()
@@ -167,13 +172,15 @@ has_accounts(#kazoo_model{'accounts'=Accounts}) ->
     0 =:= map_size(Accounts).
 
 -spec has_rate_matching(model(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                               'false' |
-                               {'true', integer()}.
+          'false' |
+          {'true', integer()}.
 has_rate_matching(#kazoo_model{}=Model, RatedeckId, DID) ->
     Ratedeck = ratedeck(Model, RatedeckId),
     has_rate_matching(Ratedeck, DID).
 
--spec has_service_plan_rate_matching(model(), kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
+-spec has_service_plan_rate_matching(model(), kz_term:ne_binary(), kz_term:ne_binary()) ->
+          'false' |
+          {'true', number()}.
 has_service_plan_rate_matching(#kazoo_model{'accounts'=Accounts
                                            ,'service_plans'=SPs
                                            }=Model
@@ -196,7 +203,9 @@ has_service_plan_rate_matching(#kazoo_model{'accounts'=Accounts
             end
     end.
 
--spec has_rate_matching(rate_data(), kz_term:ne_binary()) -> boolean().
+-spec has_rate_matching(rate_data(), kz_term:ne_binary()) ->
+          'false' |
+          {'true', number()}.
 has_rate_matching(Ratedeck, <<"+", Number/binary>>) ->
     has_rate_matching(Ratedeck, Number);
 has_rate_matching(Ratedeck, Number) ->
@@ -329,7 +338,7 @@ add_service_plan_to_account(#kazoo_model{'accounts'=Accounts}=Model, AccountId, 
     Model#kazoo_model{'accounts'=Accounts1}.
 
 -spec add_dedicated_ip(model(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                              model().
+          model().
 add_dedicated_ip(#kazoo_model{'dedicated_ips'=IPs}=Model, IP, Host, Zone) ->
     UpdatedIPs =
         case dedicated_ip(Model, IP) of
@@ -349,7 +358,7 @@ remove_dedicated_ip(#kazoo_model{'dedicated_ips'=IPs}=Model, IP) ->
     Model#kazoo_model{'dedicated_ips'=maps:remove(IP, IPs)}.
 
 -spec assign_dedicated_ip(model(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                 model().
+          model().
 assign_dedicated_ip(#kazoo_model{'dedicated_ips'=IPs}=Model, AccountId, IP) ->
     IPInfo = dedicated_ip(Model, IP),
     Model#kazoo_model{'dedicated_ips'=IPs#{IP => IPInfo#{'assigned_to' => AccountId}}}.

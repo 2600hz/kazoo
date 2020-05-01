@@ -1,0 +1,82 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.route.route_resp",
+    "description": "AMQP API for route.route_resp",
+    "properties": {
+        "Application-Data": {
+            "type": "string"
+        },
+        "Custom-Application-Vars": {
+            "type": "object"
+        },
+        "Custom-Channel-Vars": {
+            "type": "object"
+        },
+        "Event-Category": {
+            "enum": [
+                "dialplan"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "route_resp"
+            ],
+            "type": "string"
+        },
+        "From-Realm": {
+            "type": "string"
+        },
+        "From-URI": {
+            "type": "string"
+        },
+        "From-User": {
+            "type": "string"
+        },
+        "Method": {
+            "enum": [
+                "bridge",
+                "park",
+                "error",
+                "sms",
+                "plan",
+                "application"
+            ],
+            "type": "string"
+        },
+        "Plan-Data": {
+            "type": "string"
+        },
+        "Pre-Park": {
+            "enum": [
+                "none",
+                "ring_ready",
+                "answer"
+            ],
+            "type": "string"
+        },
+        "Ringback-Media": {
+            "type": "string"
+        },
+        "Route-Error-Code": {
+            "type": "string"
+        },
+        "Route-Error-Message": {
+            "type": "string"
+        },
+        "Routes": {
+            "items": {
+                "$ref": "kapi.route.resp_route",
+                "type": "object"
+            },
+            "type": "array"
+        },
+        "Transfer-Media": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Method"
+    ],
+    "type": "object"
+}

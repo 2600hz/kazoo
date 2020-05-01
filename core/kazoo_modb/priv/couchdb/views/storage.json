@@ -10,19 +10,47 @@
     "language": "javascript",
     "views": {
         "list_by_content_type": {
-            "map": "function(doc) {if (doc.pvt_deleted || (!doc._attachments && !doc.pvt_attachments)) return;  for (var i in doc._attachments) emit([doc._attachments[i].content_type, 'database'], doc._attachments[i].length); for (var i in doc.pvt_attachments) for (var h in doc.pvt_attachments[i].handler) emit([doc.pvt_attachments[i].content_type, h], doc.pvt_attachments[i].length);  }",
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_deleted || (!doc._attachments && !doc.pvt_attachments)) return;",
+                "  for (var i in doc._attachments) emit([doc._attachments[i].content_type, 'database'], doc._attachments[i].length);",
+                "  for (var i in doc.pvt_attachments)",
+                "    for (var h in doc.pvt_attachments[i].handler) emit([doc.pvt_attachments[i].content_type, h], doc.pvt_attachments[i].length);",
+                "}"
+            ],
             "reduce": "_sum"
         },
         "list_by_doc_type": {
-            "map": "function(doc) {if (doc.pvt_deleted || (!doc._attachments && !doc.pvt_attachments)) return;  for (var i in doc._attachments) emit([doc.pvt_type, doc._attachments[i].content_type, 'database' ], doc._attachments[i].length); for (var i in doc.pvt_attachments) for (var h in doc.pvt_attachments[i].handler) emit([doc.pvt_type, doc.pvt_attachments[i].content_type, h], doc.pvt_attachments[i].length);  }",
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_deleted || (!doc._attachments && !doc.pvt_attachments)) return;",
+                "  for (var i in doc._attachments) emit([doc.pvt_type, doc._attachments[i].content_type, 'database'], doc._attachments[i].length);",
+                "  for (var i in doc.pvt_attachments)",
+                "    for (var h in doc.pvt_attachments[i].handler) emit([doc.pvt_type, doc.pvt_attachments[i].content_type, h], doc.pvt_attachments[i].length);",
+                "}"
+            ],
             "reduce": "_sum"
         },
         "list_by_storage_content_type": {
-            "map": "function(doc) {if (doc.pvt_deleted || (!doc._attachments && !doc.pvt_attachments)) return;  for (var i in doc._attachments) emit(['database', doc._attachments[i].content_type ], doc._attachments[i].length); for (var i in doc.pvt_attachments) for (var h in doc.pvt_attachments[i].handler) emit([h, doc.pvt_attachments[i].content_type], doc.pvt_attachments[i].length);  }",
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_deleted || (!doc._attachments && !doc.pvt_attachments)) return;",
+                "  for (var i in doc._attachments) emit(['database', doc._attachments[i].content_type], doc._attachments[i].length);",
+                "  for (var i in doc.pvt_attachments)",
+                "    for (var h in doc.pvt_attachments[i].handler) emit([h, doc.pvt_attachments[i].content_type], doc.pvt_attachments[i].length);",
+                "}"
+            ],
             "reduce": "_sum"
         },
         "list_by_storage_doc_type": {
-            "map": "function(doc) {if (doc.pvt_deleted || (!doc._attachments && !doc.pvt_attachments)) return;  for (var i in doc._attachments) emit(['database', doc.pvt_type, doc._attachments[i].content_type ], doc._attachments[i].length); for (var i in doc.pvt_attachments) for (var h in doc.pvt_attachments[i].handler) emit([h, doc.pvt_type, doc.pvt_attachments[i].content_type], doc.pvt_attachments[i].length);  }",
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_deleted || (!doc._attachments && !doc.pvt_attachments)) return;",
+                "  for (var i in doc._attachments) emit(['database', doc.pvt_type, doc._attachments[i].content_type], doc._attachments[i].length);",
+                "  for (var i in doc.pvt_attachments)",
+                "    for (var h in doc.pvt_attachments[i].handler) emit([h, doc.pvt_type, doc.pvt_attachments[i].content_type], doc.pvt_attachments[i].length);",
+                "}"
+            ],
             "reduce": "_sum"
         }
     }

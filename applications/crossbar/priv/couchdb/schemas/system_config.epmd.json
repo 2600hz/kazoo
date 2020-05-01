@@ -1,0 +1,13 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "system_config.epmd",
+    "description": "Schema for epmd system_config",
+    "properties": {
+        "check_every_s": {
+            "default": 60,
+            "description": "epmd check_every_s",
+            "type": "integer"
+        }
+    },
+    "type": "object"
+}

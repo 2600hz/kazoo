@@ -29,6 +29,10 @@
             ],
             "type": "string"
         },
+        "skip_module": {
+            "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+            "type": "boolean"
+        },
         "timeout": {
             "description": "Time, in seconds, for 'paused' state",
             "type": "integer"

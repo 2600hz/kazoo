@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kazoo_media_app).
@@ -30,7 +34,6 @@ start(_Type, _Args) ->
 %%------------------------------------------------------------------------------
 -spec stop(any()) -> any().
 stop(_State) ->
-    _ = kz_media_proxy:stop(),
     kapps_maintenance:unbind('migrate', 'kazoo_media_maintenance', 'migrate'),
     kapps_maintenance:unbind('register_views', 'kazoo_media_maintenance', 'register_views'),
     'ok'.

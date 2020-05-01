@@ -14,7 +14,7 @@ Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
 `account_name` | The account name of the user | `string(1..128)` |   | `false` |  
 `account_realm` | The account realm of the user | `string(4..253)` |   | `false` |  
-`credentials` | A hash of the uses credentials | `string(1..64)` |   | `true` |  
+`credentials` | A hash of the user credentials | `string(1..64)` |   | `true` |  
 `method` | The hash method | `string('md5' | 'sha')` | `md5` | `false` |  
 `phone_number` | A phone number assigned to the users account | `string(1..64)` |   | `false` |  
 
@@ -27,7 +27,7 @@ Key | Description | Type | Default | Required | Support Level
 ```shell
 curl -v -X PUT \
     -H "Content-Type: application/json" \
-    -d '{"data":{"credentials":"{CREDENTIALS_HASH}", "account_name":"{ACCOUNT_NAME"}, "method":[md5|sha]}}' \
+    -d '{"data":{"credentials":"{CREDENTIALS_HASH}", "account_name":"{ACCOUNT_NAME}", "method":"[md5|sha]"}}' \
     http://{SERVER}:8000/v2/user_auth
 ```
 
@@ -38,6 +38,13 @@ Where `{CREDENTIALS_HASH}` is MD5 or SHA1 hash of `{username}:{password}`.
 ```shell
 $ echo -n 'john@example.com:m32c6NfqYEt' | md5sum
 82a2dc91686ec828a67152d45a5c5ef7  -
+```
+
+#### Creating SHA1 User/Pass credentials hash
+
+```shell
+$ echo -n 'john@example.com:m32c6NfqYEt' | sha1sum
+055cf886cb9b5c5867083463867c527ace0f8ecc  -
 ```
 
 **Responses**
@@ -108,14 +115,22 @@ Sometimes it is necessary to recover a password.
 Similar to user authentication, you can supply the account realm, the account name, or a phone number associated with the account to send a password reset to the user's email.
 This email will contain a link that one then click to verify identity & proceed with recovery.
 
-### Schema
+#### Schema
 
-Key | Description | Type | Default | Required
---- | ----------- | ---- | ------- | --------
-`account_name` | The account name of the user | `string(1..64)` |   | `false`
-`account_realm` | The account realm of the user | `string(1..64)` |   | `false`
-`phone_number` | A phone number assigned to the user's account | `string(1..64)` |   | `false`
-`username` | The user's API username | `string(1..254)` |   | `true`
+Send a reset-your-password email via user credentials
+
+
+
+Key | Description | Type | Default | Required | Support Level
+--- | ----------- | ---- | ------- | -------- | -------------
+`account_name` | The account name of the user | `string(1..64)` |   | `false` |
+`account_realm` | The account realm of the user | `string(1..64)` |   | `false` |
+`phone_number` | A phone number assigned to the user's account | `string(1..64)` |   | `false` |
+`ui_url` | The UI's root URL | `string(14..2000)` |   | `true` |
+`username` | The user's username | `string(1..254)` |   | `true` |
+
+
+#### API request
 
 > PUT /v2/user_auth/recovery
 

@@ -3,9 +3,14 @@
     "_id": "system_config.callflow.resources",
     "description": "Schema for callflow.resources system_config",
     "properties": {
+        "default_asserted_identity": {
+            "default": false,
+            "description": "When set to true, the asserted identity will have defaults and force the use of P-Asserted-Identity (instead of RPID) on all outbound offnet calls.  When set to false, P-Asserted-Identity is only used if explicitly set in the account/user/device hierarchy.",
+            "type": "boolean"
+        },
         "default_emit_account_id": {
             "default": false,
-            "description": "callflow.resources default emit account id",
+            "description": "When set to true, all outbound offnet calls will include a SIP header X-Account-ID with a value of the Kazoo account UUID.",
             "type": "boolean"
         }
     },

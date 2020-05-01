@@ -1,6 +1,11 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Handlers for various AMQP payloads
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(j5_channel_destroy).
@@ -16,7 +21,7 @@
 -spec handle_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = kapi_call:event_v(JObj),
-    kz_util:put_callid(JObj),
+    kz_log:put_callid(JObj),
     timer:sleep(1000 + rand:uniform(2000)),
     Request = j5_request:from_jobj(JObj),
     AccountId = j5_request:account_id(Request),

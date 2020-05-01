@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2015-2019, 2600Hz
+%%% @copyright (C) 2015-2020, 2600Hz
 %%% @doc
 %%% @author Peter Defebvre
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(teletype_port_request_admin).
@@ -37,7 +42,7 @@ id() -> ?TEMPLATE_ID.
 
 -spec init() -> 'ok'.
 init() ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
                                           ,{'subject', ?TEMPLATE_SUBJECT}
                                           ,{'category', ?TEMPLATE_CATEGORY}
@@ -72,10 +77,12 @@ handle_req(JObj, 'true') ->
 
 -spec process_req(kz_json:object()) -> template_response().
 process_req(DataJObj) ->
-    NewData = teletype_port_utils:port_request_data(DataJObj, ?TEMPLATE_ID),
-    case teletype_util:is_preview(NewData) of
-        'false' -> handle_port_request(NewData);
-        'true' -> handle_port_request(kz_json:merge_jobjs(DataJObj, NewData))
+    case teletype_util:is_preview(DataJObj) of
+        'false' ->
+            NewData = teletype_port_utils:port_request_data(DataJObj, ?TEMPLATE_ID),
+            handle_port_request(NewData);
+        'true' ->
+            lager:debug("notification is preview, let's teletype_port_request sends the email")
     end.
 
 -spec handle_port_request(kz_json:object()) -> template_response().
@@ -103,7 +110,7 @@ handle_port_request(DataJObj) ->
 
     AuthorityEmails = props:set_value(<<"to">>
                                      ,kz_json:get_value(<<"authority_emails">>, DataJObj, [])
-                                     ,Emails
+                                     ,props:delete_keys([<<"bcc">>, <<"cc">>], Emails)
                                      ),
 
     lager:debug("sending ~s to port authority: ~p"

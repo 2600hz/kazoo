@@ -1,0 +1,8 @@
+<event name="CHANNEL_METAFLOW">
+	<fields verbose="false">
+		<field name="call_event" type="reference" />
+		<field name="from-to" type="reference" />
+		<field name="user-agent" type="reference" />
+		<field name="Metaflow-Collected-Digits" />
+	</fields>
+</event>

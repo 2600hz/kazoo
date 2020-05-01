@@ -31,6 +31,9 @@
         "Bridge-Actions": {
             "type": "object"
         },
+        "Call-Context": {
+            "type": "string"
+        },
         "Call-Restrictions-Enabled": {
             "type": "string"
         },
@@ -53,6 +56,9 @@
             "type": "string"
         },
         "Confirm-Key": {
+            "type": "string"
+        },
+        "Continue-After": {
             "type": "string"
         },
         "Continue-On-Fail": {
@@ -194,6 +200,15 @@
             "type": "string"
         },
         "Outbound-Caller-ID-Number": {
+            "type": "string"
+        },
+        "Privacy-Hide-Name": {
+            "type": "string"
+        },
+        "Privacy-Hide-Number": {
+            "type": "string"
+        },
+        "Privacy-Method": {
             "type": "string"
         },
         "Ringback": {

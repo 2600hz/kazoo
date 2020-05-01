@@ -1,0 +1,161 @@
+paths:
+  /accounts/{ACCOUNT_ID}/resource_selectors:
+    get:
+      operationId: GetAccountsAccountIdResourceSelectors
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get all resource_selectors
+      tags:
+        - resource_selectors
+  /accounts/{ACCOUNT_ID}/resource_selectors/name:
+    get:
+      operationId: GetAccountsAccountIdResourceSelectorsName
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get name of resource_selectors
+      tags:
+        - resource_selectors
+  /accounts/{ACCOUNT_ID}/resource_selectors/name/{SELECTOR_NAME}:
+    get:
+      operationId: GetAccountsAccountIdResourceSelectorsNameSelectorName
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/SELECTOR_NAME'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a resource_selectors by ID
+      tags:
+        - resource_selectors
+  /accounts/{ACCOUNT_ID}/resource_selectors/name/{SELECTOR_NAME}/resource/{RESOURCE_ID}:
+    get:
+      operationId: GetAccountsAccountIdResourceSelectorsNameSelectorNameResourceResourceId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/SELECTOR_NAME'
+        - $ref: '../oas3-parameters.yml#/RESOURCE_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a resource_selectors by ID
+      tags:
+        - resource_selectors
+  /accounts/{ACCOUNT_ID}/resource_selectors/resource:
+    get:
+      operationId: GetAccountsAccountIdResourceSelectorsResource
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get resource of resource_selectors
+      tags:
+        - resource_selectors
+  /accounts/{ACCOUNT_ID}/resource_selectors/resource/{RESOURCE_ID}:
+    get:
+      operationId: GetAccountsAccountIdResourceSelectorsResourceResourceId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/RESOURCE_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a resource_selectors by ID
+      tags:
+        - resource_selectors
+  /accounts/{ACCOUNT_ID}/resource_selectors/resource/{RESOURCE_ID}/name/{SELECTOR_NAME}:
+    get:
+      operationId: GetAccountsAccountIdResourceSelectorsResourceResourceIdNameSelectorName
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/RESOURCE_ID'
+        - $ref: '../oas3-parameters.yml#/SELECTOR_NAME'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a resource_selectors by ID
+      tags:
+        - resource_selectors
+  /accounts/{ACCOUNT_ID}/resource_selectors/rules:
+    get:
+      operationId: GetAccountsAccountIdResourceSelectorsRules
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get rules of resource_selectors
+      tags:
+        - resource_selectors
+    post:
+      operationId: PostAccountsAccountIdResourceSelectorsRules
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/resource_selectors'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of resource_selectors
+      tags:
+        - resource_selectors
+  /accounts/{ACCOUNT_ID}/resource_selectors/{UUID}:
+    delete:
+      operationId: DeleteAccountsAccountIdResourceSelectorsUuid
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/UUID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of resource_selectors
+      tags:
+        - resource_selectors
+    get:
+      operationId: GetAccountsAccountIdResourceSelectorsUuid
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/UUID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a resource_selectors by ID
+      tags:
+        - resource_selectors
+    post:
+      operationId: PostAccountsAccountIdResourceSelectorsUuid
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/UUID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/resource_selectors'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of resource_selectors
+      tags:
+        - resource_selectors

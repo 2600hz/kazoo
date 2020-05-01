@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kazoo_services_sup).
@@ -14,21 +18,15 @@
 
 -define(SERVER, ?MODULE).
 
--define(ORIGIN_BINDINGS, [[{'db', ?KZ_SERVICES_DB, kzd_services:type()}]
-                         ]).
+-define(ORIGIN_BINDINGS, [[{'db', ?KZ_SERVICES_DB}, {'type', kzd_services:type()}]]).
 
--define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}
-                     ]).
+-define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}]).
 
 %% Helper macro for declaring children of supervisor
 -ifdef(TEST).
--define(CHILDREN, [?CACHE_ARGS(?CACHE_NAME, [])
-                  ,?WORKER('kz_services_modb')
-                  ]).
+-define(CHILDREN, [?CACHE_ARGS(?CACHE_NAME, [])]).
 -else.
--define(CHILDREN, [?CACHE_ARGS(?CACHE_NAME, ?CACHE_PROPS)
-                  ,?WORKER('kz_services_modb')
-                  ]).
+-define(CHILDREN, [?CACHE_ARGS(?CACHE_NAME, ?CACHE_PROPS)]).
 -endif.
 
 %%==============================================================================

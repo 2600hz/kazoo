@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Renders a custom account email template, or the system default,
 %%% @author Karl Anderson <karl@2600hz.org>
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(notify_transaction).
@@ -36,7 +41,7 @@ init() ->
 handle_req(JObj, _Props) ->
     true = kapi_notifications:transaction_v(JObj),
 
-    _ = kz_util:put_callid(JObj),
+    _ = kz_log:put_callid(JObj),
 
     lager:debug("creating transaction notice"),
 

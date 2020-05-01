@@ -1,6 +1,11 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc data adapter behaviour
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kzs_attachments).
@@ -20,16 +25,16 @@
 
 %% Attachment-related functions ------------------------------------------------
 -spec fetch_attachment(map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                              {'ok', binary()} |
-                              data_error() |
-                              kz_att_error:error().
+          {'ok', binary()} |
+          data_error() |
+          kz_att_error:error().
 fetch_attachment(#{}=Server, DbName, DocId, AName) ->
     fetch_attachment(Server, DbName, DocId, AName, []).
 
 -spec fetch_attachment(map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_data:options()) ->
-                              {'ok', binary()} |
-                              data_error() |
-                              kz_att_error:error().
+          {'ok', binary()} |
+          data_error() |
+          kz_att_error:error().
 fetch_attachment(#{}=Server, DbName, DocId, AName, Options) ->
     case kzs_cache:open_cache_doc(Server, DbName, DocId, []) of
         {'ok', Doc} ->
@@ -69,8 +74,8 @@ do_fetch_attachment_from_handler([{Handler, HandlerProps}], {Module, ModuleProps
     end.
 
 -spec stream_attachment(map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), pid()) ->
-                               {'ok', reference()} |
-                               data_error().
+          {'ok', reference()} |
+          data_error().
 stream_attachment(#{}=Server, DbName, DocId, AName, Caller) ->
     case kzs_cache:open_cache_doc(Server, DbName, DocId, []) of
         {'ok', Doc} ->
@@ -91,7 +96,7 @@ do_stream_attachment(#{server := {App, Conn}}=Server, DbName, DocId, AName, Att,
 do_stream_attachment_from_handler([{Handler, Props}], 'undefined', DbName, DocId, AName, Caller) ->
     Module = kz_term:to_atom(Handler, 'true'),
     Ref = make_ref(),
-    kz_util:spawn(fun relay_stream_attachment/7, [Caller, Ref, Module, Props, DbName, DocId, AName]),
+    kz_process:spawn(fun relay_stream_attachment/7, [Caller, Ref, Module, Props, DbName, DocId, AName]),
     {'ok', Ref};
 do_stream_attachment_from_handler([{Handler, HandlerProps}], {Module, ModuleProps}, DbName, DocId, AName, Caller) ->
     case kz_term:to_atom(Handler, 'true') of
@@ -103,7 +108,7 @@ do_stream_attachment_from_handler([{Handler, HandlerProps}], {Module, ModuleProp
             Props = HandlerProps
     end,
     Ref = make_ref(),
-    kz_util:spawn(fun relay_stream_attachment/7, [Caller, Ref, FinalModule, Props, DbName, DocId, AName]),
+    kz_process:spawn(fun relay_stream_attachment/7, [Caller, Ref, FinalModule, Props, DbName, DocId, AName]),
     {'ok', Ref}.
 
 relay_stream_attachment(Caller, Ref, Module, Props, DbName, DocId, AName) ->
@@ -129,11 +134,11 @@ relay_stream_attachment(Caller, Ref, Bin) ->
                     ,'server' := {module(), db()}
                     }.
 
--spec put_attachment(att_map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
-                            {'ok', kz_json:object()} |
-                            {'ok', kz_json:object(), kz_term:proplist()} |
-                            data_error() |
-                            kz_att_error:error().
+-spec put_attachment(att_map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), iodata(), kz_term:proplist()) ->
+          {'ok', kz_json:object()} |
+          {'ok', kz_json:object(), kz_term:proplist()} |
+          data_error() |
+          kz_att_error:error().
 
 put_attachment(#{att_handler := {Handler, Params}}=Map
               ,DbName, DocId, AName, Contents, Options
@@ -149,18 +154,17 @@ put_attachment(#{att_handler := {Handler, Params}}=Map
         {'error', _Reason, _ExtendedError} = AttHandlerError ->
             case props:get_value('save_error', Options, 'true') of
                 'true' ->
-                    _Pid = kz_util:spawn(fun save_attachment_handler_error/3
-                                        ,[Map, DbName, AttHandlerError]
-                                        ),
+                    _Pid = kz_process:spawn(fun save_attachment_handler_error/3
+                                           ,[Map, DbName, AttHandlerError]
+                                           ),
                     lager:debug("saving attachment handler error in ~p", [_Pid]);
                 'false' ->
                     lager:debug("skipping error save because save_error is set to false")
             end,
             handle_attachment_handler_error(AttHandlerError, Options)
     end;
-put_attachment(#{server := {App, Conn}}, DbName, DocId, AName, Contents, Options) ->
-    kzs_cache:flush_cache_doc(DbName, DocId),
-    App:put_attachment(Conn, DbName, DocId, AName, Contents, Options).
+put_attachment(Map, DbName, DocId, AName, Contents, Options) ->
+    handle_put_attachment(Map, 'undefined', DbName, DocId, AName, Contents, Options, []).
 
 attachment_from_handler(AName, AttHandler, Size, CT) ->
     Props = [{<<"content_type">>, kz_term:to_binary(CT)}
@@ -174,27 +178,28 @@ attachment_handler_jobj(Handler, Props) ->
     JObj = kz_json:from_list(props:get_value('attachment', Props, [])),
     kz_json:set_value(kz_term:to_binary(Handler), JObj, kz_json:new()).
 
--spec handle_put_attachment(att_map(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()
-                           , kz_term:proplist(), kz_term:proplist()) ->
-                                   {'ok', kz_json:object()} |
-                                   {'ok', kz_json:object(), kz_term:proplist()} |
-                                   data_error().
-
-handle_put_attachment(#{att_post_handler := 'stub'
-                       ,server := {App, Conn}
-                       }, _Att, DbName, DocId, AName, Contents, Options, _Props) ->
-    kzs_cache:flush_cache_doc(DbName, DocId),
-    App:put_attachment(Conn, DbName, DocId, AName, Contents, Options);
-
+-spec handle_put_attachment(att_map(), kz_term:api_object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), iodata(), kz_term:proplist(), kz_term:proplist()) ->
+          {'ok', kz_json:object()} |
+          {'ok', kz_json:object(), kz_term:proplist()} |
+          data_error().
 handle_put_attachment(#{att_post_handler := 'external'}=Map, Att, DbName, DocId, _AName, _Contents, _Options, Props) ->
     case kzs_doc:open_doc(Map, DbName, DocId, []) of
-        {'ok', JObj} -> external_attachment(Map, DbName, JObj, Att, Props);
+        {'ok', JObj} ->
+            external_attachment(Map, DbName, JObj, Att, Props);
         {'error', _}=E -> E
+    end;
+handle_put_attachment(#{server := {App, Conn}}=Map, _Att, DbName, DocId, AName, Contents, Options, _Props) ->
+    case App:put_attachment(Conn, DbName, DocId, AName, Contents, Options) of
+        {'ok', _JObj}=Result ->
+            publish_doc(Map, DbName, DocId),
+            kzs_cache:flush_cache_doc(DbName, DocId),
+            Result;
+        Result -> Result
     end.
 
 -spec external_attachment(att_map(), kz_term:ne_binary(), kz_json:object(), kz_json:object(), Props) ->
-                                 {'ok', kz_json:object(), Props} |
-                                 data_error().
+          {'ok', kz_json:object(), Props} |
+          data_error().
 external_attachment(Map, DbName, JObj, Att, Props) ->
     Atts = kz_json:merge_jobjs(Att, kz_json:get_value(?KEY_STUB_ATTACHMENTS, JObj, kz_json:new())),
     case kzs_doc:save_doc(Map, DbName, kz_json:set_values([{?KEY_STUB_ATTACHMENTS, Atts}], JObj), []) of
@@ -203,26 +208,33 @@ external_attachment(Map, DbName, JObj, Att, Props) ->
     end.
 
 -spec delete_attachment(map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
-                               {'ok', kz_json:object()} |
-                               data_error().
-delete_attachment(#{server := {App, Conn}}, DbName, DocId, AName, Options) ->
-    kzs_cache:flush_cache_doc(DbName, DocId),
-    App:delete_attachment(Conn, DbName, DocId, AName, Options).
+          {'ok', kz_json:object()} |
+          data_error().
+delete_attachment(#{server := {App, Conn}}=Map, DbName, DocId, AName, Options) ->
+    case App:delete_attachment(Conn, DbName, DocId, AName, Options) of
+        {'ok', _}=Result ->
+            publish_doc(Map, DbName, DocId),
+            kzs_cache:flush_cache_doc(DbName, DocId),
+            Result;
+        Result -> Result
+    end.
 
--spec attachment_url(map()
-                    ,DbName
-                    ,DocId
-                    ,AttachmentId
-                    ,Handler
-                    ,Options
-                    ) ->
-                            kz_term:ne_binary() |
-                            {'proxy', {DbName, DocId, AttachmentId, [{'handler', Handler}] | Options}}
-                                when DbName :: kz_term:ne_binary()
-                                     ,DocId :: kz_term:ne_binary()
-                                     ,AttachmentId :: kz_term:ne_binary()
-                                     ,Handler :: kz_term:api_atom()
-                                     ,Options :: kz_term:proplist().
+-spec publish_doc(map(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
+publish_doc(Plan, DbName, DocId) ->
+    case kzs_doc:open_doc(Plan, DbName, DocId, []) of
+        {'ok', JObj} -> kzs_publish:maybe_publish_doc(DbName, JObj, JObj);
+        {'error', Error} ->
+            lager:debug("failed to publish doc update after attachment store for ~s/~s (~p)", [DbName, DocId, Error])
+    end.
+
+-spec attachment_url(map(), DbName, DocId, AttachmentId, Handler, Options) ->
+          kz_term:ne_binary() |
+          {'proxy', {DbName, DocId, AttachmentId, [{'handler', Handler}] | Options}}
+              when DbName :: kz_term:ne_binary()
+                   ,DocId :: kz_term:ne_binary()
+                   ,AttachmentId :: kz_term:ne_binary()
+                   ,Handler :: kz_term:api_atom()
+                   ,Options :: kz_term:proplist().
 attachment_url(#{att_proxy := 'true'}, DbName, DocId, AttachmentId, 'undefined', Options) ->
     {'proxy', {DbName, DocId, AttachmentId, Options}};
 attachment_url(#{server := {App, Conn}}, DbName, DocId, AttachmentId, 'undefined', Options) ->
@@ -251,7 +263,7 @@ save_attachment_handler_error(Map
     lager:debug("attachment handler error stored with id: ~p", [kz_doc:id(SavedJObj)]).
 
 -spec handle_attachment_handler_error(kz_att_error:error(), kz_data:options()) ->
-                                             kz_att_error:error() | kz_datamgr:data_error().
+          kz_att_error:error() | kz_datamgr:data_error().
 handle_attachment_handler_error({'error', Reason, _ExtendedError}, []) ->
     {'error', Reason};
 handle_attachment_handler_error({'error', Reason, ExtendedError}, Options) ->

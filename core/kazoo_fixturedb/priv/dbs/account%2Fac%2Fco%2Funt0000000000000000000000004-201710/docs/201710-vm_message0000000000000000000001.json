@@ -1,0 +1,39 @@
+{
+    "_attachments": {
+        "vm-new_message.mp3": {
+            "content_type": "audio/mpeg",
+            "digest": "md5-OOR82kIsFLbZyH7dslIl2A==",
+            "length": 2916,
+            "revpos": 2,
+            "stub": true
+        }
+    },
+    "_id": "201710-vm_message0000000000000000000001",
+    "_rev": "2-3054b47fc339e720e6b7fdac656fc4df",
+    "description": "voicemail message with media",
+    "media_filename": "vm-new_message.mp3",
+    "media_source": "recording",
+    "metadata": {
+        "call_id": "1_3532868610@10.26.0.190",
+        "caller_id_name": "userC userC",
+        "caller_id_number": "10202",
+        "folder": "new",
+        "from": "1002@hesaam.2600hz.com",
+        "length": 970,
+        "media_id": "201710-vm_message0000000000000000000001",
+        "timestamp": 63674208419,
+        "to": "3001@hesaam.2600hz.com"
+    },
+    "name": "mailbox 3001 message 10-2-2017 17:0:0",
+    "pvt_account_db": "account%2Fac%2Fco%2Funt0000000000000000000000003-201710",
+    "pvt_account_id": "account0000000000000000000000003",
+    "pvt_created": 63674208419,
+    "pvt_document_hash": "ac8f1e8efb529598170c8be67b748c63",
+    "pvt_modified": 63674208419,
+    "pvt_node": "kazoo_apps@example.com",
+    "pvt_type": "mailbox_message",
+    "source_id": "vmbox000000000000000000000000003",
+    "source_type": "voicemail",
+    "streamable": true,
+    "utc_seconds": 63674208419
+}

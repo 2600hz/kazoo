@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2019, 2600Hz
+%%% @copyright (C) 2013-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_transaction).
@@ -103,7 +107,7 @@
                      ,executor_module :: kz_term:api_binary()
                      ,bookkeeper_type :: kz_term:api_binary()
                      ,bookkeeper_vendor_id :: kz_term:api_binary()
-                     ,bookkeeper_results :: kz_json:api_object()
+                     ,bookkeeper_results :: kz_term:api_object()
                      ,metadata = kz_json:new() :: kz_json:object()
                      ,audit = kz_json:new() :: kz_json:object()
                      ,order_id :: kz_term:api_ne_binary()
@@ -127,7 +131,7 @@
 %%------------------------------------------------------------------------------
 -spec set_account(transaction(), kz_term:ne_binary()) -> transaction().
 set_account(Transaction, Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kzs_util:format_account_id(Account),
     Setters = [{fun set_account_id/2, AccountId}
               ,{fun set_account_name/2, kzd_accounts:fetch_name(AccountId)}
                | set_bookkeeper(Account)
@@ -330,7 +334,7 @@ set_bookkeeper_vendor_id(Transaction, VendorId) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec bookkeeper_results(transaction()) -> kz_json:api_object().
+-spec bookkeeper_results(transaction()) -> kz_term:api_object().
 bookkeeper_results(#transaction{bookkeeper_results=Results}) ->
     Results.
 
@@ -338,7 +342,7 @@ bookkeeper_results(#transaction{bookkeeper_results=Results}) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec set_bookkeeper_results(transaction(), kz_term:ne_binary()) -> transaction().
+-spec set_bookkeeper_results(transaction(), kz_json:object()) -> transaction().
 set_bookkeeper_results(Transaction, Results) ->
     Transaction#transaction{bookkeeper_results=Results}.
 
@@ -586,7 +590,7 @@ to_json(#transaction{private_fields=PrivateFields}=Transaction) ->
             ],
     kz_json:set_values(Props, TransactionJObj).
 
--spec get_created_timestamp(kzd_transactions:doc()) -> kz_term:integer().
+-spec get_created_timestamp(kzd_transactions:doc()) -> integer().
 get_created_timestamp(TransactionJObj) ->
     kz_json:get_integer_value(<<"pvt_created">>, TransactionJObj, kz_time:now_s()).
 
@@ -823,14 +827,19 @@ handle_bookkeeper_result(Transaction, {'error', 'timeout'}) ->
     Setters = [{fun set_status/2, status_failed()}
               ,{fun set_bookkeeper_results/2, BookkeeperResult}
               ],
-    save(setters(Transaction, Setters));
+    UpdatedTransaction = setters(Transaction, Setters),
+    _ = send_notification(UpdatedTransaction),
+    save(UpdatedTransaction);
 handle_bookkeeper_result(Transaction, {'error', _Else}) ->
     lager:info("request to bookkeeper failed: ~p", [_Else]),
     Setters = [{fun set_status/2, status_failed()}],
-    save(setters(Transaction, Setters)).
+    UpdatedTransaction = setters(Transaction, Setters),
+    _ = send_notification(UpdatedTransaction),
+    save(UpdatedTransaction).
 
 -spec send_notification(transaction()) -> 'ok'.
 send_notification(Transaction) ->
+    lager:debug("sending ~s notification", [status(Transaction)]),
     BookkeeperResult = bookkeeper_results(Transaction),
     Details = kz_json:get_ne_json_value(<<"details">>, BookkeeperResult, kz_json:new()),
     Notification =
@@ -841,7 +850,7 @@ send_notification(Transaction) ->
         ,{<<"Timestamp">>, created(Transaction)}
         ,{<<"Add-Ons">>, kz_json:get_value(<<"add_ons">>, Details)}
         ,{<<"Billing-Address">>, kz_json:get_value(<<"billing_address">>, Details)}
-        ,{<<"Card-Last-Four">>, kz_json:get_value([<<"card">>, <<"last_four">>], Details)}
+        ,{<<"Card-Last-Four">>, card_last_four(Transaction, Details)}
         ,{<<"Currency-Code">>, kz_json:get_value(<<"currency_code">>, Details)}
         ,{<<"ID">>, id(Transaction)}
         ,{<<"Purchase-Order">>, kz_json:get_value(<<"purchase_order">>, Details)}
@@ -849,6 +858,21 @@ send_notification(Transaction) ->
          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
         ],
     kz_amqp_worker:cast(Notification, fun kapi_notifications:publish_transaction/1).
+
+-spec card_last_four(transaction(), kz_json:object()) -> kz_term:api_ne_binary().
+card_last_four(Transaction, BookkeeperDetails) ->
+    case kz_json:get_ne_binary_value([<<"card">>, <<"last_four">>], BookkeeperDetails) of
+        'undefined' -> default_card_last_four(Transaction);
+        LastFour -> LastFour
+    end.
+
+-spec default_card_last_four(transaction()) -> kz_term:api_ne_binary().
+default_card_last_four(Transaction) ->
+    case kz_services_payment_tokens:default(account_id(Transaction), bookkeeper_type(Transaction)) of
+        'undefined' -> 'undefined';
+        DefaultToken ->
+            kz_json:get_ne_binary_value([<<"metadata">>, <<"last_four">>], DefaultToken)
+    end.
 
 -spec find_response(transaction()) -> kz_term:ne_binary().
 find_response(Transaction) ->

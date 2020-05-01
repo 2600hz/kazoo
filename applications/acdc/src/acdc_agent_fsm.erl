@@ -1,10 +1,15 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc Tracks the agent's state, responds to messages from the corresponding
 %%% acdc_agent gen_listener process.
 %%%
 %%% @author James Aimonetti
 %%% @author Daniel Finke
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(acdc_agent_fsm).
@@ -12,7 +17,7 @@
 -behaviour(gen_statem).
 
 %% API
--export([start_link/2, start_link/3, start_link/4, start_link/5
+-export([start_link/3, start_link/4, start_link/5
         ,call_event/4
         ,member_connect_req/2
         ,member_connect_win/2
@@ -105,7 +110,7 @@
                ,member_call :: kapps_call:call() | 'undefined'
                ,member_call_id :: kz_term:api_binary()
                ,member_call_queue_id :: kz_term:api_binary()
-               ,member_call_start :: kz_time:now() | 'undefined'
+               ,member_call_start :: kz_time:start_time() | 'undefined'
                ,caller_exit_key = <<"#">> :: kz_term:ne_binary()
                ,queue_notifications :: kz_term:api_object()
 
@@ -166,7 +171,9 @@ call_event(ServerRef, <<"call_event">>, <<"CHANNEL_UNBRIDGE">>, JObj) ->
 call_event(ServerRef, <<"call_event">>, <<"usurp_control">>, JObj) ->
     gen_statem:cast(ServerRef, {'usurp_control', call_id(JObj)});
 call_event(ServerRef, <<"call_event">>, <<"CHANNEL_DESTROY">>, JObj) ->
-    ServerRef ! {'channel_hungup', call_id(JObj), hangup_cause(JObj)};
+    ServerRef ! ?DESTROYED_CHANNEL(call_id(JObj), acdc_util:hangup_cause(JObj));
+call_event(ServerRef, <<"call_event">>, <<"CHANNEL_DISCONNECTED">>, JObj) ->
+    ServerRef ! ?DESTROYED_CHANNEL(call_id(JObj), <<"MEDIA_SERVER_UNREACHABLE">>);
 call_event(ServerRef, <<"call_event">>, <<"LEG_CREATED">>, JObj) ->
     gen_statem:cast(ServerRef, {'leg_created', call_id(JObj)});
 call_event(ServerRef, <<"call_event">>, <<"LEG_DESTROYED">>, JObj) ->
@@ -178,7 +185,7 @@ call_event(ServerRef, <<"call_event">>, <<"DTMF">>, EvtJObj) ->
 call_event(ServerRef, <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, JObj) ->
     maybe_send_execute_complete(ServerRef, kz_json:get_value(<<"Application-Name">>, JObj), JObj);
 call_event(ServerRef, <<"error">>, <<"dialplan">>, JObj) ->
-    _ = kz_util:put_callid(JObj),
+    _ = kz_log:put_callid(JObj),
     lager:debug("error event: ~s", [kz_json:get_value(<<"Error-Message">>, JObj)]),
 
     Req = kz_json:get_value(<<"Request">>, JObj),
@@ -331,16 +338,6 @@ status(ServerRef) -> gen_statem:call(ServerRef, 'status').
 %% function does not return until Module:init/1 has returned.
 %% @end
 %%------------------------------------------------------------------------------
-
--spec start_link(pid(), kz_json:object()) -> kz_types:startlink_ret().
-start_link(Supervisor, AgentJObj) when is_pid(Supervisor) ->
-    pvt_start_link(kz_doc:account_id(AgentJObj)
-                  ,kz_doc:id(AgentJObj)
-                  ,Supervisor
-                  ,[]
-                  ,'false'
-                  ).
-
 -spec start_link(pid(), kapps_call:call(), kz_term:ne_binary()) -> kz_types:startlink_ret().
 start_link(Supervisor, ThiefCall, _QueueId) ->
     pvt_start_link(kapps_call:account_id(ThiefCall)
@@ -350,22 +347,14 @@ start_link(Supervisor, ThiefCall, _QueueId) ->
                   ,'true'
                   ).
 
--spec start_link(kz_term:ne_binary(), kz_term:ne_binary(), pid(), kz_term:proplist()) -> kz_types:startlink_ret().
-start_link(AccountId, AgentId, Supervisor, Props) ->
-    pvt_start_link(AccountId, AgentId, Supervisor, Props, 'false').
+-spec start_link(pid(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> kz_types:startlink_ret().
+start_link(Supervisor, AccountId, AgentId, AgentJObj) ->
+    start_link(Supervisor, AccountId, AgentId, AgentJObj, []).
 
--spec start_link(pid(), any(), kz_term:ne_binary(), kz_term:ne_binary(), any()) -> kz_types:startlink_ret().
-start_link(Supervisor, _AgentJObj, AccountId, AgentId, _Queues) ->
+-spec start_link(pid(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binaries()) -> kz_types:startlink_ret().
+start_link(Supervisor, AccountId, AgentId, _AgentJObj, _Queues) ->
     pvt_start_link(AccountId, AgentId, Supervisor, [], 'false').
 
-pvt_start_link('undefined', _AgentId, Supervisor, _, _) ->
-    lager:debug("agent ~s trying to start with no account id", [_AgentId]),
-    _ = kz_util:spawn(fun acdc_agent_sup:stop/1, [Supervisor]),
-    'ignore';
-pvt_start_link(_AccountId, 'undefined', Supervisor, _, _) ->
-    lager:debug("undefined agent id trying to start in account ~s", [_AccountId]),
-    _ = kz_util:spawn(fun acdc_agent_sup:stop/1, [Supervisor]),
-    'ignore';
 pvt_start_link(AccountId, AgentId, Supervisor, Props, IsThief) ->
     gen_statem:start_link(?SERVER, [AccountId, AgentId, Supervisor, Props, IsThief], []).
 
@@ -396,16 +385,16 @@ deleted_endpoint(ServerRef, EP) ->
 -spec init(list()) -> {'ok', atom(), state()}.
 init([AccountId, AgentId, Supervisor, Props, IsThief]) ->
     StateMCallId = <<"statem_", AccountId/binary, "_", AgentId/binary>>,
-    kz_util:put_callid(StateMCallId),
+    kz_log:put_callid(StateMCallId),
     lager:debug("started acdc agent statem"),
 
-    _P = kz_util:spawn(fun wait_for_listener/4, [Supervisor, self(), Props, IsThief]),
+    _P = kz_process:spawn(fun wait_for_listener/4, [Supervisor, self(), Props, IsThief]),
     lager:debug("waiting for listener in ~p", [_P]),
 
     {'ok'
     ,'wait'
     ,#state{account_id = AccountId
-           ,account_db = kz_util:format_account_db(AccountId)
+           ,account_db = kzs_util:format_account_db(AccountId)
            ,agent_id = AgentId
            ,statem_call_id = StateMCallId
            ,max_connect_failures = max_failures(AccountId)
@@ -576,7 +565,7 @@ ready('cast', {'member_connect_win', JObj}, #state{agent_listener=AgentListener
     Call = kapps_call:from_json(kz_json:get_value(<<"Call">>, JObj)),
     CallId = kapps_call:call_id(Call),
 
-    kz_util:put_callid(CallId),
+    kz_log:put_callid(CallId),
 
     WrapupTimer = kz_json:get_integer_value(<<"Wrapup-Timeout">>, JObj, 0),
     CallerExitKey = kz_json:get_value(<<"Caller-Exit-Key">>, JObj, <<"#">>),
@@ -589,7 +578,7 @@ ready('cast', {'member_connect_win', JObj}, #state{agent_listener=AgentListener
         true ->
             lager:debug("trying to ring agent ~s to connect to caller in queue ~s", [AgentId, QueueId]),
 
-            case get_endpoints(OrigEPs, AgentListener, Call, AgentId, QueueId) of
+            case get_endpoints(OrigEPs, Call, AgentId, QueueId) of
                 {'error', 'no_endpoints'} ->
                     lager:info("agent ~s has no endpoints assigned; logging agent out", [AgentId]),
                     acdc_agent_stats:agent_logged_out(AccountId, AgentId),
@@ -612,7 +601,7 @@ ready('cast', {'member_connect_win', JObj}, #state{agent_listener=AgentListener
                     {'next_state', 'ringing', State#state{wrapup_timeout=WrapupTimer
                                                          ,member_call=Call
                                                          ,member_call_id=CallId
-                                                         ,member_call_start=kz_time:now()
+                                                         ,member_call_start=kz_time:start_time()
                                                          ,member_call_queue_id=QueueId
                                                          ,caller_exit_key=CallerExitKey
                                                          ,endpoints=UpdatedEPs
@@ -626,7 +615,7 @@ ready('cast', {'member_connect_win', JObj}, #state{agent_listener=AgentListener
 
             {'next_state', 'ringing', State#state{wrapup_timeout=WrapupTimer
                                                  ,member_call_id=CallId
-                                                 ,member_call_start=kz_time:now()
+                                                 ,member_call_start=kz_time:start_time()
                                                  ,member_call_queue_id=QueueId
                                                  ,caller_exit_key=CallerExitKey
                                                  ,agent_call_id='undefined'
@@ -685,7 +674,7 @@ ready('info', ?NEW_CHANNEL_TO(CallId, 'undefined'), State) ->
     {'next_state', 'outbound', start_outbound_call_handling(CallId, State), 'hibernate'};
 ready('info', ?NEW_CHANNEL_TO(_CallId, _MemberCallId), State) ->
     {'next_state', 'ready', State};
-ready('info', {'channel_hungup', CallId, _Cause}, #state{agent_listener=AgentListener
+ready('info', ?DESTROYED_CHANNEL(CallId, _Cause), #state{agent_listener=AgentListener
                                                         ,outbound_call_ids=OutboundCallIds
                                                         }=State) ->
     case lists:member(CallId, OutboundCallIds) of
@@ -942,7 +931,7 @@ ringing('info', ?NEW_CHANNEL_TO(CallId, _MemberCallId), #state{agent_listener=Ag
     lager:debug("found a uuid ~s that was from a previous queue call", [CallId]),
     acdc_agent_listener:channel_hungup(AgentListener, CallId),
     {'next_state', 'ringing', State};
-ringing('info', {'channel_hungup', AgentCallId, Cause}, #state{agent_listener=AgentListener
+ringing('info', ?DESTROYED_CHANNEL(AgentCallId, Cause), #state{agent_listener=AgentListener
                                                               ,agent_call_id=AgentCallId
                                                               ,account_id=AccountId
                                                               ,agent_id=AgentId
@@ -966,7 +955,7 @@ ringing('info', {'channel_hungup', AgentCallId, Cause}, #state{agent_listener=Ag
         'paused' -> {'next_state', 'paused', State1};
         'ready' -> apply_state_updates(State1)
     end;
-ringing('info', {'channel_hungup', MemberCallId, _Cause}, #state{agent_listener=AgentListener
+ringing('info', ?DESTROYED_CHANNEL(MemberCallId, _Cause), #state{agent_listener=AgentListener
                                                                 ,member_call_id=MemberCallId
                                                                 }=State) ->
     lager:debug("caller's channel (~s) has gone down, stop agent's call: ~s", [MemberCallId, _Cause]),
@@ -974,7 +963,7 @@ ringing('info', {'channel_hungup', MemberCallId, _Cause}, #state{agent_listener=
 
     acdc_agent_listener:presence_update(AgentListener, ?PRESENCE_GREEN),
     apply_state_updates(clear_call(State, 'ready'));
-ringing('info', {'channel_hungup', CallId, _Cause}, #state{agent_listener=AgentListener
+ringing('info', ?DESTROYED_CHANNEL(CallId, _Cause), #state{agent_listener=AgentListener
                                                           ,outbound_call_ids=OutboundCallIds
                                                           }=State) ->
     case lists:member(CallId, OutboundCallIds) of
@@ -1039,7 +1028,7 @@ answered('cast', {'channel_replaced', JObj}, #state{agent_listener=AgentListener
     CallId = kz_call_event:call_id(JObj),
     ReplacedBy = kz_call_event:replaced_by(JObj),
     acdc_agent_listener:rebind_events(AgentListener, CallId, ReplacedBy),
-    kz_util:put_callid(ReplacedBy),
+    kz_log:put_callid(ReplacedBy),
     lager:info("channel ~s replaced by ~s", [CallId, ReplacedBy]),
     {'next_state', 'answered', State#state{member_call_id = ReplacedBy}};
 answered('cast', {'sync_req', JObj}, #state{agent_listener=AgentListener
@@ -1109,12 +1098,12 @@ answered('info', ?NEW_CHANNEL_TO(CallId, 'undefined'), #state{agent_listener=Age
 answered('info', ?NEW_CHANNEL_TO(CallId, MemberCallId), #state{member_call_id=MemberCallId}=State) ->
     lager:debug("new channel ~s for agent", [CallId]),
     {'next_state', 'answered', State};
-answered('info', {'channel_hungup', CallId, Cause}, #state{member_call_id=CallId
+answered('info', ?DESTROYED_CHANNEL(CallId, Cause), #state{member_call_id=CallId
                                                           ,outbound_call_ids=[]
                                                           }=State) ->
     lager:debug("caller's channel hung up: ~s", [Cause]),
     {'next_state', 'wrapup', State#state{wrapup_ref=hangup_call(State, 'member')}};
-answered('info', {'channel_hungup', CallId, _Cause}, #state{account_id=AccountId
+answered('info', ?DESTROYED_CHANNEL(CallId, _Cause), #state{account_id=AccountId
                                                            ,agent_id=AgentId
                                                            ,agent_listener=AgentListener
                                                            ,member_call_id=CallId
@@ -1127,12 +1116,12 @@ answered('info', {'channel_hungup', CallId, _Cause}, #state{account_id=AccountId
     acdc_agent_listener:channel_hungup(AgentListener, CallId),
     maybe_notify(Ns, ?NOTIFY_HANGUP, State),
     {'next_state', 'outbound', start_outbound_call_handling(OutboundCallId, clear_call(State, 'ready')), 'hibernate'};
-answered('info', {'channel_hungup', CallId, Cause}, #state{agent_call_id=CallId
+answered('info', ?DESTROYED_CHANNEL(CallId, Cause), #state{agent_call_id=CallId
                                                           ,outbound_call_ids=[]
                                                           }=State) ->
     lager:debug("agent's channel has hung up: ~s", [Cause]),
     {'next_state', 'wrapup', State#state{wrapup_ref=hangup_call(State, 'agent')}};
-answered('info', {'channel_hungup', CallId, _Cause}, #state{account_id=AccountId
+answered('info', ?DESTROYED_CHANNEL(CallId, _Cause), #state{account_id=AccountId
                                                            ,agent_id=AgentId
                                                            ,agent_listener=AgentListener
                                                            ,member_call_id=MemberCallId
@@ -1146,7 +1135,7 @@ answered('info', {'channel_hungup', CallId, _Cause}, #state{account_id=AccountId
     acdc_agent_listener:channel_hungup(AgentListener, MemberCallId),
     maybe_notify(Ns, ?NOTIFY_HANGUP, State),
     {'next_state', 'outbound', start_outbound_call_handling(OutboundCallId, clear_call(State, 'ready')), 'hibernate'};
-answered('info', {'channel_hungup', CallId, _Cause}, #state{agent_listener=AgentListener
+answered('info', ?DESTROYED_CHANNEL(CallId, _Cause), #state{agent_listener=AgentListener
                                                            ,outbound_call_ids=OutboundCallIds
                                                            }=State) ->
     case lists:member(CallId, OutboundCallIds) of
@@ -1359,7 +1348,7 @@ outbound('info', ?NEW_CHANNEL_TO(CallId, 'undefined'), #state{agent_listener=Age
     {'next_state', 'outbound', State#state{outbound_call_ids=[CallId | lists:delete(CallId, OutboundCallIds)]}};
 outbound('info', ?NEW_CHANNEL_TO(_CallId, _MemberCallId), State) ->
     {'next_state', 'outbound', State};
-outbound('info', {'channel_hungup', CallId, Cause}, #state{agent_listener=AgentListener
+outbound('info', ?DESTROYED_CHANNEL(CallId, Cause), #state{agent_listener=AgentListener
                                                           ,outbound_call_ids=OutboundCallIds
                                                           }=State) ->
     acdc_agent_listener:channel_hungup(AgentListener, CallId),
@@ -1436,7 +1425,6 @@ handle_event('load_endpoints', StateName, #state{agent_listener='undefined'}=Sta
     gen_statem:cast(self(), 'load_endpoints'),
     {'next_state', StateName, State};
 handle_event('load_endpoints', StateName, #state{agent_id=AgentId
-                                                ,agent_listener=AgentListener
                                                 ,account_id=AccountId
                                                 ,account_db=AccountDb
                                                 }=State) ->
@@ -1451,7 +1439,7 @@ handle_event('load_endpoints', StateName, #state{agent_id=AgentId
     %% Inform us of things with us as owner
     catch gproc:reg(?OWNER_UPDATE_REG(AccountId, AgentId)),
 
-    case get_endpoints([], AgentListener, Call, AgentId, 'undefined') of
+    case get_endpoints([], Call, AgentId, 'undefined') of
         {'error', 'no_endpoints'} -> {'next_state', StateName, State};
         {'ok', EPs} -> {'next_state', StateName, State#state{endpoints=EPs}};
         {'error', E} -> {'stop', E, State}
@@ -1470,34 +1458,31 @@ handle_info({'timeout', _Ref, ?SYNC_RESPONSE_MESSAGE}, StateName, State) ->
 handle_info({'endpoint_edited', EP}, StateName, #state{endpoints=EPs
                                                       ,account_id=AccountId
                                                       ,agent_id=AgentId
-                                                      ,agent_listener=AgentListener
                                                       }=State) ->
     EPId = kz_doc:id(EP),
     case kz_json:get_value(<<"owner_id">>, EP) of
         AgentId ->
             lager:debug("device ~s edited, we're the owner, maybe adding it", [EPId]),
-            {'next_state', StateName, State#state{endpoints=maybe_add_endpoint(EPId, EP, EPs, AccountId, AgentListener)}, 'hibernate'};
+            {'next_state', StateName, State#state{endpoints=maybe_add_endpoint(EPId, EP, EPs, AccountId)}, 'hibernate'};
         _OwnerId ->
             lager:debug("device ~s edited, owner now ~s, maybe removing it", [EPId, _OwnerId]),
-            {'next_state', StateName, State#state{endpoints=maybe_remove_endpoint(EPId, EPs, AccountId, AgentListener)}, 'hibernate'}
+            {'next_state', StateName, State#state{endpoints=maybe_remove_endpoint(EPId, EPs, AccountId)}, 'hibernate'}
     end;
 handle_info({'endpoint_deleted', EP}, StateName, #state{endpoints=EPs
                                                        ,account_id=AccountId
-                                                       ,agent_listener=AgentListener
                                                        }=State) ->
     EPId = kz_doc:id(EP),
     lager:debug("device ~s deleted, maybe removing it", [EPId]),
-    {'next_state', StateName, State#state{endpoints=maybe_remove_endpoint(EPId, EPs, AccountId, AgentListener)}, 'hibernate'};
+    {'next_state', StateName, State#state{endpoints=maybe_remove_endpoint(EPId, EPs, AccountId)}, 'hibernate'};
 handle_info({'endpoint_created', EP}, StateName, #state{endpoints=EPs
                                                        ,account_id=AccountId
                                                        ,agent_id=AgentId
-                                                       ,agent_listener=AgentListener
                                                        }=State) ->
     EPId = kz_doc:id(EP),
     case kz_json:get_value(<<"owner_id">>, EP) of
         AgentId ->
             lager:debug("device ~s created, we're the owner, maybe adding it", [EPId]),
-            {'next_state', StateName, State#state{endpoints=maybe_add_endpoint(EPId, EP, EPs, AccountId, AgentListener)}, 'hibernate'};
+            {'next_state', StateName, State#state{endpoints=maybe_add_endpoint(EPId, EP, EPs, AccountId)}, 'hibernate'};
         _OwnerId ->
             lager:debug("device ~s created, owner is ~s, maybe ignoring", [EPId, _OwnerId]),
 
@@ -1505,14 +1490,14 @@ handle_info({'endpoint_created', EP}, StateName, #state{endpoints=EPs
                 'undefined' -> {'next_state', StateName, State};
                 _ ->
                     lager:debug("device ~s created, we're a hotdesk user, maybe adding it", [EPId]),
-                    {'next_state', StateName, State#state{endpoints=maybe_add_endpoint(EPId, EP, EPs, AccountId, AgentListener)}, 'hibernate'}
+                    {'next_state', StateName, State#state{endpoints=maybe_add_endpoint(EPId, EP, EPs, AccountId)}, 'hibernate'}
             end
     end;
 handle_info(?NEW_CHANNEL_FROM(_CallId), StateName, State) ->
     {'next_state', StateName, State};
 handle_info(?NEW_CHANNEL_TO(_CallId, _), StateName, State) ->
     {'next_state', StateName, State};
-handle_info({'channel_hungup', _, _}, StateName, State) ->
+handle_info(?DESTROYED_CHANNEL(_, _), StateName, State) ->
     {'next_state', StateName, State};
 handle_info(_Info, StateName, State) ->
     lager:debug("unhandled message in state ~s: ~p", [StateName, _Info]),
@@ -1527,10 +1512,24 @@ handle_info(_Info, StateName, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec terminate(any(), atom(), state()) -> 'ok'.
-terminate(_Reason, _StateName, #state{agent_listener=AgentListener}) ->
-    lager:debug("acdc agent statem terminating while in ~s: ~p", [_StateName, _Reason]),
-    acdc_agent_listener:stop(AgentListener),
+terminate(Reason, _StateName, #state{account_id=AccountId
+                                    ,agent_id=AgentId
+                                    ,agent_listener=AgentListener
+                                    }) ->
+    lager:debug("acdc agent statem terminating while in ~s: ~p", [_StateName, Reason]),
+
+    maybe_stop_agent(Reason, AccountId, AgentId),
+
     acdc_agent_listener:presence_update(AgentListener, ?PRESENCE_RED_SOLID).
+
+maybe_stop_agent('normal', AccountId, AgentId) ->
+    stop_agent(AccountId, AgentId);
+maybe_stop_agent(_Reason, _AccountId, _AgentId) ->
+    'ok'.
+
+stop_agent(AccountId, AgentId) ->
+    kz_process:spawn(fun acdc_agents_sup:stop_agent/2, [AccountId, AgentId]),
+    'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc Convert process state when code is changed.
@@ -1577,13 +1576,6 @@ call_id(JObj) ->
         CallId -> CallId
     end.
 
--spec hangup_cause(kz_json:object()) -> kz_term:ne_binary().
-hangup_cause(JObj) ->
-    case kz_json:get_value(<<"Hangup-Cause">>, JObj) of
-        'undefined' -> <<"unknown">>;
-        Cause -> Cause
-    end.
-
 %% returns time left in seconds
 -spec time_left(reference() | 'false' | kz_term:api_integer()) -> kz_term:api_integer().
 time_left(Ref) when is_reference(Ref) ->
@@ -1611,7 +1603,7 @@ clear_call(#state{statem_call_id=StateMCallId
                  ,wrapup_ref=WRef
                  ,pause_ref=PRef
                  }=State, NextState)->
-    kz_util:put_callid(StateMCallId),
+    kz_log:put_callid(StateMCallId),
 
     ReadyForAction = NextState =/= 'wrapup'
         andalso NextState =/= 'paused',
@@ -1631,8 +1623,8 @@ clear_call(#state{statem_call_id=StateMCallId
                ,caller_exit_key = <<"#">>
                }.
 
--spec current_call(kapps_call:call() | 'undefined', atom(), kz_term:ne_binary(), 'undefined' | kz_time:now()) ->
-                          kz_term:api_object().
+-spec current_call(kapps_call:call() | 'undefined', atom(), kz_term:ne_binary(), 'undefined' | kz_time:start_time()) ->
+          kz_term:api_object().
 current_call('undefined', _, _, _) -> 'undefined';
 current_call(Call, AgentState, QueueId, Start) ->
     kz_json:from_list([{<<"call_id">>, kapps_call:call_id(Call)}
@@ -1645,7 +1637,7 @@ current_call(Call, AgentState, QueueId, Start) ->
                       ,{<<"queue_id">>, QueueId}
                       ]).
 
--spec elapsed('undefined' | kz_time:now()) -> kz_term:api_integer().
+-spec elapsed('undefined' | kz_time:start_time()) -> kz_term:api_integer().
 elapsed('undefined') -> 'undefined';
 elapsed(Start) -> kz_time:elapsed_s(Start).
 
@@ -1693,7 +1685,7 @@ start_outbound_call_handling(CallId, #state{agent_listener=AgentListener
                                            ,agent_id=AgentId
                                            ,outbound_call_ids=OutboundCallIds
                                            }=State) when is_binary(CallId) ->
-    kz_util:put_callid(CallId),
+    kz_log:put_callid(CallId),
     lager:debug("agent making outbound call, not receiving ACDc calls"),
     acdc_agent_listener:outbound_call(AgentListener, CallId),
     acdc_agent_stats:agent_outbound(AccountId, AgentId, CallId),
@@ -1739,7 +1731,6 @@ find_username(EP) ->
 find_sip_username(EP, 'undefined') -> kz_json:get_value(<<"To-User">>, EP);
 find_sip_username(_EP, Username) -> Username.
 
-
 -spec find_endpoint_id(kz_json:object()) -> kz_term:api_binary().
 find_endpoint_id(EP) ->
     find_endpoint_id(EP, kz_doc:id(EP)).
@@ -1748,51 +1739,60 @@ find_endpoint_id(EP) ->
 find_endpoint_id(EP, 'undefined') -> kz_json:get_value(<<"Endpoint-ID">>, EP);
 find_endpoint_id(_EP, EPId) -> EPId.
 
--spec monitor_endpoint(kz_json:object(), kz_term:ne_binary(), kz_types:server_ref()) -> any().
-monitor_endpoint(EP, AccountId, AgentListener) ->
-    %% Bind for outbound call requests
-    acdc_agent_listener:add_endpoint_bindings(AgentListener
-                                             ,kz_endpoint:get_sip_realm(EP, AccountId)
-                                             ,find_username(EP)
-                                             ),
+-spec monitor_endpoint(kz_json:api_object(), kz_term:ne_binary()) -> any().
+monitor_endpoint('undefined', _) -> 'ok';
+monitor_endpoint(EP, AccountId) ->
+    Username = find_username(EP),
     %% Inform us of device changes
     catch gproc:reg(?ENDPOINT_UPDATE_REG(AccountId, find_endpoint_id(EP))),
-    catch gproc:reg(?NEW_CHANNEL_REG(AccountId, find_username(EP))).
+    catch gproc:reg(?NEW_CHANNEL_REG(AccountId, Username)),
+    catch gproc:reg(?DESTROYED_CHANNEL_REG(AccountId, Username)).
 
--spec unmonitor_endpoint(kz_json:object(), kz_term:ne_binary(), kz_types:server_ref()) -> any().
-unmonitor_endpoint(EP, AccountId, AgentListener) ->
-    %% Bind for outbound call requests
-    acdc_agent_listener:remove_endpoint_bindings(AgentListener
-                                                ,kz_endpoint:get_sip_realm(EP, AccountId)
-                                                ,find_username(EP)
-                                                ),
+-spec unmonitor_endpoint(kz_json:object(), kz_term:ne_binary()) -> any().
+unmonitor_endpoint(EP, AccountId) ->
+    Username = find_username(EP),
     %% Inform us of device changes
-    catch gproc:unreg(?ENDPOINT_UPDATE_REG(AccountId, kz_doc:id(EP))),
-    catch gproc:unreg(?NEW_CHANNEL_REG(AccountId, find_username(EP))).
+    catch gproc:unreg(?ENDPOINT_UPDATE_REG(AccountId, find_endpoint_id(EP))),
+    catch gproc:unreg(?NEW_CHANNEL_REG(AccountId, Username)),
+    catch gproc:unreg(?DESTROYED_CHANNEL_REG(AccountId, Username)).
 
--spec maybe_add_endpoint(kz_term:ne_binary(), kz_json:object(), kz_json:objects(), kz_term:ne_binary(), kz_types:server_ref()) -> any().
-maybe_add_endpoint(EPId, EP, EPs, AccountId, AgentListener) ->
-    case lists:partition(fun(E) -> kz_doc:id(E) =:= EPId end, EPs) of
+-spec maybe_add_endpoint(kz_term:ne_binary(), kz_json:object(), kz_json:objects(), kz_term:ne_binary()) -> any().
+maybe_add_endpoint(EPId, EP, EPs, AccountId) ->
+    case lists:partition(fun(E) -> find_endpoint_id(E) =:= EPId end, EPs) of
         {[], _} ->
             lager:debug("endpoint ~s not in our list, adding it", [EPId]),
-            [begin monitor_endpoint(EP, AccountId, AgentListener), EP end | EPs];
+            [begin monitor_endpoint(convert_to_endpoint(EP), AccountId), EP end | EPs];
         {_, _} -> EPs
     end.
 
--spec maybe_remove_endpoint(kz_term:ne_binary(), kz_json:objects(), kz_term:ne_binary(), kz_types:server_ref()) -> kz_json:objects().
-maybe_remove_endpoint(EPId, EPs, AccountId, AgentListener) ->
-    case lists:partition(fun(EP) -> kz_doc:id(EP) =:= EPId end, EPs) of
+-spec maybe_remove_endpoint(kz_term:ne_binary(), kz_json:objects(), kz_term:ne_binary()) -> kz_json:objects().
+maybe_remove_endpoint(EPId, EPs, AccountId) ->
+    case lists:partition(fun(EP) -> find_endpoint_id(EP) =:= EPId end, EPs) of
         {[], _} -> EPs; %% unknown endpoint
         {[RemoveEP], EPs1} ->
             lager:debug("endpoint ~s in our list, removing it", [EPId]),
-            _ = unmonitor_endpoint(RemoveEP, AccountId, AgentListener),
+            _ = unmonitor_endpoint(RemoveEP, AccountId),
             EPs1
     end.
 
--spec get_endpoints(kz_json:objects(), kz_types:server_ref(), kapps_call:call(), kz_term:api_binary(), kz_term:api_binary()) ->
-                           {'ok', kz_json:objects()} |
-                           {'error', any()}.
-get_endpoints(OrigEPs, AgentListener, Call, AgentId, QueueId) ->
+-spec convert_to_endpoint(kz_json:object()) -> kz_term:api_object().
+convert_to_endpoint(EPDoc) ->
+    Setters = [{fun kapps_call:set_account_id/2, kz_doc:account_id(EPDoc)}
+              ,{fun kapps_call:set_account_db/2, kz_doc:account_db(EPDoc)}
+              ,{fun kapps_call:set_owner_id/2, kzd_devices:owner_id(EPDoc)}
+              ,{fun kapps_call:set_resource_type/2, ?RESOURCE_TYPE_AUDIO}
+              ],
+
+    Call = kapps_call:exec(Setters, kapps_call:new()),
+    case kz_endpoint:build(kz_doc:id(EPDoc), kz_json:new(), Call) of
+        {'ok', [EP|_]} -> EP;
+        {'error', _} -> 'undefined'
+    end.
+
+-spec get_endpoints(kz_json:objects(), kapps_call:call(), kz_term:api_binary(), kz_term:api_binary()) ->
+          {'ok', kz_json:objects()} |
+          {'error', any()}.
+get_endpoints(OrigEPs, Call, AgentId, QueueId) ->
     case catch acdc_util:get_endpoints(Call, AgentId) of
         [] ->
             {'error', 'no_endpoints'};
@@ -1800,8 +1800,8 @@ get_endpoints(OrigEPs, AgentListener, Call, AgentId, QueueId) ->
             AccountId = kapps_call:account_id(Call),
 
             {Add, Rm} = changed_endpoints(OrigEPs, EPs),
-            _ = [monitor_endpoint(EP, AccountId, AgentListener) || EP <- Add],
-            _ = [unmonitor_endpoint(EP, AccountId, AgentListener) || EP <- Rm],
+            _ = [monitor_endpoint(EP, AccountId) || EP <- Add],
+            _ = [unmonitor_endpoint(EP, AccountId) || EP <- Rm],
 
             {'ok', [kz_json:set_value([<<"Custom-Channel-Vars">>, <<"Queue-ID">>], QueueId, EP) || EP <- EPs]};
         {'EXIT', E} ->
@@ -1848,12 +1848,12 @@ maybe_notify(Ns, Key, State) ->
                 'undefined' -> 'ok';
                 Url ->
                     lager:debug("send update for ~s to ~s", [?NOTIFY_ALL, Url]),
-                    _ = kz_util:spawn(fun notify/4, [Url, get_method(Ns), Key, State]),
+                    _ = kz_process:spawn(fun notify/4, [Url, get_method(Ns), Key, State]),
                     'ok'
             end;
         Url ->
             lager:debug("send update for ~s to ~s", [Key, Url]),
-            _ = kz_util:spawn(fun notify/4, [Url, get_method(Ns), Key, State]),
+            _ = kz_process:spawn(fun notify/4, [Url, get_method(Ns), Key, State]),
             'ok'
     end.
 
@@ -1875,7 +1875,7 @@ notify(Url, Method, Key, #state{account_id=AccountId
                                ,agent_call_id=AgentCallId
                                ,member_call_queue_id=QueueId
                                }) ->
-    kz_util:put_callid(kapps_call:call_id(MemberCall)),
+    kz_log:put_callid(kapps_call:call_id(MemberCall)),
     Data = kz_json:from_list(
              [{<<"account_id">>, AccountId}
              ,{<<"agent_id">>, AgentId}
@@ -1899,7 +1899,7 @@ notify(Url, 'get', Data) ->
           ,[], 'get', <<>>, []
           ).
 
--spec notify(iolist(), kz_term:proplist(), 'get' | 'post', binary(), kz_term:proplist()) -> 'ok'.
+-spec notify(kz_term:ne_binary(), kz_term:proplist(), 'get' | 'post', binary(), kz_term:proplist()) -> 'ok'.
 notify(Uri, Headers, Method, Body, Opts) ->
     Options = [{'connect_timeout', 200}
               ,{'timeout', 1000}
@@ -1927,13 +1927,13 @@ recording_url(JObj) ->
         Url -> Url
     end.
 
--spec uri(kz_term:ne_binary(), iolist()) -> iolist().
+-spec uri(kz_term:ne_binary(), iodata()) -> kz_term:ne_binary().
 uri(URI, QueryString) ->
     case kz_http_util:urlsplit(URI) of
         {Scheme, Host, Path, <<>>, Fragment} ->
-            kz_http_util:urlunsplit({Scheme, Host, Path, QueryString, Fragment});
+            kz_http_util:urlunsplit({Scheme, Host, Path, iolist_to_binary(QueryString), Fragment});
         {Scheme, Host, Path, QS, Fragment} ->
-            kz_http_util:urlunsplit({Scheme, Host, Path, <<QS/binary, "&", (kz_term:to_binary(QueryString))/binary>>, Fragment})
+            kz_http_util:urlunsplit({Scheme, Host, Path, <<QS/binary, "&", (iolist_to_binary(QueryString))/binary>>, Fragment})
     end.
 
 -spec apply_state_updates(state()) -> kz_types:handle_fsm_ret(state()).

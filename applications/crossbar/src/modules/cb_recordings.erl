@@ -1,10 +1,15 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc Provides access to stored call recordings.
 %%%
 %%% @author OnNet (Kirill Sysoev [github.com/onnet])
 %%% @author Dinkor (Andrew Korniliv [github.com/dinkor])
 %%% @author Lazedo (Luis Azedo [github.com/2600hz])
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cb_recordings).
@@ -143,7 +148,7 @@ summary_doc_fun(View, Acc) ->
     ].
 
 -spec attachment_content_type(kz_json:key(), kz_json:object(), kz_term:ne_binaries()) ->
-                                     kz_term:ne_binaries().
+          kz_term:ne_binaries().
 attachment_content_type(_Name, Meta, CTs) ->
     [kz_json:get_ne_binary_value(<<"content_type">>, Meta) | CTs].
 
@@ -157,14 +162,19 @@ get_view_name(_) -> ?CB_LIST_BY_OWNERID.
 
 -spec load_recording_doc(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 load_recording_doc(Context, ?MATCH_MODB_PREFIX(Year, Month, _) = RecordingId) ->
-    Ctx = cb_context:set_account_modb(Context, kz_term:to_integer(Year), kz_term:to_integer(Month)),
+    Ctx = cb_context:set_db_name(Context
+                                ,kzs_util:format_account_id(cb_context:account_id(Context)
+                                                           ,kz_term:to_integer(Year)
+                                                           ,kz_term:to_integer(Month)
+                                                           )
+                                ),
     crossbar_doc:load({<<"call_recording">>, RecordingId}, Ctx, ?TYPE_CHECK_OPTION(<<"call_recording">>));
 load_recording_doc(Context, Id) ->
     crossbar_util:response_bad_identifier(Id, Context).
 
 -spec load_recording_binary(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 load_recording_binary(Context, ?MATCH_MODB_PREFIX(Year, Month, _) = DocId) ->
-    do_load_recording_binary(cb_context:set_account_modb(Context, kz_term:to_integer(Year), kz_term:to_integer(Month)), DocId).
+    do_load_recording_binary(cb_context:set_db_name(Context, kzs_util:format_account_id(cb_context:account_id(Context), kz_term:to_integer(Year), kz_term:to_integer(Month))), DocId).
 
 -spec do_load_recording_binary(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 do_load_recording_binary(Context, DocId) ->
@@ -176,7 +186,7 @@ do_load_recording_binary(Context, DocId) ->
     end.
 
 -spec do_load_recording_binary_attachment(cb_context:context(), kz_term:ne_binary()) ->
-                                                 cb_context:context().
+          cb_context:context().
 do_load_recording_binary_attachment(Context, DocId) ->
     case kz_doc:attachment_names(cb_context:doc(Context)) of
         [] ->
@@ -202,7 +212,7 @@ do_load_recording_binary_attachment(Context, DocId) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec set_resp_headers(cb_context:context(), kz_term:ne_binary(), kz_json:object()) ->
-                              cb_context:context().
+          cb_context:context().
 set_resp_headers(Context, AName, Attachment) ->
     Headers = #{<<"content-disposition">> => get_disposition(AName, Context)
                ,<<"content-type">> => kz_json:get_ne_binary_value(<<"content_type">>, Attachment)

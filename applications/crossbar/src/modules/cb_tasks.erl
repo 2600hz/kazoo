@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Handle client requests for phone_number documents
 %%% @author Pierre Fenoll
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cb_tasks).
@@ -28,7 +33,6 @@
 
 -define(QS_CATEGORY, <<"category">>).
 -define(QS_ACTION, <<"action">>).
--define(RD_RECORDS, <<"records">>).
 -define(RV_FILENAME, <<"file_name">>).
 
 -define(PATH_STOP, <<"stop">>).
@@ -45,8 +49,8 @@
 %%------------------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
-    _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
+    _ = crossbar_bindings:bind(<<"*.authenticate.tasks">>, ?MODULE, 'authenticate'),
+    _ = crossbar_bindings:bind(<<"*.authorize.tasks">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.tasks">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.tasks">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.content_types_accepted.tasks">>, ?MODULE, 'content_types_accepted'),
@@ -162,17 +166,17 @@ cta(Context, _) ->
 %%------------------------------------------------------------------------------
 
 -spec content_types_provided(cb_context:context()) ->
-                                    cb_context:context().
+          cb_context:context().
 content_types_provided(Context) ->
     ctp(Context).
 
 -spec content_types_provided(cb_context:context(), path_token()) ->
-                                    cb_context:context().
+          cb_context:context().
 content_types_provided(Context, _TaskId) ->
     ctp(Context).
 
 -spec content_types_provided(cb_context:context(), path_token(), path_token()) ->
-                                    cb_context:context().
+          cb_context:context().
 content_types_provided(Context, _TaskId, _CSV) ->
     cb_context:add_content_types_provided(Context, [{'to_csv', ?CSV_CONTENT_TYPES}]).
 
@@ -183,9 +187,11 @@ ctp(Context) ->
                                                    ]).
 
 -spec to_csv({cowboy_req:req(), cb_context:context()}) ->
-                    {cowboy_req:req(), cb_context:context()}.
+          {cowboy_req:req(), cb_context:context()}.
 to_csv({Req, Context}) ->
     Filename = download_filename(Context, requested_attachment_name(Context)),
+    lager:debug("download named ~s", [Filename]),
+
     Headers0 = cowboy_req:resp_headers(Req),
     Headers = maps:merge(#{<<"content-type">> => <<"text/csv">>
                           ,<<"content-disposition">> => <<"attachment; filename=\"", Filename/binary, "\"">>
@@ -297,7 +303,7 @@ validate_new_attachment(Context, 'true') ->
             cb_context:add_validation_error(<<"csv">>, <<"format">>, Msg, Context)
     end;
 validate_new_attachment(Context, 'false') ->
-    Records = kz_json:get_value(?RD_RECORDS, cb_context:req_data(Context)),
+    Records = kzd_tasks:records(cb_context:req_data(Context)),
     case kz_term:is_empty(Records) of
         'true' ->
             %% For tasks without input data.
@@ -430,7 +436,7 @@ delete(Context, TaskId) ->
 %%------------------------------------------------------------------------------
 -spec set_db(cb_context:context()) -> cb_context:context().
 set_db(Context) ->
-    cb_context:set_account_db(Context, ?KZ_TASKS_DB).
+    cb_context:set_db_name(Context, ?KZ_TASKS_DB).
 
 %%------------------------------------------------------------------------------
 %% @doc Load an instance from the database
@@ -470,7 +476,7 @@ read(TaskId, Context, AccountId, Accept) ->
 -type parsed_accept_values() :: {'error', 'badarg'} | media_values().
 
 -spec read_doc_or_attachment(kz_term:ne_binary(), cb_context:context(), kz_term:ne_binary(), parsed_accept_values()) ->
-                                    cb_context:context().
+          cb_context:context().
 read_doc_or_attachment(TaskId, Context, AccountId, {'error', 'badarg'}) ->
     lager:info("failed to parse the accept header"),
     read_doc(TaskId, Context, AccountId);
@@ -494,15 +500,13 @@ read_doc_or_attachment(TaskId, Context, AccountId, []) ->
     read_doc(TaskId, Context, AccountId).
 
 -spec read_doc(kz_term:ne_binary(), cb_context:context(), kz_term:ne_binary()) ->
-                      cb_context:context().
+          cb_context:context().
 read_doc(TaskId, Context, AccountId) ->
-    Ctx = crossbar_doc:load_view(?KZ_TASKS_BY_ACCOUNT
-                                ,[{'key', [AccountId, TaskId]}]
-                                ,Context
-                                ,fun normalize_view_results/2
-                                ),
-
-    handle_read_result(TaskId, Context, Ctx).
+    Options = [{'key', [AccountId, TaskId]}
+              ,{'databases', [?KZ_TASKS_DB]}
+              ,{'mapper', crossbar_view:get_value_fun()}
+              ],
+    handle_read_result(TaskId, Context, crossbar_view:load(Context, ?KZ_TASKS_BY_ACCOUNT, Options)).
 
 handle_read_result(TaskId, OrigContext, ReadContext) ->
     case cb_context:resp_data(ReadContext) of
@@ -527,7 +531,7 @@ read_attachment(TaskId, Context, AccountId) ->
                                 ,requested_attachment_name(Context)
                                 );
         _Status ->
-            lager:debug("reading ~s failed: ~p", [_Status]),
+            lager:debug("reading ~s failed: ~p", [TaskId, _Status]),
             ReadContext
     end.
 
@@ -556,17 +560,11 @@ summary(Context) ->
     AccountId = cb_context:account_id(Context),
     ViewOptions = [{'startkey', [AccountId, kz_time:now_s(), kz_json:new()]}
                   ,{'endkey', [AccountId]}
+                  ,{'databases', [?KZ_TASKS_DB]}
+                  ,{'mapper', crossbar_view:get_value_fun()}
                   ,'descending'
                   ],
-    crossbar_doc:load_view(?KZ_TASKS_BY_CREATED
-                          ,ViewOptions
-                          ,set_db(Context)
-                          ,fun normalize_view_results/2
-                          ).
-
--spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
-normalize_view_results(JObj, Acc) ->
-    [kz_json:get_value(<<"value">>, JObj) | Acc].
+    crossbar_view:load(Context, ?KZ_TASKS_BY_CREATED, ViewOptions).
 
 -spec req_content_type(cb_context:context()) -> kz_term:ne_binary().
 req_content_type(Context) ->
@@ -574,18 +572,17 @@ req_content_type(Context) ->
 
 -spec is_content_type_csv(cb_context:context()) -> boolean().
 is_content_type_csv(Context) ->
-    [Lhs, Rhs] = binary:split(req_content_type(Context), <<$/>>),
-    lists:member({Lhs, Rhs}, ?CSV_CONTENT_TYPES).
+    api_util:content_type_matches(req_content_type(Context), ?CSV_CONTENT_TYPES).
 
 -spec attached_data(cb_context:context(), boolean()) -> kz_tasks:input().
 attached_data(Context, 'true') ->
     [{_Filename, FileJObj}] = cb_context:req_files(Context),
     kz_json:get_value(<<"contents">>, FileJObj);
 attached_data(Context, 'false') ->
-    kz_json:get_value(?RD_RECORDS, cb_context:req_data(Context)).
+    kzd_tasks:records(cb_context:req_data(Context)).
 
 -spec save_attached_data(cb_context:context(), kz_term:ne_binary(), kz_tasks:input(), boolean()) ->
-                                cb_context:context().
+          cb_context:context().
 save_attached_data(Context, TaskId, CSV, 'true') ->
     CT = req_content_type(Context),
     Options = [{'content_type', CT}],

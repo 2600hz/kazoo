@@ -15,6 +15,9 @@
 -define(SECONDS_IN_WEEK,   604800).
 -define(SECONDS_IN_YEAR, 31540000).
 
+-define(MINUTES_IN_HOUR, 60).
+-define(HOURS_IN_DAY, 24).
+
 -define(BYTES_K,          1024).
 -define(BYTES_M,       1048576).
 -define(BYTES_G,    1073741824).
@@ -75,6 +78,8 @@
         ,<<"dialplan">> %% errors are sent with this
         ]).
 
+-define(KZ_RECORDER, <<"kz_media_recording">>).
+
 -define(CHANNEL_LOOPBACK_HEADER_PREFIX, "Export-Loopback-").
 -define(CALL_INTERACTION_ID, "Call-Interaction-ID").
 -define(CALL_INTERACTION_DEFAULT
@@ -99,7 +104,7 @@
        ).
 
 -define(MATCH_ACCOUNT_RAW(A, B, Rest)
-       ,<<(A):2/binary, (B):2/binary, (Rest)/binary>>  %% FIXME: add missing size (Rest:28)
+       ,<<(A):2/binary, (B):2/binary, (Rest):28/binary>>  %% FIXME: add missing size (Rest:28)
        ).
 -define(MATCH_ACCOUNT_UNENCODED(A, B, Rest)
        ,<<"account/", (A):2/binary, "/", (B):2/binary, "/", (Rest):28/binary>>
@@ -195,82 +200,7 @@
         >>
        ).
 
--define(FAKE_CALLID(C), kz_term:to_hex_binary(crypto:hash(md5, C))).
-
--ifdef(TEST).
-
--define(LOG_ALERT(F, A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
--define(LOG_CRITICAL(F, A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
--define(LOG_DEBUG(F, A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
--define(LOG_EMERGENCY(F, A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
--define(LOG_ERROR(F, A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
--define(LOG_INFO(F, A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
--define(LOG_NOTICE(F, A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
--define(LOG_WARNING(F, A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
-
--define(LOG_ALERT(F), ?LOG_ALERT(F, [])).
--define(LOG_CRITICAL(F), ?LOG_CRITICAL(F, [])).
--define(LOG_DEBUG(F), ?LOG_DEBUG(F, [])).
--define(LOG_EMERGENCY(F), ?LOG_EMERGENCY(F, [])).
--define(LOG_ERROR(F), ?LOG_ERROR(F, [])).
--define(LOG_INFO(F), ?LOG_INFO(F, [])).
--define(LOG_NOTICE(F), ?LOG_NOTICE(F, [])).
--define(LOG_WARNING(F), ?LOG_WARNING(F, [])).
-
--else.
-
--define(LOG_ALERT(F, A), lager:alert(F, A)).
--define(LOG_CRITICAL(F, A), lager:critical(F, A)).
--define(LOG_DEBUG(F, A), lager:debug(F, A)).
--define(LOG_EMERGENCY(F, A), lager:emergency(F, A)).
--define(LOG_ERROR(F, A), lager:error(F, A)).
--define(LOG_INFO(F, A), lager:info(F, A)).
--define(LOG_NOTICE(F, A), lager:notice(F, A)).
--define(LOG_WARNING(F, A), lager:warning(F, A)).
-
--define(LOG_ALERT(F), ?LOG_ALERT(F, [])).
--define(LOG_CRITICAL(F), ?LOG_CRITICAL(F, [])).
--define(LOG_DEBUG(F), ?LOG_DEBUG(F, [])).
--define(LOG_EMERGENCY(F), ?LOG_EMERGENCY(F, [])).
--define(LOG_ERROR(F), ?LOG_ERROR(F, [])).
--define(LOG_INFO(F), ?LOG_INFO(F, [])).
--define(LOG_NOTICE(F), ?LOG_NOTICE(F, [])).
--define(LOG_WARNING(F), ?LOG_WARNING(F, [])).
-
--endif.
-
--define(SUP_LOG_DEBUG(F, A),
-        begin
-            lager:debug(F, A),
-            io:format(F ++ "\n", A)
-        end
-       ).
--define(SUP_LOG_INFO(F, A),
-        begin
-            lager:info(F, A),
-            io:format(F ++ "\n", A)
-        end
-       ).
--define(SUP_LOG_WARNING(F, A),
-        begin
-            lager:warning(F, A),
-            io:format(F ++ "\n", A)
-        end
-       ).
--define(SUP_LOG_ERROR(F, A),
-        begin
-            lager:error(F, A),
-            io:format(F ++ "\n", A)
-        end
-       ).
-
--define(SUP_LOG_DEBUG(F), ?SUP_LOG_DEBUG(F, [])).
--define(SUP_LOG_INFO(F), ?SUP_LOG_INFO(F, [])).
--define(SUP_LOG_WARNING(F), ?SUP_LOG_WARNING(F, [])).
--define(SUP_LOG_ERROR(F), ?SUP_LOG_ERROR(F, [])).
-
--define(DEV_LOG(F, A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
--define(DEV_LOG(F), ?DEV_LOG(F, [])).
+-define(FAKE_CALLID(C), kz_term:to_hex_binary(crypto:hash('md5', C))).
 
 -define(KAZOO_TYPES_INCLUDED, 'true').
 -endif.

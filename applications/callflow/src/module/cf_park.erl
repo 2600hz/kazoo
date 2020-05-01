@@ -1,8 +1,13 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc
 %%% @author Karl Anderson
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cf_park).
@@ -34,6 +39,8 @@
 -define(PARK_DELAY_CHECK_TIME_KEY, <<"valet_reservation_cleanup_time_ms">>).
 -define(PARK_DELAY_CHECK_TIME, kapps_config:get_integer(?MOD_CONFIG_CAT, ?PARK_DELAY_CHECK_TIME_KEY, ?MILLISECONDS_IN_SECOND * 3)).
 -define(PARKING_APP_NAME, <<"park">>).
+-define(MAX_SLOT_NUMBER_KEY, <<"max_slot_number">>).
+-define(MAX_SLOT_EXCEEDED, 'max_slot_exceeded').
 
 %%------------------------------------------------------------------------------
 %% @doc Entry point for this module sends an arbitrary response back to the
@@ -70,8 +77,8 @@ handle(Data, Call) ->
     end.
 
 -spec handle_replaces(kz_json:object(), kapps_call:call(), kz_term:ne_binary()) ->
-                             'ok' |
-                             {'error', 'timeout' | 'failed'}.
+          'ok' |
+          {'error', 'timeout' | 'failed'}.
 handle_replaces(Data, Call, Replaces) ->
     lager:info("call was the result of an attended-transfer completion, updating call id"),
     {'ok', FoundInSlotNumber, Slot} = update_call_id(Replaces, Call),
@@ -118,8 +125,11 @@ handle_nomatch_with_empty_referred_to(Data, Call, PresenceType, ParkedCalls, Slo
 
 -spec direct_park(kz_term:ne_binary(), kz_json:object(), kz_json:object(), kz_json:object(), kapps_call:call()) -> 'ok'.
 direct_park(SlotNumber, Slot, ParkedCalls, Data, Call) ->
-    case save_slot(SlotNumber, Slot, ParkedCalls, Call) of
+    MaxSlotNumber = kz_json:get_integer_value(?MAX_SLOT_NUMBER_KEY, Data),
+    case save_slot(SlotNumber, MaxSlotNumber, Slot, ParkedCalls, Call) of
         {'ok', _} -> parked_call(SlotNumber, Slot, Data, Call);
+        {'error', ?MAX_SLOT_EXCEEDED} ->
+            cf_exe:continue(kz_term:to_upper_binary(?MAX_SLOT_EXCEEDED), Call);
         {'error', _Reason} ->
             lager:info("unable to save direct park slot: ~p", [_Reason]),
             cf_exe:stop(Call)
@@ -130,64 +140,83 @@ direct_park(SlotNumber, Slot, ParkedCalls, Data, Call) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec retrieve(kz_term:ne_binary(), kapps_call:call()) ->
-                      {'ok', 'channel_hungup'} |
-                      {'error', 'slot_empty' | 'timeout' | 'failed'}.
+          {'ok', 'retrieved'} |
+          {'error', 'slot_empty' | 'timeout' | 'failed'}.
 retrieve(SlotNumber, Call) ->
-    retrieve(SlotNumber, get_slot(SlotNumber, kapps_call:account_db(Call)), 1, Call).
+    SlotReturn = get_slot(SlotNumber, kapps_call:account_db(Call)),
+    retrieve(SlotNumber, SlotReturn, 1, Call).
 
--spec retrieve(kz_term:ne_binary(), {'ok', kz_json:object()} | {'error', any()}, integer(), kapps_call:call()) ->
-                      {'ok', 'channel_hungup'} |
-                      {'error', 'slot_empty' | 'timeout' | 'failed'}.
-retrieve(SlotNumber, {'error', _}, _Try, _Call) ->
+-spec retrieve(kz_term:ne_binary(), {'ok', kz_json:object()} | kz_datamgr:data_error(), 1..3, kapps_call:call()) ->
+          {'ok', 'retrieved'} |
+          {'error', 'slot_empty' | 'timeout' | 'failed'}.
+retrieve(SlotNumber, {'error', 'not_found'}, _Try, _Call) ->
     lager:info("the parking slot ~s is empty, unable to retrieve caller", [SlotNumber]),
     {'error', 'slot_empty'};
+retrieve(SlotNumber, {'error', _E}, _Try, _Call) ->
+    lager:info("getting the parking slot ~s errored, unable to retrieve caller: ~p", [SlotNumber, _E]),
+    {'error', 'slot_empty'};
 retrieve(SlotNumber, {'ok', Slot}, 3, Call) ->
-    ParkedCall = kz_json:get_ne_binary_value(<<"Call-ID">>, Slot),
-    lager:info("the parking slot ~s currently has a parked call ~s after 3 tries, attempting to retrieve caller", [SlotNumber, ParkedCall]),
-    retrieve_slot(ParkedCall, Call);
+    retrieve_after_retries(SlotNumber, Slot, Call);
 retrieve(SlotNumber, {'ok', Slot}, Try, Call) ->
-    case maybe_retrieve_slot(Slot) of
-        {'retry', ParkedCall} ->
-            lager:info("the parking slot ~s currently has a pending attended parked call ~s, retrying in 1 sec", [SlotNumber, ParkedCall]),
-            timer:sleep(?MILLISECONDS_IN_SECOND),
-            retrieve(SlotNumber, get_slot(SlotNumber, kapps_call:account_db(Call)), Try + 1, Call);
-        {'ok', ParkedCall} ->
-            lager:info("the parking slot ~s currently has a parked call ~s, attempting to retrieve caller", [SlotNumber, ParkedCall]),
-            case retrieve_slot(ParkedCall, Call) of
-                'ok' ->
-                    _ = publish_retrieved(Call, SlotNumber),
-                    _ = cleanup_slot(SlotNumber, ParkedCall, kapps_call:account_db(Call)),
-                    {'ok', 'retrieved'};
-                {'error', _E}=E ->
-                    lager:debug("failed to retrieve slot: ~p", [_E]),
-                    _ = cleanup_slot(SlotNumber, ParkedCall, kapps_call:account_db(Call)),
-                    E
-            end;
-        {'error', _}=E -> E
+    maybe_attempt_retrieve(SlotNumber, Slot, Try, Call).
+
+maybe_attempt_retrieve(SlotNumber, Slot, Try, Call) ->
+    maybe_attempt_retrieve(SlotNumber, Slot, Try, Call, maybe_retrieve_slot(Slot)).
+
+maybe_attempt_retrieve(_SlotNumber, _Slot, _Try, _Call, {'error', _}=E) -> E;
+maybe_attempt_retrieve(SlotNumber, _Slot, Try, Call, {'retry', ParkedCallId}) ->
+    lager:info("the parking slot ~s currently has a pending attended parked call ~s, retrying in 1 sec"
+              ,[SlotNumber, ParkedCallId]
+              ),
+    timer:sleep(?MILLISECONDS_IN_SECOND),
+    retrieve(SlotNumber, get_slot(SlotNumber, kapps_call:account_db(Call)), Try + 1, Call);
+maybe_attempt_retrieve(SlotNumber, _Slot, _Try, Call, {'ok', ParkedCallId}) ->
+    lager:info("the parking slot ~s currently has a parked call ~s, attempting to retrieve caller"
+              ,[SlotNumber, ParkedCallId]
+              ),
+    case retrieve_slot(ParkedCallId, Call) of
+        'ok' ->
+            _ = publish_retrieved(Call, SlotNumber),
+            _ = cleanup_slot(SlotNumber, ParkedCallId, kapps_call:account_db(Call)),
+            {'ok', 'retrieved'};
+        {'error', _E}=E ->
+            lager:debug("failed to retrieve slot: ~p", [_E]),
+            _ = cleanup_slot(SlotNumber, ParkedCallId, kapps_call:account_db(Call)),
+            E
+    end.
+
+retrieve_after_retries(SlotNumber, Slot, Call) ->
+    ParkedCallId = kz_json:get_ne_binary_value(<<"Call-ID">>, Slot),
+    lager:info("the parking slot ~s currently has a parked call ~s after 3 tries, attempting to retrieve caller"
+              ,[SlotNumber, ParkedCallId]
+              ),
+    case retrieve_slot(ParkedCallId, Call) of
+        'ok' -> {'ok', 'retrieved'};
+        Error -> Error
     end.
 
 -spec maybe_retrieve_slot(kz_json:object()) -> {'retry' | 'ok', kz_term:ne_binary()} | {'error', 'slot_empty'}.
 maybe_retrieve_slot(Slot) ->
-    ParkedCall = kz_json:get_ne_binary_value(<<"Call-ID">>, Slot),
+    ParkedCallId = kz_json:get_ne_binary_value(<<"Call-ID">>, Slot),
     case kz_json:is_true(<<"Attended">>, Slot) of
-        'true' -> {'retry', ParkedCall};
-        'false' when ParkedCall =/= 'undefined' -> {'ok', ParkedCall};
+        'true' -> {'retry', ParkedCallId};
+        'false' when ParkedCallId =/= 'undefined' -> {'ok', ParkedCallId};
         'false' -> {'error', 'slot_empty'}
     end.
 
 -spec retrieve_slot(kz_term:ne_binary(), kapps_call:call()) ->
-                           'ok' |
-                           {'error', 'timeout' | 'failed'}.
-retrieve_slot(ParkedCall, Call) ->
-    lager:info("retrieved parked call from slot, maybe bridging to caller ~s", [ParkedCall]),
-    _ = send_pickup(ParkedCall, Call),
+          'ok' |
+          {'error', 'timeout' | 'failed'}.
+retrieve_slot(ParkedCallId, Call) ->
+    lager:info("retrieved parked call from slot, maybe bridging to caller ~s", [ParkedCallId]),
+    _ = send_pickup(ParkedCallId, Call),
     wait_for_pickup(Call).
 
 -spec send_pickup(kz_term:ne_binary(), kapps_call:call()) -> 'ok'.
-send_pickup(ParkedCall, Call) ->
+send_pickup(ParkedCallId, Call) ->
     Req = [{<<"Unbridged-Only">>, 'true'}
           ,{<<"Application-Name">>, <<"call_pickup">>}
-          ,{<<"Target-Call-ID">>, ParkedCall}
+          ,{<<"Target-Call-ID">>, ParkedCallId}
           ,{<<"Continue-On-Fail">>, 'false'}
           ,{<<"Continue-On-Cancel">>, 'true'}
           ,{<<"Park-After-Pickup">>, 'false'}
@@ -195,10 +224,10 @@ send_pickup(ParkedCall, Call) ->
     kapps_call_command:send_command(Req, Call).
 
 -spec wait_for_pickup(kapps_call:call()) ->
-                             'ok' |
-                             {'error', 'timeout' | 'failed'}.
+          'ok' |
+          {'error', 'timeout' | 'failed'}.
 wait_for_pickup(Call) ->
-    case kapps_call_command:receive_event(10000) of
+    case kapps_call_command:receive_event(10 * ?MILLISECONDS_IN_SECOND) of
         {'ok', Evt} ->
             pickup_event(Call, kz_util:get_event_type(Evt), Evt);
         {'error', 'timeout'}=E ->
@@ -206,14 +235,14 @@ wait_for_pickup(Call) ->
             E
     end.
 
--spec pickup_event(kapps_call:call(), {kz_term:ne_binary(), kz_term:ne_binary()}, kz_json:object()) ->
-                          'ok' |
-                          {'error', 'failed'}.
-pickup_event(_Call, {<<"error">>, <<"dialplan">>}, Evt) ->
-    lager:debug("error in dialplan: ~s", [kz_json:get_ne_binary_value(<<"Error-Message">>, Evt)]),
+-spec pickup_event(kapps_call:call(), {kz_term:ne_binary(), kz_term:ne_binary()}, kz_call_event:doc()) ->
+          'ok' |
+          {'error', 'failed'}.
+pickup_event(_Call, {<<"error">>, <<"dialplan">>}, _Evt) ->
+    lager:debug("error in dialplan: ~s", [kz_call_event:error_message(_Evt)]),
     {'error', 'failed'};
 pickup_event(_Call, {<<"call_event">>,<<"CHANNEL_BRIDGE">>}, _Evt) ->
-    lager:debug("channel bridged to ~s", [kz_json:get_ne_binary_value(<<"Other-Leg-Call-ID">>, _Evt)]);
+    'ok' = lager:debug("channel bridged to ~s", [kz_call_event:other_leg_call_id(_Evt)]);
 pickup_event(Call, _Type, _Evt) ->
     wait_for_pickup(Call).
 
@@ -224,7 +253,8 @@ pickup_event(Call, _Type, _Evt) ->
 -spec park_call(kz_term:ne_binary(), kz_json:object(), kz_json:object(), kz_term:api_binary(), kz_json:object(), kapps_call:call()) -> 'ok'.
 park_call(SlotNumber, Slot, ParkedCalls, ReferredTo, Data, Call) ->
     lager:info("attempting to park call in slot ~s", [SlotNumber]),
-    case {ReferredTo, save_slot(SlotNumber, Slot, ParkedCalls, Call)} of
+    MaxSlotNumber = kz_json:get_integer_value(?MAX_SLOT_NUMBER_KEY, Data),
+    case {ReferredTo, save_slot(SlotNumber, MaxSlotNumber, Slot, ParkedCalls, Call)} of
         %% attended transfer but the provided slot number is occupied, we are still connected to the 'parker'
         %% not the 'parkee'
         {'undefined', {'error', 'occupied'}} ->
@@ -361,9 +391,33 @@ find_slot_number([A|[B|_]=Slots]) ->
 %% and tries again, determining the new slot.
 %% @end
 %%------------------------------------------------------------------------------
+-spec save_slot(kz_term:ne_binary(), kz_term:api_integer(), kz_json:object(), kz_json:object(), kapps_call:call()) ->
+          {'ok', kz_json:object()} |
+          {'error', atom()}.
+save_slot(SlotNumber, MaxSlotNumber, Slot, ParkedCalls, Call) ->
+    try kz_term:to_integer(SlotNumber) of
+        SlotNumberInt ->
+            MaxExceeded = MaxSlotNumber =/= 'undefined'
+                andalso SlotNumberInt > MaxSlotNumber,
+            MaxExceeded
+                andalso lager:info("no more slots available - max_slot_number (~b) has been exceeded", [MaxSlotNumber]),
+            save_slot_check_max_slot_exceeded(SlotNumber, MaxExceeded, Slot, ParkedCalls, Call)
+    catch
+        'error':'badarg' ->
+            save_slot(SlotNumber, Slot, ParkedCalls, Call)
+    end.
+
+-spec save_slot_check_max_slot_exceeded(kz_term:ne_binary(), boolean(), kz_json:object(), kz_json:object(), kapps_call:call()) ->
+          {'ok', kz_json:object()} |
+          {'error', atom()}.
+save_slot_check_max_slot_exceeded(_, 'true', _, _, _) ->
+    {'error', ?MAX_SLOT_EXCEEDED};
+save_slot_check_max_slot_exceeded(SlotNumber, 'false', Slot, ParkedCalls, Call) ->
+    save_slot(SlotNumber, Slot, ParkedCalls, Call).
+
 -spec save_slot(kz_term:ne_binary(), kz_json:object(), kz_json:object(), kapps_call:call()) ->
-                       {'ok', kz_json:object()} |
-                       {'error', atom()}.
+          {'ok', kz_json:object()} |
+          {'error', atom()}.
 save_slot(SlotNumber, Slot, ParkedCalls, Call) ->
     ParkedCallId = kz_json:get_ne_binary_value([<<"slots">>, SlotNumber, <<"Call-ID">>], ParkedCalls),
     ParkerCallId = kz_json:get_ne_binary_value([<<"slots">>, SlotNumber, <<"Parker-Call-ID">>], ParkedCalls),
@@ -385,8 +439,8 @@ save_slot(SlotNumber, Slot, ParkedCalls, Call) ->
     end.
 
 -spec do_save_slot(kz_term:ne_binary(), kz_json:object(), kapps_call:call()) ->
-                          {'ok', kz_json:object()} |
-                          {'error', atom()}.
+          {'ok', kz_json:object()} |
+          {'error', atom()}.
 do_save_slot(SlotNumber, Slot, Call) ->
     Doc = slot_doc(SlotNumber, Slot, Call),
     AccountDb = kapps_call:account_db(Call),
@@ -428,7 +482,7 @@ maybe_add_slot_doc_rev(JObj, AccountDb) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec update_call_id(kz_term:ne_binary(), kapps_call:call()) ->
-                            {'ok', kz_term:ne_binary(), kz_json:object()}.
+          {'ok', kz_term:ne_binary(), kz_json:object()}.
 update_call_id(Replaces, Call) ->
     CallId = cf_exe:callid(Call),
     lager:info("update parked call id ~s with new call id ~s", [Replaces, CallId]),
@@ -539,7 +593,7 @@ load_parked_call(JObj) ->
 %%------------------------------------------------------------------------------
 -spec maybe_cleanup_slot(kz_term:ne_binary(), kapps_call:call(), kz_term:ne_binary()) -> 'ok'.
 maybe_cleanup_slot(SlotNumber, Call, OldCallId) ->
-    _ = kz_util:put_callid(OldCallId),
+    _ = kz_log:put_callid(OldCallId),
     ParkedCalls = get_parked_calls(Call),
     AccountDb   = kapps_call:account_db(Call),
 
@@ -565,8 +619,8 @@ maybe_cleanup_slot(_SlotNumber, _OldCallId, _NewCallId, _AccountDb) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec cleanup_slot(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                          {'ok', kz_json:object()} |
-                          {'error', any()}.
+          {'ok', kz_json:object()} |
+          {'error', any()}.
 cleanup_slot(SlotNumber, ParkedCallId, AccountDb) ->
     case kz_datamgr:open_doc(AccountDb, ?SLOT_DOC_ID(SlotNumber)) of
         {'ok', JObj} ->
@@ -584,8 +638,8 @@ cleanup_slot(SlotNumber, ParkedCallId, AccountDb) ->
     end.
 
 -spec delete_slot(kz_term:ne_binary(), kz_json:object()) ->
-                         {'ok', kz_json:object()} |
-                         {'error', any()}.
+          {'ok', kz_json:object()} |
+          {'error', any()}.
 delete_slot(AccountDb, JObj) ->
     case kz_datamgr:save_doc(AccountDb, kz_json:delete_key(<<"slot">>, JObj)) of
         {'ok', _}=Ok ->
@@ -633,7 +687,7 @@ wait_for_pickup(SlotNumber, Slot, Data, Call) ->
                     lager:info("parked caller ringback was answered"),
                     _ = cleanup_slot(SlotNumber, cf_exe:callid(Call), kapps_call:account_db(Call)),
                     _ = publish_retrieved(Call, SlotNumber),
-                    cf_exe:transfer(Call);
+                    wait_for_bridge(Call);
                 'failed' ->
                     unanswered_action(SlotNumber, Slot, Data, Call);
                 'channel_hungup' ->
@@ -800,11 +854,11 @@ wait_for_ringback(Timeout, Call) ->
 
 -spec wait_for_parker(timeout(), kapps_call:call()) -> wait_for_parker_result().
 wait_for_parker(Timeout, Call) ->
-    Start = os:timestamp(),
+    Start = kz_time:start_time(),
     lager:debug("waiting for parker for ~p ms", [Timeout]),
     wait_for_parker(Timeout, Call, Start, kapps_call_command:receive_event(Timeout)).
 
--spec wait_for_parker(timeout(), kapps_call:call(), kz_time:now(), receive_event_result()) -> wait_for_parker_result().
+-spec wait_for_parker(timeout(), kapps_call:call(), kz_time:start_time(), receive_event_result()) -> wait_for_parker_result().
 wait_for_parker(_Timeout, _Call, _Start, {'error', 'timeout'}=E) -> E;
 wait_for_parker(Timeout, Call, Start, {'ok', JObj}) ->
     Disposition = kz_json:get_value(<<"Disposition">>, JObj),
@@ -835,7 +889,7 @@ wait_for_parker(Timeout, Call, Start, {'ok', JObj}) ->
             {Result, JObj};
         _E ->
             NewTimeout = kz_time:decr_timeout(Timeout, Start),
-            NewStart = os:timestamp(),
+            NewStart = kz_time:start_time(),
             wait_for_parker(NewTimeout, Call, NewStart, kapps_call_command:receive_event(NewTimeout))
     end.
 
@@ -937,7 +991,10 @@ custom_channel_vars(Call) ->
     Realm = kapps_call:account_realm(Call),
     kz_json:set_value(<<"Realm">>, Realm, JObj).
 
--spec get_slot(kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
+-spec get_slot(kz_term:ne_binary(), kz_term:ne_binary()) ->
+          {'ok', kz_json:object()} |
+          kz_datamgr:data_error() |
+          {'error', 'not_occupied'}.
 get_slot(SlotNumber, AccountDb) ->
     DocId = ?SLOT_DOC_ID(SlotNumber),
     case kz_datamgr:open_doc(AccountDb, {?PARKED_CALL_DOC_TYPE, DocId}) of
@@ -945,7 +1002,8 @@ get_slot(SlotNumber, AccountDb) ->
         {'error', _} = E -> E
     end.
 
--spec maybe_empty_slot(kz_json:object()) -> {'ok', kz_json:object()} | {'error', any()}.
+-spec maybe_empty_slot(kz_json:object()) -> {'ok', kz_json:object()} |
+          {'error', 'not_occupied'}.
 maybe_empty_slot(JObj) ->
     case kz_json:get_json_value(<<"slot">>, JObj) of
         'undefined' -> {'error', 'not_occupied'};
@@ -972,3 +1030,8 @@ error_occupied_slot(Call) ->
                 kapps_call_command:b_prompt(<<"park-already_in_use">>, Call)
         end,
     cf_exe:stop(Call).
+
+-spec wait_for_bridge(kapps_call:call()) -> 'ok'.
+wait_for_bridge(Call) ->
+    _ = kapps_call_command:wait_for_bridge('infinity', Call),
+    cf_exe:continue(Call).

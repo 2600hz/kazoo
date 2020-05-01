@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
 %%% @author Karl Anderson
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(callflow_app).
@@ -10,7 +15,10 @@
 
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 
--export([start/2, stop/1]).
+-export([start/2
+        ,prep_stop/1
+        ,stop/1
+        ]).
 
 %%==============================================================================
 %% Application callbacks
@@ -24,6 +32,11 @@
 start(_Type, _Args) ->
     _ = declare_exchanges(),
     callflow_sup:start_link().
+
+-spec prep_stop(any()) -> 'ok'.
+prep_stop(_State) ->
+    _ = kz_nodes:unbind_for_pool_state('kz_amqp_sup', whereis('callflow_sup')),
+    'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc Implement the application stop behaviour.

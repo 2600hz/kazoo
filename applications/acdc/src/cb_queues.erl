@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc CRUD for call queues
 %%% /queues
 %%%   GET: list all known queues
@@ -31,6 +31,11 @@
 %%%
 %%%
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cb_queues).
@@ -155,11 +160,11 @@ resource_exists(_, ?EAVESDROP_PATH_TOKEN) -> 'true'.
 %%------------------------------------------------------------------------------
 
 -spec content_types_provided(cb_context:context()) ->
-                                    cb_context:context().
+          cb_context:context().
 content_types_provided(Context) -> Context.
 
 -spec content_types_provided(cb_context:context(), path_token()) ->
-                                    cb_context:context().
+          cb_context:context().
 content_types_provided(Context, ?STATS_PATH_TOKEN) ->
     cb_context:add_content_types_provided(Context
                                          ,[{'to_json', ?JSON_CONTENT_TYPES}
@@ -176,7 +181,7 @@ content_types_provided(Context, ?STATS_PATH_TOKEN) ->
 %%------------------------------------------------------------------------------
 
 -spec validate(cb_context:context()) ->
-                      cb_context:context().
+          cb_context:context().
 validate(Context) ->
     validate_queues(Context, cb_context:req_verb(Context)).
 
@@ -184,7 +189,7 @@ validate_queues(Context, ?HTTP_GET) -> summary(Context);
 validate_queues(Context, ?HTTP_PUT) -> validate_request('undefined', Context).
 
 -spec validate(cb_context:context(), path_token()) ->
-                      cb_context:context().
+          cb_context:context().
 validate(Context, PathToken) ->
     validate_queue(Context, PathToken, cb_context:req_verb(Context)).
 
@@ -202,7 +207,7 @@ validate_queue(Context, Id, ?HTTP_DELETE) ->
     read(Id, Context).
 
 -spec validate(cb_context:context(), path_token(), path_token()) ->
-                      cb_context:context().
+          cb_context:context().
 validate(Context, Id, Token) ->
     validate_queue_operation(Context, Id, Token, cb_context:req_verb(Context)).
 
@@ -238,16 +243,16 @@ validate_eavesdrop_on_queue(Context, QueueId) ->
     end.
 
 -spec all_true([{fun(), list()},...]) ->
-                      'true' |
-                      {'false', cb_context:context()}.
+          'true' |
+          {'false', cb_context:context()}.
 all_true(Fs) ->
     lists:foldl(fun({F, Args}, 'true') -> apply(F, Args);
                    (_, Acc) -> Acc
                 end, 'true', Fs).
 
 -spec is_valid_mode(cb_context:context(), kz_json:object()) ->
-                           'true' |
-                           {'false', cb_context:context()}.
+          'true' |
+          {'false', cb_context:context()}.
 is_valid_mode(Context, Data) ->
     Mode = kz_json:get_value(<<"mode">>, Data, <<"listen">>),
     case kapi_resource:is_valid_mode(Mode) of
@@ -266,8 +271,8 @@ is_valid_mode(Context, Data) ->
     end.
 
 -spec is_valid_call(cb_context:context(), kz_json:object()) ->
-                           'true' |
-                           {'false', cb_context:context()}.
+          'true' |
+          {'false', cb_context:context()}.
 is_valid_call(Context, Data) ->
     case kz_json:get_binary_value(<<"call_id">>, Data) of
         'undefined' ->
@@ -285,8 +290,8 @@ is_valid_call(Context, Data) ->
     end.
 
 -spec is_active_call(cb_context:context(), kz_term:ne_binary()) ->
-                            'true' |
-                            {'false', cb_context:context()}.
+          'true' |
+          {'false', cb_context:context()}.
 is_active_call(Context, CallId) ->
     case kapps_call_command:b_channel_status(CallId) of
         {'error', _E} ->
@@ -304,9 +309,9 @@ is_active_call(Context, CallId) ->
         {'ok', _} -> 'true'
     end.
 
-is_valid_queue(Context, <<_/binary>> = QueueId) ->
-    AcctDb = cb_context:account_db(Context),
-    case kz_datamgr:open_cache_doc(AcctDb, QueueId) of
+is_valid_queue(Context, <<QueueId/binary>>) ->
+    AccountDb = cb_context:db_name(Context),
+    case kz_datamgr:open_cache_doc(AccountDb, QueueId) of
         {'ok', QueueJObj} -> is_valid_queue(Context, QueueJObj);
         {'error', _} ->
             {'false'
@@ -334,9 +339,9 @@ is_valid_queue(Context, QueueJObj) ->
     end.
 
 is_valid_endpoint(Context, DataJObj) ->
-    AcctDb = cb_context:account_db(Context),
+    AccountDb = cb_context:db_name(Context),
     Id = kz_doc:id(DataJObj),
-    case kz_datamgr:open_cache_doc(AcctDb, Id) of
+    case kz_datamgr:open_cache_doc(AccountDb, Id) of
         {'ok', CallMeJObj} -> is_valid_endpoint_type(Context, CallMeJObj);
         {'error', _} ->
             {'false'
@@ -373,13 +378,13 @@ is_valid_endpoint_type(Context, CallMeJObj) ->
 %%------------------------------------------------------------------------------
 
 -spec put(cb_context:context()) ->
-                 cb_context:context().
+          cb_context:context().
 put(Context) ->
     activate_account_for_acdc(Context),
     crossbar_doc:save(Context).
 
 -spec put(cb_context:context(), path_token()) ->
-                 cb_context:context().
+          cb_context:context().
 put(Context, ?EAVESDROP_PATH_TOKEN) ->
     Prop = [{<<"Eavesdrop-Call-ID">>, cb_context:req_value(Context, <<"call_id">>)}
             | default_eavesdrop_req(Context)
@@ -387,7 +392,7 @@ put(Context, ?EAVESDROP_PATH_TOKEN) ->
     eavesdrop_req(Context, Prop).
 
 -spec put(cb_context:context(), path_token(), path_token()) ->
-                 cb_context:context().
+          cb_context:context().
 put(Context, QID, ?EAVESDROP_PATH_TOKEN) ->
     Prop = [{<<"Eavesdrop-Group-ID">>, QID}
             | default_eavesdrop_req(Context)
@@ -529,20 +534,25 @@ load_queue_agents(Id, Context) ->
     Context1 = load_agent_roster(Id, Context),
     case cb_context:resp_status(Context1) of
         'success' ->
-            cb_context:set_resp_data(Context
-                                    ,kz_json:set_value(<<"agents">>
-                                                      ,cb_context:resp_data(Context1)
-                                                      ,cb_context:resp_data(Context)
-                                                      )
-                                    );
+            Agents = kz_json:set_value(<<"agents">>
+                                      ,cb_context:resp_data(Context1)
+                                      ,cb_context:resp_data(Context)
+                                      ),
+            cb_context:setters(Context, [{fun cb_context:set_resp_data/2, Agents}
+                                         %% Because the response can be dynamic depending on the results of Context1, the
+                                         %% etag of Context cannot be trusted as a strong cache validator
+                                        ,{fun cb_context:set_resp_etag/2, 'undefined'}
+                                        ]);
         _Status -> Context1
     end.
 
 load_agent_roster(Id, Context) ->
-    crossbar_doc:load_view(?CB_AGENTS_LIST, [{'key', Id}]
-                          ,Context
-                          ,fun normalize_agents_results/2
-                          ).
+    Options = [{'startkey', [Id]}
+              ,{'endkey', [Id, kz_json:new()]}
+              ,{'mapper', crossbar_view:get_id_fun()}
+              ,{'reduce', 'false'}
+              ],
+    crossbar_view:load(Context, ?CB_AGENTS_LIST, Options).
 
 add_queue_to_agents(Id, Context) ->
     add_queue_to_agents(Id, Context, cb_context:req_data(Context)).
@@ -603,13 +613,13 @@ maybe_rm_agents(Id, Context, AgentIds) ->
     RMContext1.
 
 -spec rm_queue_from_agents(kz_term:ne_binary(), cb_context:context()) ->
-                                  cb_context:context().
+          cb_context:context().
 rm_queue_from_agents(Id, Context) ->
     Context1 = load_agent_roster(Id, Context),
     rm_queue_from_agents(Id, Context, cb_context:doc(Context1)).
 
 -spec rm_queue_from_agents(kz_term:ne_binary(), cb_context:context(), kz_json:path()) ->
-                                  cb_context:context().
+          cb_context:context().
 rm_queue_from_agents(_Id, Context, []) ->
     cb_context:set_resp_status(Context, 'success');
 rm_queue_from_agents(Id, Context, [_|_]=AgentIds) ->
@@ -732,22 +742,7 @@ fetch_from_amqp(Context, Req) ->
 %%------------------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    crossbar_doc:load_view(?CB_LIST
-                          ,[]
-                          ,Context
-                          ,fun normalize_view_results/2
-                          ).
-
-%%------------------------------------------------------------------------------
-%% @doc Normalizes the results of a view
-%% @end
-%%------------------------------------------------------------------------------
--spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
-normalize_view_results(JObj, Acc) ->
-    [kz_json:get_value(<<"value">>, JObj)|Acc].
-
-normalize_agents_results(JObj, Acc) ->
-    [kz_doc:id(JObj) | Acc].
+    crossbar_view:load(Context, ?CB_LIST, [{'mapper', crossbar_view:get_value_fun()}]).
 
 %%------------------------------------------------------------------------------
 %% @doc Creates an entry in the acdc db of the account's participation in acdc

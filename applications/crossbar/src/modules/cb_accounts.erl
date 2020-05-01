@@ -1,11 +1,16 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Account module
 %%% Handle client requests for account documents
 %%%
 %%%
 %%% @author Karl Anderson
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cb_accounts).
@@ -34,7 +39,6 @@
 
 -define(ACCOUNTS_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".accounts">>).
 
--define(AGG_VIEW_FILE, <<"views/accounts.json">>).
 -define(AGG_VIEW_SUMMARY, <<"accounts/listing_by_id">>).
 -define(AGG_VIEW_PARENT, <<"accounts/listing_by_parent">>).
 -define(AGG_VIEW_CHILDREN, <<"accounts/listing_by_children">>).
@@ -51,8 +55,14 @@
 
 -define(MOVE, <<"move">>).
 
+-define(ACCOUNT_REALM_SUFFIX
+       ,kapps_config:get_binary(?ACCOUNTS_CONFIG_CAT, <<"account_realm_suffix">>, <<"sip.2600hz.com">>)
+       ).
+-define(RANDOM_REALM_STRENGTH
+       ,kapps_config:get_integer(?ACCOUNTS_CONFIG_CAT, <<"random_realm_strength">>, 3)
+       ).
 -define(ALLOW_DIRECT_CLIENTS
-       ,kapps_config:get_is_true(?KZ_ACCOUNTS_DB, 'allow_subaccounts_for_direct', 'true')
+       ,kapps_config:get_is_true(?KZ_ACCOUNTS_DB, <<"allow_subaccounts_for_direct">>, 'true')
        ).
 
 -spec init() -> 'ok'.
@@ -85,7 +95,7 @@ allowed_methods(AccountId) ->
     allowed_methods_on_account(AccountId, kapps_util:get_master_account_id()).
 
 -spec allowed_methods_on_account(kz_term:ne_binary(), {'ok', kz_term:ne_binary()} | {'error', any()}) ->
-                                        http_methods().
+          http_methods().
 allowed_methods_on_account(AccountId, {'ok', AccountId}) ->
     lager:debug("accessing master account, disallowing DELETE"),
     [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_PATCH];
@@ -162,7 +172,7 @@ validate_resource(Context, AccountId, _Path) ->
 %%------------------------------------------------------------------------------
 
 -spec validate(cb_context:context()) ->
-                      cb_context:context().
+          cb_context:context().
 validate(Context) ->
     validate_accounts(Context, cb_context:req_verb(Context)).
 
@@ -171,7 +181,7 @@ validate_accounts(Context, ?HTTP_PUT) ->
     validate_request('undefined', prepare_context('undefined', Context)).
 
 -spec validate(cb_context:context(), path_token()) ->
-                      cb_context:context().
+          cb_context:context().
 validate(Context, AccountId) ->
     validate_account(Context, AccountId, cb_context:req_verb(Context)).
 
@@ -188,12 +198,12 @@ validate_account(Context, AccountId, ?HTTP_DELETE) ->
     validate_delete_request(AccountId, prepare_context(AccountId, Context)).
 
 -spec validate(cb_context:context(), path_token(), kz_term:ne_binary()) ->
-                      cb_context:context().
+          cb_context:context().
 validate(Context, AccountId, PathToken) ->
     validate_account_path(Context, AccountId, PathToken, cb_context:req_verb(Context)).
 
 -spec validate_account_path(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), http_method()) ->
-                                   cb_context:context().
+          cb_context:context().
 validate_account_path(Context, AccountId, ?CHILDREN, ?HTTP_GET) ->
     load_children(AccountId, prepare_context('undefined', Context));
 validate_account_path(Context, AccountId, ?DESCENDANTS, ?HTTP_GET) ->
@@ -274,26 +284,25 @@ add_pvt_api_key(Context) ->
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, AccountId) ->
     {'ok', Existing} = kzd_accounts:fetch(AccountId),
-    Context1 = crossbar_doc:save(Context),
-
-    case cb_context:resp_status(Context1) of
-        'success' ->
-            _ = kz_util:spawn(fun notification_util:maybe_notify_account_change/2, [Existing, Context]),
+    case kzd_accounts:save(cb_context:doc(Context)) of
+        {'ok', SavedAccount} ->
+            Context1 = crossbar_doc:handle_datamgr_success(SavedAccount, Context),
+            _ = kz_process:spawn(fun crossbar_notify_util:maybe_notify_account_change/2, [Existing, Context]),
             update_provisioner_account(Context1),
 
-            {'ok', SavedAccount} = kzd_accounts:save(cb_context:doc(Context1)),
-
-            leak_pvt_fields(AccountId, cb_context:set_doc(Context1, SavedAccount));
-        _Status -> Context1
+            leak_pvt_fields(AccountId, Context1);
+        {'error', Error} ->
+            lager:warning("failed to update account information with error: ~p", [Error]),
+            crossbar_doc:handle_datamgr_errors(Error, AccountId, Context)
     end.
 
 -spec update_provisioner_account(cb_context:context()) -> 'ok'.
 update_provisioner_account(Context) ->
-    _ = kz_util:spawn(fun provisioner_util:maybe_update_account/3
-                     ,[cb_context:account_id(Context)
-                      ,cb_context:auth_token(Context)
-                      ,cb_context:doc(Context)
-                      ]),
+    _ = kz_process:spawn(fun provisioner_util:maybe_update_account/3
+                        ,[cb_context:account_id(Context)
+                         ,cb_context:auth_token(Context)
+                         ,cb_context:doc(Context)
+                         ]),
     'ok'.
 
 -spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
@@ -342,12 +351,11 @@ put(Context, PathAccountId) ->
             unroll(ContextErr, NewAccountId);
         'throw':ContextErr ->
             unroll(ContextErr, NewAccountId);
-        _E:_R ->
-            ST = erlang:get_stacktrace(),
-            lager:debug("unexpected failure when creating account: ~s: ~p", [_E, _R]),
-            kz_util:log_stacktrace(ST),
-            unroll(Context, NewAccountId)
-    end.
+        ?STACKTRACE(_E, _R, ST)
+        lager:debug("unexpected failure when creating account: ~s: ~p", [_E, _R]),
+        kz_log:log_stacktrace(ST),
+        unroll(Context, NewAccountId)
+        end.
 
 -spec unroll(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 unroll(Context, NewAccountId) ->
@@ -383,19 +391,19 @@ put(Context, AccountId, ?RESELLER) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec delete_account(kz_term:api_ne_binary()) ->
-                            {'ok', kzd_accounts:doc() | 'undefined'} |
-                            {'error', kz_json_schema:validation_errors()} |
-                            kz_datamgr:data_error().
+          {'ok', kzd_accounts:doc() | 'undefined'} |
+          {'error', kz_json_schema:validation_errors()} |
+          kz_datamgr:data_error().
 delete_account(AccountId) ->
     kzdb_account:delete(AccountId).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kzs_util:format_account_id(Account),
 
     case kzdb_account:delete(AccountId) of
         {'ok', AccountJObj} ->
-            Context1 = cb_context:set_doc(Context, AccountJObj),
+            Context1 = crossbar_doc:handle_datamgr_success(AccountJObj, Context),
             _ = maybe_update_descendants_count(kzd_accounts:tree(AccountJObj)),
             _ = provisioner_util:maybe_delete_account(cb_context:account_id(Context)
                                                      ,cb_context:auth_token(Context)
@@ -428,8 +436,8 @@ delete(Context, AccountId, ?RESELLER) ->
 -spec maybe_update_descendants_count(kz_term:ne_binaries()) -> 'ok'.
 maybe_update_descendants_count([]) -> 'ok';
 maybe_update_descendants_count(Tree) ->
-    _ = kz_util:spawn(fun crossbar_util:descendants_count/1, [lists:last(Tree)]),
-    'ok'.
+    _CountPid = kz_process:spawn(fun crossbar_util:descendants_count/1, [lists:last(Tree)]),
+    lager:debug("descendants count calculation in ~p from last in ~p", [_CountPid, Tree]).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -437,8 +445,8 @@ maybe_update_descendants_count(Tree) ->
 %%------------------------------------------------------------------------------
 -spec create_apps_store_doc(kz_term:ne_binary()) -> 'ok'.
 create_apps_store_doc(AccountId) ->
-    _ = kz_util:spawn(fun cb_apps_util:create_apps_store_doc/1, [AccountId]),
-    'ok'.
+    _AppsPid = kz_process:spawn(fun cb_apps_util:create_apps_store_doc/1, [AccountId]),
+    lager:debug("creating apps store doc in ~p", [_AppsPid]).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -490,17 +498,10 @@ move_account(Context, AccountId) ->
 
 -spec prepare_context(kz_term:api_ne_binary(), cb_context:context()) -> cb_context:context().
 prepare_context('undefined', Context) ->
-    cb_context:set_account_db(Context, ?KZ_ACCOUNTS_DB);
+    cb_context:set_db_name(Context, ?KZ_ACCOUNTS_DB);
 prepare_context(Account, Context) ->
-    AccountId = kz_util:format_account_id(Account),
-    AccountDb = kz_util:format_account_db(Account),
-    prepare_context(Context, AccountId, AccountDb).
-
--spec prepare_context(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary()) -> cb_context:context().
-prepare_context(Context, AccountId, AccountDb) ->
-    cb_context:setters(Context, [{fun cb_context:set_account_db/2, AccountDb}
-                                ,{fun cb_context:set_account_id/2, AccountId}
-                                ]).
+    AccountId = kzs_util:format_account_id(Account),
+    cb_context:setters(Context, [{fun cb_context:set_account_id/2, AccountId}]).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -514,7 +515,9 @@ validate_request(AccountId, Context) ->
     case kzd_accounts:validate(ParentId, AccountId, ReqJObj) of
         {'true', AccountJObj} ->
             lager:debug("validated account object"),
-            update_validated_request(AccountId, Context, AccountJObj);
+            %% Some checks depend on private_fields like `pvt_tree'.
+            NewAccountJObj = maybe_add_pvt_fields(AccountId, AccountJObj),
+            update_validated_request(AccountId, Context, NewAccountJObj);
         {'validation_errors', ValidationErrors} ->
             lager:info("validation errors on account"),
             add_validation_errors(Context, ValidationErrors);
@@ -523,6 +526,15 @@ validate_request(AccountId, Context) ->
             cb_context:add_system_error(Error, Context)
     end.
 
+-spec maybe_add_pvt_fields(kz_term:api_ne_binary(), kzd_accounts:doc()) -> kz_json:object().
+maybe_add_pvt_fields('undefined', AccountJObj) -> %% New account (create)
+    AccountJObj;
+maybe_add_pvt_fields(AccountId, AccountJObj) -> %% Existing account (update)
+    {'ok', Existing} = kzd_accounts:fetch(AccountId),
+    %% Merge private_fields into req obj in order to allow checks to read and use them when needed.
+    kz_json:merge(kz_doc:private_fields(Existing), AccountJObj).
+
+-spec update_validated_request(kz_term:ne_binary(), cb_context:context(), kzd_accounts:doc()) -> cb_context:context().
 update_validated_request(AccountId, Context, AccountJObj) ->
     Updates = [{fun cb_context:set_req_data/2, AccountJObj}
               ,{fun cb_context:set_doc/2, AccountJObj}
@@ -551,6 +563,7 @@ add_validation_errors(Context, ValidationErrors) ->
 add_validation_error({Path, Reason, Msg}, Context) ->
     cb_context:add_validation_error(Path, Reason, Msg, Context).
 
+-spec extra_validation(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 extra_validation(AccountId, Context) ->
     Extra = [fun(_, C) -> maybe_import_enabled(C) end
             ,fun disallow_direct_clients/2
@@ -567,7 +580,7 @@ disallow_direct_clients(AccountId, Context) ->
     maybe_disallow_direct_clients(AccountId, Context, ShouldAllow).
 
 -spec maybe_disallow_direct_clients(kz_term:api_binary(), cb_context:context(), boolean()) ->
-                                           cb_context:context().
+          cb_context:context().
 maybe_disallow_direct_clients(_AccountId, Context, 'true') ->
     Context;
 maybe_disallow_direct_clients(_AccountId, Context, 'false') ->
@@ -599,11 +612,11 @@ maybe_import_enabled(Context) ->
     end.
 
 -spec maybe_import_enabled(cb_context:context(), crossbar_status()) ->
-                                  cb_context:context().
+          cb_context:context().
 maybe_import_enabled(Context, 'success') ->
     AuthAccountId = cb_context:auth_account_id(Context),
     Doc = cb_context:doc(Context),
-    Enabled = kz_json:get_value(<<"enabled">>, Doc),
+    Enabled = kzd_accounts:enabled(Doc),
     NewDoc = kz_json:delete_key(<<"enabled">>, Doc),
     lager:debug("import enabled: ~p", [Enabled]),
     case lists:member(AuthAccountId, kzd_accounts:tree(Doc)) of
@@ -611,15 +624,12 @@ maybe_import_enabled(Context, 'success') ->
         'true' -> maybe_import_enabled(Context, NewDoc, Enabled)
     end.
 
--spec maybe_import_enabled(cb_context:context(), kz_json:object(), kz_term:api_binary()) ->
-                                  cb_context:context().
-maybe_import_enabled(Context, _, 'undefined') -> Context;
-maybe_import_enabled(Context, Doc, IsEnabled) ->
-    NewDoc = case kz_term:is_true(IsEnabled) of
-                 'true' -> kzd_accounts:enable(Doc);
-                 'false' -> kzd_accounts:disable(Doc)
-             end,
-    cb_context:set_doc(Context, NewDoc).
+-spec maybe_import_enabled(cb_context:context(), kzd_accounts:doc(), boolean()) ->
+          cb_context:context().
+maybe_import_enabled(Context, Doc, 'true') ->
+    cb_context:set_doc(Context, kzd_accounts:enable(Doc));
+maybe_import_enabled(Context, Doc, 'false') ->
+    cb_context:set_doc(Context, kzd_accounts:disable(Doc)).
 
 %%------------------------------------------------------------------------------
 %% @doc Load an account document from the database
@@ -726,11 +736,11 @@ leak_pvt_enabled(Context) ->
     case kzd_accounts:is_enabled(cb_context:doc(Context)) of
         'true' ->
             cb_context:set_resp_data(Context
-                                    ,kz_json:set_value(<<"enabled">>, 'true', RespJObj)
+                                    ,kzd_accounts:set_enabled(RespJObj, 'true')
                                     );
         'false' ->
             cb_context:set_resp_data(Context
-                                    ,kz_json:set_value(<<"enabled">>, 'false', RespJObj)
+                                    ,kzd_accounts:set_enabled(RespJObj, 'false')
                                     )
     end.
 
@@ -797,13 +807,13 @@ leak_notification_preference(Context, Pref) ->
     cb_context:set_resp_data(Context, UpdatedRespJObj).
 
 -spec leak_trial_time_left(cb_context:context()) ->
-                                  cb_context:context().
+          cb_context:context().
 leak_trial_time_left(Context) ->
     JObj = cb_context:doc(Context),
     leak_trial_time_left(Context, JObj, kzd_accounts:trial_expiration(JObj)).
 
 -spec leak_trial_time_left(cb_context:context(), kz_json:object(), kz_term:api_integer()) ->
-                                  cb_context:context().
+          cb_context:context().
 leak_trial_time_left(Context, _JObj, 'undefined') ->
     RespData = kz_json:delete_key(<<"trial_time_left">>
                                  ,cb_context:resp_data(Context)
@@ -822,35 +832,12 @@ leak_trial_time_left(Context, JObj, _Expiration) ->
 %%------------------------------------------------------------------------------
 -spec load_children(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_children(AccountId, Context) ->
-    load_children(AccountId, Context, cb_context:api_version(Context)).
-
--spec load_children(kz_term:ne_binary(), cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
-load_children(AccountId, Context, ?VERSION_1) ->
-    load_children_v1(AccountId, Context);
-load_children(AccountId, Context, _Version) ->
-    load_paginated_children(AccountId, Context).
-
--spec load_children_v1(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
-load_children_v1(AccountId, Context) ->
-    crossbar_doc:load_view(?AGG_VIEW_CHILDREN
-                          ,[{'startkey', [AccountId]}
-                           ,{'endkey', [AccountId, kz_json:new()]}
-                           ]
-                          ,Context
-                          ,fun normalize_view_results/2
-                          ).
-
--spec load_paginated_children(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
-load_paginated_children(AccountId, Context) ->
-    StartKey = start_key(Context),
-    fix_envelope(
-      crossbar_doc:load_view(?AGG_VIEW_CHILDREN
-                            ,[{'startkey', [AccountId, StartKey]}
-                             ,{'endkey', [AccountId, kz_json:new()]}
-                             ]
-                            ,Context
-                            ,fun normalize_view_results/2
-                            )).
+    Options = [{'databases', [?KZ_ACCOUNTS_DB]}
+              ,{'startkey', [AccountId]}
+              ,{'endkey', [AccountId, crossbar_view:high_value_key()]}
+              ,{'mapper', crossbar_view:get_value_fun()}
+              ],
+    crossbar_view:load(Context, ?AGG_VIEW_CHILDREN, Options).
 
 %%------------------------------------------------------------------------------
 %% @doc Load a summary of the descendants of this account
@@ -858,36 +845,12 @@ load_paginated_children(AccountId, Context) ->
 %%------------------------------------------------------------------------------
 -spec load_descendants(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_descendants(AccountId, Context) ->
-    load_descendants(AccountId, Context, cb_context:api_version(Context)).
-
-load_descendants(AccountId, Context, ?VERSION_1) ->
-    load_descendants_v1(AccountId, Context);
-load_descendants(AccountId, Context, _Version) ->
-    load_paginated_descendants(AccountId, Context).
-
--spec load_descendants_v1(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
-load_descendants_v1(AccountId, Context) ->
-    crossbar_doc:load_view(?AGG_VIEW_DESCENDANTS
-                          ,[{'startkey', [AccountId]}
-                           ,{'endkey', [AccountId, kz_json:new()]}
-                           ]
-                          ,Context
-                          ,fun normalize_view_results/2
-                          ).
-
--spec load_paginated_descendants(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
-load_paginated_descendants(AccountId, Context) ->
-    StartKey = start_key(Context),
-    lager:debug("account ~s startkey ~s", [AccountId, StartKey]),
-    fix_envelope(
-      crossbar_doc:load_view(?AGG_VIEW_DESCENDANTS
-                            ,[{'startkey', [AccountId, StartKey]}
-                             ,{'endkey',  [AccountId, kz_json:new()]}
-                             ]
-                            ,Context
-                            ,fun normalize_view_results/2
-                            )
-     ).
+    Options = [{'databases', [?KZ_ACCOUNTS_DB]}
+              ,{'startkey', [AccountId]}
+              ,{'endkey', [AccountId, crossbar_view:high_value_key()]}
+              ,{'mapper', crossbar_view:get_value_fun()}
+              ],
+    crossbar_view:load(Context, ?AGG_VIEW_DESCENDANTS, Options).
 
 %%------------------------------------------------------------------------------
 %% @doc Load a summary of the siblings of this account
@@ -901,41 +864,18 @@ load_siblings(AccountId, Context) ->
          andalso kapps_config:get_is_true(?ACCOUNTS_CONFIG_CAT, <<"allow_sibling_listing">>, 'true')
         )
     of
-        'true' -> load_siblings(AccountId, Context, cb_context:api_version(Context));
+        'true' -> load_paginated_siblings(AccountId, Context);
         'false' -> cb_context:add_system_error('forbidden', Context)
-    end.
-
--spec load_siblings(kz_term:ne_binary(), cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
-load_siblings(AccountId, Context, ?VERSION_1) ->
-    load_siblings_v1(AccountId, Context);
-load_siblings(AccountId, Context, _Version) ->
-    load_paginated_siblings(AccountId, Context).
-
--spec load_siblings_v1(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
-load_siblings_v1(AccountId, Context) ->
-    Context1 = crossbar_doc:load_view(?AGG_VIEW_PARENT
-                                     ,[{'startkey', AccountId}
-                                      ,{'endkey', AccountId}
-                                      ]
-                                     ,Context
-                                     ),
-    case cb_context:resp_status(Context1) of
-        'success' ->
-            load_siblings_results(AccountId, Context1, cb_context:doc(Context1));
-        _Status ->
-            cb_context:add_system_error('bad_identifier', kz_json:from_list([{<<"cause">>, AccountId}]), Context)
     end.
 
 -spec load_paginated_siblings(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_paginated_siblings(AccountId, Context) ->
-    Context1 =
-        fix_envelope(
-          crossbar_doc:load_view(?AGG_VIEW_PARENT
-                                ,[{'startkey', AccountId}
-                                 ,{'endkey', AccountId}
-                                 ]
-                                ,Context
-                                )),
+    Options = [{'databases', [?KZ_ACCOUNTS_DB]}
+              ,{'startkey', AccountId}
+              ,{'endkey', AccountId}
+              ,{'mapper', crossbar_view:get_value_fun()}
+              ],
+    Context1 = crossbar_view:load(Context, ?AGG_VIEW_PARENT, Options),
     case cb_context:resp_status(Context1) of
         'success' ->
             load_siblings_results(AccountId, Context1, cb_context:doc(Context1));
@@ -945,41 +885,10 @@ load_paginated_siblings(AccountId, Context) ->
 
 -spec load_siblings_results(kz_term:ne_binary(), cb_context:context(), kz_json:objects()) -> cb_context:context().
 load_siblings_results(_AccountId, Context, [JObj|_]) ->
-    Parent = kz_json:get_value([<<"value">>, <<"id">>], JObj),
+    Parent = kz_doc:id(JObj),
     load_children(Parent, Context);
 load_siblings_results(AccountId, Context, _) ->
     cb_context:add_system_error('bad_identifier', kz_json:from_list([{<<"cause">>, AccountId}]),  Context).
-
--spec start_key(cb_context:context()) -> binary().
-start_key(Context) ->
-    case crossbar_doc:start_key(Context) of
-        'undefined' -> <<>>;
-        Key -> Key
-    end.
-
--spec fix_envelope(cb_context:context()) -> cb_context:context().
-fix_envelope(Context) ->
-    RespData = lists:reverse(cb_context:resp_data(Context)),
-    RespEnv = lists:foldl(fun fix_envelope_fold/2
-                         ,cb_context:resp_envelope(Context)
-                         ,[<<"start_key">>, <<"next_start_key">>]
-                         ),
-    cb_context:set_resp_envelope(cb_context:set_resp_data(Context, RespData), RespEnv).
-
--spec fix_envelope_fold(binary(), kz_json:object()) -> kz_json:object().
-fix_envelope_fold(Key, JObj) ->
-    case fix_start_key(kz_json:get_value(Key, JObj)) of
-        'undefined' -> kz_json:delete_key(Key, JObj);
-        V -> kz_json:set_value(Key, V, JObj)
-    end.
-
--spec fix_start_key(kz_term:api_binary() | list()) -> kz_term:api_binary().
-fix_start_key('undefined') -> 'undefined';
-fix_start_key(<<_/binary>> = StartKey) -> StartKey;
-fix_start_key([StartKey]) -> StartKey;
-fix_start_key([_AccountId, [_|_]=Keys]) -> lists:last(Keys);
-fix_start_key([_AccountId, StartKey]) -> StartKey;
-fix_start_key([StartKey|_T]) -> StartKey.
 
 -spec load_account_tree(cb_context:context()) -> cb_context:context().
 load_account_tree(Context) ->
@@ -1013,10 +922,7 @@ format_account_tree_results(Context, JObjs) ->
 %%------------------------------------------------------------------------------
 -spec load_parents(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_parents(AccountId, Context) ->
-    Context1 = crossbar_doc:load_view(?AGG_VIEW_SUMMARY
-                                     ,[]
-                                     ,cb_context:set_account_db(Context, ?KZ_ACCOUNTS_DB)
-                                     ),
+    Context1 = crossbar_view:load(Context, ?AGG_VIEW_SUMMARY, [{'databases', [?KZ_ACCOUNTS_DB]}]),
     case cb_context:resp_status(Context1) of
         'success' -> load_parent_tree(AccountId, Context1);
         _Status -> Context1
@@ -1077,38 +983,27 @@ account_from_tree(JObj) ->
                       ]).
 
 %%------------------------------------------------------------------------------
-%% @doc Normalizes the results of a view.
-%% @end
-%%------------------------------------------------------------------------------
--spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
-normalize_view_results(JObj, Acc) ->
-    [kz_json:get_value(<<"value">>, JObj)|Acc].
-
-%%------------------------------------------------------------------------------
 %% @doc This function will attempt to load the context with the db name of
 %% for this account
 %% @end
 %%------------------------------------------------------------------------------
 -spec load_account_db(cb_context:context(), kz_term:ne_binary() | kz_term:ne_binaries()) ->
-                             cb_context:context().
+          cb_context:context().
 load_account_db(Context, [AccountId|_]) ->
     load_account_db(Context, AccountId);
 load_account_db(Context, AccountId) when is_binary(AccountId) ->
     case kzd_accounts:fetch(AccountId) of
         {'ok', JObj} ->
-            AccountDb = kz_util:format_account_db(AccountId),
-            lager:debug("account ~s db exists, setting operating database as ~s", [AccountId, AccountDb]),
+            lager:debug("account ~s db exists", [AccountId]),
             ResellerId = kz_services_reseller:find_id(AccountId),
             cb_context:setters(Context
                               ,[{fun cb_context:set_resp_status/2, 'success'}
-                               ,{fun cb_context:set_account_db/2, AccountDb}
                                ,{fun cb_context:set_account_id/2, AccountId}
                                ,{fun cb_context:set_account_name/2, kzd_accounts:name(JObj)}
                                ,{fun cb_context:set_reseller_id/2, ResellerId}
                                ]);
         {'error', 'not_found'} ->
-            Msg = kz_json:from_list([{<<"cause">>, AccountId}
-                                    ]),
+            Msg = kz_json:from_list([{<<"cause">>, AccountId}]),
             cb_context:add_system_error('bad_identifier', Msg, Context);
         {'error', _R} ->
             crossbar_util:response_db_fatal(Context)
@@ -1157,7 +1052,6 @@ notify_new_account(Context, _AuthDoc) ->
              ,{<<"Account-Realm">>, kzd_accounts:realm(JObj)}
              ,{<<"Account-API-Key">>, kzd_accounts:api_key(JObj)}
              ,{<<"Account-ID">>, cb_context:account_id(Context)}
-             ,{<<"Account-DB">>, cb_context:account_db(Context)}
               | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
              ],
     kapps_notify_publisher:cast(Notify, fun kapi_notifications:publish_new_account/1).

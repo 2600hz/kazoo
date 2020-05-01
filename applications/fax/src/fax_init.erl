@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(fax_init).
@@ -23,14 +27,22 @@ start_link() ->
 
     Workers = kapps_config:get_integer(?CONFIG_CAT, <<"workers">>, 50),
     %% Name, NbAcceptors, Transport, TransOpts, Protocol, ProtoOpts
-    cowboy:start_clear('fax_file'
-                      ,[{'port', ?PORT}
-                       ,{'num_acceptors', Workers}
-                       ]
-                      ,#{'env' => #{'dispatch' => Dispatch}}
-                      ),
+    _ = start_listener(Workers, Dispatch, ?PORT),
+
     fax_maintenance:refresh_views(),
+    _ = fax_ra:start(),
     'ignore'.
+
+start_listener(Workers, Dispatch, Port) ->
+    case cowboy:start_clear('fax_file'
+                           ,#{'socket_opts' => [{'port', Port}]
+                             ,'num_acceptors' => Workers
+                             }
+                           ,#{'env' => #{'dispatch' => Dispatch}})
+    of
+        {error,eaddrinuse} -> start_listener(Workers, Dispatch, Port+1);
+        _Other -> _Other
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc Ensures that all exchanges used are declared.
@@ -39,7 +51,6 @@ start_link() ->
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
     _ = kapi_fax:declare_exchanges(),
-    _ = kapi_xmpp:declare_exchanges(),
     _ = kapi_conf:declare_exchanges(),
     _ = kapi_notifications:declare_exchanges(),
     _ = kapi_offnet_resource:declare_exchanges(),

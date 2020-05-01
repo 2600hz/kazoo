@@ -89,13 +89,14 @@
 -export_type([sleeper/0, cron/0, execargs/0, status/0, schedule/0]).
 
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
+-include_lib("kazoo_stdlib/include/kz_log.hrl").
 
 -define(SERVER, ?MODULE).
 
 -record(state, {schedule :: schedule()
                ,exec :: execargs()
                ,task_pid :: pid()
-               ,status :: status() | undefined
+               ,status :: status() | 'undefined'
                ,next
                }).
 -type state() :: #state{}.
@@ -325,14 +326,13 @@ apply_task(Exec) ->
                 apply(F, A)
         end
     catch
-        Error:Reason ->
-            Stacktrace = erlang:get_stacktrace(),
-            Format = "Task ~p in process ~p with value:~n~p",
-            Message = lists:flatten(io_lib:format(
-                                      Format,
-                                      [Error, self(), {Reason, Stacktrace}])),
-            error_logger:error_report(Message)
-    end.
+        ?STACKTRACE(Error, Reason, ST)
+        Format = "Task ~p in process ~p with value:~n~p",
+        Message = lists:flatten(
+                    io_lib:format(Format, [Error, self(), {Reason, ST}])
+                   ),
+        error_logger:error_report(Message)
+        end.
 
 -spec time_to_wait_millis(kz_time:datetime(), kz_time:datetime()) -> integer().
 time_to_wait_millis(CurrentDateTime, NextDateTime) ->
@@ -420,7 +420,7 @@ advance_seconds(DateTime, Seconds) ->
     calendar:gregorian_seconds_to_datetime(Seconds1).
 
 -spec extract_integers([rangespec()|listspec()], integer(), integer()) ->
-                              [integer()].
+          [integer()].
 extract_integers(Spec, Min, Max) when Min < Max ->
     extract_integers(Spec, Min, Max, []).
 

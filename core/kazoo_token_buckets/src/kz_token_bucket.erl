@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2019, 2600Hz
+%%% @copyright (C) 2013-2020, 2600Hz
 %%% @doc Implementation of a
 %%% <a href="https://en.wikipedia.org/wiki/Token_bucket#The_token_bucket_algorithm">Token Bucket</a>
 %%% as `gen_server;.
@@ -13,6 +13,10 @@
 %%% '''
 %%%
 %%% @author James Aimonetti
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_token_bucket).
@@ -167,7 +171,7 @@ normalize_fill_time(_) -> 'second'.
 %%------------------------------------------------------------------------------
 -spec init(list()) -> {'ok', state()}.
 init([Max, FillRate, FillAsBlock, FillTime]) ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     lager:debug("starting token bucket with ~b max, filling at ~b/~s, in a block: ~s"
                ,[Max, FillRate,FillTime, FillAsBlock]
                ),
@@ -226,7 +230,7 @@ handle_cast({'credit', Req}, #state{tokens=Current
             {'noreply', State#state{tokens=N}}
     end;
 handle_cast({'name', Name}, State) ->
-    kz_util:put_callid(Name),
+    kz_log:put_callid(Name),
     lager:debug("updated name to ~p", [Name]),
     {'noreply', State};
 handle_cast('stop', State) ->
@@ -313,7 +317,7 @@ start_fill_timer(Timeout) ->
     erlang:start_timer(Timeout, self(), ?TOKEN_FILL_TIME).
 
 -spec add_tokens(pos_integer(), non_neg_integer(), pos_integer(), boolean(), fill_rate_time() | pos_integer()) ->
-                        non_neg_integer().
+          non_neg_integer().
 add_tokens(Max, Count, FillRate, 'true', _FillTime) ->
     constrain(Max, Count, FillRate);
 add_tokens(Max, Count, FillRate, 'false', FillTime) ->

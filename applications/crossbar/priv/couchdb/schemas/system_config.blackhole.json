@@ -16,7 +16,8 @@
                 "bh_fax",
                 "bh_conference",
                 "bh_events",
-                "bh_authz_subscribe"
+                "bh_authz_subscribe",
+                "bh_presence"
             ],
             "description": "blackhole autoload modules",
             "items": {
@@ -45,6 +46,10 @@
         "ip": {
             "description": "blackhole ip",
             "type": "string"
+        },
+        "max_connections_per_ip": {
+            "description": "blackhole max_connections_per_ip",
+            "type": "integer"
         },
         "port": {
             "default": 5555,
@@ -82,6 +87,10 @@
             "default": 100,
             "description": "blackhole ssl_workers",
             "type": "integer"
+        },
+        "url": {
+            "description": "The advertised URL of the Kazoo websocket",
+            "type": "string"
         },
         "use_plaintext": {
             "default": true,

@@ -1,9 +1,12 @@
-ROOT = ../..
+CWD = $(shell pwd -P)
+ROOT = $(realpath $(CWD)/../..)
 PROJECT = kazoo_proper
 
 ERLC_OPTS = +'{lager_extra_sinks, [data]}'
 
 MP3 = priv/mp3.mp3
+
+COMPILE_MOAR = assets
 
 all: compile assets
 

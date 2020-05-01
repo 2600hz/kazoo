@@ -7,6 +7,8 @@
 *.plt
 *.app
 .deps.mk
+.deps.rules
+.test.deps
 *.beam
 *.so
 *.o
@@ -28,8 +30,8 @@ erlang.mk
 
 deps/
 
-core/kazoo/src/kz_mime.erl
-core/kazoo/mime.types
+core/kazoo_web/src/kz_mime.erl
+core/kazoo_web/mime.types
 
 applications/*/priv/archive_data/*
 applications/registrar/c_src/env.mk
@@ -37,8 +39,9 @@ applications/registrar/c_src/env.mk
 core/sup/sup
 .rebar/
 
-core/kazoo_number_manager/dialcodes.json
-core/kazoo_number_manager/src/knm_iso3166a2_itu.erl
+core/kazoo_numbers/dialcodes.json
+core/kazoo_numbers/src/knm_iso3166a2_itu.erl
+core/kazoo_numbers/src/knm_iso3166_util.erl
 
 make/erlang-formatter/
 /TAGS
@@ -71,7 +74,9 @@ compile_commands.json
 /make/.deps.mk.*
 /make/circleci
 /core/*/cover/*.html
+/core/*/cover/*.xml
 /applications/*/cover/*.html
+/applications/*/cover/*.xml
 
 /applications/crossbar/priv/couchdb/schemas/port_requests.to_scheduled.json
 
@@ -86,3 +91,11 @@ core/kazoo_proper/priv/mp3.mp3
 *.md.bak
 *.md.new
 .kerl
+/doc/engineering/.org/proper.pdf
+/doc/engineering/.org/proper.tex
+/todo.org
+*.tar
+/make/pest-*
+# asdf-vm "local" versions handler
+.tool-versions
+/erlang_ls.config

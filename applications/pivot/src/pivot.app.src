@@ -1,5 +1,6 @@
 {application,pivot,
-             [{applications,[kazoo,kazoo_amqp,kazoo_call,kazoo_modb,
+             [{applications,[kazoo,kazoo_amqp,kazoo_apps,kazoo_call,
+                             kazoo_data,kazoo_documents,kazoo_modb,
                              kazoo_schemas,kazoo_stdlib,kazoo_translator,
                              kazoo_web,kernel,lager,stdlib]},
               {description,"Pivot - Accept 3rd party dialplan commands to control calls"},

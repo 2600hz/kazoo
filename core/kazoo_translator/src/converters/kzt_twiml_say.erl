@@ -1,7 +1,11 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Execute the 'Say' verb
 %%% @author James Aimonetti
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kzt_twiml_say).
@@ -11,8 +15,8 @@
 -include("kzt.hrl").
 
 -spec exec(kapps_call:call(), kz_types:xml_els() | kz_types:xml_texts(), kz_types:xml_attribs()) ->
-                  {'ok', kapps_call:call()} |
-                  {'error', _, kapps_call:call()}.
+          {'ok', kapps_call:call()} |
+          {'error', _, kapps_call:call()}.
 exec(Call, XmlText, Attrs) ->
     kapps_call_command:answer(Call),
     SayMe = kz_xml:texts_to_binary(XmlText, kapps_config:get_integer(<<"pivot">>, <<"tts_texts_size">>, ?TTS_SIZE_LIMIT)),

@@ -1,10 +1,15 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Renders a custom account email template, or the system default,
 %%% and sends the email with voicemail attachment to the user.
 %%%
 %%%
 %%% @author Karl Anderson <karl@2600hz.org>
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(notify_new_account).
@@ -38,7 +43,7 @@ init() ->
 -spec handle_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = kapi_notifications:new_account_v(JObj),
-    kz_util:put_callid(JObj),
+    kz_log:put_callid(JObj),
 
     lager:debug("a new account has been created, sending email notification"),
 
@@ -48,7 +53,7 @@ handle_req(JObj, _Props) ->
 
     AccountDb = case {kz_json:get_value(<<"Account-DB">>, JObj), kz_json:get_value(<<"Account-ID">>, JObj)} of
                     {'undefined', 'undefined'} -> 'undefined';
-                    {'undefined', Id1} -> kz_util:format_account_id(Id1, 'encoded');
+                    {'undefined', Id1} -> kzs_util:format_account_db(Id1);
                     {Id2, _} -> Id2
                 end,
 
@@ -82,7 +87,7 @@ handle_req(JObj, _Props) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec create_template_props(kz_json:object(), kz_json:object(), kz_json:object(), kz_json:objects()) ->
-                                   kz_term:proplist().
+          kz_term:proplist().
 create_template_props(Event, Admin, Account, AllDocs) ->
     Owners = [{kz_json:get_value([<<"doc">>, <<"_id">>], J1), kz_json:get_value(<<"doc">>, J1)}
               || J1 <- AllDocs,

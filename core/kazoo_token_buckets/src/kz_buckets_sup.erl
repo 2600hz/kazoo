@@ -1,7 +1,11 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Supervisor for Kazoo Token Bucket Servers
 %%% @author James Aimonetti
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_buckets_sup).
@@ -36,7 +40,7 @@ start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 -spec start_bucket(pos_integer(), pos_integer(), kz_token_bucket:fill_rate_time()) ->
-                          kz_types:sup_startchild_ret().
+          kz_types:sup_startchild_ret().
 start_bucket(MaxTokens, FillRate, FillTime) ->
     supervisor:start_child(?SERVER, [MaxTokens, FillRate, 'true', FillTime]).
 

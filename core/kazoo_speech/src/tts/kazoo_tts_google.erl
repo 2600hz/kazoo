@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2018-2019, 2600Hz
+%%% @copyright (C) 2018-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kazoo_tts_google).
@@ -52,7 +56,7 @@ get_mapped_voice(Voice) ->
     end.
 
 -spec get_mapped_voice(kz_term:ne_binary(), 'nomatch' | tuple()) ->
-                              mapped_voice().
+          mapped_voice().
 get_mapped_voice(_Voice, 'nomatch') -> 'undefined';
 get_mapped_voice(Voice, _Match) ->
     case get_matched_voice(Voice) of
@@ -108,7 +112,7 @@ req_headers() ->
     ].
 
 -spec build_request_body(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), audioEncoding()) ->
-                                kz_term:ne_binary().
+          kz_term:ne_binary().
 build_request_body(Text, Voice, Language, GoogleFormat) ->
     Req = kz_json:set_values([{<<"input">>, kazoo_tts_google_utils:getJson(#synthesisInput{text=Text})}
                              ,{<<"voice">>, kazoo_tts_google_utils:getJson(#voiceSelectionParams{languageCode=Language, name=Voice})}

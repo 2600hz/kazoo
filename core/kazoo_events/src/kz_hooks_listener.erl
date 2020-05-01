@@ -1,9 +1,13 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2019, 2600Hz
+%%% @copyright (C) 2013-2020, 2600Hz
 %%% @doc Listens for a list of events and gproc-sends them out to folks who
 %%% want them
 %%%
 %%% @author James Aimonetti
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_hooks_listener).
@@ -29,6 +33,9 @@
                     ,<<"CHANNEL_ANSWER">>
                     ,<<"CHANNEL_DESTROY">>
                     ,<<"CHANNEL_BRIDGE">>
+                    ,<<"CHANNEL_UNBRIDGE">>
+                    ,<<"CHANNEL_DISCONNECTED">>
+                    ,<<"CHANNEL_CONNECTED">>
                     ]).
 -define(CALL_BINDING(Events), {'call', [{'restrict_to', Events}
                                        ,'federate'
@@ -76,7 +83,7 @@ start_link() ->
 %%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     lager:debug("started ~s", [?MODULE]),
     kapi_call:declare_exchanges(),
     {'ok', #state{}}.

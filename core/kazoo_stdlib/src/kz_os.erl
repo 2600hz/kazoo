@@ -1,7 +1,11 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Functions for interacting with the underlying system (assumes Linux).
 %%% @author Sean Wysor
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_os).
@@ -21,15 +25,15 @@
 
 %% @equiv cmd(Command, [])
 -spec cmd(iodata()) ->
-                 {'ok', kz_term:ne_binary()} |
-                 {'error', any(), binary()}.
+          {'ok', kz_term:ne_binary()} |
+          {'error', any(), binary()}.
 cmd(Command) ->
     cmd(Command, []).
 
 %% @equiv cmd(Command, Args, [])
 -spec cmd(iodata(), kz_term:proplist()) ->
-                 {'ok', kz_term:ne_binary()} |
-                 {'error', any(), binary()}.
+          {'ok', kz_term:ne_binary()} |
+          {'error', any(), binary()}.
 cmd(Command, Args) ->
     cmd(Command, Args, []).
 
@@ -78,8 +82,8 @@ cmd(Command, Args) ->
 %%------------------------------------------------------------------------------
 
 -spec cmd(iodata(), kz_term:proplist(), kz_term:proplist()) ->
-                 {'ok', kz_term:ne_binary()} |
-                 {'error', any(), binary()}.
+          {'ok', kz_term:ne_binary()} |
+          {'error', any(), binary()}.
 cmd(Command, Args, Options) ->
     Owner = props:get_value(<<"owner">>, Options, self()),
     CmdTimeout = props:get_value(<<"absolute_timeout">>, Options, ?DEFAULT_ABSOLUTE_TIMEOUT),
@@ -91,8 +95,8 @@ cmd(Command, Args, Options) ->
     monitor_cmd(Pid, Ref, CmdTimeout, 'undefined').
 
 -spec monitor_cmd(pid(), reference(), non_neg_integer(), kz_term:api_port()) ->
-                         {'ok', kz_term:ne_binary()}|
-                         {'error', any(), binary()}.
+          {'ok', kz_term:ne_binary()}|
+          {'error', any(), binary()}.
 monitor_cmd(Pid, Ref, Timeout, Port) ->
     receive
         {'port', NewPort, Pid} ->
@@ -121,10 +125,10 @@ monitor_cmd(Pid, Ref, Timeout, Port) ->
     end.
 
 -spec run_cmd(iodata(), kz_term:proplist(), kz_term:proplist()) ->
-                     {{'ok', kz_term:ne_binary()} |
-                      {'error', atom(), kz_term:ne_binary()}
-                     ,pid()
-                     }.
+          {{'ok', kz_term:ne_binary()} |
+           {'error', atom(), kz_term:ne_binary()}
+          ,pid()
+          }.
 run_cmd(Command, Args, Options) ->
     OwnerPid = props:get_value(<<"owner">>, Options),
     OwnerRef = erlang:monitor('process', OwnerPid),
@@ -143,9 +147,9 @@ run_cmd(Command, Args, Options) ->
     Out = cmd_read({Port, MaxSize, Timeout, OwnerRef}, <<>>),
     OwnerPid ! {Out, self()}.
 
--spec cmd_read({port(), integer(), integer(), reference()}, kz_term:binary()) ->
-                      {'ok', kz_term:ne_binary()} |
-                      {'error', atom(), kz_term:ne_binary()}.
+-spec cmd_read({port(), integer(), integer(), reference()}, binary()) ->
+          {'ok', kz_term:ne_binary()} |
+          {'error', atom(), binary()}.
 cmd_read({Port, _MaxSize, Timeout, OwnerRef}=LoopParams, Acc) ->
     receive
         {'DOWN', OwnerRef, _, _, _}  ->

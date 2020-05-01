@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc
 %%% @author Karl Anderson
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cf_page_group).
@@ -57,7 +62,7 @@ audio_option(Data) ->
     end.
 
 -spec send_page(kz_json:objects(), integer(), kz_json:object(), kz_json:object(), kapps_call:call()) ->
-                       {'error', 'timeout' | kz_json:object()} | {'ok', kz_json:object()}.
+          {'error', 'timeout' | kz_json:object()} | {'ok', kz_json:object()}.
 send_page(Endpoints, Timeout, CCVs, Options, Call) ->
     {CIDNumber, CIDName} = kz_attributes:caller_id(Call),
     lager:info("attempting page group of ~b members with caller-id (~s/~s)", [length(Endpoints), CIDNumber, CIDName]),
@@ -75,9 +80,9 @@ send_page(Endpoints, Timeout, CCVs, Options, Call) ->
 get_endpoints(undefined, Call) -> get_endpoints([], Call);
 get_endpoints(Members, Call) ->
     S = self(),
-    Builders = [kz_util:spawn(
+    Builders = [kz_process:spawn(
                   fun() ->
-                          kz_util:put_callid(kapps_call:call_id(Call)),
+                          kz_log:put_callid(kapps_call:call_id(Call)),
                           S ! {self(), catch kz_endpoint:build(EndpointId, Member, Call)}
                   end)
                 || {EndpointId, Member} <- resolve_endpoint_ids(Members, Call)
@@ -93,7 +98,7 @@ get_endpoints(Members, Call) ->
                 end, [], Builders).
 
 -spec resolve_endpoint_ids(kz_json:objects(), kapps_call:call()) ->
-                                  [{kz_term:ne_binary(), kz_json:object()}].
+          [{kz_term:ne_binary(), kz_json:object()}].
 resolve_endpoint_ids(Members, Call) ->
     [{Id, kz_json:set_value(<<"source">>, kz_term:to_binary(?MODULE), Member)}
      || {Type, Id, Member} <- resolve_endpoint_ids(Members, [], Call)
@@ -104,7 +109,7 @@ resolve_endpoint_ids(Members, Call) ->
 -type endpoint_intermediate() :: {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_object()}.
 -type endpoint_intermediates() :: [endpoint_intermediate()].
 -spec resolve_endpoint_ids(kz_json:objects(), endpoint_intermediates(), kapps_call:call()) ->
-                                  endpoint_intermediates().
+          endpoint_intermediates().
 resolve_endpoint_ids([], EndpointIds, _) ->
     EndpointIds;
 resolve_endpoint_ids([Member|Members], EndpointIds, Call) ->
@@ -138,7 +143,7 @@ resolve_endpoint_ids([Member|Members], EndpointIds, Call) ->
     end.
 
 -spec get_group_members(kz_json:object(), kz_term:ne_binary(), kapps_call:call()) ->
-                               kz_json:objects().
+          kz_json:objects().
 get_group_members(Member, Id, Call) ->
     AccountDb = kapps_call:account_db(Call),
     case kz_datamgr:open_cache_doc(AccountDb, Id) of

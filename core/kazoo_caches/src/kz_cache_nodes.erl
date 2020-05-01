@@ -1,6 +1,11 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2018-2019, 2600Hz
-%%% @doc
+%%% @copyright (C) 2018-2020, 2600Hz
+%%% @doc Handles flushing cached entries based on nodes coming and going
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_cache_nodes).
@@ -50,7 +55,7 @@ maybe_notify_expired(#state{expire_node_flush='true'}) ->
 maybe_notify_expired(#state{expire_node_flush='false'}) ->
     'ok'.
 
--spec handle_call(any(), kz_types:pid_ref(), state()) -> {'noreply', state()}.
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> {'noreply', state()}.
 handle_call(_Req, _From, Name) ->
     {'noreply', Name}.
 

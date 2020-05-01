@@ -1,0 +1,21 @@
+---
+name: kazoo-application-webhooks
+base_branch: origin/master
+metapackage:
+  - name: meta-kazoo-applications
+    type: required
+    branch: master
+    package: kazoo-application-webhooks
+base_core: kazoo
+template: kazoo-application.spec.tmpl
+package:
+  centos7:
+    name: kazoo-application-webhooks
+    summary: Kazoo core application
+    description: |
+      Provides HTTP callbacks for events within KAZOO
+    app_name: webhooks
+    license: MPL 2.0
+    group: Productivity/Telephony
+    url: https://2600hz.org/
+    vendor: 2600Hz

@@ -5,32 +5,32 @@
     "properties": {
         "accept_prompt": {
             "default": "tone_stream://%(250,50,440)",
-            "description": "callflow.dynamic_cid accept prompt",
+            "description": "The media that would be played when the new caller id is accepted",
             "type": "string"
         },
         "default_prompt": {
             "default": "dynamic-cid-enter_cid",
-            "description": "callflow.dynamic_cid default prompt",
+            "description": "The media that would be played to user to dial the new caller id",
             "type": "string"
         },
         "max_digits": {
             "default": 10,
-            "description": "callflow.dynamic_cid max digits",
+            "description": "Maximum length of the new caller id number",
             "type": "integer"
         },
         "min_digits": {
             "default": 10,
-            "description": "callflow.dynamic_cid min digits",
+            "description": "Minimum length of the new caller id number",
             "type": "integer"
         },
         "reject_prompt": {
             "default": "dynamic-cid-invalid_using_default",
-            "description": "callflow.dynamic_cid reject prompt",
+            "description": "The media that would be played when the new caller id is rejected",
             "type": "string"
         },
         "whitelist_regex": {
             "default": "\\d+",
-            "description": "callflow.dynamic_cid whitelist regex",
+            "description": "The regex to use for number to be matched against",
             "type": "string"
         }
     },

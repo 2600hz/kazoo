@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2014-2019, 2600Hz
+%%% @copyright (C) 2014-2020, 2600Hz
 %%% @doc A singular call is as an entire conversation as dialed by the caller,
 %%% and it may comprise of multiple "legs" or "calls".
 %%%
@@ -40,6 +40,11 @@
 %%%
 %%%
 %%% @author Benedict Chan <benchan@sendhub.com>
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cf_singular_call_hooks).

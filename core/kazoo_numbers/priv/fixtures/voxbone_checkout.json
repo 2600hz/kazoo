@@ -1,0 +1,11 @@
+{
+    "productCheckoutList": [
+        {
+            "message": null,
+            "orderReference": "50898DS3919643",
+            "productType": "DID",
+            "status": "SUCCESS"
+        }
+    ],
+    "status": "SUCCESS"
+}

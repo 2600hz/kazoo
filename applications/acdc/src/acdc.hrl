@@ -2,7 +2,7 @@
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 -include_lib("kazoo_stdlib/include/kz_log.hrl").
 -include_lib("kazoo_stdlib/include/kz_databases.hrl").
--include_lib("kazoo/include/kz_api_literals.hrl").
+-include_lib("kazoo_amqp/include/kz_api_literals.hrl").
 -include("acdc_config.hrl").
 
 -define(APP_NAME, <<"acdc">>).
@@ -30,6 +30,9 @@
 -define(NEW_CHANNEL_REG(AcctId, User), {'p', 'l', {'new_channel', AcctId, User}}).
 -define(NEW_CHANNEL_FROM(CallId), {'call_from', CallId}).
 -define(NEW_CHANNEL_TO(CallId, MemberCallId), {'call_to', CallId, MemberCallId}).
+
+-define(DESTROYED_CHANNEL_REG(AcctId, User), {'p', 'l', {'destroyed_channel', AcctId, User}}).
+-define(DESTROYED_CHANNEL(CallId, HangupCause), {'call_down', CallId, HangupCause}).
 
 -type abandon_reason() :: ?ABANDON_TIMEOUT | ?ABANDON_EXIT |
                           ?ABANDON_HANGUP.

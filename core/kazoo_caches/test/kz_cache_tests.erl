@@ -1,3 +1,12 @@
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2020, 2600Hz
+%%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
+%%% @end
+%%%-----------------------------------------------------------------------------
 -module(kz_cache_tests).
 
 -include_lib("eunit/include/eunit.hrl").
@@ -28,6 +37,9 @@ cache_test_() ->
                ,{"callbacks", fun callbacks/0}
                ,{"key timeout is flushed", fun key_timeout_is_flushed/0}
                ,{"bump key timeout", fun bump_key_timeout/0}
+               ,{"cache key for process", fun cache_key_for_process/0}
+               ,{"count keys", fun count_keys/0}
+               ,{"count keys and values", fun count_keys_values/0}
                ]
        end
       }
@@ -35,6 +47,7 @@ cache_test_() ->
     }.
 
 init() ->
+    application:ensure_all_started('kazoo_bindings'),
     {'ok', CachePid} = kz_cache_sup:start_link(?MODULE, ?BASE_TIMEOUT_MS),
     CachePid.
 
@@ -121,6 +134,36 @@ bump_key_timeout() ->
 
     timer:sleep(?BASE_TIMEOUT_MS * 2), % other side of the new timeout
     ?assertEqual({'error', 'not_found'}, kz_cache:peek_local(?MODULE, Key)).
+
+cache_key_for_process() ->
+    Key = kz_binary:rand_hex(5),
+    Value = kz_binary:rand_hex(5),
+
+    {Pid, Ref} = spawn_monitor(fun() -> cache_key_for_process(Key, Value) end),
+    Pid ! {self(), 'cache_key'},
+    receive
+        'cached' -> ?assertEqual({'ok', Value}, kz_cache:fetch_local(?MODULE, Key))
+    after 1000 -> exit('timeout')
+    end,
+
+    Pid ! 'exit',
+    receive
+        {'DOWN', Ref, 'process', Pid, 'normal'} ->
+            timer:sleep(10), % let DOWN propagate
+            ?assertEqual({'error', 'not_found'}, kz_cache:fetch_local(?MODULE, Key))
+    after 1000 ->
+            exit('timeout')
+    end.
+
+cache_key_for_process(Key, Value) ->
+    receive
+        'exit' -> 'ok';
+        {Parent, 'cache_key'} ->
+            kz_cache:store_local(?MODULE, Key, Value, [{'monitor', [self()]}]),
+            Parent ! 'cached',
+            cache_key_for_process(Key, Value)
+    after 2000 -> exit('timeout')
+    end.
 
 key_erase() ->
     Key = kz_binary:rand_hex(5),
@@ -219,3 +262,20 @@ receive_callback() ->
 writer_job(Key, Value, Timeout) ->
     timer:sleep(Timeout div 2),
     kz_cache:store_local(?MODULE, Key, Value).
+
+count_keys() ->
+    KVs = [{Key, kz_binary:rand_hex(4)} || Key <- lists:seq(1,6)],
+    [kz_cache:store_local(?MODULE, Key, Value) || {Key, Value} <- KVs],
+
+    ?assertEqual(3, kz_cache:count_local(?MODULE, '$1', {'>', '$1', 3}, 'undefined', 'undefined')),
+    ?assertEqual(3, kz_cache:count_local(?MODULE, '$1', {'>', '$1', 3}, '_', 'undefined')),
+    ?assertEqual(1, kz_cache:count_local(?MODULE, 2)),
+    ?assertEqual(0, kz_cache:count_local(?MODULE, 10)).
+
+count_keys_values() ->
+    KVs = [{Key, Key*2} || Key <- lists:seq(1,6)],
+    [kz_cache:store_local(?MODULE, Key, Value) || {Key, Value} <- KVs],
+
+    ?assertEqual(1, kz_cache:count_local(?MODULE, '$1', {'>', '$1', 3}, 8, 'undefined')),
+    ?assertEqual(1, kz_cache:count_local(?MODULE, 2, 4)),
+    ?assertEqual(1, kz_cache:count_local(?MODULE, '_', 'undefined', '$1', {'=:=', '$1', 12})).

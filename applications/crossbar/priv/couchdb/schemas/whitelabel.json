@@ -70,7 +70,7 @@
             "description": "Parameters related to white-labeling port requests",
             "properties": {
                 "authority": {
-                    "description": "The email(s) to be used for admin port requests",
+                    "description": "The account ID(s) to be used for administrating port requests",
                     "oneOf": [
                         {
                             "type": "string"

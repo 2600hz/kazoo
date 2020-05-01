@@ -12,9 +12,10 @@
         "list_by_account_id": {
             "map": [
                 "function(doc) {",
-                "  if (doc.pvt_type != 'app' || doc.pvt_deleted )",
-                "    return;",
-                "  emit([doc.pvt_account_id, doc.pvt_auth_provider], {_id : doc.pvt_auth_provider});",
+                "  if (doc.pvt_type != 'app' || doc.pvt_deleted) return;",
+                "  emit([doc.pvt_account_id, doc.pvt_auth_provider], {",
+                "    _id: doc.pvt_auth_provider",
+                "  });",
                 "}"
             ],
             "reduce": "_count"
@@ -22,10 +23,9 @@
         "list_by_type": {
             "map": [
                 "function(doc) {",
-                "  if (doc.pvt_type != 'provider' || doc.pvt_deleted)",
-                "    return;",
+                "  if (doc.pvt_type != 'provider' || doc.pvt_deleted) return;",
                 "  emit([doc.pvt_provider_type, doc._id], {",
-                "    'id' : doc._id,",
+                "    'id': doc._id,",
                 "    'enabled': doc.enabled,",
                 "    'name': doc.name,",
                 "    'provider_name': doc.provider_name,",

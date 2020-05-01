@@ -1,0 +1,37 @@
+paths:
+  /sup/{MODULE}:
+    get:
+      operationId: GetSupModule
+      parameters:
+        - $ref: '../oas3-parameters.yml#/MODULE'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a sup by ID
+      tags:
+        - sup
+  /sup/{MODULE}/{FUNCTION}:
+    get:
+      operationId: GetSupModuleFunction
+      parameters:
+        - $ref: '../oas3-parameters.yml#/MODULE'
+        - $ref: '../oas3-parameters.yml#/FUNCTION'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a sup by ID
+      tags:
+        - sup
+  /sup/{MODULE}/{FUNCTION}/{ARGS}:
+    get:
+      operationId: GetSupModuleFunctionArgs
+      parameters:
+        - $ref: '../oas3-parameters.yml#/MODULE'
+        - $ref: '../oas3-parameters.yml#/FUNCTION'
+        - $ref: '../oas3-parameters.yml#/ARGS'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a sup by ID
+      tags:
+        - sup

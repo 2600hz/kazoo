@@ -2,7 +2,7 @@
 
 ## What the load test does
 
-See [`kzs_loadtest`](../src/kzs_loadtest.erl). The general idea is:
+See [`kzs_loadtest`](https://github.com/2600hz/kazoo/blob/master/core/kazoo_data/src/kzs_loadtest.erl). The general idea is:
 
 1. For each caching strategy:
   0. flush the document cache

@@ -1,18 +1,26 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Generate the XML for various FS responses
 %%% @author James Aimonetti
 %%% @author Karl Anderson
 %%% @author Luis Azedo
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(ecallmgr_fs_xml).
 
 -export([route_resp_xml/3 ,authn_resp_xml/1, reverse_authn_resp_xml/1
-        ,acl_xml/1, not_found/0, empty_response/0
+        ,directory_resp_endpoint_xml/2
+        ,directory_resp_group_xml/2
+        ,acl_xml/1, empty_response/0
+        ,not_found/0, not_found/1
         ,sip_profiles_xml/1, sofia_gateways_xml_to_json/1
         ,sip_channel_xml/1
-        ,conference_resp_xml/1
+        ,conference_resp_xml/1, conference_resp_xml/2
         ,event_filters_resp_xml/1
         ]).
 
@@ -29,6 +37,7 @@
 -export([xml_attrib/2]).
 
 -export([action_el/1, action_el/2, action_el/3]).
+-export([anti_action_el/1, anti_action_el/2, anti_action_el/3]).
 -export([condition_el/1, condition_el/3]).
 -export([extension_el/1, extension_el/3]).
 -export([context_el/2]).
@@ -97,10 +106,10 @@ authn_resp_xml(<<"gsm">>, JObj) ->
     PassEl2 = param_el(<<"nonce">>, kz_json:get_value(<<"Auth-Nonce">>, JObj)),
     ParamsEl = params_el([PassEl1, PassEl2]),
 
-    VariableEls = [variable_el(K, V) || {K, V} <- get_channel_params(JObj) ],
+    VariableEls = [variable_el(K, V) || {K, V} <- get_channel_params(JObj)],
     VariablesEl = variables_el(VariableEls),
 
-    HeaderEls = [header_el(K, V) || {K, V} <- get_custom_sip_headers(JObj) ],
+    HeaderEls = [header_el(K, V) || {K, V} <- get_custom_sip_headers(JObj)],
     HeadersEl = registration_headers_el(HeaderEls),
     {'ok', [VariablesEl, ParamsEl, HeadersEl]};
 authn_resp_xml(<<"password">>, JObj) ->
@@ -141,7 +150,7 @@ reverse_authn_resp_xml(JObj) ->
     end.
 
 -spec reverse_authn_resp_xml(kz_term:ne_binary(), kz_json:object()) ->
-                                    {'ok', kz_types:xml_els()}.
+          {'ok', kz_types:xml_els()}.
 reverse_authn_resp_xml(<<"password">>, JObj) ->
     UserId = kz_json:get_value(<<"User-ID">>, JObj),
 
@@ -164,12 +173,17 @@ empty_response() ->
 
 -spec conference_resp_xml(kz_term:api_terms()) -> {'ok', iolist()}.
 conference_resp_xml([_|_]=Resp) ->
+    conference_resp_xml(Resp, []);
+conference_resp_xml(Resp) -> conference_resp_xml(kz_json:to_proplist(Resp)).
+
+-spec conference_resp_xml(kz_term:api_terms(), kz_term:proplist()) -> {'ok', iolist()}.
+conference_resp_xml([_|_]=Resp, Props) ->
     Ps = props:get_value(<<"Profiles">>, Resp, kz_json:new()),
     CCs = props:get_value(<<"Caller-Controls">>, Resp, kz_json:new()),
     As = props:get_value(<<"Advertise">>, Resp, kz_json:new()),
     CPs = props:get_value(<<"Chat-Permissions">>, Resp, kz_json:new()),
 
-    ProfilesEl = conference_profiles_xml(Ps),
+    ProfilesEl = conference_profiles_xml(Ps, Props),
     AdvertiseEl = advertise_xml(As),
     CallerControlsEl = caller_controls_xml(CCs),
     ChatPermsEl = chat_permissions_xml(CPs),
@@ -180,12 +194,12 @@ conference_resp_xml([_|_]=Resp) ->
     SectionEl = section_el(<<"configuration">>, ConfigurationEl),
     {'ok', xmerl:export([SectionEl], 'fs_xml')};
 
-conference_resp_xml(Resp) -> conference_resp_xml(kz_json:to_proplist(Resp)).
+conference_resp_xml(Resp, Props) -> conference_resp_xml(kz_json:to_proplist(Resp), Props).
 
-conference_profiles_xml(Profiles) when is_list(Profiles) ->
-    ProfileEls = [conference_profile_xml(Name, Params) || {Name, Params} <- Profiles],
+conference_profiles_xml(Profiles, Props) when is_list(Profiles) ->
+    ProfileEls = [conference_profile_xml(Name, Params, Props) || {Name, Params} <- Profiles],
     profiles_el(ProfileEls);
-conference_profiles_xml(Profiles) -> conference_profiles_xml(kz_json:to_proplist(Profiles)).
+conference_profiles_xml(Profiles, Props) -> conference_profiles_xml(kz_json:to_proplist(Profiles), Props).
 
 advertise_xml(As) when is_list(As) ->
     RoomEls = [room_el(Name, Status) || {Name, Status} <- As],
@@ -217,24 +231,29 @@ profile_xml(Name, Users) ->
     UserEls = [chat_user_el(User, Commands) || {User, Commands} <- kz_json:to_proplist(Users)],
     profile_el(Name, UserEls).
 
-conference_profile_xml(Name, Params) ->
+conference_profile_xml(Name, Params, []) ->
     ParamEls = [param_el(K, V) || {K, V} <- kz_json:to_proplist(Params)],
-    profile_el(Name, ParamEls).
+    profile_el(Name, ParamEls);
+conference_profile_xml(Name, Params, Props) ->
+    ParamEls = [param_el(K, V) || {K, V} <- kz_json:to_proplist(Params)],
+    VariablesEls = variables_el([variable_el(K, V) || {K, V} <- Props]),
+    profile_el(Name, ParamEls ++ [VariablesEls]).
 
--spec route_resp_xml(atom(), kz_term:api_terms(), kz_term:proplist()) -> {'ok', iolist()}.
-route_resp_xml(Section, [_|_]=RespProp, Props) -> route_resp_xml(Section, kz_json:from_list(RespProp), Props);
-route_resp_xml(Section, RespJObj, Props) ->
+-spec route_resp_xml(atom(), kz_term:api_terms(), dialplan_context()) -> {'ok', iolist()}.
+route_resp_xml(Section, [_|_]=RespProp, DialplanContext) ->
+    route_resp_xml(Section, kz_json:from_list(RespProp), DialplanContext);
+route_resp_xml(Section, RespJObj, DialplanContext) ->
     route_resp_xml(kz_json:get_value(<<"Method">>, RespJObj)
                   ,kz_json:get_value(<<"Routes">>, RespJObj, [])
                   ,kz_json:set_value(<<"Fetch-Section">>, kz_term:to_binary(Section), RespJObj)
-                  ,Props
+                  ,DialplanContext
                   ).
 
 %% Prop = Route Response
 -type route_resp_fold_acc() :: {pos_integer(), kz_types:xml_els()}.
 
 -spec route_resp_fold(kz_json:object(), route_resp_fold_acc()) ->
-                             route_resp_fold_acc().
+          route_resp_fold_acc().
 route_resp_fold(RouteJObj, {Idx, Acc}) ->
     case ecallmgr_util:build_channel(RouteJObj) of
         {'error', _} -> {Idx+1, Acc};
@@ -243,7 +262,7 @@ route_resp_fold(RouteJObj, {Idx, Acc}) ->
     end.
 
 -spec route_resp_fold(kz_json:object(), route_resp_fold_acc(), kz_term:ne_binary()) ->
-                             route_resp_fold_acc().
+          route_resp_fold_acc().
 route_resp_fold(RouteJObj, {Idx, Acc}, Channel) ->
     RouteJObj1 =
         case kz_json:get_value(<<"Progress-Timeout">>, RouteJObj) of
@@ -273,8 +292,8 @@ should_bypass_media(RouteJObj) ->
         _ -> "false" %% default to not bypassing media
     end.
 
--spec route_resp_xml(kz_term:ne_binary(), kz_json:objects(), kz_json:object(), kz_term:proplist()) -> {'ok', iolist()}.
-route_resp_xml(<<"bridge">>, Routes, JObj, Props) ->
+-spec route_resp_xml(kz_term:ne_binary(), kz_json:objects(), kz_json:object(), dialplan_context()) -> {'ok', iolist()}.
+route_resp_xml(<<"bridge">>, Routes, JObj, DialplanContext) ->
     lager:debug("creating a bridge XML response"),
     LogEl = route_resp_log_winning_node(),
     RingbackEl = route_resp_ringback(JObj),
@@ -284,35 +303,24 @@ route_resp_xml(<<"bridge">>, Routes, JObj, Props) ->
     FailRespondEl = action_el(<<"respond">>, <<"${bridge_hangup_cause}">>),
     FailConditionEl = condition_el(FailRespondEl),
     FailExtEl = extension_el(<<"failed_bridge">>, <<"false">>, [FailConditionEl]),
-    Context = context(JObj, Props),
-    ContextEl = context_el(Context, [LogEl, RingbackEl, TransferEl] ++ unset_custom_sip_headers(Props) ++ Extensions ++ [FailExtEl]),
+    Context = context(JObj, DialplanContext),
+    ContextEl = context_el(Context, [LogEl, RingbackEl, TransferEl] ++ [unset_custom_sip_headers()] ++ Extensions ++ [FailExtEl]),
     SectionEl = section_el(<<"dialplan">>, <<"Route Bridge Response">>, ContextEl),
     {'ok', xmerl:export([SectionEl], 'fs_xml')};
 
-route_resp_xml(<<"park">>, _Routes, JObj, Props) ->
-    Exten = [route_resp_log_winning_node()
-            ,route_resp_set_winning_node()
-            ,route_resp_bridge_id()
-            ,route_resp_ringback(JObj)
-            ,route_resp_transfer_ringback(JObj)
-            ,route_resp_pre_park_action(JObj)
-            ,maybe_start_dtmf_action(Props)
-             | route_resp_ccvs(JObj)
-             ++ route_resp_cavs(JObj)
-             ++ unset_custom_sip_headers(Props)
-             ++ [action_el(<<"park">>)]
-            ],
+route_resp_xml(<<"park">>, _Routes, JObj, DialplanContext) ->
+    Exten = route_resp_park_xml(JObj, DialplanContext),
     ParkExtEl = extension_el(<<"park">>, 'undefined', [condition_el(Exten)]),
-    Context = context(JObj, Props),
+    Context = context(JObj, DialplanContext),
     ContextEl = context_el(Context, [ParkExtEl]),
     SectionEl = section_el(<<"dialplan">>, <<"Route Park Response">>, ContextEl),
     {'ok', xmerl:export([SectionEl], 'fs_xml')};
 
-route_resp_xml(<<"error">>, _Routes, JObj, Props) ->
+route_resp_xml(<<"error">>, Routes, JObj, DialplanContext) ->
     Section = kz_json:get_value(<<"Fetch-Section">>, JObj, <<"dialplan">>),
-    route_resp_xml(<<Section/binary, "_error">>,_Routes, JObj, Props);
+    route_resp_xml(<<Section/binary, "_error">>, Routes, JObj, DialplanContext);
 
-route_resp_xml(<<"dialplan_error">>, _Routes, JObj, Props) ->
+route_resp_xml(<<"dialplan_error">>, _Routes, JObj, DialplanContext) ->
     ErrCode = kz_json:get_value(<<"Route-Error-Code">>, JObj),
     ErrMsg = [" ", kz_json:get_value(<<"Route-Error-Message">>, JObj, <<>>)],
     Exten = [route_resp_log_winning_node()
@@ -323,12 +331,12 @@ route_resp_xml(<<"dialplan_error">>, _Routes, JObj, Props) ->
             ,action_el(<<"respond">>, [ErrCode, ErrMsg])
             ],
     ErrExtEl = extension_el([condition_el(Exten)]),
-    Context = context(JObj, Props),
+    Context = context(JObj, DialplanContext),
     ContextEl = context_el(Context, [ErrExtEl]),
     SectionEl = section_el(<<"dialplan">>, <<"Route Error Response">>, ContextEl),
     {'ok', xmerl:export([SectionEl], 'fs_xml')};
 
-route_resp_xml(<<"chatplan_error">>, _Routes, JObj, _Props) ->
+route_resp_xml(<<"chatplan_error">>, _Routes, JObj, _DialplanContext) ->
     ErrCode = kz_json:get_value(<<"Route-Error-Code">>, JObj),
     ErrMsg = [" ", kz_json:get_value(<<"Route-Error-Message">>, JObj, <<>>)],
     Exten = [action_el(<<"reply">>, [ErrCode, ErrMsg])],
@@ -337,16 +345,16 @@ route_resp_xml(<<"chatplan_error">>, _Routes, JObj, _Props) ->
     SectionEl = section_el(<<"chatplan">>, <<"Route Error Response">>, ContextEl),
     {'ok', xmerl:export([SectionEl], 'fs_xml')};
 
-route_resp_xml(<<"sms">>, _Routes, _JObj, Props) ->
+route_resp_xml(<<"sms">>, _Routes, _JObj, DialplanContext) ->
     lager:debug("creating a chatplan XML response"),
     StopActionEl = action_el(<<"stop">>, <<"stored">>),
     StopExtEl = extension_el(<<"chat plan">>, <<"false">>, [condition_el([StopActionEl])]),
-    Context = hunt_context(Props),
+    Context = hunt_context(DialplanContext),
     ContextEl = context_el(Context, [StopExtEl]),
     SectionEl = section_el(<<"chatplan">>, <<"Chat Response">>, ContextEl),
     {'ok', xmerl:export([SectionEl], 'fs_xml')};
 
-route_resp_xml(<<"sms_error">>, _Routes, JObj, _Props) ->
+route_resp_xml(<<"sms_error">>, _Routes, JObj, _DialplanContext) ->
     ErrCode = kz_json:get_value(<<"Route-Error-Code">>, JObj),
     ErrMsg = [" ", kz_json:get_value(<<"Route-Error-Message">>, JObj, <<>>)],
     Exten = [route_resp_log_winning_node()
@@ -358,38 +366,43 @@ route_resp_xml(<<"sms_error">>, _Routes, JObj, _Props) ->
     SectionEl = section_el(<<"chatplan">>, <<"Route Error Response">>, ContextEl),
     {'ok', xmerl:export([SectionEl], 'fs_xml')};
 
-route_resp_xml(Method, Routes, JObj, Props) ->
-    lager:debug("trying fun for ~p", [Method]),
-    Fun = props:get_value(<<"Route-Resp-Xml-Fun">>, Props),
-    maybe_route_resp_xml_fun(Fun, Method, Routes, JObj, Props).
-
-maybe_route_resp_xml_fun(Fun, Method, Routes, JObj, Props)
+route_resp_xml(Method, Routes, JObj, #{'route_resp_xml_fun' := Fun}=DialplanContext)
   when is_function(Fun, 4) ->
-    Fun(Method, Routes, JObj, Props);
-maybe_route_resp_xml_fun(_Fun, Method, Routes, JObj, Props) ->
+    lager:debug("trying fun for ~p", [Method]),
+    Fun(Method, Routes, JObj, DialplanContext);
+route_resp_xml(Method, Routes, JObj, DialplanContext) ->
     lager:error("route resp xml method ~p not handled, reverting to error", [Method]),
-    route_resp_xml(<<"error">>, Routes, JObj, Props).
+    route_resp_xml(<<"error">>, Routes, JObj, DialplanContext).
+
+-spec not_found() -> {'ok', iolist()}.
+not_found() ->
+    not_found(<<"Route">>).
+
+-spec not_found(kz_term:ne_binary()) -> {'ok', iolist()}.
+not_found(Name) ->
+    ResultEl = result_el(<<"not found">>),
+    SectionEl = section_el(<<"result">>, <<Name/binary, " Not Found">>, ResultEl),
+    {'ok', xmerl:export([SectionEl], 'fs_xml')}.
+
+-spec route_resp_park() -> kz_types:xml_el().
+route_resp_park() ->
+    action_el(<<"park">>).
+
+-spec route_resp_capture_id() -> kz_types:xml_el().
+route_resp_capture_id() ->
+    DP = [action_el(<<"export">>, <<"sip_h_k-cid=${uuid}">>, 'true')
+         ,anti_action_el(<<"export">>, <<"sip_h_k-cid=${sip_h_k-cid}">>, 'true')
+         ],
+    condition_el(DP, <<"${sip_h_k-cid}">>, <<"^$">>).
 
 -spec route_resp_bridge_id() -> kz_types:xml_el().
 route_resp_bridge_id() ->
     Action = action_el(<<"export">>, [?SET_CCV(<<"Bridge-ID">>, <<"${UUID}">>)], 'true'),
     condition_el(Action, <<"${", (?CCV(<<"Bridge-ID">>))/binary, "}">>, <<"^$">>).
 
--spec unset_custom_sip_headers(kz_term:proplist()) -> kz_types:xml_els().
-unset_custom_sip_headers(Props) ->
-    case get_custom_sip_headers(Props) of
-        [] -> [];
-        [{K,_}] -> [action_el(<<"unset">>, K)];
-        [{K1, _} | KVs] ->
-            Keys = ["^^;", K1] ++ [<<";", K/binary>> || {K, _} <- KVs],
-            [action_el(<<"multiunset">>, list_to_binary(Keys))]
-    end.
-
--spec not_found() -> {'ok', iolist()}.
-not_found() ->
-    ResultEl = result_el(<<"not found">>),
-    SectionEl = section_el(<<"result">>, <<"Route Not Found">>, ResultEl),
-    {'ok', xmerl:export([SectionEl], 'fs_xml')}.
+-spec unset_custom_sip_headers() -> kz_types:xml_el().
+unset_custom_sip_headers() ->
+    action_el(<<"kz_prefix_unset">>, <<"sip_h_X-">>).
 
 -spec route_resp_log_winning_node() -> kz_types:xml_el().
 route_resp_log_winning_node() ->
@@ -398,6 +411,20 @@ route_resp_log_winning_node() ->
 route_resp_set_winning_node() ->
     action_el(<<"export">>, [?SET_CCV(<<"Ecallmgr-Node">>, (kz_term:to_binary(node())))]).
 
+route_resp_fire_route_win(JObj, #{'control_q' := ControlQ
+                                 ,'fetch_id' := FetchId
+                                 }) ->
+    Params = [{<<"Event-Subclass">>, ?ROUTE_WINNER_EVENT}
+             ,{<<"Event-Name">>, <<"CUSTOM">>}
+             ,{<<"Event-Category">>, <<"dialplan">>}
+             ,{<<"Routing-Queue">>, kapi:encode_pid(ControlQ, self())}
+             ,{<<"Request-From-PID">>, kz_term:to_binary(self())}
+             ,{<<"Controller-Queue">>, kz_api:server_id(JObj)}
+             ,{<<"Fetch-UUID">>, FetchId}
+             ],
+    Args = [<<K/binary, "=", V/binary>> || {K, V} <- Params, kz_term:is_not_empty(V)],
+    action_el(<<"event">>, kz_binary:join(Args, <<",">>)).
+
 -spec route_resp_ringback(kz_json:object()) -> kz_types:xml_el().
 route_resp_ringback(JObj) ->
     case kz_json:get_value(<<"Ringback-Media">>, JObj) of
@@ -405,24 +432,25 @@ route_resp_ringback(JObj) ->
             {'ok', RBSetting} = ecallmgr_util:get_setting(<<"default_ringback">>),
             action_el(<<"set">>, <<"ringback=", (kz_term:to_binary(RBSetting))/binary>>);
         Media ->
-            MsgId = kz_json:get_value(<<"Msg-ID">>, JObj),
+            MsgId = kz_api:msg_id(JObj),
             Stream = ecallmgr_util:media_path(Media, 'extant', MsgId, JObj),
             action_el(<<"set">>, <<"ringback=", (kz_term:to_binary(Stream))/binary>>)
     end.
 
--spec route_resp_ccvs(kz_json:object()) -> kz_types:xml_els().
+-spec route_resp_ccvs(kz_json:object()) -> kz_types:xml_el().
 route_resp_ccvs(JObj) ->
-    case kz_json:get_json_value(<<"Custom-Channel-Vars">>, JObj) of
-        'undefined' -> [];
-        CCVs -> [action_el(<<"kz_multiset">>, route_ccvs_list(kz_json:to_proplist(CCVs)))]
-    end.
+    CCVs = [{<<"Application-Name">>, kz_json:get_value(<<"App-Name">>, JObj)}
+           ,{<<"Application-Node">>, kz_json:get_value(<<"Node">>, JObj)}
+            | kz_json:to_proplist(<<"Custom-Channel-Vars">>, JObj)
+           ],
+    action_el(<<"kz_multiset_encoded">>, route_ccvs_list(CCVs)).
 
--spec route_resp_cavs(kz_json:object()) -> kz_types:xml_els().
+-spec route_resp_cavs(kz_json:object()) -> kz_types:xml_el() | 'undefined'.
 route_resp_cavs(JObj) ->
     CAVs = kz_json:get_json_value(<<"Custom-Application-Vars">>, JObj, kz_json:new()),
     case kz_json:to_proplist(CAVs) of
-        [] -> [];
-        Props -> [action_el(<<"kz_multiset">>, route_cavs_list(Props))]
+        [] -> 'undefined';
+        Props -> action_el(<<"kz_multiset_encoded">>, route_cavs_list(Props))
     end.
 
 -spec route_ccvs_list(kz_term:proplist()) -> kz_term:ne_binary().
@@ -459,23 +487,24 @@ route_resp_pre_park_action(JObj) ->
         _Else -> 'undefined'
     end.
 
--spec maybe_start_dtmf_action(kz_term:proplist()) -> 'undefined' | kz_types:xml_el().
-maybe_start_dtmf_action(Props) ->
+-spec maybe_start_dtmf_action(dialplan_context()) -> 'undefined' | kz_types:xml_el().
+maybe_start_dtmf_action(DialplanContext) ->
     case kapps_config:is_true(?APP_NAME, <<"should_detect_inband_dtmf">>, 'false') of
         'false' -> 'undefined';
-        'true' -> check_dtmf_type(Props)
+        'true' -> check_dtmf_type(DialplanContext)
     end.
 
--spec check_dtmf_type(kz_term:proplist()) -> 'undefined' | kz_types:xml_el().
-check_dtmf_type(Props) ->
-    case props:get_value(<<"variable_switch_r_sdp">>, Props, <<"101 telephone-event">>) of
+-spec check_dtmf_type(dialplan_context()) -> 'undefined' | kz_types:xml_el().
+check_dtmf_type(#{payload := Payload}) ->
+    case kz_json:get_value(<<"variable_switch_r_sdp">>, Payload, <<"101 telephone-event">>) of
         <<"101 telephone-event">> -> 'undefined';
         _ -> action_el(<<"start_dtmf">>)
     end.
 
 -spec build_leg_vars(kz_json:object() | kz_term:proplist()) -> kz_term:ne_binaries().
 build_leg_vars([]) -> [];
-build_leg_vars([_|_]=Prop) -> lists:foldr(fun kazoo_var_to_fs_var/2, [], Prop);
+build_leg_vars([_|_]=Prop) ->
+    lists:foldr(fun kazoo_var_to_fs_var/2, maybe_endpoint_privacy_header(Prop), Prop);
 build_leg_vars(JObj) -> build_leg_vars(kz_json:to_proplist(JObj)).
 
 -spec get_leg_vars(kz_json:object() | kz_term:proplist()) -> iolist().
@@ -491,7 +520,10 @@ get_leg_vars([Binary|_]=Binaries)
 get_leg_vars([_|_]=Prop) ->
     ["[^^", ?BRIDGE_CHANNEL_VAR_SEPARATOR
     ,string:join([kz_term:to_list(V)
-                  || V <- lists:foldr(fun kazoo_var_to_fs_var/2, [], Prop)
+                  || V <- lists:foldr(fun kazoo_var_to_fs_var/2
+                                     ,maybe_endpoint_privacy_header(Prop)
+                                     ,Prop
+                                     )
                  ]
                 ,?BRIDGE_CHANNEL_VAR_SEPARATOR
                 )
@@ -499,9 +531,29 @@ get_leg_vars([_|_]=Prop) ->
     ];
 get_leg_vars(JObj) -> get_leg_vars(kz_json:to_proplist(JObj)).
 
+-spec maybe_endpoint_privacy_header(kz_term:proplist()) -> kz_term:ne_binaries().
+maybe_endpoint_privacy_header(Prop) ->
+    case kz_privacy:has_flags(Prop)
+        andalso kz_privacy:use_sip_privacy_header()
+    of
+        'true' -> [<<"sip_h_Privacy=id">>];
+        'false' -> []
+    end.
+
 -spec get_channel_vars(kz_json:object() | kz_term:proplist()) -> iolist().
-get_channel_vars([]) -> [];
-get_channel_vars([_|_]=Props) ->
+get_channel_vars(Param) ->
+    ["<"
+    ,string:join([kz_term:to_list(Result)
+                  || Result <- channel_vars(Param)
+                 ]
+                ,","
+                )
+    ,">"
+    ].
+
+-spec channel_vars(kz_json:object() | kz_term:proplist()) -> iolist().
+channel_vars([]) -> [];
+channel_vars([_|_]=Props) ->
     Routines = [fun channel_vars_set_overwrite/1
                ,fun channel_vars_handle_asserted_identity/1
                ,fun kazoo_vars_to_fs_vars/1
@@ -513,15 +565,8 @@ get_channel_vars([_|_]=Props) ->
                    ,{Props, []}
                    ,Routines
                    ),
-    ["{"
-    ,string:join([kz_term:to_list(Result)
-                  || Result <- Results
-                 ]
-                ,","
-                )
-    ,"}"
-    ];
-get_channel_vars(JObj) -> get_channel_vars(kz_json:to_proplist(JObj)).
+    Results;
+channel_vars(JObj) -> channel_vars(kz_json:to_proplist(JObj)).
 
 -type channel_var_fold() :: {kz_term:proplist(), iolist()}.
 -spec channel_vars_set_overwrite(channel_var_fold()) -> channel_var_fold().
@@ -540,16 +585,21 @@ channel_vars_handle_asserted_identity({Props, Results}=Acc) ->
     case create_asserted_identity_header(Name, Number, Realm) of
         'undefined' -> Acc;
         AssertedIdentity ->
-            {props:delete(<<"Caller-ID-Type">>, Props)
-            ,[<<"sip_cid_type=none">>
-             ,<<"sip_h_P-Asserted-Identity=", AssertedIdentity/binary>>
-                  | Results
-             ]
-            }
+            build_asserted_identity(AssertedIdentity, props:delete(<<"Caller-ID-Type">>, Props), Results)
     end.
 
+
+-spec build_asserted_identity(kz_term:ne_binary(), kz_term:prolist(), iolist()) -> channel_var_fold().
+build_asserted_identity(AssertedIdentity, Props, Results) ->
+    {Props
+    ,[<<"sip_cid_type=none">>
+     ,<<"sip_h_P-Asserted-Identity='", AssertedIdentity/binary, "'">>
+          | Results
+     ] ++ maybe_endpoint_privacy_header(Props)
+    }.
+
 -spec create_asserted_identity_header(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()) ->
-                                             kz_term:api_binary().
+          kz_term:api_binary().
 create_asserted_identity_header(_, 'undefined', _) ->
     'undefined';
 create_asserted_identity_header(_, _, 'undefined') ->
@@ -571,6 +621,9 @@ kazoo_var_to_fs_var({<<"Custom-Channel-Vars">>, JObj}, Vars) ->
 
 kazoo_var_to_fs_var({<<"Custom-Application-Vars">>, JObj}, Vars) ->
     kz_json:foldl(fun kazoo_cavs_to_fs_vars_fold/3, Vars, JObj);
+
+kazoo_var_to_fs_var({<<"Custom-Profile-Vars">>, JObj}, Vars) ->
+    kz_json:foldl(fun get_profile_vars_fold/3, Vars, JObj);
 
 kazoo_var_to_fs_var({<<"Custom-SIP-Headers">>, SIPJObj}, Vars) ->
     kz_json:foldl(fun sip_headers_fold/3, Vars, SIPJObj);
@@ -603,9 +656,8 @@ kazoo_var_to_fs_var({<<"origination_uuid">> = K, UUID}, Vars) ->
     [ <<K/binary, "=", UUID/binary>> | Vars];
 
 kazoo_var_to_fs_var({<<"Hold-Media">>, Media}, Vars) ->
-    [list_to_binary(["hold_music="
-                    ,kz_term:to_list(ecallmgr_util:media_path(Media, 'extant', get('callid'), kz_json:new()))
-                    ])
+    MediaPath = ecallmgr_util:moh_media_path(Media, 'extant', get('callid'), kz_json:new()),
+    [list_to_binary(["hold_music=", MediaPath])
      | Vars];
 
 kazoo_var_to_fs_var({<<"Codecs">>, []}, Vars) ->
@@ -647,12 +699,17 @@ kazoo_var_to_fs_var({<<"Confirm-File">>, V}, Vars) ->
                     ]) | Vars];
 
 kazoo_var_to_fs_var({<<"SIP-Invite-Parameters">>, V}, Vars) ->
-    [list_to_binary(["sip_invite_params='", kz_util:iolist_join(<<";">>, V), "'"]) | Vars];
+    [list_to_binary(["sip_invite_params='", kz_term:iolist_join(<<";">>, V), "'"]) | Vars];
 
 kazoo_var_to_fs_var({<<"Participant-Flags">>, [_|_]=Flags}, Vars) ->
     [list_to_binary(["conference_member_flags="
                     ,"'^^!", participant_flags_to_var(Flags), "'"
                     ])
+     | Vars
+    ];
+
+kazoo_var_to_fs_var({<<"Call-Context">>, JObj}, Vars) ->
+    [list_to_binary(["kz-endpoint-runtime-context='", kz_json:encode(JObj), "'"])
      | Vars
     ];
 
@@ -708,20 +765,35 @@ diversion_header_fold(<<_/binary>> = V, Vars0) ->
 -spec kazoo_var_to_fs_var_fold(kz_json:path(), kz_json:json_term(), iolist()) -> iolist().
 kazoo_var_to_fs_var_fold(<<"Force-Fax">>, Direction, Acc) ->
     [<<"execute_on_answer='t38_gateway ", Direction/binary, "'">>|Acc];
+
+kazoo_var_to_fs_var_fold(<<?CHANNEL_LOOPBACK_HEADER_PREFIX, K/binary>>, V, Acc) ->
+    Key = <<?CHANNEL_LOOPBACK_HEADER_PREFIX, (ecallmgr_util:get_fs_key(K))/binary>>,
+    [list_to_binary([kz_term:to_list(Key), "='",  kz_term:to_list(V), "'"]) |Acc];
+
+kazoo_var_to_fs_var_fold(<<"Loopback-Export">> = Key, Vars, Acc) ->
+    Value = kz_binary:join([ecallmgr_util:get_fs_key(Var) || Var <- Vars], <<",">>),
+    [list_to_binary([ecallmgr_util:get_fs_key(Key), "='",  Value, "'"]) |Acc];
+
+kazoo_var_to_fs_var_fold(<<"Loopback-Request-Variables">> = Key, Vars, Acc) ->
+    Value = kz_binary:join([ecallmgr_util:get_fs_key(Var) || Var <- Vars], <<",">>),
+    [list_to_binary([ecallmgr_util:get_fs_key(Key), "='",  Value, "'"]) |Acc];
+
 kazoo_var_to_fs_var_fold(<<"Channel-Actions">>, Actions, Acc) ->
     [Actions |Acc];
+
 kazoo_var_to_fs_var_fold(K, V, Acc) ->
     case lists:keyfind(K, 1, ?SPECIAL_CHANNEL_VARS) of
         'false' ->
-            [list_to_binary([?CHANNEL_VAR_PREFIX, kz_term:to_list(K)
-                            ,"='", kz_term:to_list(V), "'"])
-             | Acc];
+            Val = ecallmgr_util:maybe_sanitize_fs_value(K, V),
+            Prefix = <<?CHANNEL_VAR_PREFIX, K/binary>>,
+            [encode_fs_val(Prefix, Val) | Acc];
         {_, <<"group_confirm_file">>} ->
             [list_to_binary(["group_confirm_file='"
                             ,kz_term:to_list(ecallmgr_util:media_path(V, 'extant', get('callid'), kz_json:new()))
                             ,"'"
                             ])
-             | Acc];
+             | Acc
+            ];
         {_, Prefix} ->
             Val = ecallmgr_util:maybe_sanitize_fs_value(K, V),
             [encode_fs_val(Prefix, Val) | Acc]
@@ -729,9 +801,20 @@ kazoo_var_to_fs_var_fold(K, V, Acc) ->
 
 -spec kazoo_cavs_to_fs_vars_fold(kz_json:key(), kz_json:json_term(), iolist()) -> iolist().
 kazoo_cavs_to_fs_vars_fold(K, V, Acc) ->
-    [list_to_binary([?APPLICATION_VAR_PREFIX, kz_term:to_list(K), "='", kz_term:to_list(V), "'"])
+    {Prefix, V1} = kazoo_cav_prefix_and_value(V),
+    [list_to_binary([Prefix, kz_term:to_list(K), "='", V1, "'"])
      | Acc
     ].
+
+-spec kazoo_cav_prefix_and_value(kz_json:json_term()) -> {string(), string()}.
+kazoo_cav_prefix_and_value(V) ->
+    {Prefix, Encoded} = case kz_json:is_json_object(V) of
+                            'true' -> {?JSON_APPLICATION_VAR_PREFIX, kz_json:encode(V)};
+                            'false' -> {?APPLICATION_VAR_PREFIX, V}
+                        end,
+    %% Escape all embedded single quotes and commas so that FS can consume them
+    Escaped = re:replace(Encoded, <<"([,'])">>, <<"\\\\\\g1">>, ['global', {'return', 'binary'}]),
+    {Prefix, kz_term:to_list(Escaped)}.
 
 -spec codec_mappings(kz_term:ne_binary()) -> kz_term:ne_binary().
 codec_mappings(<<"G722_32">>) ->
@@ -754,6 +837,34 @@ escape(V, C) ->
 encode(C, C) -> [$\\, C];
 encode(C, _) -> C.
 
+-spec get_profile_params(kz_json:object() | kz_term:proplist()) -> kz_term:proplist().
+get_profile_params(Props) when is_list(Props) ->
+    lists:usort(lists:foldl(fun get_profile_param/2, [], Props));
+get_profile_params(JObj) ->
+    get_profile_params(
+      kz_json:to_proplist(
+        kz_json:get_json_value(<<"Custom-Profile-Vars">>, JObj, kz_json:new())
+       ) ++ [{<<"Context">>, ?DEFAULT_FREESWITCH_CONTEXT}]).
+
+-spec get_profile_param(tuple(), kz_term:proplist()) -> kz_term:proplist().
+get_profile_param({Key, Val}, Acc) ->
+    case lists:keyfind(Key, 1, ?CALLER_PROFILE_VARS) of
+        'false' -> [{Key, Val} | Acc];
+        {_Key, Prefix} -> [{Prefix, ecallmgr_util:maybe_sanitize_fs_value(Key, Val)} | Acc]
+    end.
+
+-spec get_profile_vars_fold(kz_json:key(), kz_json:json_term(), iolist()) -> iolist().
+get_profile_vars_fold(K, V, Acc) ->
+    case lists:keyfind(K, 1, ?CALLER_PROFILE_VARS) of
+        'false' ->
+            [list_to_binary([kz_term:to_list(K)
+                            ,"='", kz_term:to_list(V), "'"])
+             | Acc];
+        {_, Prefix} ->
+            Val = ecallmgr_util:maybe_sanitize_fs_value(K, V),
+            [encode_fs_val(Prefix, Val) | Acc]
+    end.
+
 -spec get_channel_params(kz_json:object() | kz_term:proplist()) -> kz_term:proplist().
 get_channel_params(Props) when is_list(Props) ->
     [get_channel_params_fold(K, V) || {K, V} <- Props];
@@ -764,66 +875,61 @@ get_channel_params(JObj) ->
        )).
 
 -spec get_channel_params_fold(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                     {kz_term:ne_binary(), kz_term:ne_binary()}.
+          {kz_term:ne_binary(), kz_term:ne_binary()}.
+get_channel_params_fold(<<"Hold-Media">>=Key, Media) ->
+    {ecallmgr_util:get_fs_key(Key), ecallmgr_util:media_path(Media)};
 get_channel_params_fold(Key, Val) ->
-    case lists:keyfind(Key, 1, ?SPECIAL_CHANNEL_VARS) of
-        'false' ->
-            {list_to_binary([?CHANNEL_VAR_PREFIX, Key]), Val};
-        {_Key, Prefix} ->
-            {Prefix, ecallmgr_util:maybe_sanitize_fs_value(Key, Val)}
-    end.
+    {ecallmgr_util:get_fs_key(Key), ecallmgr_util:maybe_sanitize_fs_value(Key, Val)}.
 
--spec get_custom_sip_headers(kz_json:object() | kz_term:proplist()) -> kz_json:json_proplist().
-get_custom_sip_headers([_|_]=Props) ->
-    [normalize_custom_sip_header_name(P) || P <- props:filter(fun is_custom_sip_header/1, Props)];
+-spec get_custom_sip_headers(kz_json:object()) -> kz_json:json_proplist().
 get_custom_sip_headers(JObj) ->
-    kz_json:to_proplist(kz_json:get_value(<<"Custom-SIP-Headers">>, JObj, kz_json:new())).
-
--spec normalize_custom_sip_header_name(any()) -> any().
-normalize_custom_sip_header_name({<<"variable_", K/binary>>, V}) -> {K, V};
-normalize_custom_sip_header_name(A) -> A.
-
--spec is_custom_sip_header(any()) -> boolean().
-is_custom_sip_header({<<"variable_sip_h_X-", _/binary>>, _}) -> 'true';
-is_custom_sip_header(_) -> 'false'.
+    kz_json:to_proplist(kz_json:get_json_value(<<"Custom-SIP-Headers">>, JObj, kz_json:new())).
 
 -spec arrange_acl_node({kz_term:ne_binary(), kz_json:object()}, orddict:orddict()) -> orddict:orddict().
 arrange_acl_node({_, JObj}, Dict) ->
     AclList = kz_json:get_value(<<"network-list-name">>, JObj),
-
-    NodeEl = acl_node_el(kz_json:get_value(<<"type">>, JObj), kz_json:get_value(<<"cidr">>, JObj)),
-
+    Type = kz_json:get_value(<<"type">>, JObj),
+    CIDR = kz_json:get_value(<<"cidr">>, JObj),
+    Ports = kz_json:get_value(<<"ports">>, JObj),
+    NodeEl = acl_node_el(Type, CIDR, Ports),
     case orddict:find(AclList, Dict) of
         {'ok', ListEl} ->
-            lager:debug("found existing list ~s", [AclList]),
             orddict:store(AclList, prepend_child(ListEl, NodeEl), Dict);
         'error' ->
             lager:debug("creating new list xml for ~s", [AclList]),
             orddict:store(AclList, prepend_child(acl_list_el(AclList), NodeEl), Dict)
     end.
 
--spec hunt_context(kzd_freeswitch:data()) -> kz_term:api_ne_binary().
-hunt_context(Props) ->
-    kzd_freeswitch:hunt_context(Props, ?DEFAULT_FREESWITCH_CONTEXT).
+-spec hunt_context(dialplan_context()) -> kz_term:api_ne_binary().
+hunt_context(#{payload:=FSJObj}) ->
+    kzd_freeswitch:hunt_context(FSJObj, ?DEFAULT_FREESWITCH_CONTEXT).
 
 -spec context(kz_json:object()) -> kz_term:api_ne_binary().
 context(JObj) ->
     kz_json:get_ne_binary_value(<<"Context">>, JObj, ?DEFAULT_FREESWITCH_CONTEXT).
 
--spec context(kz_json:object(), kzd_freeswitch:data()) -> kz_term:api_ne_binary().
-context(JObj, Props) ->
-    kz_json:get_ne_binary_value(<<"Context">>, JObj, hunt_context(Props)).
+-spec context(kz_json:object(), dialplan_context()) -> kz_term:api_ne_binary().
+context(JObj, DialplanContext) ->
+    kz_json:get_ne_binary_value(<<"Context">>, JObj, hunt_context(DialplanContext)).
 
 %%%-----------------------------------------------------------------------------
 %% XML record creators and helpers
 %%%-----------------------------------------------------------------------------
--spec acl_node_el(kz_types:xml_attrib_value(), kz_types:xml_attrib_value()) -> kz_types:xml_el() | kz_types:xml_els().
-acl_node_el(Type, CIDRs) when is_list(CIDRs) ->
-    [acl_node_el(Type, CIDR) || CIDR <- CIDRs];
-acl_node_el(Type, CIDR) ->
+-spec acl_node_el(kz_types:xml_attrib_value(), kz_types:xml_attrib_value(), kz_term:api_integers()) -> kz_types:xml_el() | kz_types:xml_els().
+acl_node_el(Type, CIDRs, Ports) when is_list(CIDRs) ->
+    [acl_node_el(Type, CIDR, Ports) || CIDR <- CIDRs];
+acl_node_el(Type, CIDR, 'undefined') ->
     #xmlElement{name='node'
                ,attributes=[xml_attrib('type', Type)
                            ,xml_attrib('cidr', CIDR)
+                           ]
+               };
+acl_node_el(Type, CIDR, Ports) ->
+    BinPorts = kz_binary:join([kz_term:to_binary(P) || P <- Ports], <<",">>),
+    #xmlElement{name='node'
+               ,attributes=[xml_attrib('type', Type)
+                           ,xml_attrib('cidr', CIDR)
+                           ,xml_attrib('ports', BinPorts)
                            ]
                }.
 
@@ -908,6 +1014,40 @@ domain_el(Name, Children) ->
                ,content=Children
                }.
 
+group_el(Props, Children) when is_list(Props) ->
+    #xmlElement{name='group'
+               ,attributes=[xml_attrib(K, V)
+                            || {K, V} <- props:unique(
+                                           props:filter_undefined(Props)
+                                          )
+                           ]
+               ,content=Children
+               };
+group_el(Name, Children) ->
+    #xmlElement{name='group'
+               ,content=Children
+               ,attributes=[xml_attrib('name', Name)]
+               }.
+
+groups_el(Children) ->
+    #xmlElement{name='groups'
+               ,content=Children
+               }.
+
+
+users_el(Children) ->
+    #xmlElement{name='users'
+               ,content=Children
+               }.
+
+%% -spec user_ptr_el(kz_types:xml_attrib_value()) -> kz_types:xml_el().
+%% user_ptr_el(Id) ->
+%%     #xmlElement{name='user'
+%%                ,attributes=[xml_attrib('id', Id)
+%%                            ,xml_attrib('type', <<"pointer">>)
+%%                            ]
+%%                }.
+
 -spec user_el(kz_types:xml_attrib_value() | kz_term:proplist(), kz_types:xml_els()) -> kz_types:xml_el().
 user_el(Id, Children) when not is_list(Id) ->
     user_el(user_el_default_props(Id), Children);
@@ -918,10 +1058,14 @@ user_el(Props, Children) ->
                                            props:filter_undefined(Props)
                                           )
                            ]
-               ,content=Children
+               ,content=[ C || C <- Children, C =/= 'undefined']
                }.
 
--spec user_el_props(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_integer()) -> kz_term:proplist().
+-spec user_el_props(kz_term:api_ne_binary(), kz_term:ne_binary()) -> kz_term:proplist().
+user_el_props(Number, Username) ->
+    user_el_props(Number, Username, 'undefined').
+
+-spec user_el_props(kz_term:api_ne_binary(), kz_term:ne_binary(), kz_term:api_integer()) -> kz_term:proplist().
 user_el_props(Number, Username, 'undefined') ->
     [{'number-alias', Number}
     ,{'cacheable', kapps_config:get_integer(?APP_NAME, <<"user_cache_time_in_ms">>
@@ -960,14 +1104,14 @@ params_el(Children) ->
 
 -spec param_el(kz_types:xml_attrib_value(), kz_types:xml_attrib_value()) -> kz_types:xml_el().
 param_el(<<"moh-sound">> = Name, MediaName) ->
-    Value = ecallmgr_util:media_path(MediaName, kz_util:get_callid(), kz_json:new()),
+    Value = ecallmgr_util:media_path(MediaName, kz_log:get_callid(), kz_json:new()),
     #xmlElement{name='param'
                ,attributes=[xml_attrib('name', Name)
                            ,xml_attrib('value', Value)
                            ]
                };
 param_el(<<"max-members-sound">> = Name, MediaName) ->
-    Value = ecallmgr_util:media_path(MediaName, kz_util:get_callid(), kz_json:new()),
+    Value = ecallmgr_util:media_path(MediaName, kz_log:get_callid(), kz_json:new()),
     #xmlElement{name='param'
                ,attributes=[xml_attrib('name', Name)
                            ,xml_attrib('value', Value)
@@ -996,12 +1140,6 @@ profile_el(Name, Children) ->
 profiles_el(Children) ->
     #xmlElement{name='profiles'
                ,content=Children
-               }.
-
-group_el(Name, Children) ->
-    #xmlElement{name='group'
-               ,content=Children
-               ,attributes=[xml_attrib('name', Name)]
                }.
 
 control_el(Action, Digits) ->
@@ -1038,6 +1176,12 @@ chat_permissions_el(Profiles) ->
 -spec variables_el(kz_types:xml_els()) -> kz_types:xml_el().
 variables_el(Children) ->
     #xmlElement{name='variables'
+               ,content=Children
+               }.
+
+-spec variables_el(atom(), kz_types:xml_els()) -> kz_types:xml_el().
+variables_el(Name, Children) ->
+    #xmlElement{name=Name
                ,content=Children
                }.
 
@@ -1126,6 +1270,29 @@ action_el(App, Data) ->
 -spec action_el(kz_types:xml_attrib_value(), kz_types:xml_attrib_value(), boolean()) -> kz_types:xml_el().
 action_el(App, Data, Inline) ->
     #xmlElement{name='action'
+               ,attributes=[xml_attrib('application', App)
+                           ,xml_attrib('data', Data)
+                           ,xml_attrib('inline', kz_term:to_binary(Inline))
+                           ]
+               }.
+
+-spec anti_action_el(kz_types:xml_attrib_value()) -> kz_types:xml_el().
+anti_action_el(App) ->
+    #xmlElement{name='anti-action'
+               ,attributes=[xml_attrib('application', App)]
+               }.
+
+-spec anti_action_el(kz_types:xml_attrib_value(), kz_types:xml_attrib_value()) -> kz_types:xml_el().
+anti_action_el(App, Data) ->
+    #xmlElement{name='anti-action'
+               ,attributes=[xml_attrib('application', App)
+                           ,xml_attrib('data', Data)
+                           ]
+               }.
+
+-spec anti_action_el(kz_types:xml_attrib_value(), kz_types:xml_attrib_value(), boolean()) -> kz_types:xml_el().
+anti_action_el(App, Data, Inline) ->
+    #xmlElement{name='anti-action'
                ,attributes=[xml_attrib('application', App)
                            ,xml_attrib('data', Data)
                            ,xml_attrib('inline', kz_term:to_binary(Inline))
@@ -1296,3 +1463,247 @@ event_filters_el(Filters) ->
                ,content=Filters
                ,attributes=[xml_attrib('type', <<"whitelist">>)]
                }.
+
+-spec route_resp_park_xml(kz_json:object(), dialplan_context()) -> kz_types:xml_els().
+route_resp_park_xml(JObj, DialplanContext) ->
+    Exten = [route_resp_log_winning_node()
+            ,route_resp_set_winning_node()
+            ,route_resp_capture_id()
+            ,route_resp_bridge_id()
+            ,route_resp_ringback(JObj)
+            ,route_resp_transfer_ringback(JObj)
+            ,route_resp_pre_park_action(JObj)
+            ,maybe_start_dtmf_action(DialplanContext)
+            ,route_resp_ccvs(JObj)
+            ,route_resp_cavs(JObj)
+            ,unset_custom_sip_headers()
+            ,route_resp_set_control_info(DialplanContext)
+            ,route_resp_fire_route_win(JObj, DialplanContext)
+            ,route_resp_park()
+            ],
+    [E || E <- Exten, E =/= 'undefined'].
+
+-spec route_resp_set_control_info(dialplan_context()) -> kz_types:xml_el().
+route_resp_set_control_info(#{control_q := ControlQ
+                             ,control_p := ControlP
+                             ,fetch_id := FetchId
+                             }
+                           ) ->
+    App = <<"kz_multiset_encoded">>,
+    NodeBin = kz_term:to_binary(node()),
+    Arg = list_to_binary(["^^;Call-Control-Queue="
+                         ,ControlQ
+                         ,";Call-Control-PID="
+                         ,kz_term:to_binary(ControlP)
+                         ,";ecallmgr_Ecallmgr-Node="
+                         ,NodeBin
+                         ,";Call-Control-Node="
+                         ,NodeBin
+                         ,";Fetch-UUID="
+                         ,FetchId
+                         ]),
+    action_el(App, Arg).
+
+directory_resp_domain(Endpoint, JObj) ->
+    case kz_json:get_ne_binary_value(<<"Requested-Domain-Name">>, JObj) of
+        'undefined' -> kz_json:get_ne_binary_value(<<"Domain-Name">>, Endpoint);
+        Domain -> Domain
+    end.
+
+directory_resp_user_id(Endpoint, JObj) ->
+    case kz_json:get_ne_binary_value(<<"Requested-User-ID">>, JObj) of
+        'undefined' -> kz_json:get_ne_binary_value(<<"User-ID">>, Endpoint);
+        UserID -> UserID
+    end.
+
+directory_resp_group_id(Endpoint, JObj) ->
+    case kz_json:get_ne_binary_value(<<"Requested-Group-ID">>, JObj) of
+        'undefined' -> kz_json:get_ne_binary_value(<<"Group-ID">>, Endpoint);
+        GroupID -> GroupID
+    end.
+
+call_forward_dial_string(Endpoint) ->
+    case kz_json:get_json_value(<<"CallForward">>, Endpoint) of
+        'undefined' ->
+            <<>>;
+        Failover ->
+            URI = kz_json:get_ne_binary_value(<<"Call-Forward-Request-URI">>, Failover),
+            Vars = channel_vars(Failover),
+            list_to_binary(["[^^!", kz_binary:join(Vars, <<"!">>), "]loopback/", URI])
+    end.
+
+dial_string('undefined', _Endpoint, _Id) ->
+    <<"error/subscriber_absent">>;
+dial_string(_Proxy, Endpoint, Id) ->
+    SIPInterface = kz_json:get_ne_binary_value(<<"SIP-Interface">>, Endpoint, ?DEFAULT_FS_PROFILE),
+    list_to_binary(["sofia/", SIPInterface, "/", Id]).
+
+-spec directory_resp_endpoint_xml(kz_json:object(), kz_json:object()) -> {'ok', iolist()}.
+directory_resp_endpoint_xml(Endpoint, JObj) ->
+    Type = kz_json:get_ne_binary_value(<<"Endpoint-Type">>, Endpoint, <<"device">>),
+    directory_resp_endpoint_xml(Type, Endpoint, JObj).
+
+-spec directory_resp_endpoint_xml(binary(), kz_json:object(), kz_json:object()) -> {'ok', iolist()}.
+directory_resp_endpoint_xml(<<"resource">>, Endpoint, JObj) ->
+    directory_resp_resource_xml(Endpoint, JObj);
+directory_resp_endpoint_xml(<<"group">>, Endpoint, JObj) ->
+    directory_resp_group_ep_xml(Endpoint, JObj);
+directory_resp_endpoint_xml(<<"user">>, Endpoint, JObj) ->
+    directory_resp_user_xml(Endpoint, JObj);
+directory_resp_endpoint_xml(<<"device">>, Endpoint, JObj) ->
+    directory_resp_device_xml(Endpoint, JObj).
+
+-spec directory_resp_resource_xml(kz_json:object(), kz_json:object()) -> {'ok', iolist()}.
+directory_resp_resource_xml(Endpoint, JObj) ->
+    DomainName = directory_resp_domain(Endpoint, JObj),
+    UserId = directory_resp_user_id(Endpoint, JObj),
+
+    ChannelParams = get_channel_params(Endpoint),
+    ProfileParams = get_profile_params(Endpoint),
+    SIPHeaders = get_custom_sip_headers(Endpoint),
+    VariableEls = [variable_el(K, V) || {K, V} <- ChannelParams],
+    HeaderEls = [variable_el(K, V) || {K, V} <- SIPHeaders],
+    VariablesEl = variables_el(VariableEls ++ HeaderEls),
+    ProfileEls = [variable_el(K, V) || {K, V} <- ProfileParams],
+    ProfileVariablesEl = variables_el('profile-variables', ProfileEls),
+    UserProps = user_el_default_props(UserId),
+    UserEl = user_el(UserProps, [VariablesEl, ProfileVariablesEl]),
+    DomainEl = domain_el(DomainName, UserEl),
+    SectionEl = section_el(<<"directory">>, DomainEl),
+    {'ok', xmerl:export([SectionEl], 'fs_xml')}.
+
+-spec directory_resp_device_xml(kz_json:object(), kz_json:object()) -> {'ok', iolist()}.
+directory_resp_device_xml(Endpoint, JObj) ->
+    DomainName = directory_resp_domain(Endpoint, JObj),
+    UserId = directory_resp_user_id(Endpoint, JObj),
+    Realm = kz_json:get_ne_binary_value(<<"Domain-Name">>, Endpoint),
+    Username = kz_json:get_ne_binary_value(<<"User-ID">>, Endpoint),
+    Id = <<UserId/binary, "@", DomainName/binary>>,
+
+    {'ok', ProxyPath, Props} = ecallmgr_registrar:lookup_proxy_path(Realm, Username),
+    Vars = get_channel_params(Props),
+
+    ProfileParams = get_profile_params(Endpoint),
+    ChannelParams = get_channel_params(Endpoint),
+    SIPHeaders = get_custom_sip_headers(Endpoint),
+
+    VariableEls = [variable_el(K, V) || {K, V} <- ChannelParams],
+    HeaderEls = [variable_el(<<"sip_h_", K/binary>>, V) || {K, V} <- SIPHeaders],
+    ProxyEls = [variable_el(K, V) || {K, V} <- Vars],
+    ProxyPathEls = [variable_el(<<"sip_route_uri">>, Proxy) || Proxy <- [ProxyPath], Proxy =/= 'undefined'],
+    VariablesEl = variables_el(VariableEls ++ HeaderEls ++ ProxyEls ++ ProxyPathEls),
+
+    Number = kz_json:get_value([<<"Custom-SIP-Headers">>,<<"P-Kazoo-Primary-Number">>],Endpoint),
+    ProfileEls = [variable_el(K, V) || {K, V} <- ProfileParams],
+    ProfileVariablesEl = variables_el('profile-variables', ProfileEls),
+    UserProps = props:filter_undefined(user_el_props(Number, UserId)),
+
+    Params = [{<<"group-dial-string">>, <<"kz/", Id/binary>>}
+             ,{<<"endpoint-dial-string">>, dial_string(ProxyPath, Endpoint, Id)}
+             ,{<<"callforward-dial-string">>, call_forward_dial_string(Endpoint)}
+             ,{<<"endpoint-separator">>, ?SEPARATOR_ENTERPRISE}
+             ],
+    ParamsEl = params_el([param_el(K,V) || {K,V} <- Params]),
+    UserEl = user_el(UserProps, [VariablesEl, ProfileVariablesEl, ParamsEl, callfwd_el(Endpoint)]),
+    DomainEl = domain_el(DomainName, UserEl),
+    SectionEl = section_el(<<"directory">>, DomainEl),
+    {'ok', xmerl:export([SectionEl], 'fs_xml')}.
+
+-spec directory_resp_user_xml(kz_json:object(), kz_json:object()) -> {'ok', iolist()}.
+directory_resp_user_xml(Endpoint, JObj) ->
+    DomainName = directory_resp_domain(Endpoint, JObj),
+    UserId = directory_resp_user_id(Endpoint, JObj),
+    Id = <<UserId/binary, "@", DomainName/binary>>,
+
+    ProfileParams = get_profile_params(Endpoint),
+    ChannelParams = get_channel_params(Endpoint),
+    SIPHeaders = get_custom_sip_headers(Endpoint),
+    VariableEls = [variable_el(K, V) || {K, V} <- ChannelParams],
+    HeaderEls = [variable_el(K, V) || {K, V} <- SIPHeaders],
+    VariablesEl = variables_el(VariableEls ++ HeaderEls),
+    ProfileEls = [variable_el(K, V) || {K, V} <- ProfileParams],
+    ProfileVariablesEl = variables_el('profile-variables', ProfileEls),
+    UserProps = props:filter_undefined(user_el_props('undefined', UserId)),
+    Members = kz_json:get_list_value(<<"Members">>, Endpoint, []),
+    DialEndpoints = kz_binary:join([list_to_binary(["kz/", M, "@", DomainName]) || M <- Members], ?SEPARATOR_ENTERPRISE),
+    Params = [{<<"group-dial-string">>, <<"kz/", Id/binary>>}
+             ,{<<"endpoint-dial-string">>,  DialEndpoints}
+             ,{<<"callforward-dial-string">>, call_forward_dial_string(Endpoint)}
+             ,{<<"endpoint-separator">>, ?SEPARATOR_ENTERPRISE}
+             ],
+    ParamsEl = params_el([param_el(K,V) || {K,V} <- Params]),
+
+    UserEl = user_el(UserProps, [VariablesEl, ProfileVariablesEl, ParamsEl, callfwd_el(Endpoint)]),
+    DomainEl = domain_el(DomainName, UserEl),
+    SectionEl = section_el(<<"directory">>, DomainEl),
+    {'ok', xmerl:export([SectionEl], 'fs_xml')}.
+
+-spec directory_resp_group_ep_xml(kz_json:object(), kz_json:object()) -> {'ok', iolist()}.
+directory_resp_group_ep_xml(Endpoint, JObj) ->
+    lager:warning_unsafe("GROUP => ~s", [kz_json:encode(Endpoint, [pretty])]),
+    DomainName = directory_resp_domain(Endpoint, JObj),
+    GroupId = directory_resp_user_id(Endpoint, JObj),
+    GroupProps = user_el_default_props(GroupId),
+    ChannelParams = get_channel_params(Endpoint),
+    DialPrefix = list_to_binary(["<"
+                                ,kz_binary:join([<<K/binary, "='", V/binary, "'">> || {K,V} <- ChannelParams], <<",">>)
+                                ,">"
+                                ]),
+    Members = kz_json:get_list_value(<<"Members">>, Endpoint, []),
+    Dial = lists:foldr(fun(EP, Acc) ->
+                               Id = kz_json:get_ne_binary_value(<<"id">>, EP, <<"error">>),
+                               Delay = kz_json:get_integer_value(<<"delay">>, EP, 0),
+                               Timeout = kz_json:get_integer_value(<<"timeout">>, EP, 120),
+                               D = list_to_binary([
+                                                   "["
+                                                  ,"leg_delay_start=", kz_term:to_binary(Delay)
+                                                  ,",leg_timeout=", kz_term:to_binary(Timeout)
+                                                  ,"]",
+                                                   "kz/", Id, "@", DomainName
+                                                  ]),
+                               [D | Acc]
+                       end, [], Members),
+    DialEndpoints = kz_binary:join(Dial, ?SEPARATOR_ENTERPRISE),
+    Params = [param_el(<<"dial-string">>, list_to_binary([DialPrefix, DialEndpoints]))],
+    GroupEl = user_el(GroupProps, [params_el(Params)]),
+    DomainEl = domain_el(DomainName, GroupEl),
+    SectionEl = section_el(<<"directory">>, DomainEl),
+    {'ok', xmerl:export([SectionEl], 'fs_xml')}.
+
+-spec directory_resp_group_xml(kz_json:object(), kz_json:object()) -> {'ok', iolist()}.
+directory_resp_group_xml(Endpoint, JObj) ->
+    DomainName = directory_resp_domain(Endpoint, JObj),
+    GroupId = directory_resp_group_id(Endpoint, JObj),
+    GroupProps = [{<<"name">>, GroupId}],
+    Members = kz_json:get_json_value(<<"Members">>, Endpoint, kz_json:new()),
+    MembersEl = kz_json:foldr(fun fold_user_el/3, [], Members),
+
+    GroupEl = group_el(GroupProps, [users_el(MembersEl)]),
+
+    DomainEl = domain_el(DomainName, [groups_el([GroupEl])]),
+    SectionEl = section_el(<<"directory">>, DomainEl),
+    {'ok', xmerl:export([SectionEl], 'fs_xml')}.
+
+-spec fold_user_el(kz_json:key(), kz_json:json_term(), [kz_types:xml_el()]) -> [kz_types:xml_el()].
+fold_user_el(Key, _J, Acc) ->
+    UserProps = user_el_default_props(Key),
+    Param = param_el(<<"dial-string">>, <<>>),
+    [user_el(UserProps, [params_el([Param])]) | Acc].
+
+callfwd_el(Endpoint) ->
+    case callfwd_properties(Endpoint) of
+        [] -> 'undefined';
+        Props -> variables_el('call-forward', [variable_el(K, kz_term:to_binary(V)) || {K, V} <- Props])
+    end.
+
+-define(CALLFWD_FILTER, [<<"Call-Forward">>
+                        ,<<"Is-Failover">>
+                        ,<<"Is-Substitute">>
+                        ,<<"Direct-Calls-Only">>
+                        ]).
+
+callfwd_properties(Endpoint) ->
+    filter_call_fwd_props(kz_json:to_proplist([<<"CallForward">>, <<"Custom-Channel-Vars">>], Endpoint)).
+
+filter_call_fwd_props(Props) ->
+    lists:filter(fun({K,_V}) -> lists:member(K, ?CALLFWD_FILTER) end, Props).

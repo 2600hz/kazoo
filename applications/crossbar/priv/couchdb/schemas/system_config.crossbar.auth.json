@@ -24,12 +24,6 @@
                     "log_successful_attempts": false,
                     "token_auth_expiry_s": 3600
                 },
-                "cb_ubiquiti_auth": {
-                    "enabled": true,
-                    "log_failed_attempts": true,
-                    "log_successful_attempts": false,
-                    "token_auth_expiry_s": 3600
-                },
                 "cb_user_auth": {
                     "enabled": true,
                     "log_failed_attempts": true,
@@ -48,9 +42,6 @@
                 "cb_ip_auth": {
                     "$ref": "auth_module_config"
                 },
-                "cb_ubiquiti_auth": {
-                    "$ref": "auth_module_config"
-                },
                 "cb_user_auth": {
                     "$ref": "auth_module_config"
                 }
@@ -62,8 +53,7 @@
                 "cb_user_auth",
                 "cb_api_auth",
                 "cb_auth",
-                "cb_ip_auth",
-                "cb_ubiquiti_auth"
+                "cb_ip_auth"
             ],
             "description": "List of crossbar auth configurable modules",
             "items": {

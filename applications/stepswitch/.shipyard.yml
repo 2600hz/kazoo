@@ -1,0 +1,21 @@
+---
+name: kazoo-application-stepswitch
+base_branch: origin/master
+metapackage:
+  - name: meta-kazoo-applications
+    type: required
+    branch: master
+    package: kazoo-application-stepswitch
+base_core: kazoo
+template: kazoo-application.spec.tmpl
+package:
+  centos7:
+    name: kazoo-application-stepswitch
+    summary: Kazoo core application
+    description: |
+      Provides carrier management and selection for upstream routing
+    app_name: stepswitch
+    license: MPL 2.0
+    group: Productivity/Telephony
+    url: https://2600hz.org/
+    vendor: 2600Hz

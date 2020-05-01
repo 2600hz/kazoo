@@ -1,0 +1,12 @@
+<definition name="conference-bgdial">
+	<field name="Dial-Result" type="static" serialize-as="object">
+		<filters>
+			<filter name="Action" type="include" compare="value" value="bgdial-result" />
+		</filters>
+		<fields verbose="false">
+			<field name="Result" />
+			<field name="Job-UUID" />
+			<field name="Peer-UUID" />
+		</fields>
+	</field>
+</definition>

@@ -1,5 +1,7 @@
 # Blackhole - Real-time HTTP Websocket Events
 
+Blackhole creates a point of contact between KAZOO and your system, using websockets, to stream events occurring in KAZOO to your connected session(s). Blackhole is effectively an AMQP->Websocket bridge, providing you with real-time event streams about calls, API changes, and more.
+
 ## Setting up
 
 1. Start the Blackhole Crossbar module
@@ -168,7 +170,7 @@ Here are a few complete `call.*.*` JSON events:
         "Caller-ID-Name": "user_wpxnx7am9w",
         "Caller-ID-Number": "user_wpxnx7am9w",
         "Custom-Channel-Vars": {
-            "Account-ID": "4b8c6fec4b2597882c0390202d195419",
+            "Account-ID": "account0000000000000000000000002",
             "Account-Name": "wefwefwefwef",
             "Account-Realm": "wefwefwefwef.2600hz.com",
             "Authorizing-ID": "d509114b66efabf32dfd78dc464b46dd",
@@ -213,7 +215,7 @@ Here are a few complete `call.*.*` JSON events:
         "Caller-ID-Name": "web phone",
         "Caller-ID-Number": "356",
         "Custom-Channel-Vars": {
-            "Account-ID": "4b8c6fec4b2597882c0390202d195419",
+            "Account-ID": "account0000000000000000000000002",
             "Account-Name": "wefwefwefwef",
             "Account-Realm": "wefwefwefwef.2600hz.com",
             "Application-Name": "callflow",
@@ -268,7 +270,7 @@ Here are a few complete `call.*.*` JSON events:
         "Caller-ID-Name": "web phone",
         "Caller-ID-Number": "356",
         "Custom-Channel-Vars": {
-            "Account-ID": "4b8c6fec4b2597882c0390202d195419",
+            "Account-ID": "account0000000000000000000000002",
             "Account-Name": "wefwefwefwef",
             "Account-Realm": "wefwefwefwef.2600hz.com",
             "Application-Name": "callflow",

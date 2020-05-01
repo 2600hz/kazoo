@@ -1,0 +1,71 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.authn.authn_req",
+    "description": "AMQP API for authn.authn_req",
+    "properties": {
+        "Auth-Nonce": {
+            "type": "string"
+        },
+        "Auth-Realm": {
+            "type": "string"
+        },
+        "Auth-Response": {
+            "type": "string"
+        },
+        "Auth-User": {
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Contact": {
+            "type": "string"
+        },
+        "Custom-SIP-Headers": {
+            "type": "object"
+        },
+        "Event-Category": {
+            "enum": [
+                "directory"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "authn_req"
+            ],
+            "type": "string"
+        },
+        "Expires": {
+            "type": "string"
+        },
+        "From": {
+            "type": "string"
+        },
+        "Method": {
+            "type": "string"
+        },
+        "Orig-IP": {
+            "type": "string"
+        },
+        "Orig-Port": {
+            "type": "string"
+        },
+        "Switch-Hostname": {
+            "type": "string"
+        },
+        "To": {
+            "type": "string"
+        },
+        "User-Agent": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Auth-Realm",
+        "Auth-User",
+        "From",
+        "To"
+    ],
+    "type": "object"
+}

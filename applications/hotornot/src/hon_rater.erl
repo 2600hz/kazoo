@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Given a rate_req, find appropriate rate for the call
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(hon_rater).
@@ -13,14 +18,14 @@
 -spec init() -> 'ok'.
 init() ->
     _ = [kapps_maintenance:refresh(kzd_ratedeck:format_ratedeck_db(Ratedeck))
-         || Ratedeck <- hotornot_config:ratedecks()
+         || Ratedeck <- kz_services_ratedecks:ratedecks()
         ],
     'ok'.
 
 -spec handle_req(kapi_rate:req(), kz_term:proplist()) -> 'ok'.
 handle_req(RateReq, _Props) ->
     'true' = kapi_rate:req_v(RateReq),
-    _ = kz_util:put_callid(RateReq),
+    _ = kz_log:put_callid(RateReq),
     lager:debug("valid rating request"),
     case get_rate_data(RateReq, kapi_rate:authorizing_type(RateReq)) of
         {'error', 'no_rate_found'} ->
@@ -47,7 +52,7 @@ publish_no_rate_found(RateReq) ->
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     lager:debug("publishing empty ~srate resp for ~s(~s)", [maybe_empty_mobile_log(RateReq), ServerId, MsgId]),
-    kz_amqp_worker:cast(Resp, fun(P) -> kapi_rate:publish_resp(ServerId, P) end).
+    kapi_rate:publish_resp(ServerId, Resp).
 
 -spec maybe_empty_mobile_log(kapi_rate:req()) -> string().
 maybe_empty_mobile_log(RateReq) ->
@@ -57,8 +62,8 @@ maybe_empty_mobile_log(RateReq) ->
     end.
 
 -spec get_rate_data(kapi_rate:req(), kz_term:api_ne_binary()) ->
-                           {'ok', kz_term:api_terms()} |
-                           {'error', 'no_rate_found'}.
+          {'ok', kz_term:api_terms()} |
+          {'error', 'no_rate_found'}.
 get_rate_data(RateReq, <<"mobile">>) ->
     ToDID = kapi_rate:to_did(RateReq),
     FromDID = kapi_rate:from_did(RateReq),
@@ -102,8 +107,8 @@ maybe_send_system_alert(RateReq, FromDID, ToDID) ->
     end.
 
 -spec get_rate_data(kapi_rate:req(), kz_term:ne_binary(), kz_term:api_binary(), kz_json:objects()) ->
-                           {'ok', kz_term:api_terms()} |
-                           {'error', 'no_rate_found'}.
+          {'ok', kz_term:api_terms()} |
+          {'error', 'no_rate_found'}.
 get_rate_data(RateReq, ToDID, FromDID, Rates) ->
     lager:debug("candidate rates found, filtering"),
     Matching = hon_util:matching_rates(Rates, RateReq),
@@ -134,7 +139,7 @@ maybe_get_rate_discount(RateReq) ->
 -spec maybe_get_rate_discount(kapi_rate:req(), kz_term:api_binary()) -> kz_term:api_binary().
 maybe_get_rate_discount(_RateReq, 'undefined') -> 'undefined';
 maybe_get_rate_discount(RateReq, AccountId) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kzs_util:format_account_db(AccountId),
     case kz_datamgr:open_cache_doc(AccountDb, <<"limits">>) of
         {'error', _R} ->
             lager:debug("unable to open account ~s definition: ~p", [AccountId, _R]),

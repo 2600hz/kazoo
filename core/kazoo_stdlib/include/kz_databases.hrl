@@ -7,7 +7,6 @@
 -define(KZ_ACCOUNTS_DB, <<"accounts">>).
 -define(KZ_ALERTS_DB, <<"alerts">>).
 -define(KZ_RATES_DB, <<"ratedeck">>).
--define(KZ_PROVISIONER_DB, <<"global_provisioner">>).
 -define(KZ_FAXES_DB, <<"faxes">>).
 -define(KZ_SERVICES_DB, <<"services">>).
 -define(KZ_OFFNET_DB, <<"offnet">>).
@@ -19,6 +18,7 @@
 -define(KZ_ACCOUNT_CONFIGS, <<"configs_">>).
 
 -define(KZ_WEBHOOKS_DB, <<"webhooks">>).
+-define(KZ_FUNCTIONS_DB, <<"functions">>).
 
 -define(KZ_ACDC_DB, <<"acdc">>).
 
@@ -42,7 +42,6 @@
                        ,?KZ_SIP_DB
                        ,?KZ_ACCOUNTS_DB
                        ,?KZ_RATES_DB
-                       ,?KZ_PROVISIONER_DB
                        ,?KZ_FAXES_DB
                        ,?KZ_SERVICES_DB
                        ,?KZ_OFFNET_DB
@@ -51,6 +50,7 @@
                        ,?KZ_DEDICATED_IP_DB
                        ,?KZ_ACDC_DB
                        ,?KZ_OAUTH_DB
+                       ,?KZ_FUNCTIONS_DB
                        ,?KZ_WEBHOOKS_DB
                        ,?KZ_TOKEN_DB
                        ,?KZ_ALERTS_DB

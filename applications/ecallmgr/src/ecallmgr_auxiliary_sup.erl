@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
 %%% @author Karl Anderson
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(ecallmgr_auxiliary_sup).
@@ -32,12 +37,12 @@
 -define(CHILDREN, [?CACHE_ARGS(?ECALLMGR_UTIL_CACHE, ?CACHE_UTIL_PROPS)
                   ,?CACHE_ARGS(?ECALLMGR_AUTH_CACHE, ?CACHE_AUTHN_PROPS)
                   ,?CACHE(?ECALLMGR_CALL_CACHE)
-                  ,?CACHE(?ECALLMGR_INTERACTION_CACHE)
                   ,?SUPER('ecallmgr_originate_sup')
                   ,?WORKER('ecallmgr_registrar')
                   ,?WORKER('ecallmgr_balance_crawler_statem')
                   ,?WORKER('ecallmgr_discovery')
                   ,?WORKER('ecallmgr_usurp_monitor')
+                  ,?WORKER('ecallmgr_trusted')
                   ]).
 
 %%==============================================================================

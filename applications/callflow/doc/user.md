@@ -18,6 +18,7 @@ Key | Description | Type | Default | Required | Support Level
 `delay` | How long to delay the endpoint(s) before bridging | `integer()` | `0` | `false` |  
 `fail_on_single_reject` | If any leg rejects the call, cancel all other legs | `boolean()` |   | `false` |  
 `id` | User ID | `string()` |   | `false` |  
+`skip_module` | When set to true this callflow action is skipped, advancing to the wildcard branch (if any) | `boolean()` |   | `false` |  
 `static_invite` | Override the SIP Username | `string()` |   | `false` |  
 `strategy` | Ringing strategy for the endpoint(s) | `string('simultaneous' | 'single')` | `simultaneous` | `false` |  
 `suppress_clid` | Toggle whether to suppress caller ID | `boolean()` |   | `false` |  

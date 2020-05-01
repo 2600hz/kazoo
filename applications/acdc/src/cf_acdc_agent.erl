@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc Handles changing an agent's status
 %%% "data":{
 %%%   "action":["login","logout","paused","resume"] // one of these
@@ -11,6 +11,11 @@
 %%% }
 %%%
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cf_acdc_agent).
@@ -198,8 +203,8 @@ format_presence_state(_) -> 'undefined'.
 
 -type find_agent_error() :: 'unknown_endpoint' | 'multiple_owners'.
 -spec find_agent(kapps_call:call()) ->
-                        {'ok', kz_term:api_binary()} |
-                        {'error', find_agent_error()}.
+          {'ok', kz_term:api_binary()} |
+          {'error', find_agent_error()}.
 find_agent(Call) ->
     find_agent(Call, kapps_call:authorizing_id(Call)).
 

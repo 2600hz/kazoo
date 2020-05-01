@@ -10,7 +10,17 @@
     "language": "javascript",
     "views": {
         "crossbar_listing": {
-            "map": "function(doc) { if (doc.pvt_deleted || !doc.hotdesk || !doc.hotdesk.users || doc.pvt_type != 'device') return; for (user_id in doc.hotdesk.users) {emit(user_id, {'device_id': doc._id, 'device_name': doc.name});} }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_deleted || !doc.hotdesk || !doc.hotdesk.users || doc.pvt_type != 'device') return;",
+                "  for (user_id in doc.hotdesk.users) {",
+                "    emit(user_id, {",
+                "      'device_id': doc._id,",
+                "      'device_name': doc.name",
+                "    });",
+                "  }",
+                "}"
+            ]
         }
     }
 }

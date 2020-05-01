@@ -1,4 +1,5 @@
 view_name, view_options, view_file_name
-maintenance/listing_by_type, [{key,<<"user">>},include_docs], maintenance+listing_by_type-ba9ee0020a95e519332f16eacf0a3324.json
-all_docs, [{keys,[<<"vmbox01-msg05-private-media-timestamp">>,<<"vmbox01-msg06-now_s">>,<<"vmbox01-msg07-private-media-timestamp">>,<<"vmbox01-msg08-no_private_media-box_timestamp">>]},include_docs], all_docs-ea31cb9733e3af1e6e78978fc5ddeba5.json
 all_docs, [{keys,[<<"vmbox01">>]},include_docs], all_docs-4e855351c2abdc7d2a0a34547e8ee719.json
+all_docs, [{keys,[<<"vmbox01-msg05-private-media-timestamp">>,<<"vmbox01-msg06-now_s">>,<<"vmbox01-msg07-private-media-timestamp">>,<<"vmbox01-msg08-no_private_media-box_timestamp">>]},include_docs], all_docs-ea31cb9733e3af1e6e78978fc5ddeba5.json
+attributes/owned, [{key,[<<"user0000000000000000000000000001">>,<<"device">>]}], attributes+owned-816e8fb187540d523b97880ab16a0ef7.json
+maintenance/listing_by_type, [{key,<<"user">>},include_docs], maintenance+listing_by_type-ba9ee0020a95e519332f16eacf0a3324.json

@@ -37,6 +37,10 @@
             "default": false,
             "description": "Allow login if caller has a single mailbox",
             "type": "boolean"
+        },
+        "skip_module": {
+            "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+            "type": "boolean"
         }
     },
     "type": "object"

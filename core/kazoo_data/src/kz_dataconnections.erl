@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_dataconnections).
@@ -49,23 +53,23 @@ update(#data_connection{}=Connection) ->
 
 -spec add(data_connection()) -> 'ok'.
 add(#data_connection{tag='undefined'}=Connection) ->
-    add(Connection#data_connection{tag='local'});
+    add(Connection#data_connection{tag = <<"local">>});
 add(#data_connection{}=Connection) ->
     gen_server:cast(?SERVER, {'add_connection', Connection}).
 
 
 -spec wait_for_connection() -> 'ok' | 'no_connection'.
 wait_for_connection() ->
-    wait_for_connection('local').
+    wait_for_connection(<<"local">>).
 
--spec wait_for_connection(any()) -> 'ok' | 'no_connection'.
+-spec wait_for_connection(kz_term:ne_binary()) -> 'ok' | 'no_connection'.
 wait_for_connection(Tag) ->
     wait_for_connection(Tag, 'infinity').
 
--spec wait_for_connection(any(), timeout()) -> 'ok' | 'no_connection'.
+-spec wait_for_connection(kz_term:ne_binary(), timeout()) -> 'ok' | 'no_connection'.
 wait_for_connection(_Tag, 0) -> 'no_connection';
 wait_for_connection(Tag, Timeout) ->
-    Start = os:timestamp(),
+    Start = kz_time:start_time(),
     try test_conn(Tag) of
         {'error', _E} ->
             timer:sleep(rand:uniform(?MILLISECONDS_IN_SECOND) + 100),
@@ -81,9 +85,9 @@ wait_for_connection(Tag, Timeout) ->
 
 -spec get_server() -> server().
 get_server() ->
-    get_server('local').
+    get_server(<<"local">>).
 
--spec get_server(term()) -> server().
+-spec get_server(kz_term:ne_binary()) -> server().
 get_server(Tag) ->
     MatchSpec = [{#data_connection{ready = 'true'
                                   ,app = '$1'
@@ -106,11 +110,11 @@ get_server(Tag) ->
     end.
 
 -spec test_conn() -> {'ok', kz_json:object()} |
-                     {'error', any()}.
-test_conn() -> test_conn('local').
+          {'error', any()}.
+test_conn() -> test_conn(<<"local">>).
 
--spec test_conn(term()) -> {'ok', kz_json:object()} |
-                           {'error', any()}.
+-spec test_conn(kz_term:ne_binary()) -> {'ok', kz_json:object()} |
+          {'error', any()}.
 test_conn(Tag) ->
     case get_server(Tag) of
         'undefined' -> {'error', 'server_not_available'};
@@ -128,7 +132,7 @@ test_conn(Tag) ->
 -spec init([]) -> {'ok', state()}.
 init([]) ->
     process_flag('trap_exit', 'true'),
-    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
+    kz_log:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     _ = ets:new(?MODULE, ['ordered_set'
                          ,{'read_concurrency', 'true'}
                          ,{'keypos', #data_connection.id}

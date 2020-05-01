@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(mod_kazoo).
@@ -16,9 +20,7 @@
 -export([bind/2
         ,bind/3
         ]).
--export([fetch_reply/5
-        ,fetch_reply/6
-        ]).
+-export([fetch_reply/1]).
 -export([api/2
         ,api/3
         ,api/4
@@ -27,6 +29,11 @@
         ,bgapi/4
         ,bgapi/5
         ,bgapi/6
+        ]).
+-export([json_api/2
+        ,json_api/3
+        ,json_api/4
+        ,json_api/5
         ]).
 -export([event/2
         ,event/3
@@ -46,41 +53,35 @@
 -export([sync_channel/2]).
 -export([no_legacy/1]).
 
+-export([async_api/3]).
+
 -include("ecallmgr.hrl").
 
 -define(TIMEOUT, 5 * ?MILLISECONDS_IN_SECOND).
 
--type fs_api_ok() :: {'ok', binary()}.
--type fs_api_error():: {'error', 'baduuid' | 'timeout' | 'exception' | binary()}.
--type fs_api_return() :: fs_api_ok() | fs_api_error() | 'ok'.
--export_type([fs_api_ok/0
-             ,fs_api_error/0
-             ,fs_api_return/0
-             ]).
-
--spec version(atom()) -> fs_api_return().
+-spec version(atom()) -> freeswitch:fs_api_return().
 version(Node) ->
     version(Node, ?TIMEOUT).
 
--spec version(atom(), pos_integer()) -> fs_api_return().
+-spec version(atom(), pos_integer()) -> freeswitch:fs_api_return().
 version(Node, Timeout) ->
     try gen_server:call({'mod_kazoo', Node}, 'version', Timeout) of
         'timeout' -> {'error', 'timeout'};
         Result -> Result
     catch
-        exit:{{nodedown, _Node}, _} -> {error, nodedown};
-        _E:_R ->
+        exit:{{nodedown, _Node}, _}:_ -> {error, nodedown};
+        _E:_R:_ ->
             lager:info("failed to get mod_kazoo version from ~s: ~p ~p"
                       ,[Node, _E, _R]),
             {'error', 'exception'}
     end.
 
--spec noevents(atom()) -> fs_api_return().
+-spec noevents(atom()) -> freeswitch:fs_api_return().
 noevents(Node) ->
     try gen_server:cast({'mod_kazoo', Node}, 'noevents') of
         'ok' -> 'ok'
     catch
-        _E:_R ->
+        _E:_R:_ ->
             lager:info("failed to send noevents to ~s: ~p ~p"
                       ,[Node, _E, _R]),
             {'error', 'exception'}
@@ -90,55 +91,54 @@ noevents(Node) ->
 close(Node) ->
     gen_server:cast({'mod_kazoo', Node}, 'exit').
 
--spec getpid(atom()) -> fs_api_return().
+-spec getpid(atom()) -> freeswitch:fs_api_return().
 getpid(Node) ->
     getpid(Node, ?TIMEOUT).
 
--spec getpid(atom(), pos_integer()) -> fs_api_return().
+-spec getpid(atom(), pos_integer()) -> freeswitch:fs_api_return().
 getpid(Node, Timeout) ->
     try gen_server:call({'mod_kazoo', Node}, 'getpid', Timeout) of
         'timeout' -> {'error', 'timeout'};
         Result -> Result
     catch
-        _E:_R ->
+        _E:_R:_ ->
             lager:info("failed to get mod_kazoo pid from ~s: ~p ~p"
                       ,[Node, _E, _R]),
             {'error', 'exception'}
     end.
 
--spec bind(atom(), atom()) -> fs_api_return().
+-spec bind(atom(), atom()) -> freeswitch:fs_api_return().
 bind(Node, Type) ->
     bind(Node, Type, ?TIMEOUT).
 
--spec bind(atom(), atom(), pos_integer()) -> fs_api_return().
+-spec bind(atom(), atom(), pos_integer()) -> freeswitch:fs_api_return().
 bind(Node, Type, Timeout) ->
     try gen_server:call({'mod_kazoo', Node}, {'bind', Type}, Timeout) of
         'timeout' -> {'error', 'timeout'};
         {'ok', <<"-ERR ", Reason/binary>>} -> internal_fs_error(Reason);
         Result -> Result
     catch
-        _E:_R ->
+        _E:_R:_ ->
             lager:info("failed to get bind to ~p on ~s: ~p ~p", [Type, Node, _E, _R]),
             {'error', 'exception'}
     end.
 
--spec fetch_reply(atom(), binary(), atom() | binary(), binary() | string(), map()) -> 'ok'.
-fetch_reply(Node, FetchID, Section, Reply, _Map) ->
-    gen_server:cast({'mod_kazoo', Node}, {'fetch_reply', Section, FetchID, Reply}).
-
--spec fetch_reply(atom(), binary(), atom() | binary(), binary() | string(), map(), pos_integer() | 'infinity') ->
-                         'ok' | {'error', 'baduuid'}.
-fetch_reply(Node, FetchID, Section, Reply, _Map, Timeout) ->
+-spec fetch_reply(map()) -> 'ok' | {'ok', any()} | {'error', any()}.
+fetch_reply(#{node := Node, section := Section, fetch_id := FetchID, reply := Reply, timeout := Timeout})
+  when Timeout >= 0 ->
     try gen_server:call({'mod_kazoo', Node}, {'fetch_reply', Section, FetchID, Reply}, Timeout) of
         'timeout' -> {'error', 'timeout'};
         {'ok', <<"-ERR ", Reason/binary>>} -> internal_fs_error(Reason);
-        {'ok', <<"+OK ", Result/binary>>} -> {ok, Result};
+        {'ok', <<"+OK ", Result/binary>>} when Result =/= <<>> -> {'ok', Result};
+        {'ok', <<"+OK", _/binary>>} -> 'ok';
         Result -> Result
     catch
-        _E:_R ->
+        _E:_R:_ ->
             lager:info("failed to send fetch reply to ~s: ~p ~p", [Node, _E, _R]),
             {'error', 'exception'}
-    end.
+    end;
+fetch_reply(#{node := Node, section := Section, fetch_id := FetchID, reply := Reply}) ->
+    gen_server:cast({'mod_kazoo', Node}, {'fetch_reply', Section, FetchID, Reply}).
 
 api_result(Result, 'undefined') -> Result;
 api_result(Result, Bin) ->
@@ -161,15 +161,15 @@ maybe_number(Msg, Size)
     end;
 maybe_number(Msg, _Size) -> Msg.
 
--spec api(atom(), kz_term:text()) -> fs_api_return().
+-spec api(atom(), kz_term:text()) -> freeswitch:fs_api_return().
 api(Node, Cmd) ->
     api(Node, Cmd, "").
 
--spec api(atom(), kz_term:text(), kz_term:text()) -> fs_api_return().
+-spec api(atom(), kz_term:text(), kz_term:text()) -> freeswitch:fs_api_return().
 api(Node, Cmd, Args) ->
     api(Node, Cmd, Args, ?TIMEOUT).
 
--spec api(atom(), kz_term:text(), kz_term:text(), timeout()) -> fs_api_return().
+-spec api(atom(), kz_term:text(), kz_term:text(), timeout()) -> freeswitch:fs_api_return().
 api(Node, Cmd, Args, Timeout) when is_atom(Node) ->
     try gen_server:call({'mod_kazoo', Node}, {'api', Cmd, Args}, Timeout) of
         'timeout' -> {'error', 'timeout'};
@@ -180,9 +180,59 @@ api(Node, Cmd, Args, Timeout) when is_atom(Node) ->
         {'error', _} = Err -> Err;
         Result -> api_result('ok', Result)
     catch
-        _E:_R ->
+        _E:_R:_ ->
             lager:info("failed to execute api command ~s on ~s: ~p ~p", [Cmd, Node, _E, _R]),
             {'error', 'exception'}
+    end.
+
+
+-spec json_api(atom(), kz_term:ne_binary() | {kz_term:ne_binary(), kz_term:api_object()}) ->
+          freeswitch:fs_json_api_return().
+json_api(Node, {Cmd, Args}) ->
+    json_api(Node, 'undefined', Cmd, Args, ?TIMEOUT);
+json_api(Node, Cmd) ->
+    json_api(Node, 'undefined', Cmd, 'undefined', ?TIMEOUT).
+
+-spec json_api(atom(), kz_term:api_ne_binary(), kz_term:text()) ->
+          freeswitch:fs_json_api_return().
+json_api(Node, UUID, Cmd) ->
+    json_api(Node, UUID, Cmd, 'undefined', ?TIMEOUT).
+
+-spec json_api(atom(), kz_term:api_ne_binary(), kz_term:ne_binary(), kz_term:api_object()) ->
+          freeswitch:fs_json_api_return().
+json_api(Node, UUID, Cmd, Args) ->
+    json_api(Node, UUID, Cmd, Args, ?TIMEOUT).
+
+-spec json_api(atom(), kz_term:api_ne_binary(), kz_term:ne_binary(), kz_term:api_object() | binary(), timeout()) ->
+          freeswitch:fs_json_api_return().
+json_api(Node, UUID, Cmd, 'undefined', Timeout) ->
+    json_api(Node, UUID, Cmd, <<>>, Timeout);
+json_api(Node, UUID, Cmd, Data, Timeout) when is_atom(Node) ->
+    Params = [{<<"command">>, Cmd}
+             ,{<<"uuid">>, UUID}
+             ,{<<"data">>, Data}
+             ],
+    JObj = kz_json:from_list(Params),
+    try gen_server:call({'mod_kazoo', Node}, {'json_api', kz_json:encode(JObj)}, Timeout) of
+        'timeout' -> {'error', 'timeout'};
+        {'error', {'parse_error', _Where}} = Err -> Err;
+        {'ok', Result} -> json_api_result('ok', Result);
+        {'error', Result} -> json_api_result('error', Result)
+    catch
+        _E:_R:_ ->
+            lager:info("failed to execute api command ~s on ~s: ~p ~p", [Cmd, Node, _E, _R]),
+            {'error', 'exception'}
+    end.
+
+json_api_result(Result, 'undefined') -> Result;
+json_api_result('error', Bin) ->
+    JObj = kz_json:decode(Bin),
+    {'error', kz_json:get_first_defined([<<"error">>, <<"message">>], JObj)};
+json_api_result('ok', Bin) ->
+    JObj = kz_json:decode(Bin),
+    case kz_json:get_atom_value(<<"status">>, JObj) of
+        'success' -> {'ok', kz_json:get_json_value(<<"response">>, JObj)};
+        'error' -> {'error', kz_json:get_first_defined([<<"error">>, <<"message">>], JObj)}
     end.
 
 %%------------------------------------------------------------------------------
@@ -192,10 +242,10 @@ api(Node, Cmd, Args, Timeout) when is_atom(Node) ->
 %% to respond.
 %% @end
 %%------------------------------------------------------------------------------
--spec bgapi(atom(), atom(), string() | binary()) -> fs_api_return().
+-spec bgapi(atom(), atom(), string() | binary()) -> freeswitch:fs_api_return().
 bgapi(Node, Cmd, Args) ->
     Self = self(),
-    _ = kz_util:spawn(
+    _ = kz_process:spawn(
           fun() ->
                   try gen_server:call({'mod_kazoo', Node}, {'bgapi', Cmd, Args}, ?TIMEOUT) of
                       {'ok', <<"-ERR ", Reason/binary>>} ->
@@ -213,7 +263,7 @@ bgapi(Node, Cmd, Args) ->
                       'timeout' ->
                           Self ! {'api', {'error', 'timeout'}}
                   catch
-                      _E:_R ->
+                      _E:_R:_ ->
                           lager:info("failed to execute bgapi command ~s on ~s: ~p ~p"
                                     ,[Cmd, Node, _E, _R]),
                           Self ! {'api', {'error', 'exception'}}
@@ -225,10 +275,10 @@ bgapi(Node, Cmd, Args) ->
         {'api', Result} -> Result
     end.
 
--spec bgapi(atom(), atom(), string() | binary(), fun()) -> fs_api_return().
+-spec bgapi(atom(), atom(), string() | binary(), fun()) -> freeswitch:fs_api_return().
 bgapi(Node, Cmd, Args, Fun) when is_function(Fun, 2) ->
     Self = self(),
-    _ = kz_util:spawn(
+    _ = kz_process:spawn(
           fun() ->
                   try gen_server:call({'mod_kazoo', Node}, {'bgapi', Cmd, Args}, ?TIMEOUT) of
                       {'ok', <<"-ERR ", Reason/binary>>} ->
@@ -246,7 +296,7 @@ bgapi(Node, Cmd, Args, Fun) when is_function(Fun, 2) ->
                       'timeout' ->
                           Self ! {'api', {'error', 'timeout'}}
                   catch
-                      _E:_R ->
+                      _E:_R:_ ->
                           lager:info("failed to execute bgapi command ~s on ~s: ~p ~p"
                                     ,[Cmd, Node, _E, _R]),
                           Self ! {'api', {'error', 'exception'}}
@@ -258,10 +308,10 @@ bgapi(Node, Cmd, Args, Fun) when is_function(Fun, 2) ->
         {'api', Result} -> Result
     end.
 
--spec bgapi(atom(), atom(), string() | binary(), fun(), list()) -> fs_api_return().
+-spec bgapi(atom(), atom(), string() | binary(), fun(), list()) -> freeswitch:fs_api_return().
 bgapi(Node, Cmd, Args, Fun, CallBackParams) when is_function(Fun, 3) ->
     Self = self(),
-    _ = kz_util:spawn(
+    _ = kz_process:spawn(
           fun() ->
                   try gen_server:call({'mod_kazoo', Node}, {'bgapi', Cmd, Args}, ?TIMEOUT) of
                       {'ok', <<"-ERR ", Reason/binary>>} ->
@@ -279,7 +329,7 @@ bgapi(Node, Cmd, Args, Fun, CallBackParams) when is_function(Fun, 3) ->
                       'timeout' ->
                           Self ! {'api', {'error', 'timeout'}}
                   catch
-                      _E:_R ->
+                      _E:_R:_ ->
                           lager:info("failed to execute bgapi command ~s on ~s: ~p ~p"
                                     ,[Cmd, Node, _E, _R]),
                           Self ! {'api', {'error', 'exception'}}
@@ -291,10 +341,10 @@ bgapi(Node, Cmd, Args, Fun, CallBackParams) when is_function(Fun, 3) ->
         {'api', Result} -> Result
     end.
 
--spec bgapi(atom(), kz_term:ne_binary(), list(), atom(), string() | binary(), fun()) -> fs_api_return().
+-spec bgapi(atom(), kz_term:ne_binary(), list(), atom(), string() | binary(), fun()) -> freeswitch:fs_api_return().
 bgapi(Node, UUID, CallBackParams, Cmd, Args, Fun) when is_function(Fun, 6) ->
     Self = self(),
-    _ = kz_util:spawn(
+    _ = kz_process:spawn(
           fun() ->
                   try gen_server:call({'mod_kazoo', Node}, {'bgapi', Cmd, Args}, ?TIMEOUT) of
                       {'ok', <<"-ERR ", Reason/binary>>} ->
@@ -312,7 +362,7 @@ bgapi(Node, UUID, CallBackParams, Cmd, Args, Fun) when is_function(Fun, 6) ->
                       'timeout' ->
                           Self ! {'api', {'error', 'timeout'}}
                   catch
-                      _E:_R ->
+                      _E:_R:_ ->
                           lager:info("failed to execute bgapi command ~s on ~s: ~p ~p"
                                     ,[Cmd, Node, _E, _R]),
                           Self ! {'api', {'error', 'exception'}}
@@ -333,19 +383,20 @@ event(Node, Events) ->
 -spec event(atom(), event() | [event()], pos_integer()) -> 'ok' | {'error', 'timeout' | 'exception'}.
 event(Node, [_|_]=Events, Timeout) ->
     PortOpen = get('port_open'),
+    PackeSize = freeswitch:event_stream_framing(Node),
     try gen_server:call({'mod_kazoo', Node}, {'event', Events}, Timeout) of
         'timeout' -> {'error', 'timeout'};
         {'ok', <<"-ERR ", Reason/binary>>} -> internal_fs_error(Reason);
         {'ok', {IP, Port}} when PortOpen =:= 'undefined' ->
             put('port_open', 'true'),
             {'ok', IPAddress} = inet_parse:address(IP),
-            {'ok', _} = gen_tcp:connect(IPAddress, Port, [{'mode', 'binary'}, {'packet', 2}]),
+            {'ok', _} = gen_tcp:connect(IPAddress, Port, [{'mode', 'binary'}, {'packet', PackeSize}]),
             'ok';
         {'ok', _} -> 'ok';
         Else ->
             Else
     catch
-        _E:_R ->
+        _E:_R:_ ->
             lager:info("failed to bind to events on ~s: ~p ~p"
                       ,[Node, _E, _R]),
             {'error', 'exception'}
@@ -367,7 +418,7 @@ sendevent(Node, EventName, Headers) ->
 sendevent_custom(Node, SubClassName, Headers) ->
     gen_server:cast({'mod_kazoo', Node}, {'sendevent', 'CUSTOM',  SubClassName, Headers}).
 
--spec sendmsg(atom(), kz_term:ne_binary(), list()) -> fs_api_return().
+-spec sendmsg(atom(), kz_term:ne_binary(), list()) -> freeswitch:fs_api_return().
 sendmsg(Node, UUID, Headers) ->
     gen_server:call({'mod_kazoo', Node}, {'sendmsg', UUID, Headers}).
 
@@ -380,11 +431,11 @@ config(Node, Section) ->
     gen_server:cast({'mod_kazoo', Node}, {'config', [Section]}).
 
 -spec bgapi4(atom(), atom(), string() | binary(), fun(), list()) ->
-                    {'ok', binary()} |
-                    {'error', 'timeout' | 'exception' | binary()}.
+          {'ok', binary()} |
+          {'error', 'timeout' | 'exception' | binary()}.
 bgapi4(Node, Cmd, Args, Fun, CallBackParams) ->
     Self = self(),
-    _ = kz_util:spawn(fun bgapi4/6, [Node, Cmd, Args, Fun, CallBackParams, Self]),
+    _ = kz_process:spawn(fun bgapi4/6, [Node, Cmd, Args, Fun, CallBackParams, Self]),
     receive
         {'api', Result} -> Result
     end.
@@ -404,7 +455,7 @@ bgapi4(Node, Cmd, Args, Fun, CallBackParams, Self) ->
         'timeout' ->
             Self ! {'api', {'error', 'timeout'}}
     catch
-        _E:_R ->
+        _E:_R:_ ->
             lager:info("failed to execute bgapi command ~s on ~s: ~p ~p"
                       ,[Cmd, Node, _E, _R]),
             Self ! {'api', {'error', 'exception'}}
@@ -429,19 +480,19 @@ internal_fs_error(Reason) ->
     Error = kz_binary:strip(binary:replace(Reason, <<"\n">>, <<>>)),
     {'error', Error}.
 
--spec cmd(atom(), kz_term:ne_binary(), list()) -> fs_api_return().
+-spec cmd(atom(), kz_term:ne_binary(), list()) -> freeswitch:fs_api_return().
 cmd(Node, UUID, Command) ->
     gen_server:call({'mod_kazoo', Node}, {'command', UUID, Command}).
 
--spec cmds(atom(), kz_term:ne_binary(), list()) -> fs_api_return().
+-spec cmds(atom(), kz_term:ne_binary(), list()) -> freeswitch:fs_api_return().
 cmds(Node, UUID, Commands) ->
     gen_server:call({'mod_kazoo', Node}, {'commands', UUID, Commands}).
 
--spec cast_cmd(atom(), kz_term:ne_binary(), list()) -> fs_api_return().
+-spec cast_cmd(atom(), kz_term:ne_binary(), list()) -> freeswitch:fs_api_return().
 cast_cmd(Node, UUID, Command) ->
     gen_server:cast({'mod_kazoo', Node}, {'command', UUID, Command}).
 
--spec cast_cmds(atom(), kz_term:ne_binary(), list()) -> fs_api_return().
+-spec cast_cmds(atom(), kz_term:ne_binary(), list()) -> freeswitch:fs_api_return().
 cast_cmds(Node, UUID, Commands) ->
     gen_server:cast({'mod_kazoo', Node}, {'commands', UUID, Commands}).
 
@@ -449,8 +500,9 @@ cast_cmds(Node, UUID, Commands) ->
 sync_channel(Node, UUID) ->
     Headers = [{<<"Call-ID">>, UUID}
               ,{<<"Event-PID">>, kz_term:to_binary(self())}
+              ,{<<"Event-Node">>, kz_term:to_binary(node())}
               ],
-    gen_server:cast({'mod_kazoo', Node}, {'sendevent', 'CUSTOM',  <<"CHANNEL_SYNC">>, Headers}).
+    gen_server:cast({'mod_kazoo', Node}, {'sendevent', 'CUSTOM',  'CHANNEL_SYNC', Headers}).
 
 -spec no_legacy(atom()) -> 'ok' | {'error', 'timeout' | 'exception'}.
 no_legacy(Node) ->
@@ -458,9 +510,26 @@ no_legacy(Node) ->
         'timeout' -> {'error', 'timeout'};
         Result -> Result
     catch
-        exit:{{nodedown, _Node}, _} -> {error, nodedown};
-        _E:_R ->
+        exit:{{nodedown, _Node}, _}:_ -> {error, nodedown};
+        _E:_R:_ ->
             lager:info("failed to set mod_kazoo no_legacy on ~s: ~p ~p"
                       ,[Node, _E, _R]),
             {'error', 'exception'}
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc Make a background API call to FreeSWITCH and wait for reply.
+%% @end
+%%------------------------------------------------------------------------------
+-spec async_api(atom(), atom(), string() | binary()) -> freeswitch:fs_api_return().
+async_api(Node, Cmd, Args) ->
+    case bgapi(Node, Cmd, Args) of
+        {'error', _} = Error -> Error;
+        {'ok', JobId} ->
+            receive
+                {'bgok', JobId, <<"-ERR", Reason/binary>>} -> api_result('error', Reason);
+                {'bgok', JobId, <<"+OK", Result/binary>>} -> api_result('ok', Result);
+                {'bgok', JobId, Result} -> api_result('ok', Result);
+                {'bgerror', JobId, Error} -> api_result('error', Error)
+            end
     end.

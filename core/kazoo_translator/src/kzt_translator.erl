@@ -1,9 +1,13 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc Standard interface for client modules to use to get dialplan commands
 %%% translated into 2600Hz-specific commands
 %%%
 %%% @author James Aimonetti
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kzt_translator).
@@ -16,7 +20,7 @@
 -include("kzt.hrl").
 
 -spec exec(kz_term:ne_binary(), kapps_call:call(), binary(), kz_term:api_binary() | list()) ->
-                  exec_return().
+          exec_return().
 exec(RequesterQ, Call, 'undefined', Cmds) ->
     exec(RequesterQ, Call, <<"text/xml">>, Cmds);
 exec(RequesterQ, Call, CT, Cmds) when not is_binary(CT) ->

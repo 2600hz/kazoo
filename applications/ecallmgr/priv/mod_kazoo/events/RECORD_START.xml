@@ -1,0 +1,8 @@
+<event name="RECORD_START">
+	<fields verbose="false">
+		<field name="call_event" type="reference" />
+		<field name="recording" type="reference" />
+
+		<field name="debug-call" type="reference" />
+	</fields>
+</event>

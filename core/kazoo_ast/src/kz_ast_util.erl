@@ -1,7 +1,11 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2015-2019, 2600Hz
+%%% @copyright (C) 2015-2020, 2600Hz
 %%% @doc Provide some utilities to work with AST.
 %%% @author James Aimonetti
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_ast_util).
@@ -29,7 +33,7 @@
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 -include_lib("kazoo_amqp/src/api/kapi_dialplan.hrl").
--include_lib("kazoo_amqp/src/api/kapi_call.hrl").
+-include_lib("kazoo_stdlib/include/kz_log.hrl").
 
 -type ast() :: [erl_parse:abstract_form()].
 -type abstract_code() :: {'raw_abstract_v1', ast()}.
@@ -78,6 +82,19 @@ add_module_ast_fold(?AST_FUNCTION(F, Arity, Clauses), Module, #module_ast{functi
     Acc#module_ast{functions=[{Module, F, Arity, Clauses}|Fs]};
 add_module_ast_fold(?AST_RECORD(Name, Fields), _Module, #module_ast{records=Rs}=Acc) ->
     Acc#module_ast{records=[{Name, Fields}|Rs]};
+add_module_ast_fold(?AST_EXPORTS(Exports), _Module, #module_ast{exports=Es}=Acc) ->
+    Acc#module_ast{exports=Exports++Es};
+add_module_ast_fold(?AST_EXPORTED_TYPES(Types), _Module, #module_ast{exported_types=Ts}=Acc) ->
+    Acc#module_ast{exported_types=Types++Ts};
+add_module_ast_fold(?SPEC(Fun, Arity, Args, Return), _Module, #module_ast{specs=Specs}=Acc) ->
+    Acc#module_ast{specs=[{Fun, Arity, Args, Return} | Specs]};
+add_module_ast_fold(?TYPE(Name, TypeDef), _Module, #module_ast{types=Ts}=Acc) ->
+    Acc#module_ast{types=[{Name, TypeDef} | Ts]};
+add_module_ast_fold(?AST_ATTRIBUTE_FILE(_Path), _Module, Acc) -> Acc;
+add_module_ast_fold(?EOF, _Module, Acc) -> Acc;
+add_module_ast_fold(?LAGER_RECORDS, _Module, Acc) -> Acc;
+add_module_ast_fold(?AST_ATTRIBUTE_MODULE(Module), Module, Acc) -> Acc;
+add_module_ast_fold(?BEHAVIOUR(Behaviour), _Module, Acc) -> Acc#module_ast{behaviour=Behaviour};
 add_module_ast_fold(_Other, _Module, Acc) ->
     Acc.
 
@@ -85,6 +102,10 @@ add_module_ast_fold(_Other, _Module, Acc) ->
 ast_to_list_of_binaries(ASTList) ->
     ast_to_list_of_binaries(ASTList, []).
 
+ast_to_list_of_binaries(List, Binaries) when is_list(List) ->
+    lists:foldl(fun ast_to_list_of_binaries/2, Binaries, List);
+ast_to_list_of_binaries(<<Bin/binary>>, Binaries) ->
+    [Bin | Binaries];
 ast_to_list_of_binaries(?APPEND(First, Second), Binaries) ->
     ast_to_list_of_binaries(Second, ast_to_list_of_binaries(First, Binaries));
 ast_to_list_of_binaries(?SUBTRACT(First, Second), Binaries) ->
@@ -96,7 +117,7 @@ ast_to_list_of_binaries(?MOD_FUN_ARGS('kapi_dialplan', 'optional_bridge_req_head
 ast_to_list_of_binaries(?MOD_FUN_ARGS('kapi_dialplan', 'optional_bridge_req_endpoint_headers', []), Binaries) ->
     ?OPTIONAL_BRIDGE_REQ_ENDPOINT_HEADERS ++ Binaries;
 ast_to_list_of_binaries(?MOD_FUN_ARGS('kapi_call', 'optional_call_event_headers', []), Binaries) ->
-    ?OPTIONAL_CALL_EVENT_HEADERS ++ Binaries;
+    kapi_call:optional_call_event_headers() ++ Binaries;
 ast_to_list_of_binaries(?LIST(?LIST(_, _)=H, T), Binaries) ->
     ast_to_list_of_binaries(T, [ast_to_list_of_binaries(H) | Binaries]);
 ast_to_list_of_binaries(?LIST(H, T), Binaries) ->
@@ -105,13 +126,14 @@ ast_to_list_of_binaries(?VAR(_), Binaries) ->
     Binaries.
 
 -spec binary_match_to_binary(erl_parse:abstract_expr()) -> binary().
+binary_match_to_binary(<<Bin/binary>>) -> Bin;
 binary_match_to_binary(?ATOM(A)) -> kz_term:to_binary(A);
 binary_match_to_binary(?BINARY_STRING(V)) ->
     kz_term:to_binary(V);
 binary_match_to_binary(?BINARY_MATCH(Match)) ->
     binary_match_to_binary(Match);
-binary_match_to_binary(?FUN_ARGS(atom_to_binary, [?ATOM(Atom), ?ATOM(utf8)])) ->
-    atom_to_binary(Atom, utf8);
+binary_match_to_binary(?FUN_ARGS('atom_to_binary', [?ATOM(Atom), ?ATOM('utf8')])) ->
+    atom_to_binary(Atom, 'utf8');
 binary_match_to_binary(Match) when is_list(Match) ->
     iolist_to_binary(
       [binary_part_to_binary(BP) || BP <- Match]
@@ -161,11 +183,11 @@ format_name_part(Part) ->
 default_schema_priv_dir() ->
     kz_term:to_binary(code:priv_dir('crossbar')).
 
--spec schema_path(binary()) -> file:filename_all() | file:dirname_all().
+-spec schema_path(binary()) -> file:filename_all().
 schema_path(Base) ->
     schema_path(Base, default_schema_priv_dir()).
 
--spec schema_path(binary(), file:filename_all()) -> file:filename_all() | file:dirname_all().
+-spec schema_path(binary(), file:filename_all()) -> file:filename_all().
 schema_path(Base, PrivDir) ->
     case filename:join([PrivDir
                        ,<<"couchdb">>
@@ -197,15 +219,16 @@ create_schema(Path) ->
 
 -spec project_apps() -> [atom()].
 project_apps() ->
-    Core = siblings_of('kazoo'),
-    Apps = siblings_of('sysconf'),
+    Core = siblings_of('kazoo_apps'),
+    Apps = siblings_of('crossbar'),
     Core ++ Apps.
 
 siblings_of(App) ->
     [dir_to_app_name(Dir)
      || Dir <- filelib:wildcard(filename:join([code:lib_dir(App), "..", "*"])),
         filelib:is_dir(Dir),
-        ".git" =/= filename:basename(Dir)
+        ".git" =/= filename:basename(Dir),
+        ".erlang.mk" =/= filename:basename(Dir)
     ].
 
 dir_to_app_name(Dir) ->
@@ -250,12 +273,11 @@ schema_to_table(SchemaJObj) ->
             ,cb_api_endpoints:ref_tables_to_doc(RefTables), "\n\n"
             ]
     catch
-        'throw':'no_type' ->
-            ST = erlang:get_stacktrace(),
-            io:format("failed to build table from schema ~s~n", [kz_doc:id(SchemaJObj)]),
-            io:format("~p~n", [ST]),
-            throw('no_type')
-    end.
+        ?STACKTRACE('throw', 'no_type', ST)
+        io:format("failed to build table from schema ~s~n", [kz_doc:id(SchemaJObj)]),
+        io:format("~p~n", [ST]),
+        throw('no_type')
+        end.
 
 schema_to_table(SchemaJObj, BaseRefs) ->
     Description = kz_json:get_binary_value(<<"description">>, SchemaJObj, <<>>),
@@ -348,7 +370,7 @@ any_of_to_row(Option, Refs) ->
     maybe_add_ref(Refs, Option).
 
 -spec property_to_row(kz_json:object(), kz_term:ne_binary() | kz_term:ne_binaries(), kz_json:object(), {iodata(), kz_term:ne_binaries()}) ->
-                             {iodata(), kz_term:ne_binaries()}.
+          {iodata(), kz_term:ne_binaries()}.
 property_to_row(SchemaJObj, Name=?NE_BINARY, Settings, {_, _}=Acc) ->
     property_to_row(SchemaJObj, [Name], Settings, Acc);
 property_to_row(SchemaJObj, Names, Settings, {Table, Refs}) ->

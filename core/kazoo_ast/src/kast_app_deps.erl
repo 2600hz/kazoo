@@ -1,7 +1,11 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2015-2019, 2600Hz
+%%% @copyright (C) 2015-2020, 2600Hz
 %%% @doc Module for studying Kazoo applications dependency.
 %%% @author James Aimonetti
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kast_app_deps).
@@ -25,19 +29,20 @@
 
 -include_lib("kazoo_ast/include/kz_ast.hrl").
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
+-include_lib("kazoo_stdlib/include/kz_log.hrl").
 
 -define(DEBUG(_Fmt, _Args), 'ok').
 %%-define(DEBUG(Fmt, Args), io:format([$~, $p, $  | Fmt], [?LINE | Args])).
 
 -spec dot_file() -> 'ok' |
-                    {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'}.
+          {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'}.
 dot_file() ->
     Markup = [create_dot_markup(App, remote_apps(App)) || App <- kz_ast_util:project_apps()],
     create_dot_file("kazoo_project", Markup).
 
 -spec dot_file(atom()) ->
-                      'ok' |
-                      {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'}.
+          'ok' |
+          {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'}.
 dot_file(App) ->
     AppDeps = remote_apps(App),
     create_dot_file(App, create_dot_markup(App, AppDeps)).
@@ -340,13 +345,12 @@ remote_calls_from_module(Module, Acc, {M, AST}) ->
     try remote_calls_from_functions(Fs, Acc) of
         Modules -> ?DEBUG("  ~p~n", [Module]), lists:delete(M, Modules)
     catch
-        _E:R ->
-            ST = erlang:get_stacktrace(),
-            io:format("process module '~s' failed: ~s: ~p~n", [Module, _E, R]),
-            [io:format("st: ~p~n", [S]) || S <- ST],
-            ?DEBUG("~s failed: ~s ~r~n~p~n", [Module, _E, R, ST]),
-            throw(R)
-    end.
+        ?STACKTRACE(_E, R, ST)
+        io:format("process module '~s' failed: ~s: ~p~n", [Module, _E, R]),
+        [io:format("st: ~p~n", [S]) || S <- ST],
+        ?DEBUG("~s failed: ~s ~r~n~p~n", [Module, _E, R, ST]),
+        throw(R)
+        end.
 
 remote_calls_from_functions(Fs, Acc) ->
     lists:foldl(fun remote_calls_from_function/2
@@ -468,7 +472,19 @@ remote_calls_from_expression(?MAP_UPDATE(_Var, Exprs), Acc) ->
 remote_calls_from_expression(?MAP_FIELD_ASSOC(K, V), Acc) ->
     remote_calls_from_expressions([K, V], Acc);
 remote_calls_from_expression(?MAP_FIELD_EXACT(K, V), Acc) ->
-    remote_calls_from_expressions([K, V], Acc).
+    remote_calls_from_expressions([K, V], Acc);
+remote_calls_from_expression(?GEN_FUN_ARGS(
+                                ?GEN_FUN_ARGS(
+                                   ?MOD_FUN(M0, _F0),
+                                   [?GEN_FUN_ARGS(?GEN_MOD_FUN(?ATOM(M1), ?ATOM(_F1)), _Args1)
+                                   ,_Arg0
+                                   ,?MFA(M2, _F2, _Arity2)
+                                   ]
+                                  )
+                               ,_Args0
+                               ), Acc) ->
+    lists:foldl(fun add_remote_module/2, Acc, [M0, M1, M2]).
+
 
 add_remote_module(?ATOM(M)=_A, Acc) ->
     add_remote_module(M, Acc);
@@ -480,7 +496,7 @@ add_remote_module(M, Acc) ->
     end.
 
 -spec modules_with_apps(atom(), [atom()]) ->
-                               [{atom(), atom()}].
+          [{atom(), atom()}].
 modules_with_apps(App, Modules) ->
     lists:usort([{M, AppOf}
                  || M <- Modules,

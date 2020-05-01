@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2016-2019, 2600Hz
+%%% @copyright (C) 2016-2020, 2600Hz
 %%% @doc Store routing keys/pid bindings. When a binding is fired,
 %%% pass the payload to the pid for evaluation, accumulating
 %%% the results for the response to the running process.
@@ -18,6 +18,11 @@
 %%% @author James Aimonetti
 %%% @author Karl Anderson
 %%% @author Ben Wann
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(tasks_bindings).
@@ -33,7 +38,7 @@
         ,flush/0, flush/1
         ,filter/1
         ,modules_loaded/0
-        ,init/0
+        ,init/0, init_mod/1
         ]).
 
 %% Helper Functions for Results of a map/2
@@ -44,6 +49,7 @@
         ]).
 
 -include("tasks.hrl").
+-include("task_modules.hrl").
 
 -type payload() :: list() | kz_json:object() | kz_term:ne_binary().
 
@@ -61,8 +67,8 @@ apply(API, Args) ->
     ?MODULE:apply(API, Action, Args).
 
 -spec apply(kz_json:object(), kz_term:ne_binary(), list()) -> list().
-apply(API, Action, Args) ->
-    Category = kz_json:get_value(<<"category">>, API),
+apply(API, <<Action/binary>>, Args) when is_list(Args) ->
+    Category = kz_json:get_ne_binary_value(<<"category">>, API),
     Route = <<"tasks.", Category/binary, ".", Action/binary>>,
     lager:debug("using route ~s", [Route]),
     map(Route, Args).
@@ -74,7 +80,7 @@ apply(API, Action, Args) ->
 %% is the payload, possibly modified
 %% @end
 %%------------------------------------------------------------------------------
--type map_results() :: kz_term:proplist().
+-type map_results() :: list().
 -spec map(kz_term:ne_binary(), payload()) -> map_results().
 map(Routing, Payload) ->
     kazoo_bindings:map(Routing, Payload).
@@ -157,12 +163,12 @@ filter_out_succeeded(Term) -> kz_term:is_empty(Term).
                        {'error', 'exists'}.
 -type bind_results() :: [bind_result()].
 -spec bind(kz_term:ne_binary() | kz_term:ne_binaries(), atom(), atom()) ->
-                  bind_result() | bind_results().
+          bind_result() | bind_results().
 bind(Bindings, Module, Fun) ->
     bind(Bindings, Module, Fun, 'undefined').
 
 -spec bind(kz_term:ne_binary() | kz_term:ne_binaries(), atom(), atom(), any()) ->
-                  bind_result() | bind_results().
+          bind_result() | bind_results().
 bind([_|_]=Bindings, Module, Fun, Payload) ->
     [bind(Binding, Module, Fun, Payload) || Binding <- Bindings];
 bind(Binding, Module, Fun, Payload) when is_binary(Binding) ->
@@ -220,17 +226,18 @@ is_task_module(_) -> 'false'.
 -spec init() -> 'ok'.
 init() ->
     lager:debug("initializing tasks bindings"),
-    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
+    kz_log:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     lists:foreach(fun init_mod/1, ?TASKS).
 
+-spec init_mod(module()) -> any().
 init_mod(ModuleName) ->
     lager:debug("initializing module: ~p", [ModuleName]),
     maybe_init_mod(ModuleName).
 
 maybe_init_mod(ModuleName) ->
+    maybe_init_mod(ModuleName, kz_module:is_exported(ModuleName, 'init', 0)).
+
+maybe_init_mod(_M, 'false') -> 'ok';
+maybe_init_mod(ModuleName, 'true') ->
     lager:debug("trying to init module: ~p", [ModuleName]),
-    try (kz_term:to_atom(ModuleName, 'true')):init()
-    catch
-        _E:_R ->
-            lager:warning("failed to initialize ~s: ~p, ~p.", [ModuleName, _E, _R])
-    end.
+    (kz_term:to_atom(ModuleName, 'true')):init().

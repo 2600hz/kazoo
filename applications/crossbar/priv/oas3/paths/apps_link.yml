@@ -1,0 +1,13 @@
+paths:
+  /accounts/{ACCOUNT_ID}/apps_link/authorize:
+    get:
+      operationId: GetAccountsAccountIdAppsLinkAuthorize
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get authorize of apps_link
+      tags:
+        - apps_link

@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Store routing keys or PID bindings.
 %%% When a binding is fired, pass the payload to the PID for evaluation, accumulating
 %%% the results for the response to the running process.
@@ -18,6 +18,11 @@
 %%%
 %%% @author James Aimonetti
 %%% @author Karl Anderson
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(crossbar_bindings).
@@ -47,10 +52,10 @@
 -type payload() :: path_tokens() | % mapping over path tokens in URI
                    [cb_context:context() | path_token() | 'undefined',...] |
                    cb_context:context() |
-                   {cb_context:context(), kz_term:proplist()} | % v1_resource:rest_init/2
-                   {'error', _} | % v1_util:execute_request/2
+                   {cb_context:context(), kz_term:proplist()} | % api_resource:rest_init/2
+                   {'error', _} | % api_util:execute_request/2
                    {kz_json:path(), cb_context:context(), path_tokens()} |
-                   {kz_time:datetime(), cowboy_req:req(), cb_context:context()} | % v1_resource:expires/2
+                   {kz_time:datetime(), cowboy_req:req(), cb_context:context()} | % api_resource:expires/2
                    {cowboy_req:req(), cb_context:context()}. % mapping over the request/context records
 
 %%%=============================================================================
@@ -59,7 +64,9 @@
 
 -type map_results() :: [boolean() |
                         http_methods() |
-                        {boolean() | 'stop', cb_context:context()}
+                        {boolean() | 'stop', cb_context:context()} |
+                        {'ok', kz_json:object()} |
+                        {'error', atom() | binary()}
                        ].
 
 %%------------------------------------------------------------------------------
@@ -155,7 +162,7 @@ filter_out_succeeded(Term) -> kz_term:is_empty(Term).
 -type bind_results() :: [bind_result()].
 
 -spec bind(kz_term:ne_binary(), atom(), atom()) ->
-                  bind_result() | bind_results().
+          bind_result() | bind_results().
 bind(Binding=?NE_BINARY, Module, Fun) ->
     kazoo_bindings:bind(Binding, Module, Fun).
 
@@ -192,7 +199,7 @@ start_link() ->
 -spec init() -> 'ok'.
 init() ->
     lager:debug("initializing bindings"),
-    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
+    kz_log:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     AutoloadModules = crossbar_config:autoload_modules(?DEFAULT_MODULES),
     lists:foreach(fun maybe_init_mod/1, AutoloadModules).
 

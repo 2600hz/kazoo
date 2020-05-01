@@ -1,0 +1,48 @@
+{
+    "_id": "{MODB-1c0e3d67b2f0291bc35ad0756d3d1538}",
+    "_rev": "1-d6c83a38dfc9d92aaf6c3d235b134235",
+    "account": {
+        "id": "{ACCOUNT_ID}",
+        "name": "Kingdom Of Narnia"
+    },
+    "amount": 200,
+    "audit": {
+        "available_units": 1272232
+    },
+    "description": "UNITED STATES - INBOUND TOLL FREE",
+    "metadata": {
+        "account_trunk_usage": "0/0/5/0/0/0",
+        "caller_id_name": "from",
+        "caller_id_number": "+from",
+        "direction": "inbound",
+        "from": "+from@ip.add.re.ss",
+        "rate": {
+            "description": "UNITED STATES - INBOUND TOLL FREE",
+            "increment": 60,
+            "minimum": 60,
+            "name": "UNITED STATES - INBOUND TOLL FREE",
+            "nocharge_time": 0,
+            "value": 200
+        },
+        "reseller_trunk_usage": "0/0/0/0/0/0",
+        "resource_type": "offnet-origination",
+        "to": "to@ip.add.re.ss"
+    },
+    "period": {
+        "start": 63711951857
+    },
+    "pvt_account_id": "{RESELLER_ACCOUNT_ID}",
+    "pvt_created": 63711951859,
+    "pvt_ledger_type": "debit",
+    "pvt_modified": 63711951859,
+    "pvt_type": "ledger",
+    "source": {
+        "id": "source@ip.add.re.ss",
+        "service": "per-minute-voip"
+    },
+    "usage": {
+        "quantity": 60,
+        "type": "voice",
+        "unit": "sec"
+    }
+}

@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kzd_whitelabel).
@@ -28,6 +32,7 @@
 -export([twoway_trunks_price/1, twoway_trunks_price/2, set_twoway_trunks_price/2]).
 
 -export([fetch/1]).
+-export([fetch_port_authority/2]).
 
 -include("kz_documents.hrl").
 
@@ -185,21 +190,22 @@ port(Doc, Default) ->
 set_port(Doc, Port) ->
     kz_json:set_value([<<"port">>], Port, Doc).
 
--spec port_authority(doc()) -> any().
+-spec port_authority(doc()) -> kz_term:api_ne_binary().
 port_authority(Doc) ->
     port_authority(Doc, 'undefined').
 
--spec port_authority(doc(), Default) -> any() | Default.
+-spec port_authority(doc(), Default) -> kz_term:api_ne_binary() | Default.
 port_authority(Doc, Default) ->
-    %% I'm not sure port.authority is set to other values than account id or not
-    %% but to be safe let's check if it is really an account id.
+    %% I'm not sure whether port.authority should be an account_id
+    %% or email address or etc... but to be safe let's check if it
+    %% is really an account id.
     %% FYI: teletype port request admin template was using port authority
     %% as 'to' Email address but the UI was setting that as account id!
     case kz_json:get_ne_binary_value([<<"port">>, <<"authority">>], Doc) of
         ?MATCH_ACCOUNT_RAW(_)=Id -> Id;
-        ?MATCH_ACCOUNT_UNENCODED(_)=Db -> kz_util:format_account_id(Db);
-        ?MATCH_ACCOUNT_ENCODED(_)=Db -> kz_util:format_account_id(Db);
-        ?MATCH_ACCOUNT_encoded(_)=Db -> kz_util:format_account_id(Db);
+        ?MATCH_ACCOUNT_UNENCODED(_)=Db -> kzs_util:format_account_id(Db);
+        ?MATCH_ACCOUNT_ENCODED(_)=Db -> kzs_util:format_account_id(Db);
+        ?MATCH_ACCOUNT_encoded(_)=Db -> kzs_util:format_account_id(Db);
         _ -> Default
     end.
 
@@ -292,10 +298,23 @@ set_twoway_trunks_price(Doc, TwowayTrunksPrice) ->
     kz_json:set_value([<<"twoway_trunks_price">>], TwowayTrunksPrice, Doc).
 
 -spec fetch(kz_term:api_binary()) ->
-                   {'ok', kz_json:object()} |
-                   {'error', any()}.
+          {'ok', kz_json:object()} |
+          {'error', any()}.
 fetch('undefined') ->
     {'error', 'account_id_undefined'};
 fetch(Account) ->
-    AccoundDb = kz_util:format_account_db(Account),
+    AccoundDb = kzs_util:format_account_db(Account),
     kz_datamgr:open_cache_doc(AccoundDb, ?ID).
+
+-spec fetch_port_authority(kz_term:api_binary(), Default) -> kz_term:api_ne_binary() | Default.
+fetch_port_authority(Account, Default) ->
+    case fetch(Account) of
+        {'ok', Doc} ->
+            port_authority(Doc, Default);
+        {'error', 'not_found'} ->
+            lager:debug("account ~s is not whitelabeled", [Account]),
+            Default;
+        {'error', _} ->
+            lager:debug("failed to open whitelabel doc for ~s", [Account]),
+            Default
+    end.

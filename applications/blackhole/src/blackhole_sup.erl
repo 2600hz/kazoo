@@ -1,10 +1,15 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
 %%% @author Karl Anderson
 %%% @author James Aimonetti
 %%% @author Peter Defebvre
 %%% @author Ben Wann
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(blackhole_sup).
@@ -18,7 +23,8 @@
 
 -define(SERVER, ?MODULE).
 
--define(CHILDREN, [?WORKER('blackhole_listener')
+-define(CHILDREN, [?CACHE(?CACHE_NAME)
+                  ,?WORKER('blackhole_listener')
                   ,?WORKER('blackhole_tracking')
                   ,?WORKER('blackhole_bindings')
                   ,?WORKER('blackhole_init')
@@ -49,7 +55,7 @@ start_link() ->
 %%------------------------------------------------------------------------------
 -spec init(any()) -> kz_types:sup_init_ret().
 init([]) ->
-    kz_util:set_startup(),
+    _ = kz_util:set_startup(),
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,

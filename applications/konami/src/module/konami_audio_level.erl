@@ -15,6 +15,11 @@
 %%% </dl>
 %%%
 %%% @author Vladimir Ralev
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(konami_audio_level).
@@ -25,7 +30,7 @@
 -include("konami.hrl").
 
 -spec handle(kz_json:object(), kapps_call:call()) ->
-                    {'continue', kapps_call:call()}.
+          {'continue', kapps_call:call()}.
 handle(Data, Call) ->
     Action = kz_json:get_value(<<"action">>, Data),
     Mode = kz_json:get_value(<<"mode">>, Data),

@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
 %%% @author SIPLABS LLC (Maksim Krzhemenevskiy)
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(webhooks_shared_listener).
@@ -35,7 +40,7 @@
 
 %% responsible for reloading auto-disabled webhooks
 -define(BINDINGS, [{'conf', [{'restrict_to', ['doc_type_updates']}
-                            ,{'type', kzd_webhook:type()}
+                            ,{'type', kzd_webhooks:type()}
                             ]
                    }
                   ]).
@@ -104,7 +109,7 @@ load_module_fold(Module, {Bindings, Responders}=Acc) ->
 -spec handle_doc_type_update(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_doc_type_update(JObj, _Props) ->
     'true' = kapi_conf:doc_type_update_v(JObj),
-    kz_util:put_callid(JObj),
+    kz_log:put_callid(JObj),
 
     lager:debug("re-enabling hooks for ~s: ~s"
                ,[kapi_conf:get_account_id(JObj)
@@ -202,7 +207,7 @@ add_responder() ->
 %%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     {'ok', #state{}}.
 
 %%------------------------------------------------------------------------------

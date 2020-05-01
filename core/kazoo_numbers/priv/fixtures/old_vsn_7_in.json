@@ -1,0 +1,22 @@
+{
+    "_id": "+13977031887",
+    "_rev": "37-62ac91830bae51385cb4c6d56aaaaaab",
+    "pvt_assigned_to": "account0000000000000000000000003",
+    "pvt_created": 63606025000,
+    "pvt_db_name": "numbers%2F%2B1397",
+    "pvt_features": {
+        "inbound_cnam": {
+            "inbound_lookup": true
+        },
+        "local": {},
+        "outbound_cnam": {
+            "display_name": "Bruce Wayne"
+        }
+    },
+    "pvt_modified": 63606025001,
+    "pvt_module_name": "knm_local",
+    "pvt_ported_in": false,
+    "pvt_state": "in_service",
+    "pvt_type": "number",
+    "pvt_used_by": "callflow"
+}

@@ -10,7 +10,12 @@
     "language": "javascript",
     "views": {
         "accounts_listing": {
-            "map": "function(doc) { if (doc.pvt_type != 'acdc_activation' || doc.pvt_deleted) return; emit(doc.pvt_account_id, null); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'acdc_activation' || doc.pvt_deleted) return;",
+                "  emit(doc.pvt_account_id, null);",
+                "}"
+            ]
         }
     }
 }

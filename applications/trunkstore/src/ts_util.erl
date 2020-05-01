@@ -1,11 +1,16 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc utility functions for Trunkstore
 %%% Some functions make use of the inet_parse module. This is an undocumented
 %%% module, and as such the functions may change or be removed.
 %%%
 %%%
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(ts_util).
@@ -93,8 +98,8 @@ constrain_weight(W) when W < 1 -> 1;
 constrain_weight(W) -> W.
 
 -spec lookup_did(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                        {'ok', kz_json:object()} |
-                        {'error', 'no_did_found' | atom()}.
+          {'ok', kz_json:object()} |
+          {'error', 'no_did_found' | atom()}.
 lookup_did(DID, AccountId) ->
     case kz_cache:fetch_local(?CACHE_NAME
                              ,{'lookup_did', DID, AccountId}
@@ -108,10 +113,10 @@ lookup_did(DID, AccountId) ->
     end.
 
 -spec lookup_did_from_db(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                {'ok', kz_json:object()} |
-                                kz_datamgr:data_error().
+          {'ok', kz_json:object()} |
+          kz_datamgr:data_error().
 lookup_did_from_db(DID, AccountId) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kzs_util:format_account_db(AccountId),
     Options = [{'key', DID}],
 
     case kz_datamgr:get_results(AccountDb, ?TS_VIEW_DIDLOOKUP, Options) of
@@ -129,7 +134,7 @@ lookup_did_from_db(DID, AccountId) ->
     end.
 
 -spec handle_found_did(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
-                              {'ok', kz_json:object()}.
+          {'ok', kz_json:object()}.
 handle_found_did(DID, AccountId, ViewJObj) ->
     lager:info("cache miss for ~s, found result with id ~s", [DID, kz_doc:id(ViewJObj)]),
     ValueJObj = kz_json:get_value(<<"value">>, ViewJObj),
@@ -149,14 +154,14 @@ cache_lookup_did(DID, AccountId, Resp) ->
                         ).
 
 -spec lookup_user_flags(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                               {'ok', kz_json:object()} |
-                               {'error', atom()}.
+          {'ok', kz_json:object()} |
+          {'error', atom()}.
 lookup_user_flags(Name, Realm, AccountId) ->
     lookup_user_flags(Name, Realm, AccountId, 'undefined').
 
 -spec lookup_user_flags(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()) ->
-                               {'ok', kz_json:object()} |
-                               {'error', atom()}.
+          {'ok', kz_json:object()} |
+          {'error', atom()}.
 lookup_user_flags('undefined', _, _, 'undefined') ->
     {'error', 'insufficient_info'};
 lookup_user_flags('undefined', _, AccountId, DID) ->
@@ -176,14 +181,14 @@ lookup_user_flags('undefined', _, AccountId, DID) ->
             {'ok', kz_json:from_list(
                      [{<<"server">>, Server}
                      ,{<<"account">>,
-                       merge_account_attributes(AccountId, kz_json:get_value(<<"account">>, JObj, kz_json:new()))
+                       merge_account_attributes(AccountId, kz_json:get_json_value(<<"account">>, JObj, kz_json:new()))
                       }
                      ,{<<"call_restriction">>, kz_json:new()}
                      ])
             }
     end;
 lookup_user_flags(Name, Realm, AccountId, _) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kzs_util:format_account_db(AccountId),
     case kz_cache:fetch_local(?CACHE_NAME
                              ,{'lookup_user_flags', Realm, Name, AccountId}
                              )
@@ -213,7 +218,7 @@ lookup_user_flags(Name, Realm, AccountId, _) ->
                     Restriction = kz_json:get_value(<<"call_restriction">>, AccountJObj, kz_json:new()),
                     Props = [{<<"call_restriction">>, Restriction}
                             ,{<<"account">>
-                             ,merge_account_attributes(AccountJObj, kz_json:get_value(<<"account">>, JObj, kz_json:new()))
+                             ,merge_account_attributes(AccountJObj, kz_json:get_json_value(<<"account">>, JObj, kz_json:new()))
                              }
                             ],
                     FlagsJObj = kz_json:set_values(Props, JObj),
@@ -225,16 +230,18 @@ lookup_user_flags(Name, Realm, AccountId, _) ->
             end
     end.
 
--spec merge_account_attributes(kz_term:ne_binary() | kz_json:object(), kz_json:object()) -> kz_json:object().
-merge_account_attributes(?NE_BINARY=AccountId, JObj) ->
+-spec merge_account_attributes(kz_term:ne_binary() | kzd_accounts:doc(), kz_json:object()) -> kz_json:object().
+merge_account_attributes(<<AccountId/binary>>, JObj) ->
     case kzd_accounts:fetch(AccountId) of
         {'ok', Account} -> merge_account_attributes(Account, JObj);
         {'error', _} -> JObj
     end;
-merge_account_attributes(Account, JObj) ->
-    CidOptions = kz_json:get_ne_value(<<"caller_id_options">>, Account),
+merge_account_attributes(AccountDoc, JObj) ->
+    CIDOptions = kzd_accounts:caller_id_options(AccountDoc),
+
     Props = props:filter_undefined(
-              [{<<"caller_id_options">>, CidOptions}
+              [{<<"caller_id_options">>, CIDOptions}
+              ,{<<"auth_realm">>, kzd_accounts:realm(AccountDoc)}
               ]
              ),
     kz_json:set_values(Props, JObj).
@@ -308,7 +315,7 @@ sip_headers(L) when is_list(L) ->
     end.
 
 -spec failover(kz_json:objects() | kz_term:api_binaries()) ->
-                      kz_term:api_object().
+          kz_term:api_object().
 %% cascade from DID to Srv to Account
 failover(L) ->
     case simple_extract(L) of
@@ -317,7 +324,7 @@ failover(L) ->
     end.
 
 -spec progress_timeout(kz_json:objects() | kz_term:api_binaries()) ->
-                              kz_json:object() | kz_term:api_binary().
+          kz_json:object() | kz_term:api_binary().
 progress_timeout(L) -> simple_extract(L).
 
 -spec bypass_media(kz_json:objects() | kz_term:api_binaries()) -> kz_term:ne_binary().
@@ -328,15 +335,15 @@ bypass_media(L) ->
     end.
 
 -spec delay(kz_json:objects() | kz_term:api_binaries()) ->
-                   kz_json:object() | kz_term:api_binary().
+          kz_json:object() | kz_term:api_binary().
 delay(L) -> simple_extract(L).
 
 -spec ignore_early_media(kz_json:objects() | kz_term:api_binaries()) ->
-                                kz_json:object() | kz_term:api_binary().
+          kz_json:object() | kz_term:api_binary().
 ignore_early_media(L) -> simple_extract(L).
 
 -spec ep_timeout(kz_json:objects() | kz_term:api_binaries()) ->
-                        kz_json:object() | kz_term:api_binary().
+          kz_json:object() | kz_term:api_binary().
 ep_timeout(L) -> simple_extract(L).
 
 -spec offnet_flags(list()) -> 'undefined' | list().
@@ -345,7 +352,7 @@ offnet_flags([H|_]) when is_list(H) -> H;
 offnet_flags([_|T]) -> offnet_flags(T).
 
 -spec simple_extract(kz_json:objects() | kz_term:api_binaries()) ->
-                            kz_json:object() | kz_term:api_binary().
+          kz_json:object() | kz_term:api_binary().
 simple_extract([]) -> 'undefined';
 simple_extract(['undefined'|T]) -> simple_extract(T);
 simple_extract([<<>> | T]) -> simple_extract(T);
@@ -361,7 +368,7 @@ simple_extract([JObj | T]) ->
 -type cid_type() :: 'external' | 'emergency'.
 
 -spec maybe_ensure_cid_valid(cid_type(), kz_term:api_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
-                                    kz_term:ne_binary().
+          kz_term:ne_binary().
 maybe_ensure_cid_valid('external', CIDNum, FromUser, AccountId, CustomSIPHeaders) ->
     case ?VALIDATE_CALLER_ID of
         'true' -> maybe_honor_diversion(CIDNum, FromUser, AccountId, CustomSIPHeaders);
@@ -380,7 +387,7 @@ honor_diversion(CIDNum, FromUser, AccountId, CustomSIPHeaders) ->
     case kz_json:get_value(<<"Diversions">>, CustomSIPHeaders) of
         [Diversion|_] ->
             [_,CallerIdNumber,_] = binary:split(Diversion, [<<":">>,<<"@">>], ['global']),
-            case knm_number:lookup_account(CallerIdNumber) of
+            case knm_numbers:lookup_account(CallerIdNumber) of
                 {'ok', AccountId, _} -> CIDNum;
                 _ ->
                     DefaultCID = kapps_config:get_ne_binary(<<"trunkstore">>, <<"default_caller_id_number">>, kz_privacy:anonymous_caller_id_number(AccountId)),
@@ -394,7 +401,7 @@ honor_diversion(CIDNum, FromUser, AccountId, CustomSIPHeaders) ->
 -spec validate_external_cid(kz_term:api_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 validate_external_cid(CIDNum, FromUser, AccountId) ->
     lager:info("ensure_valid_caller_id flag detected, will check whether CID is legal..."),
-    case knm_number:lookup_account(CIDNum) of
+    case knm_numbers:lookup_account(CIDNum) of
         {'ok', AccountId, _} -> CIDNum;
         _Else -> validate_from_user(FromUser, AccountId)
     end.
@@ -402,7 +409,7 @@ validate_external_cid(CIDNum, FromUser, AccountId) ->
 -spec validate_from_user(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 validate_from_user(FromUser, AccountId) ->
     NormalizedFromUser = knm_converters:normalize(FromUser),
-    case knm_number:lookup_account(NormalizedFromUser) of
+    case knm_numbers:lookup_account(NormalizedFromUser) of
         {'ok', AccountId, _} ->
             lager:info("CID Number derived from CID Name, normalized and set to: ~s", [NormalizedFromUser]),
             NormalizedFromUser;

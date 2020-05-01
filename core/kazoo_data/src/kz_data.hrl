@@ -19,7 +19,7 @@
                          ,server :: any() | '$2'
                          ,connected = 'false' :: boolean() | '_'
                          ,ready = 'false' :: boolean()
-                         ,tag :: atom()
+                         ,tag = 'undefined' :: kz_term:api_ne_binary()
                          }).
 
 -record(db, {app :: atom()
@@ -79,10 +79,8 @@
                        'group' |
                        'include_docs' |
                        'inclusive_end' |
-                       'reduce' |
                        'override_existing_document' |
-                       {'max_bulk_read', pos_integer()} |
-                       {'transform',transform_fun()} |
+                       'reduce' |
                        {'end_docid', binary()} |
                        {'endkey', key_range()} |
                        {'group_level', 'exact' | integer()} |
@@ -90,11 +88,13 @@
                        {'keys', [binary()]} |
                        {'limit', integer()} |
                        {'list', binary()} |
+                       {'max_bulk_read', pos_integer()} |
                        {'reduce', boolean()} |
                        {'skip', integer()} |
                        {'stale', stale()} |
                        {'start_docid', binary()} |
-                       {'startkey', key_range()}.
+                       {'startkey', key_range()} |
+                       {'transform',transform_fun()}.
 
 -type view_options() :: [view_option()].
 
@@ -114,8 +114,15 @@
                              'system' |
                              'undefined'.
 
--type db_create_options() :: [{'q',integer()} | {'n',integer()} | 'ensure_other_dbs'].
--type db_delete_options() :: ['ensure_other_dbs'].
+-type db_create_option() :: {'q', non_neg_integer()} |
+                            {'n', non_neg_integer()} |
+                            'ensure_other_dbs' |
+                            {'ensure_other_dbs', boolean()}.
+-type db_create_options() :: [db_create_option()].
+
+-type db_delete_option() :: 'ensure_other_dbs' |
+                            {'ensure_other_dbs', boolean()}.
+-type db_delete_options() :: [db_delete_option()].
 
 -type ddoc() :: kz_term:ne_binary() | 'all_docs' | 'design_docs'.
 
@@ -125,13 +132,23 @@
 -type get_results_return() :: {'ok', kz_json:json_terms()} |
                               data_error().
 
--define(DEFAULT_DATA_SECTION, [{'local', 'bigcouch'}]).
+-define(DEFAULT_DATA_SECTION, [{<<"local">>, <<"bigcouch">>}]).
 -define(MERGE_PROPS, [{'driver', 'kazoo_couch'}
-                     ,{'tag', 'local'}
+                     ,{'tag', <<"local">>}
                      ]).
 -define(MERGE_MAP, maps:from_list(?MERGE_PROPS)).
 
 -define(FIXTURES_FOLDER, "fixtures").
+
+-define(DEFAULT_PUBLISH_EXCLUDE_TYPES
+       ,[<<"cdr">>
+        ,<<"ledger">>
+        ,<<"audit_log">>
+        ,<<"login_attempt">>
+        ,<<"pivot_debug">>
+        ,<<"notify_smtp_log">>
+        ]
+       ).
 
 -define(PUBLISH_FIELDS, [<<"_deleted">>
                         ,<<"pvt_account_id">>

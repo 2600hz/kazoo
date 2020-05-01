@@ -21,12 +21,19 @@ User's client performs the second-factor authentication with the provider and se
 
 ## Provider Configuration Schema
 
-Key | Description | Type | Default | Required
---- | ----------- | ---- | ------- | --------
-`enabled` | whether or not this configuration is enabled or not | `boolean` |  | `true`
-`name` | A friendly name for the configuration | `string` |  | `true`
-`provider_name` | multi factor provider name | `string` |  | `true`
-`settings` | provider configuration | `object` |   | `false`
+#### Schema
+
+multi factor provider configuration
+
+
+
+Key | Description | Type | Default | Required | Support Level
+--- | ----------- | ---- | ------- | -------- | -------------
+`enabled` | whether or not this configuration is enabled or not | `boolean()` |   | `true` |
+`name` | A friendly name for the configuration | `string()` |   | `true` |
+`provider_name` | multi factor provider name | `string()` |   | `true` |
+`settings` | provider configuration | `object()` |   | `false` |
+
 
 
 ## List Account Configuration and Available System Providers

@@ -1,14 +1,29 @@
 ROOT = $(shell cd "$(dirname '.')" && pwd -P)
-RELX = $(ROOT)/deps/relx
-ELVIS = $(ROOT)/deps/elvis
-TAGS = $(ROOT)/TAGS
-ERLANG_MK_COMMIT = d30dda39b08e6ed9e12b44533889eaf90aba86de
 
-BASE_BRANCH := origin/master
+DEPS_DIR = $(ROOT)/deps
+
+RELX = $(DEPS_DIR)/relx
+ELVIS = $(DEPS_DIR)/elvis
+TAGS = $(ROOT)/TAGS
+ERLANG_LS = $(ROOT)/erlang_ls.config
+PLT = $(ROOT)/.kazoo.plt
+
+ERLANG_MK = $(ROOT)/erlang.mk
+ERLANG_MK_COMMIT = 82179575d9191305805c8e6e8107be7c3f80a6be
+DOT_ERLANG_MK = $(ROOT)/.erlang.mk
+
+BASE_BRANCH := $(shell cat $(ROOT)/.base_branch)
 
 ## list files changed for more focused checks
-CHANGED := $(shell git --no-pager diff --name-only HEAD $(BASE_BRANCH) -- applications core scripts)
-CHANGED_SWAGGER := $(shell git --no-pager diff --name-only HEAD $(BASE_BRANCH) -- applications/crossbar/priv/api/swagger.json)
+ifeq ($(strip $(CHANGED)),)
+	CHANGED := $(shell git --no-pager diff --name-only HEAD $(BASE_BRANCH) -- applications core scripts doc)
+else
+	CHANGED := $(CHANGED)
+endif
+CHANGED_SWAGGER ?= $(shell git --no-pager diff --name-only HEAD $(BASE_BRANCH) -- applications/crossbar/priv/api/swagger.json)
+CHANGED_ERL=$(filter %.hrl %.erl %.escript,$(CHANGED))
+CHANGED_JSON=$(filter %.json,$(CHANGED))
+CHANGED_YML=$(filter %.yml,$(CHANGED))
 
 # You can override this when calling make, e.g. make JOBS=1
 # to prevent parallel builds, or make JOBS="8".
@@ -18,6 +33,7 @@ JOBS ?= 1
 	apis \
 	build-release build-ci-release tar-release release read-release-cookie \
 	bump-copyright \
+	changed changed_swagger \
 	circle \
 	clean clean-test clean-release clean-kazoo clean-core clean-apps \
 	code_checks \
@@ -31,14 +47,38 @@ JOBS ?= 1
 	fs-headers \
 	install \
 	sdks \
+	validate-js \
 	validate-schemas \
 	validate-swagger \
 	xref xref_release
 
-all: compile
+all: prerequisites compile
+
+changed:
+	@echo "changed: $(CHANGED)"
+	@echo "changed ERL: $(CHANGED_ERL)"
+	@echo "changed JSON: $(CHANGED_JSON)"
+	@echo "changed YML: $(CHANGED_YML)"
+
+changed_swagger:
+	@echo "$(CHANGED_SWAGGER)"
+
+prerequisites: make-dependency-check
+
+make-dependency-check:
+	$(ROOT)/scripts/make-prerequisite.sh
 
 compile: ACTION = all
 compile: deps kazoo
+
+compile-lean: ACTION = compile-lean
+compile-lean: deps compile-lean-core compile-lean-apps
+compile-lean-core:
+	@$(MAKE) -j$(JOBS) -C core/ compile-lean
+compile-lean-apps:
+	@$(MAKE) -j$(JOBS) -C applications/ compile-lean
+
+sparkly-clean: clean-apps clean-kazoo clean-release clean-deps
 
 clean: clean-kazoo
 	$(if $(wildcard *crash.dump), rm *crash.dump)
@@ -57,12 +97,15 @@ clean-test-core:
 clean-test-apps:
 	@$(MAKE) -j$(JOBS) -C applications/ clean-test
 
+compile-proper: ERLC_OPTS += -DPROPER
+compile-proper: compile-test
+
 compile-test: ERLC_OPTS += +nowarn_missing_spec
 compile-test: deps compile-test-core compile-test-apps
 compile-test-core:
-	@$(MAKE) -j$(JOBS) -C core/ compile-test
+	@$(MAKE) -j$(JOBS) -C core/ compile-test-direct
 compile-test-apps:
-	@$(MAKE) -j$(JOBS) -C applications/ compile-test
+	@$(MAKE) -j$(JOBS) -C applications/ compile-test-direct
 
 eunit: eunit-core eunit-apps
 
@@ -93,15 +136,22 @@ check: ERLC_OPTS += -DPROPER
 check: compile-test eunit clean-kazoo kazoo
 
 clean-deps: clean-deps-hash
-	$(if $(wildcard deps/), rm -rf deps/)
-	$(if $(wildcard .erlang.mk/), rm -r .erlang.mk/)
+	@$(if $(wildcard $(DEPS_DIR)), rm -rf $(DEPS_DIR))
+	@$(if $(wildcard $(DOT_ERLANG_MK)), rm -rf $(DOT_ERLANG_MK))
+	@$(if $(wildcard $(ERLANG_MK)), rm -r $(ERLANG_MK))
+	@echo "Cleaned deps-related files"
 
 clean-deps-hash:
 	$(if $(wildcard make/.deps.mk.*), rm make/.deps.mk.*)
 
-.erlang.mk:
-	wget 'https://raw.githubusercontent.com/ninenines/erlang.mk/2018.03.01/erlang.mk' -O $(ROOT)/erlang.mk
-	@ERLANG_MK_COMMIT=$(ERLANG_MK_COMMIT) $(MAKE) -f erlang.mk erlang-mk
+.PHONY=dot_erlang_mk
+dot_erlang_mk: $(DOT_ERLANG_MK)
+
+$(DOT_ERLANG_MK): $(ERLANG_MK)
+	@ERLANG_MK_COMMIT=$(ERLANG_MK_COMMIT) $(MAKE) -f $(ERLANG_MK) erlang.mk
+
+$(ERLANG_MK):
+	@wget 'https://raw.githubusercontent.com/ninenines/erlang.mk/2018.03.01/erlang.mk' -O $(ERLANG_MK)
 
 DEPS_HASH := $(shell md5sum make/deps.mk | cut -d' ' -f1)
 DEPS_HASH_FILE := make/.deps.mk.$(DEPS_HASH)
@@ -110,14 +160,14 @@ deps: $(DEPS_HASH_FILE)
 
 $(DEPS_HASH_FILE):
 	@$(MAKE) clean-deps
-	@$(MAKE) deps/Makefile
-	@$(MAKE) -C deps/ all
+	@$(MAKE) $(DEPS_DIR)/Makefile
+	@$(MAKE) -C $(DEPS_DIR)/ all
 	touch $(DEPS_HASH_FILE)
 
-deps/Makefile: .erlang.mk clean-plt
+$(DEPS_DIR)/Makefile: $(DOT_ERLANG_MK) clean-plt
 	mkdir -p deps
-	@$(MAKE) -f erlang.mk deps
-	cp $(ROOT)/make/Makefile.deps deps/Makefile
+	@$(MAKE) -f $(ERLANG_MK) deps
+	cp $(ROOT)/make/Makefile.deps $(DEPS_DIR)/Makefile
 
 core:
 	@$(MAKE) -j$(JOBS) -C core/ all
@@ -135,8 +185,23 @@ $(TAGS):
 clean-tags:
 	$(if $(wildcard $(TAGS)), rm $(TAGS))
 
+erlang-ls: $(ERLANG_LS)
+
+$(ERLANG_LS):
+	@touch $(ERLANG_LS)
+	@echo "plt_path: $(PLT)" >> $(ERLANG_LS)
+	@echo "apps_dirs: " >> $(ERLANG_LS)
+	@echo " - $(ROOT)/core/*" >> $(ERLANG_LS)
+	@echo " - $(ROOT)/applications/*" >> $(ERLANG_LS)
+	@echo "deps_dirs: " >> $(ERLANG_LS)
+	@echo " - $(ROOT)/deps/*" >> $(ERLANG_LS)
+	@echo "generated $(ERLANG_LS)"
+
+clean-erlang-ls:
+	@rm $(ERLANG_LS)
+
 $(RELX):
-	wget 'https://github.com/erlware/relx/releases/download/v3.23.0/relx' -O $@
+	wget 'https://erlang.mk/res/relx-v3.27.0' -O $@
 	chmod +x $@
 
 clean-release:
@@ -168,7 +233,7 @@ read-release-cookie:
 	@NODE_NAME='$(REL)' _rel/kazoo/bin/kazoo escript lib/kazoo_config-*/priv/read-cookie.escript "$$@"
 
 fixture_shell: ERL_CRASH_DUMP = "$(ROOT)/$(shell date +%s)_ecallmgr_erl_crash.dump"
-fixture_shell: ERL_LIBS = "$(ROOT)/deps:$(ROOT)/core:$(ROOT)/applications:$(shell echo $(ROOT)/deps/rabbitmq_erlang_client-*/deps)"
+fixture_shell: ERL_LIBS = "$(DEPS_DIR):$(ROOT)/core:$(ROOT)/applications:$(shell echo $(DEPS_DIR)/rabbitmq_erlang_client-*/deps)"
 fixture_shell: NODE_NAME ?= fixturedb
 fixture_shell:
 	@ERL_CRASH_DUMP="$(ERL_CRASH_DUMP)" ERL_LIBS="$(ERL_LIBS)" KAZOO_CONFIG=$(ROOT)/rel/config-test.ini \
@@ -176,11 +241,10 @@ fixture_shell:
 
 DIALYZER ?= dialyzer
 DIALYZER += --statistics --no_native
-PLT ?= .kazoo.plt
 
 OTP_APPS ?= erts kernel stdlib crypto public_key ssl asn1 inets xmerl
-EXCLUDE_DEPS = $(ROOT)/deps/erlang_localtime/ebin
-$(PLT): DEPS_EBIN ?= $(filter-out $(EXCLUDE_DEPS),$(wildcard $(ROOT)/deps/*/ebin))
+EXCLUDE_DEPS = $(DEPS_DIR)/erlang_localtime/ebin
+$(PLT): DEPS_EBIN ?= $(filter-out $(EXCLUDE_DEPS),$(wildcard $(DEPS_DIR)/*/ebin))
 # $(PLT): CORE_EBINS ?= $(shell find $(ROOT)/core -name ebin)
 $(PLT):
 	@-$(DIALYZER) --build_plt --output_plt $(PLT) \
@@ -203,22 +267,29 @@ dialyze-core: dialyze-it
 dialyze:       TO_DIALYZE ?= $(shell find $(ROOT)/applications -name ebin)
 dialyze: dialyze-it
 
-dialyze-changed: TO_DIALYZE = $(CHANGED)
+dialyze-changed: TO_DIALYZE = $(strip $(filter %.beam %.erl %/ebin,$(CHANGED)))
 dialyze-changed: dialyze-it-changed
 
 dialyze-hard: TO_DIALYZE = $(CHANGED)
 dialyze-hard: dialyze-it-hard
 
 dialyze-it: $(PLT)
-	@ERL_LIBS=deps:core:applications $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt $(filter %.beam %.erl %/ebin,$(TO_DIALYZE))
+	@echo ":: dialyzing"
+	@ERL_LIBS=deps:core:applications $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt $(filter %.beam %.erl %/ebin,$(TO_DIALYZE)) && echo "dialyzer is happy!"
 
 dialyze-it-hard: $(PLT)
-	@ERL_LIBS=deps:core:applications $(if $(DEBUG),time -v) $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt --hard $(filter %.beam %.erl %/ebin,$(TO_DIALYZE))
+	@echo ":: dialyzing hard"
+	@ERL_LIBS=deps:core:applications $(if $(DEBUG),time -v) $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt --hard $(filter %.beam %.erl %/ebin,$(TO_DIALYZE)) && echo "dialyzer is happy!"
 
 dialyze-it-changed: $(PLT)
-	@ERL_LIBS=deps:core:applications $(if $(DEBUG),time -v) $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt --bulk $(filter %.beam %.erl %/ebin,$(TO_DIALYZE))
+	@if [ -n "$(TO_DIALYZE)" ]; then \
+		echo "dialyzing changes against $(BASE_BRANCH)" ; \
+		ERL_LIBS=deps:core:applications $(if $(DEBUG),time -v) $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt --bulk $(TO_DIALYZE) && echo "dialyzer is happy!"; \
+	else \
+		echo "no erlang changes to dialyze"; \
+	fi
 
-xref: TO_XREF ?= $(shell find $(ROOT)/applications $(ROOT)/core $(ROOT)/deps -name ebin)
+xref: TO_XREF ?= $(shell find $(ROOT)/applications $(ROOT)/core $(DEPS_DIR) -name ebin)
 xref:
 	@$(ROOT)/scripts/check-xref.escript $(TO_XREF)
 
@@ -245,39 +316,68 @@ diff: export TO_DIALYZE = $(shell git diff --name-only $(BASE_BRANCH)... -- $(RO
 diff: dialyze-it
 
 bump-copyright:
-	@$(ROOT)/scripts/bump-copyright-year.sh $(shell find applications core -iname '*.erl' -or -iname '*.hrl')
+	@$(ROOT)/scripts/bump-copyright-year.py $(shell find applications core -name '*.erl')
 
 app_applications:
 	ERL_LIBS=deps:core:applications $(ROOT)/scripts/apps_of_app.escript -a $(shell find applications -name *.app.src)
 
 code_checks:
-	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/no_raw_json.escript
+	@printf ":: Check for copyright year\n\n"
+	@$(ROOT)/scripts/bump-copyright-year.py $(CHANGED_ERL)
+	@printf "\n:: Check code\n\n"
+	@$(ROOT)/scripts/code_checks.bash $(CHANGED_ERL)
+	@printf "\n:: Check for raw JSON usage\n\n"
+	@ERL_LIBS=deps:core:applications $(ROOT)/scripts/no_raw_json.escript $(CHANGED_ERL)
+	@printf "\n:: Check for spelling\n\n"
 	@$(ROOT)/scripts/check-spelling.bash
+	@printf "\n:: Check for Kazoo diaspora\n\n"
 	@$(ROOT)/scripts/kz_diaspora.bash
+	@printf "\n:: Check for Edoc\n\n"
 	@$(ROOT)/scripts/edocify.escript
+	@printf "\n:: Check for Kazoo document accessors\n\n"
 	@$(ROOT)/scripts/kzd_module_check.bash
+	@printf "\n:: Check for proper log message usage\n\n"
 	@$(ROOT)/scripts/check-loglines.bash
+	@printf "\n:: Check for Erlang 21 new stacktrace syntax\n\n"
+	@$(ROOT)/scripts/check-stacktrace.py $(CHANGED_ERL)
 
-apis:
-	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/generate-schemas.escript
-	@$(ROOT)/scripts/format-json.sh $(shell find applications core -wholename '*/schemas/*.json')
-	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/generate-api-endpoints.escript
-	@$(ROOT)/scripts/generate-doc-schemas.sh `egrep -rl '(#+) Schema' core/ applications/ | grep -v '.[h|e]rl'`
-	@$(ROOT)/scripts/format-json.sh applications/crossbar/priv/api/swagger.json
-	@$(ROOT)/scripts/format-json.sh $(shell find applications core -wholename '*/api/*.json')
-	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/generate-fs-headers-hrl.escript
-	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/generate-kzd-builders.escript
+.PHONY: raw_json_check
+raw_json_check:
+	@ERL_LIBS=deps:core:applications $(ROOT)/scripts/no_raw_json.escript
 
+check_stacktrace:
+	@$(ROOT)/scripts/check-stacktrace.py $(shell grep -rl "get_stacktrace" scripts applications core --include "*.[e|h]rl" --exclude "kz_types.hrl")
+
+## FIXME: `format-couchdb-view.py` command is a copy-paste from fmt.mk
+## Adding this format couchdb view target to circleci steps for every app is painful
+## also this formatting is better to be done before validate-js ci step to make sure
+## the view is still in correct shape
+apis: schemas
+	@ERL_LIBS=deps:core:applications $(ROOT)/scripts/generate-api-endpoints.escript
+	@$(ROOT)/scripts/generate-doc-schemas.py `egrep -rl '(#+) Schema' core/ applications/ | grep -v '.[h|e]rl'`
+	@$(ROOT)/scripts/format-json.py applications/crossbar/priv/api/swagger.json
+	@$(ROOT)/scripts/format-json.py $(shell find applications core -wholename '*/api/*.json')
+	@ERL_LIBS=deps:core:applications $(ROOT)/scripts/generate-fs-headers-hrl.escript
+	@ERL_LIBS=deps:core:applications $(ROOT)/scripts/generate-kzd-builders.escript
+	@$(ROOT)/scripts/format-couchdb-views.py $(shell find core/kazoo_apps/priv/couchdb/account -name '*.json')
+	@$(ROOT)/scripts/format-couchdb-views.py $(shell find applications core -wholename '*/couchdb/views/*.json')
+
+.PHONY: schemas
 schemas:
-	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/generate-schemas.escript
+	@ERL_LIBS=deps:core:applications $(ROOT)/scripts/generate-schemas.escript $(CHANGED_ERL)
+	@$(ROOT)/scripts/format-json.py $(shell find applications core -wholename '*/schemas/*.json')
 
 DOCS_ROOT=$(ROOT)/doc/mkdocs
 docs: docs-validate docs-report docs-setup docs-build
+
+admonitions:
+	@ERL_LIBS=deps:core:applications $(ROOT)/scripts/check-admonitions.escript $(shell grep -rlE '^!!! ' scripts applications core doc)
 
 docs-validate:
 	@$(ROOT)/scripts/check-scripts-readme.bash
 	@$(ROOT)/scripts/empty_schema_descriptions.bash
 	@$(ROOT)/scripts/check-ref-docs.bash
+	@ERL_LIBS=deps:core:applications $(ROOT)/scripts/check-admonitions.escript $(CHANGED)
 
 docs-report:
 	@$(ROOT)/scripts/reconcile_docs_to_index.bash
@@ -285,7 +385,6 @@ docs-report:
 docs-setup:
 	@$(ROOT)/scripts/validate_mkdocs.py
 	@$(ROOT)/scripts/setup_docs.bash
-	@mkdir -p $(DOCS_ROOT)/theme
 
 docs-build:
 	@$(MAKE) -C $(DOCS_ROOT) DOCS_ROOT=$(DOCS_ROOT) docs-build
@@ -293,23 +392,29 @@ docs-build:
 docs-clean:
 	@$(MAKE) -C $(DOCS_ROOT) DOCS_ROOT=$(DOCS_ROOT) clean
 
+YML ?= mkdocs.yml
+
 docs-serve: docs-setup docs-build
-	@$(MAKE) -C $(DOCS_ROOT) DOCS_ROOT=$(DOCS_ROOT) docs-serve
+	@$(MAKE) -C $(DOCS_ROOT) YML=$(YML) DOCS_ROOT=$(DOCS_ROOT) docs-serve
 
 fs-headers:
-	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/generate-fs-headers-hrl.escript
+	@ERL_LIBS=deps:core:applications $(ROOT)/scripts/generate-fs-headers-hrl.escript
 
 validate-swagger:
-	@$(ROOT)/scripts/validate-swagger.sh
+	@$(ROOT)/scripts/validate-swagger.py
+
+validate-js:
+	@$(ROOT)/scripts/validate-js.py $(CHANGED_JSON)
 
 sdks:
 	@$(ROOT)/scripts/make-swag.sh
 
 validate-schemas:
-	@$(ROOT)/scripts/validate-schemas.sh $(ROOT)/applications/crossbar/priv/couchdb/schemas
+	@$(ROOT)/scripts/validate-schemas.py $(ROOT)/applications/crossbar/priv/couchdb/schemas
 
 include make/splchk.mk
 include make/ci.mk
 include make/fmt.mk
+include make/pest.mk
 
 circle: ci

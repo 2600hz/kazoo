@@ -1,13 +1,18 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Conversion of types.
 %%% @author James Aimonetti
 %%% @author Karl Anderson
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_term).
 
 -export([shuffle_list/1]).
+-export([uniq_list/1]).
 
 -export([to_integer/1, to_integer/2
         ,to_float/1, to_float/2
@@ -36,16 +41,21 @@
         ,is_boolean/1
         ,is_ne_binary/1, is_api_ne_binary/1
         ,is_ne_binaries/1
+        ,is_ne_binary_or_binaries/1
         ,is_empty/1, is_not_empty/1
         ,is_proplist/1, is_ne_list/1
         ,is_pos_integer/1
-        ,is_ascii_code/1
+        ,is_ascii_code/1, is_ascii_number/1
         ,is_lower_char/1, is_upper_char/1
         ,identity/1
         ,always_true/1, always_false/1
         ]).
 
 -export([a1hash/3, floor/1, ceiling/1]).
+
+-export([iolist_join/2]).
+
+-export([xnor/2]).
 
 -type text() :: string() | atom() | binary() | iolist().
 %% Denotes Erlang data type which can represent as.
@@ -65,6 +75,7 @@
 %% Denotes definition of each key-value in a proplist.
 
 -type proplist() :: [proplist_property()].
+-type api_proplist() :: proplist() | 'undefined'.
 %% A key-value form of data, `[{Key, Value}|atom]'.
 
 -type proplists() :: [proplist()].
@@ -113,6 +124,8 @@
 
 -type api_reference() :: reference() | 'undefined'.
 %% Denotes either data type is defined as `reference()' or it's `undefined'.
+
+-type api_port() :: port() | 'undefined'.
 
 -type api_pid() :: pid() | 'undefined'.
 %% Denotes either data type is defined as `pid()' or it's `undefined'.
@@ -179,7 +192,9 @@
              ,api_pid_ref/0
              ,api_pid_refs/0
              ,api_pos_integer/0
+             ,api_proplist/0
              ,api_reference/0
+             ,api_port/0
              ,api_string/0
              ,api_terms/0
              ,atoms/0
@@ -232,10 +247,22 @@ randomize_list(T, List) ->
                ,lists:seq(1, (T - 1))
                ).
 
-%% must be a term that can be changed to a list
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec uniq_list(list()) -> list().
+uniq_list([]) -> [];
+uniq_list([H|T]) -> [H | [X || X <- uniq_list(T), X =/= H]].
+
+%%------------------------------------------------------------------------------
+%% @doc must be a term that can be changed to a list
+%% @end
+%%------------------------------------------------------------------------------
 -spec to_hex(text()) -> string().
 to_hex(S) ->
-    string:to_lower(lists:flatten([io_lib:format("~2.16.0B", [H]) || H <- to_list(S)])).
+    B = to_hex_binary(S),
+    to_list(B).
 
 -spec to_hex_binary(text()) -> binary().
 to_hex_binary(S) ->
@@ -412,6 +439,11 @@ is_ne_binaries(V) when is_list(V) ->
     lists:all(fun is_ne_binary/1, V);
 is_ne_binaries(_) -> 'false'.
 
+-spec is_ne_binary_or_binaries(any()) -> boolean().
+is_ne_binary_or_binaries(V) ->
+    is_ne_binary(V)
+        orelse is_ne_binaries(V).
+
 -spec is_boolean(binary() | string() | atom()) -> boolean().
 is_boolean(<<"true">>) -> 'true';
 is_boolean("true") -> 'true';
@@ -441,6 +473,9 @@ is_empty('undefined') -> 'true';
 
 is_empty(Float) when is_float(Float), Float =:= 0.0 -> 'true';
 
+is_empty(Map) when is_map(Map), map_size(Map) =:= 0 -> 'true';
+is_empty(Map) when is_map(Map) -> 'false';
+
 is_empty(MaybeJObj) ->
     case kz_json:is_json_object(MaybeJObj) of
         'false' -> 'false'; %% if not a json object, it's not empty
@@ -468,6 +503,11 @@ is_pos_integer(X) ->
 is_ascii_code(X) ->
     X >= 0
         andalso X =< 127.
+
+-spec is_ascii_number(integer()) -> boolean().
+is_ascii_number(X) ->
+    X >= $0
+        andalso X =< $9.
 
 -spec identity(X) -> X.
 identity(X) -> X.
@@ -560,3 +600,31 @@ error_to_binary(Reason) ->
 -spec words_to_bytes(integer()) -> integer().
 words_to_bytes(Words) ->
     Words * erlang:system_info('wordsize').
+
+-spec iolist_join(Sep, List1) -> List2 when
+      Sep :: T,
+      List1 :: [T],
+      List2 :: [T],
+      T :: iodata() | char().
+iolist_join(_, []) -> [];
+iolist_join(Sep, [H|T]) ->
+    [H | iolist_join_prepend(Sep, T)].
+
+-spec iolist_join_prepend(Sep, List1) -> List2 when
+      Sep :: T,
+      List1 :: [T],
+      List2 :: [T],
+      T :: iolist().
+iolist_join_prepend(_, []) -> [];
+iolist_join_prepend(Sep, [H|T]) ->
+    [Sep, H | iolist_join_prepend(Sep, T)].
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec xnor(boolean(), boolean()) -> boolean().
+xnor('false', 'false') -> 'true';
+xnor('false', 'true') -> 'false';
+xnor('true', 'false') -> 'false';
+xnor('true', 'true') -> 'true'.

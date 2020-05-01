@@ -1,0 +1,25 @@
+{
+    "_id": "_design/compaction_jobs",
+    "kazoo": {
+        "view_map": [
+            {
+                "classification": "modb"
+            }
+        ]
+    },
+    "language": "javascript",
+    "views": {
+        "crossbar_listing": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'compaction_job' || doc.pvt_deleted) return;",
+                "  emit(doc.pvt_created, {",
+                "    'id': doc._id,",
+                "    'node': doc.worker.node,",
+                "    'pid': doc.worker.pid,",
+                "  });",
+                "}"
+            ]
+        }
+    }
+}

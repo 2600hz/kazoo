@@ -1,0 +1,12 @@
+<definition name="interaction-id">
+	<field name="variable_Call-Interaction-ID" as="Call-Interaction-ID" />
+	<field name="Call-Interaction-Is-Root" type="static" value="true"
+		serialize-as="boolean">
+		<filters>
+			<filter name="variable_Call-Interaction-ID" type="include"
+				compare="field" value="variable_Original-Call-Interaction-ID" />
+			<filter name="${first-of(Event-Subclass|Event-Name|#none)}"
+				type="include" compare="list" value="CHANNEL_DESTROY|KZ_CDR" />
+		</filters>
+	</field>
+</definition>

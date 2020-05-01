@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Profiling
 %%% @author Luis Azedo
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kzs_perf).
@@ -50,7 +55,7 @@ load_profile_config() ->
 profile_config() ->
     case kz_cache:fetch_local(?KAZOO_DATA_PLAN_CACHE, {?MODULE, 'config'}) of
         {'error', 'not_found'} ->
-            kz_util:spawn(fun update_profile_config/0),
+            kz_process:spawn(fun update_profile_config/0),
             Config = load_profile_config_from_disk(),
             update_profile_config(Config);
         {'ok', Map} -> Map

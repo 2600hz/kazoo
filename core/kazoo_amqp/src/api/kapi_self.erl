@@ -1,7 +1,11 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc For `gen_listeners' that bind to targeted for direct messaging.
 %%% @author James Aimonetti
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kapi_self).
@@ -37,7 +41,7 @@ publish_message(ServerId, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, [], fun build/1),
     kz_amqp_util:targeted_publish(ServerId, Payload, ContentType).
 
--spec build(kz_term:api_terms()) -> {'ok', iolist()}.
+-spec build(kz_term:api_terms()) -> kz_api:api_formatter_return().
 build(Prop) when is_list(Prop) ->
     kz_api:build_message(Prop, [], []);
 build(JObj) ->

@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2019, 2600Hz
+%%% @copyright (C) 2013-2020, 2600Hz
 %%% @doc Eavesdrop feature.
 %%%
 %%% <h4>Data options:</h4>
@@ -21,6 +21,11 @@
 %%%
 %%% @author SIPLABS LLC (Mikhail Rodionov)
 %%% @author SIPLABS LLC (Maksim Krzhemenevskiy)
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cf_eavesdrop).
@@ -58,7 +63,7 @@ fields_to_check() ->
     ].
 
 -spec maybe_allowed_to_eavesdrop(kz_json:object(), kapps_call:call()) ->
-                                        boolean().
+          boolean().
 maybe_allowed_to_eavesdrop(Data, Call) ->
     cf_util:check_value_of_fields(fields_to_check(), 'false', Data, Call).
 
@@ -151,7 +156,7 @@ eavesdrop_cmd(TargetCallId) ->
     ].
 
 -spec find_sip_endpoints(kz_json:object(), kapps_call:call()) ->
-                                kz_term:ne_binaries().
+          kz_term:ne_binaries().
 find_sip_endpoints(Data, Call) ->
     case kz_json:get_ne_binary_value(<<"device_id">>, Data) of
         'undefined' ->
@@ -163,7 +168,7 @@ find_sip_endpoints(Data, Call) ->
     end.
 
 -spec sip_users_from_endpoints(kz_term:ne_binaries(), kapps_call:call()) ->
-                                      kz_term:ne_binaries().
+          kz_term:ne_binaries().
 sip_users_from_endpoints(EndpointIds, Call) ->
     lists:foldl(fun(EndpointId, Acc) ->
                         case sip_user_of_endpoint(EndpointId, Call) of

@@ -13,14 +13,14 @@
             "map": [
                 "function(doc) {",
                 "  if (doc.pvt_type != 'resource_job' || doc.pvt_deleted) return;",
-                "  var failures = 0, o = doc.errors || {};",
+                "  var failures = 0,",
+                "    o = doc.errors || {};",
                 "  for (var p in o)",
-                "    if (o.hasOwnProperty(p))",
-                "      failures++;",
-                "  var successes = 0, o = doc.success || {};",
+                "    if (o.hasOwnProperty(p)) failures++;",
+                "  var successes = 0,",
+                "    o = doc.success || {};",
                 "  for (var p in o)",
-                "    if (o.hasOwnProperty(p))",
-                "      successes++;",
+                "    if (o.hasOwnProperty(p)) successes++;",
                 "  emit(doc.pvt_created, {",
                 "    'id': doc._id,",
                 "    'timestamp': doc.pvt_modified,",
@@ -34,7 +34,12 @@
             ]
         },
         "status_listing": {
-            "map": "function(doc) { if (doc.pvt_type != 'resource_job' || doc.pvt_deleted) return; emit(doc.pvt_status, null); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'resource_job' || doc.pvt_deleted) return;",
+                "  emit(doc.pvt_status, null);",
+                "}"
+            ]
         }
     }
 }

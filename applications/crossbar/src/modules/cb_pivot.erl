@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
-%%% @doc Listing of all expected v1 callbacks
+%%% @copyright (C) 2011-2020, 2600Hz
+%%% @doc Crossbar API for pivot.
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cb_pivot).
@@ -91,7 +96,7 @@ validate(Context, ?DEBUG_PATH_TOKEN, CallId) ->
 %%------------------------------------------------------------------------------
 -spec debug_summary(cb_context:context()) -> cb_context:context().
 debug_summary(Context) ->
-    ViewOptions = [{'mapper', crossbar_view:map_value_fun()}
+    ViewOptions = [{'mapper', crossbar_view:get_value_fun()}
                   ,{'range_keymap', 'nil'}
                   ,{'limit', limit_by_page_size(Context)}
                   ],
@@ -118,15 +123,13 @@ limit_by_page_size(Context) ->
 -spec debug_read(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 debug_read(Context, ?MATCH_MODB_PREFIX(Year, Month, CallId)) ->
     AccountModb = kazoo_modb:get_modb(cb_context:account_id(Context), Year, Month),
-    Context1 =
-        crossbar_doc:load_view(?CB_DEBUG_LIST
-                              ,[{'endkey', [CallId, kz_json:new()]}
-                               ,{'startkey', [CallId]}
-                               ,'include_docs'
-                               ]
-                              ,cb_context:set_account_db(Context, AccountModb)
-                              ,fun normalize_debug_read/2
-                              ),
+    Options = [{'databases', [AccountModb]}
+              ,{'endkey', [CallId, kz_json:new()]}
+              ,{'mapper', fun normalize_debug_read/2}
+              ,{'startkey', [CallId]}
+              ,'include_docs'
+              ],
+    Context1 = crossbar_view:load(Context, ?CB_DEBUG_LIST, Options),
     case cb_context:resp_status(Context1) of
         'success' ->
             RespData = cb_context:resp_data(Context1),

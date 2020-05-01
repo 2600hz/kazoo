@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2019, 2600Hz
+%%% @copyright (C) 2013-2020, 2600Hz
 %%% @doc Runs the compaction.
 %%%
 %%% Task consists of:
@@ -11,6 +11,11 @@
 %%%
 %%% The list of shards on the node and the design documents in the db will be generated
 %%% and compaction will begin on those shards.
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kt_compactor_worker).
@@ -28,6 +33,7 @@
         ,compactor_shards/1
         ,compactor_design_docs/1
         ,compactor_heuristic/1
+        ,compactor_callid/1
         ,new/5
         ]).
 
@@ -42,20 +48,28 @@
                    ,shards :: kz_term:ne_binaries()
                    ,design_docs = [] :: kz_term:ne_binaries()
                    ,heuristic :: heuristic()
+                   ,callid :: kz_term:api_ne_binary()
                    }).
 
 -type compactor() :: #compactor{}.
--export_type([compactor/0]).
+-type db_disk_and_data() :: {pos_integer(), pos_integer()} | 'undefined' | 'not_found'.
+-export_type([compactor/0
+             ,db_disk_and_data/0
+             ]).
 
 -spec run_compactor(compactor()) -> 'ok'.
 run_compactor(Compactor) ->
     case should_compact(Compactor) of
-        'false' -> 'ok';
+        'false' ->
+            kt_compaction_reporter:skipped_db(kz_log:get_callid(), compactor_database(Compactor));
         'true' ->
             lager:info("compacting db '~s' on node '~s'"
                       ,[compactor_database(Compactor), compactor_node(Compactor)]
                       ),
-            run_compactor_job(Compactor, compactor_shards(Compactor))
+            run_compactor_job(Compactor, compactor_shards(Compactor)),
+            lager:info("finished compacting db '~s' on node '~s'"
+                      ,[compactor_database(Compactor), compactor_node(Compactor)]
+                      )
     end.
 
 -spec run_compactor_job(compactor(), kz_term:ne_binaries()) -> 'ok'.
@@ -101,17 +115,20 @@ compact_shards(Compactor) ->
 
 -spec compact_shard(compactor()) -> 'ok'.
 compact_shard(#compactor{shards=[Shard]}=Compactor) ->
-    kz_util:put_callid(<<"compact_shard_", Shard/binary>>),
+    kz_log:put_callid(<<"compact_shard_", Shard/binary>>),
 
+    %% Make sure this shard is not already being compacted before start compacting it.
     wait_for_compaction(compactor_admin(Compactor), Shard),
 
     case get_db_disk_and_data(compactor_admin(Compactor), Shard) of
         'undefined' ->
-            lager:info("beginning shard compaction"),
+            lager:debug("beginning shard compaction"),
             start_compacting_shard(Compactor);
-        'not_found' -> 'ok';
+        'not_found' ->
+            lager:debug("disk and data size not found, skip and return ok"),
+            'ok';
         {BeforeDisk, BeforeData} ->
-            lager:info("beginning shard compaction: ~p disk/~p data", [BeforeDisk, BeforeData]),
+            lager:debug("beginning shard compaction: ~p disk/~p data", [BeforeDisk, BeforeData]),
             start_compacting_shard(Compactor)
     end.
 
@@ -142,7 +159,8 @@ continue_compacting_shard(#compactor{shards=[Shard]}=Compactor) ->
         'not_found' -> lager:debug("  finished compacting shard");
         {AfterDisk, AfterData} ->
             lager:debug("  finished compacting shard: ~p disk/~p data", [AfterDisk, AfterData])
-    end.
+    end,
+    kt_compaction_reporter:finished_shard(compactor_callid(Compactor), Shard).
 
 -spec compact_design_docs(compactor(), kz_term:ne_binary(), kz_term:ne_binaries()) -> 'ok'.
 compact_design_docs(_Compactor, _Shard, []) -> 'ok';
@@ -171,19 +189,19 @@ compact_design_docs(Compactor, Shard, DDs) ->
                             {'error', any()}.
 
 -spec wait_for_design_compaction(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binaries()) ->
-                                        'ok'.
+          'ok'.
 wait_for_design_compaction(_, _, []) -> 'ok';
 wait_for_design_compaction(AdminConn, Shard, [DD|DDs]) ->
     wait_for_design_compaction(AdminConn, Shard, DDs, DD, kz_couch_view:design_info(AdminConn, Shard, DD)).
 
 -spec wait_for_design_compaction(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary(), design_info_resp()) ->
-                                        'ok'.
+          'ok'.
 wait_for_design_compaction(AdminConn, Shard, DDs, DD, {'error', {'conn_failed', {'error', 'timeout'}}}) ->
     lager:warning("timed out, waiting then retrying"),
     'ok' = timer:sleep(?SLEEP_BETWEEN_POLL),
     wait_for_design_compaction(AdminConn, Shard, DDs, DD, kz_couch_view:design_info(AdminConn, Shard, DD));
 wait_for_design_compaction(AdminConn, Shard, DDs, _DD, {'error', 'not_found'}) ->
-    lager:info("compacting shard design docs not found"),
+    lager:debug("compacting shard design docs not found"),
     wait_for_design_compaction(AdminConn, Shard, DDs);
 wait_for_design_compaction(AdminConn, Shard, DDs, _DD, {'error', _E}) ->
     lager:warning("failed design status for '~s/~s': ~p", [Shard, _DD, _E]),
@@ -204,7 +222,7 @@ wait_for_compaction(AdminConn, Shard) ->
 
 -spec wait_for_compaction(kz_data:connection(), kz_term:ne_binary(), db_info_resp()) -> 'ok'.
 wait_for_compaction(_AdminConn, _Shard, {'error', 'db_not_found'}) ->
-    lager:info("shard '~s' wasn't found on this connection: ~p", [_Shard, _AdminConn]);
+    lager:debug("shard '~s' wasn't found on this connection: ~p", [_Shard, _AdminConn]);
 wait_for_compaction(AdminConn, Shard, {'error', 'timeout'}) ->
     lager:warning("timed out querying db status; that seems irregular!"),
     'ok' = timer:sleep(?SLEEP_BETWEEN_POLL * 2),
@@ -239,14 +257,12 @@ should_compact(Compactor, ?HEUR_RATIO) ->
     end.
 
 -spec get_db_disk_and_data(kz_data:connection(), kz_term:ne_binary()) ->
-                                  {pos_integer(), pos_integer()} |
-                                  'undefined' | 'not_found'.
+          db_disk_and_data().
 get_db_disk_and_data(Conn, DbName) ->
     get_db_disk_and_data(Conn, DbName, 0).
 
 -spec get_db_disk_and_data(kz_data:connection(), kz_term:ne_binary(), 0..3) ->
-                                  {pos_integer(), pos_integer()} |
-                                  'undefined' | 'not_found'.
+          db_disk_and_data().
 get_db_disk_and_data(_Conn, _DbName, 3=_N) ->
     lager:warning("getting db info for ~s failed ~b times", [_DbName, _N]),
     'undefined';
@@ -288,12 +304,14 @@ min_data_met(_Data, _Min) ->
 
 -spec min_ratio_met(integer(), integer(), float()) -> boolean().
 min_ratio_met(Disk, Data, MinRatio) ->
-    case Disk / Data of
+    case (Disk - Data) / Disk * 100 of
         R when R > MinRatio ->
-            lager:debug("ratio ~p is greater than min ratio: ~p", [R, MinRatio]),
+            lager:debug("ratio ~.2f% (~p disk/~p data) is greater than min ratio: ~p%",
+                        [R, Disk, Data, MinRatio]),
             'true';
         _R ->
-            lager:debug("ratio ~p (~p/~p) is under min threshold ~p", [_R, Disk, Data, MinRatio]),
+            lager:debug("ratio ~.2f% ((~p-~p) / ~p * 100) is under min threshold ~p%",
+                        [_R, Disk, Data, Disk, MinRatio]),
             'false'
     end.
 
@@ -319,8 +337,11 @@ compactor_design_docs(#compactor{design_docs=DesignDocs}) -> DesignDocs.
 -spec compactor_heuristic(compactor()) -> heuristic().
 compactor_heuristic(#compactor{heuristic=Heuristic}) -> Heuristic.
 
+-spec compactor_callid(compactor()) -> kz_term:api_ne_binary().
+compactor_callid(#compactor{callid=CallId}) -> CallId.
+
 -spec new(kz_term:ne_binary(), heuristic(), kz_data:connection(), kz_data:connection(), kz_term:ne_binary()) ->
-                 compactor().
+          compactor().
 new(Node, Heuristic, APIConn, AdminConn, Database) ->
     #compactor{node=Node
               ,database=kz_http_util:urlencode(Database)
@@ -330,6 +351,7 @@ new(Node, Heuristic, APIConn, AdminConn, Database) ->
               ,heuristic=Heuristic
               ,shards=node_shards(Node, Database)
               ,design_docs=db_design_docs(APIConn, Database)
+              ,callid=kz_log:get_callid()
               }.
 
 -spec node_shards(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binaries().

@@ -75,7 +75,7 @@ Some 2600Hz specifics:
   ```erlang
   -spec foo(any()) -> any(). % is of no use to anyone!
   ```
-  * Run [dialyzer](./dialyzer.md) on any modules you make changes to, plus any modules your new code makes calls to.
+  * Run [dialyzer](/doc/engineering/dialyzer.md) on any modules you make changes to, plus any modules your new code makes calls to.
 * When creating lists or binaries, drop the comma and next element to a new line
   * This includes `-export([...])` directives.
   * No:
@@ -170,6 +170,7 @@ Here are some general guidelines for submitting new code.
   * Any failed Travis job will result in you needing to address the issues and updating the PR.
   * Avoid these delays in acceptance by running the CI suite yourself prior to submitting
 * All pull requests should be issued to resolve a Jira ticket. The branch name of the submission should be Jira ticket ID, such as KAZOO-42.
+  * See [commit guidelines](doc/engineering/commits.md) for more
 * Ensure that each pull request addresses only the work related to the ticket it is resolving.
 * Keep the changes in a pull request as concise as possible. If the pull request is a bug fix it should be the simplest possible approach with minimal code changes.
 * All work should be rebased to the originating branch prior to pull request submission.

@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2016-2019, 2600Hz
+%%% @copyright (C) 2016-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kazoo_auth_maintenance).
@@ -17,7 +21,12 @@
 
 -export([refresh/0
         ,register_views/0
-        ,flush/0
+        ]).
+
+-export([flush/0
+        ,flush_private_keys/0
+        ,flush_profiles/0
+        ,flush_tokens/0
         ]).
 
 -export([ensure_secret/0]).
@@ -46,13 +55,13 @@ register_auth_app(AccountId, OAuthId, Secret, Provider) ->
     end.
 
 -spec register_auth_app_key(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                   {'ok', kz_json:object()} |
-                                   kz_datamgr:data_error().
+          {'ok', kz_json:object()} |
+          kz_datamgr:data_error().
 register_auth_app_key(AppId, PemFile) ->
     Pem = kz_auth_keys:get_private_key_from_file(PemFile),
     KeyId = kz_binary:rand_hex(16),
     {'ok', _Key} = kz_auth_keys:new_private_key(KeyId, Pem),
-    Updates = [{<<"pvt_server_key">>, KeyId}],
+    Updates = [{[<<"pvt_server_key">>], KeyId}],
     UpdateOptions = [{'update', Updates}],
     kz_datamgr:update_doc(?KZ_AUTH_DB, AppId, UpdateOptions).
 
@@ -68,7 +77,8 @@ refresh() ->
 init_db('false') ->
     lager:error("error trying to create auth database");
 init_db('true') ->
-    kapps_maintenance:refresh(?KZ_AUTH_DB).
+    _ = kapps_maintenance:refresh(?KZ_AUTH_DB),
+    'ok'.
 
 -spec register_views() -> 'ok'.
 register_views() ->
@@ -80,8 +90,20 @@ register_common_providers() ->
 
 -spec flush() -> 'ok'.
 flush() ->
-    kz_cache:flush_local(?PROFILE_CACHE),
-    kz_cache:flush_local(?PK_CACHE),
+    flush_private_keys(),
+    flush_profiles(),
+    flush_tokens().
+
+-spec flush_private_keys() -> 'ok'.
+flush_private_keys() ->
+    kz_cache:flush_local(?PK_CACHE).
+
+-spec flush_profiles() -> 'ok'.
+flush_profiles() ->
+    kz_cache:flush_local(?PROFILE_CACHE).
+
+-spec flush_tokens() -> 'ok'.
+flush_tokens() ->
     kz_cache:flush_local(?TOKENS_CACHE).
 
 -spec ensure_secret() -> 'ok'.

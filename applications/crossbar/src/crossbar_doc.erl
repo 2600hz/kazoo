@@ -1,8 +1,13 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc
 %%% @author Karl Anderson
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(crossbar_doc).
@@ -10,7 +15,6 @@
 -export([load/2, load/3
         ,load_merge/2, load_merge/3, load_merge/4
         ,patch_and_validate/3, patch_and_validate/4
-        ,load_view/3, load_view/4, load_view/5, load_view/6
         ,load_attachment/4, load_docs/2
         ,save/1, save/2, save/3
         ,update/3, update/4
@@ -20,7 +24,6 @@
         ,rev_to_etag/1
         ,current_doc_vsn/0
         ,update_pvt_parameters/2, add_pvt_auth/3, pvt_updates/2
-        ,start_key/1, start_key/2
         ]).
 
 -export([handle_json_success/2]).
@@ -32,11 +35,6 @@
 -export([patch_the_doc/2
         ]).
 -endif.
-
--export_type([view_options/0
-             ,load_options/0
-             ,startkey/0
-             ]).
 
 -include("crossbar.hrl").
 
@@ -51,35 +49,12 @@
                   ,fun add_pvt_alphanum_name/3
                   ]).
 
--type direction() :: 'ascending' | 'descending'.
-
--type startkey() :: kz_json:api_json_term().
-
--type startkey_fun() :: 'undefined' |
-                        fun((cb_context:context()) -> startkey()) |
-                        fun((kz_term:proplist(), cb_context:context()) -> startkey()).
-
--type view_options() :: kazoo_data:view_options() |
-                        [{'databases', kz_term:ne_binaries()} |
-                         {'startkey_fun', startkey_fun()}
-                        ].
-
 -type load_option() :: {?OPTION_EXPECTED_TYPE, kz_term:ne_binary()} |
                        {'use_cache', boolean()}.
 -type load_options() :: kazoo_data:view_options() |
                         [load_option()].
 
--record(load_view_params, {view :: kz_term:api_binary()
-                          ,view_options = [] :: view_options()
-                          ,context :: cb_context:context()
-                          ,start_key :: startkey()
-                          ,should_paginate :: boolean()
-                          ,page_size :: non_neg_integer() | kz_term:api_binary()
-                          ,filter_fun :: filter_fun()
-                          ,dbs = [] :: kz_term:ne_binaries()
-                          ,direction = 'ascending' :: direction()
-                          }).
--type load_view_params() :: #load_view_params{}.
+-export_type([load_options/0]).
 
 %%------------------------------------------------------------------------------
 %% @doc Returns the version number attached to created/updated documents.
@@ -92,7 +67,7 @@ current_doc_vsn() -> ?CROSSBAR_DOC_VSN.
 %% equiv load(DocId, Context, [])
 
 -spec load(kazoo_data:docid() | kazoo_data:docids(), cb_context:context()) ->
-                  cb_context:context().
+          cb_context:context().
 load({DocType, DocId}, Context) ->
     load(DocId, Context, [{'doc_type', DocType}]);
 load(DocId, Context) ->
@@ -108,17 +83,17 @@ load(DocId, Context) ->
 %%------------------------------------------------------------------------------
 
 -spec load(kazoo_data:docid() | kazoo_data:docids(), cb_context:context(), load_options()) ->
-                  cb_context:context().
+          cb_context:context().
 load({DocType, DocId}, Context, Options) ->
     load(DocId, Context, [{'doc_type', DocType} | Options]);
 load(DocId, Context, Options) ->
     load(DocId, Context, Options, cb_context:resp_status(Context)).
 
 -spec load(kz_term:ne_binary() | kz_term:ne_binaries(), cb_context:context(), load_options(), crossbar_status()) ->
-                  cb_context:context().
+          cb_context:context().
 load(_DocId, Context, _Options, 'error') -> Context;
 load(DocId, Context, Options, _RespStatus) when is_binary(DocId) ->
-    case maybe_open_cache_doc(cb_context:account_db(Context), DocId, Options) of
+    case maybe_open_cache_doc(cb_context:db_name(Context), DocId, Options) of
         {'error', Error} ->
             handle_datamgr_errors(Error, DocId, Context);
         {'ok', JObj} ->
@@ -133,7 +108,7 @@ load(DocId, Context, Options, _RespStatus) when is_binary(DocId) ->
 load([], Context, _Options, _RespStatus) ->
     cb_context:add_system_error('bad_identifier',  Context);
 load([_|_]=IDs, Context, Options, _RespStatus) ->
-    case maybe_open_cache_docs(cb_context:account_db(Context), IDs, Options) of
+    case maybe_open_cache_docs(cb_context:db_name(Context), IDs, Options) of
         {'error', Error} -> handle_datamgr_errors(Error, IDs, Context);
         {'ok', JObjs} ->
             {Docs, Context1} = extract_included_docs(Context, JObjs),
@@ -147,21 +122,21 @@ load([_|_]=IDs, Context, Options, _RespStatus) ->
     end.
 
 -spec maybe_open_cache_doc(kz_term:ne_binary(), kazoo_data:docid(), kz_term:proplist()) ->
-                                  {'ok', kz_json:object()} |
-                                  kz_datamgr:data_error().
+          {'ok', kz_json:object()} |
+          kz_datamgr:data_error().
 maybe_open_cache_doc(DbName, DocId, Options) ->
     case props:get_is_true('use_cache', Options, 'true') of
-        true -> kz_datamgr:open_cache_doc(DbName, DocId, Options);
-        false -> kz_datamgr:open_doc(DbName, DocId, Options)
+        'true' -> kz_datamgr:open_cache_doc(DbName, DocId, Options);
+        'false' -> kz_datamgr:open_doc(DbName, DocId, Options)
     end.
 
 -spec maybe_open_cache_docs(kz_term:ne_binary(), kazoo_data:docids(), kz_term:proplist()) ->
-                                   {'ok', kz_json:objects()} |
-                                   kz_datamgr:data_error().
+          {'ok', kz_json:objects()} |
+          kz_datamgr:data_error().
 maybe_open_cache_docs(DbName, DocIds, Options) ->
     case props:get_is_true('use_cache', Options, 'true') of
-        true -> kz_datamgr:open_cache_docs(DbName, DocIds, Options);
-        false -> kz_datamgr:open_docs(DbName, DocIds, Options)
+        'true' -> kz_datamgr:open_cache_docs(DbName, DocIds, Options);
+        'false' -> kz_datamgr:open_docs(DbName, DocIds, Options)
     end.
 
 %%------------------------------------------------------------------------------
@@ -175,8 +150,8 @@ maybe_open_cache_docs(DbName, DocIds, Options) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec check_document_type(cb_context:context(), kz_json:object() | kz_json:objects(), kz_term:proplist()) ->
-                                 boolean().
-check_document_type(_Context, [], _Options) -> true;
+          boolean().
+check_document_type(_Context, [], _Options) -> 'true';
 check_document_type(Context, [_|_]=JObjs, Options) ->
     F = fun(JObj) -> check_document_type(Context, JObj, Options) end,
     lists:all(F, JObjs);
@@ -192,6 +167,7 @@ document_type_match('undefined', _ExpectedType, _ReqType) ->
     lager:debug("document doesn't have type, requested type is ~p", [_ReqType]),
     'true';
 document_type_match(_JObjType, <<"any">>, _) -> 'true';
+document_type_match(_JObjType, 'undefined', _) -> 'true';
 document_type_match(ExpectedType, ExpectedTypes, _)
   when is_list(ExpectedTypes) ->
     lists:member(ExpectedType, ExpectedTypes);
@@ -235,7 +211,7 @@ handle_successful_load(Context, JObj, 'true') ->
                                );
 handle_successful_load(Context, JObj, 'false') ->
     lager:debug("loaded doc ~s(~s) from ~s"
-               ,[kz_doc:id(JObj), kz_doc:revision(JObj), cb_context:account_db(Context)]
+               ,[kz_doc:id(JObj), kz_doc:revision(JObj), cb_context:db_name(Context)]
                ),
     cb_context:store(handle_datamgr_success(JObj, Context), 'db_doc', JObj).
 
@@ -262,12 +238,12 @@ load_merge(DocId, Context, Options) ->
 %%------------------------------------------------------------------------------
 
 -spec load_merge(kz_term:ne_binary(), kz_json:object(), cb_context:context(), kz_term:proplist()) ->
-                        cb_context:context().
+          cb_context:context().
 load_merge(DocId, DataJObj, Context, Options) ->
     load_merge(DocId, DataJObj, Context, Options, cb_context:load_merge_bypass(Context)).
 
 -spec load_merge(kz_term:ne_binary(), kz_json:object(), cb_context:context(), kz_term:proplist(), kz_term:api_object()) ->
-                        cb_context:context().
+          cb_context:context().
 load_merge(DocId, DataJObj, Context, Options, 'undefined') ->
     Context1 = load(DocId, Context, Options),
     case 'success' =:= cb_context:resp_status(Context1) of
@@ -283,18 +259,18 @@ load_merge(_DocId, _DataJObj, Context, _Options, BypassJObj) ->
 -type validate_fun() :: fun((kz_term:ne_binary(), cb_context:context()) -> cb_context:context()).
 
 -spec patch_and_validate(kz_term:ne_binary(), cb_context:context(), validate_fun()) ->
-                                cb_context:context().
+          cb_context:context().
 patch_and_validate(Id, Context, ValidateFun) ->
     patch_and_validate(Id, Context, ValidateFun, ?TYPE_CHECK_OPTION_ANY).
 
 -spec patch_and_validate(kz_term:ne_binary(), cb_context:context(), validate_fun(), load_options()) ->
-                                cb_context:context().
+          cb_context:context().
 patch_and_validate(Id, Context, ValidateFun, LoadOptions) ->
     Context1 = load(Id, Context, LoadOptions),
     patch_and_validate_doc(Id, Context1, ValidateFun, cb_context:resp_status(Context1)).
 
 -spec patch_and_validate_doc(kz_term:ne_binary(), cb_context:context(), validate_fun(), crossbar_status()) ->
-                                    cb_context:context().
+          cb_context:context().
 patch_and_validate_doc(Id, Context, ValidateFun, 'success') ->
     PatchedJObj = patch_the_doc(cb_context:req_data(Context), cb_context:doc(Context)),
     Context1 = cb_context:set_req_data(Context, PatchedJObj),
@@ -307,185 +283,6 @@ patch_the_doc(RequestData, ExistingDoc) ->
     PubJObj = kz_doc:public_fields(RequestData),
     kz_json:merge(fun kz_json:merge_left/2, PubJObj, ExistingDoc).
 
--spec load_view(kz_term:ne_binary() | 'all_docs', kz_term:proplist(), cb_context:context()) ->
-                       cb_context:context().
-load_view(View, Options, Context) ->
-    load_view(View, Options, Context
-             ,start_key(Options, Context)
-             ,cb_context:pagination_page_size(Context)
-             ,'undefined'
-             ).
-
--spec load_view(kz_term:ne_binary() | 'all_docs', kz_term:proplist(), cb_context:context(), kz_json:json_term() | filter_fun()) ->
-                       cb_context:context().
-load_view(View, Options, Context, FilterFun)
-  when is_function(FilterFun, 2);
-       is_function(FilterFun, 3) ->
-    load_view(View, Options, Context
-             ,start_key(Options, Context)
-             ,cb_context:pagination_page_size(Context)
-             ,FilterFun
-             );
-load_view(View, Options, Context, StartKey) ->
-    load_view(View, Options, Context, StartKey
-             ,cb_context:pagination_page_size(Context)
-             ).
-%% @equiv load_view(View, Options, Context, StartKey, PageSize, 'undefined')
-
--spec load_view(kz_term:ne_binary() | 'all_docs', kz_term:proplist(), cb_context:context(), kz_json:json_term(), pos_integer()) ->
-                       cb_context:context().
-load_view(View, Options, Context, StartKey, PageSize) ->
-    load_view(View, Options, Context, StartKey, PageSize, 'undefined').
-
-%%------------------------------------------------------------------------------
-%% @doc This function attempts to load the context with the results of a view
-%% run against the accounts database.
-%%
-%% Failure here returns 500 or 503.
-%% @end
-%%------------------------------------------------------------------------------
-
--spec load_view(kz_term:ne_binary() | 'all_docs', kz_term:proplist(), cb_context:context(), kz_json:json_term(), pos_integer(), filter_fun()) ->
-                       cb_context:context().
-load_view(View, Options, Context, StartKey, PageSize, FilterFun) ->
-    load_view(
-      #load_view_params{view = View
-                       ,view_options = Options
-                       ,context = cb_context:set_doc(Context, [])
-                       ,start_key = StartKey
-                       ,should_paginate = cb_context:should_paginate(Context)
-                       ,page_size = PageSize
-                       ,filter_fun = FilterFun
-                       ,dbs = [Db || Db <- props:get_value('databases', Options, [cb_context:account_db(Context)]),
-                                     kz_datamgr:db_exists(Db, View)
-                              ]
-                       ,direction = view_sort_direction(Options)
-                       }).
-
--spec view_sort_direction(kz_term:proplist()) -> direction().
-view_sort_direction(Options) ->
-    case props:get_value('descending', Options) of
-        'true' -> 'descending';
-        'undefined' -> 'ascending'
-    end.
-
-load_view(#load_view_params{dbs = []
-                           ,context = Context
-                           }) ->
-    case cb_context:resp_status(Context) of
-        'success' ->
-            lager:debug("databases exhausted"),
-            handle_datamgr_success(cb_context:doc(Context), Context);
-        _Status -> Context
-    end;
-load_view(#load_view_params{page_size = PageSize
-                           ,context = Context
-                           ,should_paginate = 'true'
-                           })
-  when is_integer(PageSize)
-       andalso PageSize =< 0 ->
-    lager:debug("page_size exhausted: ~p", [PageSize]),
-    case 'success' =:= cb_context:resp_status(Context) of
-        'false' -> Context;
-        'true' -> handle_datamgr_success(cb_context:doc(Context), Context)
-    end;
-load_view(#load_view_params{view = View
-                           ,view_options = Options
-                           ,context = Context
-                           ,start_key = StartKey
-                           ,page_size = PageSize
-                           ,dbs = [Db|RestDbs]=Dbs
-                           ,direction = _Direction
-                           } = LVPs) ->
-    Limit = limit_by_page_size(Context, PageSize),
-    lager:debug("limit: ~p page_size: ~p dir: ~p", [Limit, PageSize, _Direction]),
-
-    DefaultOptions =
-        props:filter_undefined(
-          [{'startkey', StartKey}
-          ,{'limit', Limit}
-           | props:delete_keys(['startkey', 'startkey_fun', 'limit', 'databases'], Options)
-          ]),
-
-    IncludeOptions =
-        case crossbar_filter:is_defined(Context) of
-            'true' -> ['include_docs' | props:delete('include_docs', DefaultOptions)];
-            'false' -> DefaultOptions
-        end,
-
-    ViewOptions =
-        case props:get_first_defined(['reduce', 'group', 'group_level'], IncludeOptions) of
-            'undefined' -> IncludeOptions;
-            'false' -> IncludeOptions;
-            _V -> props:delete('include_docs', IncludeOptions)
-        end,
-
-    lager:debug("kz_datamgr:get_results(~p, ~p, ~p)", [Db, View, ViewOptions]),
-    case kz_datamgr:get_results(Db, View, ViewOptions) of
-        %% There were more dbs, so move to the next one
-        {'error', 'not_found'} when [] =:= RestDbs ->
-            lager:debug("either the db ~s or view ~s was not found", [Db, View]),
-            crossbar_util:response_missing_view(Context);
-        {'error', 'not_found'} ->
-            lager:debug("either the db ~s or view ~s was not found", [Db, View]),
-            load_view(LVPs#load_view_params{dbs = RestDbs});
-        {'error', Error} ->
-            handle_datamgr_errors(Error, View, Context);
-        {'ok', JObjs} ->
-            lager:debug("paginating view '~s' from '~s', starting at '~p'", [View, Db, StartKey]),
-            Pagination = case is_integer(Limit) of
-                             'true' -> PageSize;
-                             'false' -> Limit
-                         end,
-            handle_datamgr_pagination_success(JObjs
-                                             ,Pagination
-                                             ,cb_context:api_version(Context)
-                                             ,LVPs#load_view_params{dbs = Dbs
-                                                                   ,context = cb_context:set_resp_status(Context, 'success')
-                                                                   }
-                                             )
-    end.
-
--spec limit_by_page_size(kz_term:api_binary() | pos_integer()) -> kz_term:api_pos_integer().
-limit_by_page_size('undefined') -> 'undefined';
-limit_by_page_size(N) when is_integer(N) -> N+1;
-limit_by_page_size(<<_/binary>> = B) -> limit_by_page_size(kz_term:to_integer(B)).
-
--spec limit_by_page_size(cb_context:context(), kz_term:api_binary() | pos_integer()) -> kz_term:api_pos_integer().
-limit_by_page_size(Context, PageSize) ->
-    case cb_context:should_paginate(Context) of
-        'true' -> limit_by_page_size(PageSize);
-        'false' ->
-            lager:debug("pagination disabled in context"),
-            'undefined'
-    end.
-
-%% @equiv cb_context:req_value(Context, <<"start_key">>)
-
--spec start_key(cb_context:context()) -> kz_json:api_json_term().
-start_key(Context) ->
-    cb_context:req_value(Context, <<"start_key">>).
-
--spec start_key(kz_term:proplist(), cb_context:context()) -> kz_json:api_json_term().
-start_key(Options, Context) ->
-    case props:get_value('startkey_fun', Options) of
-        'undefined' -> start_key_fun(Options, Context);
-        Fun when is_function(Fun, 2) -> Fun(Options, Context);
-        Fun when is_function(Fun, 1) -> Fun(Context)
-    end.
-
--spec start_key_fun(kz_term:proplist(), cb_context:context()) -> kz_json:api_json_term().
-start_key_fun(Options, Context) ->
-    case props:get_value('startkey', Options) of
-        'undefined' ->
-            StartKey = start_key(Context),
-            lager:debug("got start_key from request: ~p", [StartKey]),
-            StartKey;
-        StartKey ->
-            lager:debug("getting start_key from options: ~p", [StartKey]),
-            StartKey
-    end.
-
 %%------------------------------------------------------------------------------
 %% @doc This function attempts to load the context with the results of all the
 %% docs in the supplied Db, with the fold function weeding out those not
@@ -494,7 +291,7 @@ start_key_fun(Options, Context) ->
 %% Failure here returns 500 or 503.
 %% @end
 %%------------------------------------------------------------------------------
--spec load_docs(cb_context:context(), filter_fun()) -> cb_context:context().
+-spec load_docs(cb_context:context(), crossbar_view:user_mapper_fun()) -> cb_context:context().
 load_docs(Context, Filter)
   when is_function(Filter, 2);
        is_function(Filter, 3) ->
@@ -502,7 +299,7 @@ load_docs(Context, Filter)
               'true' -> Filter;
               'false' -> fun(J, Acc) -> Filter(Context, J, Acc) end
           end,
-    case kz_datamgr:all_docs(cb_context:account_db(Context)) of
+    case kz_datamgr:all_docs(cb_context:db_name(Context)) of
         {'error', Error} -> handle_datamgr_errors(Error, <<"all_docs">>, Context);
         {'ok', JObjs} ->
             Filtered = [JObj
@@ -520,22 +317,26 @@ load_docs(Context, Filter)
 %% @end
 %%------------------------------------------------------------------------------
 -spec load_attachment({kz_term:ne_binary(), kz_term:ne_binary()} | kazoo_data:docid() | kz_json:object(), kz_term:ne_binary(), kz_term:proplist(), cb_context:context()) ->
-                             cb_context:context().
+          cb_context:context().
 load_attachment({DocType, DocId}, AName, Options, Context) ->
     load_attachment(DocId, AName, [{'doc_type', DocType} | Options], Context);
 load_attachment(<<_/binary>>=DocId, AName, Options, Context) ->
-    case kz_datamgr:fetch_attachment(cb_context:account_db(Context), DocId, AName, Options) of
+    case kz_datamgr:fetch_attachment(cb_context:db_name(Context), DocId, AName, Options) of
         {'error', Error} -> handle_datamgr_errors(Error, DocId, Context);
         {'ok', AttachBin} ->
             lager:debug("loaded attachment ~s from doc ~s from db ~s"
-                       ,[AName, DocId, cb_context:account_db(Context)]
+                       ,[AName, DocId, cb_context:db_name(Context)]
                        ),
             Context1 = load(DocId, Context, Options),
             'success' = cb_context:resp_status(Context1),
 
+            CT = kz_doc:attachment_content_type(cb_context:doc(Context1), AName, <<"application/octet-stream">>),
+            lager:debug("adding content type ~s from attachment ~s", [CT, AName]),
+
             cb_context:setters(Context1
                               ,[{fun cb_context:set_resp_data/2, AttachBin}
                                ,{fun cb_context:set_resp_etag/2, rev_to_etag(cb_context:doc(Context1))}
+                               ,{fun cb_context:add_resp_headers/2, #{<<"content-type">> => CT}}
                                ])
     end;
 load_attachment(Doc, AName, Options, Context) ->
@@ -562,27 +363,27 @@ save(Context, Options) ->
 %%------------------------------------------------------------------------------
 
 -spec save(cb_context:context(), kz_json:object() | kz_json:objects(), kz_term:proplist()) ->
-                  cb_context:context().
+          cb_context:context().
 save(Context, [], _Options) ->
     lager:debug("no docs to save"),
     cb_context:set_resp_status(Context, 'success');
 save(Context, [_|_]=JObjs, Options) ->
     JObjs0 = update_pvt_parameters(JObjs, Context),
     case crossbar_services:maybe_dry_run(Context, JObjs0) of
-        Context -> save_jobjs(Context, JObjs0, Options);
-        Else -> Else
+        {'allowed', Context1} -> save_jobjs(Context1, JObjs0, Options);
+        {'denied', Context1} -> Context1
     end;
 save(Context, JObj, Options) ->
     JObj0 = update_pvt_parameters(JObj, Context),
     case crossbar_services:maybe_dry_run(Context, JObj0) of
-        Context -> save_jobj(Context, JObj0, Options);
-        Else -> Else
+        {'allowed', Context1} -> save_jobj(Context1, JObj0, Options);
+        {'denied', Context1} -> Context1
     end.
 
 -spec save_jobjs(cb_context:context(), kz_json:object() | kz_json:objects(), kz_term:proplist()) ->
-                        cb_context:context().
+          cb_context:context().
 save_jobjs(Context, JObjs0, Options) ->
-    case kz_datamgr:save_docs(cb_context:account_db(Context), JObjs0, Options) of
+    case kz_datamgr:save_docs(cb_context:db_name(Context), JObjs0, Options) of
         {'error', Error} ->
             IDs = [kz_doc:id(JObj) || JObj <- JObjs0],
             handle_datamgr_errors(Error, IDs, Context);
@@ -597,28 +398,29 @@ save_jobjs(Context, JObjs0, Options) ->
 maybe_send_contact_list(Context) ->
     case cb_context:resp_status(Context) of
         'success' ->
-            _ = kz_util:spawn(fun provisioner_util:maybe_send_contact_list/4
-                             ,[cb_context:account_id(Context)
-                              ,cb_context:auth_token(Context)
-                              ,cb_context:doc(Context)
-                              ,cb_context:fetch(Context, 'db_doc')
-                              ]),
+            _ = kz_process:spawn(fun provisioner_util:maybe_send_contact_list/4
+                                ,[cb_context:account_id(Context)
+                                 ,cb_context:auth_token(Context)
+                                 ,cb_context:doc(Context)
+                                 ,cb_context:fetch(Context, 'db_doc')
+                                 ]),
             'ok';
         _Status -> 'ok'
     end.
 
 -spec maybe_spawn_service_updates(cb_context:context(), kz_json:object() | kz_json:objects(), boolean()) -> 'ok'.
 maybe_spawn_service_updates(Context, JObjs, 'false') ->
-    _ = kz_util:spawn(fun crossbar_services:update_subscriptions/2, [Context, JObjs]),
+    _ = kz_process:spawn(fun crossbar_services:update_subscriptions/2, [Context, JObjs]),
     lager:debug("executing service subscriptions update in the background");
 maybe_spawn_service_updates(Context, JObjs, 'true') ->
+    lager:debug("executing service subscriptions update in the foreground, this will take a while"),
     _ = crossbar_services:update_subscriptions(Context, JObjs),
-    lager:debug("executing service subscriptions update in the foreground, this will take a while").
+    'ok'.
 
 -spec save_jobj(cb_context:context(), kz_json:object() | kz_json:objects(), kz_term:proplist()) ->
-                       cb_context:context().
+          cb_context:context().
 save_jobj(Context, JObj0, Options) ->
-    case kz_datamgr:save_doc(cb_context:account_db(Context), JObj0, Options) of
+    case kz_datamgr:save_doc(cb_context:db_name(Context), JObj0, Options) of
         {'error', Error} ->
             DocId = kz_doc:id(JObj0),
             handle_datamgr_errors(Error, DocId, Context);
@@ -630,18 +432,18 @@ save_jobj(Context, JObj0, Options) ->
     end.
 
 -spec update(cb_context:context(), kz_json:key(), kz_json:flat_proplist()) ->
-                    cb_context:context().
+          cb_context:context().
 update(Context, DocId, Updates) ->
     update(Context, DocId, Updates, []).
 
 -spec update(cb_context:context(), kz_json:key(), kz_json:flat_proplist(), kz_json:flat_proplist()) ->
-                    cb_context:context().
+          cb_context:context().
 update(Context, DocId, Updates, Creates) ->
     UpdateOptions = [{'update', Updates}
                     ,{'create', Creates}
                     ,{'ensure_saved', 'true'}
                     ],
-    case kz_datamgr:update_doc(cb_context:account_db(Context), DocId, UpdateOptions) of
+    case kz_datamgr:update_doc(cb_context:db_name(Context), DocId, UpdateOptions) of
         {'error', Error} ->
             handle_datamgr_errors(Error, DocId, Context);
         {'ok', Saved} ->
@@ -661,11 +463,11 @@ save_attachment(DocId, AName, Contents, Context) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec save_attachment(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), cb_context:context(), kz_term:proplist()) ->
-                             cb_context:context().
+          cb_context:context().
 save_attachment(DocId, Name, Contents, Context, Options) ->
     Opts1 = case props:get_value('rev', Options) of
                 'undefined' ->
-                    {'ok', Rev} = kz_datamgr:lookup_doc_rev(cb_context:account_db(Context), DocId),
+                    {'ok', Rev} = kz_datamgr:lookup_doc_rev(cb_context:db_name(Context), DocId),
                     lager:debug("looking up rev for ~s: ~s", [DocId, Rev]),
                     [{'rev', Rev} | Options];
                 _O -> Options
@@ -673,7 +475,7 @@ save_attachment(DocId, Name, Contents, Context, Options) ->
 
     AName = kz_binary:clean(Name),
 
-    case kz_datamgr:put_attachment(cb_context:account_db(Context), DocId, AName, Contents, Opts1) of
+    case kz_datamgr:put_attachment(cb_context:db_name(Context), DocId, AName, Contents, Opts1) of
         {'error', 'conflict'=Error} ->
             lager:debug("saving attachment resulted in a conflict, checking for validity"),
             Context1 = load(DocId, Context, [{'use_cache', 'false'} | Options]),
@@ -684,7 +486,7 @@ save_attachment(DocId, Name, Contents, Context, Options) ->
                     handle_datamgr_errors(Error, AName, Context);
                 _Attachment ->
                     lager:debug("attachment ~s was in _attachments, considering it successful", [AName]),
-                    {'ok', Rev1} = kz_datamgr:lookup_doc_rev(cb_context:account_db(Context), DocId),
+                    {'ok', Rev1} = kz_datamgr:lookup_doc_rev(cb_context:db_name(Context), DocId),
                     cb_context:setters(Context
                                       ,[{fun cb_context:set_doc/2, kz_json:new()}
                                        ,{fun cb_context:set_resp_status/2, 'success'}
@@ -694,37 +496,31 @@ save_attachment(DocId, Name, Contents, Context, Options) ->
             end;
         {'error', Error} ->
             lager:debug("error putting attachment into ~s: ~p"
-                       ,[cb_context:account_db(Context), Error]
+                       ,[cb_context:db_name(Context), Error]
                        ),
             _ = maybe_delete_doc(Context, DocId),
             handle_datamgr_errors(Error, AName, Context);
         {'ok', _Res, _Params} ->
             lager:debug("saved attachment ~s to doc ~s to db ~s"
-                       ,[AName, DocId, cb_context:account_db(Context)]
+                       ,[AName, DocId, cb_context:db_name(Context)]
                        ),
             lager:debug("attachment params: ~p", [_Params]),
             handle_saved_attachment(Context, DocId);
         {'ok', _Res} ->
             lager:debug("saved attachment ~s to doc ~s to db ~s"
-                       ,[AName, DocId, cb_context:account_db(Context)]
+                       ,[AName, DocId, cb_context:db_name(Context)]
                        ),
             handle_saved_attachment(Context, DocId)
     end.
 
 handle_saved_attachment(Context, DocId) ->
-    {'ok', Rev1} = kz_datamgr:lookup_doc_rev(cb_context:account_db(Context), DocId),
-    cb_context:setters(Context
-                      ,[{fun cb_context:set_doc/2, kz_json:new()}
-                       ,{fun cb_context:set_resp_status/2, 'success'}
-                       ,{fun cb_context:set_resp_data/2, kz_json:new()}
-                       ,{fun cb_context:set_resp_etag/2, rev_to_etag(Rev1)}
-                       ]).
+    load(DocId, Context).
 
 -spec maybe_delete_doc(cb_context:context(), kz_term:ne_binary()) ->
-                              {'ok', _} |
-                              {'error', any()}.
+          {'ok', _} |
+          {'error', any()}.
 maybe_delete_doc(Context, DocId) ->
-    AccountDb = cb_context:account_db(Context),
+    AccountDb = cb_context:db_name(Context),
     case kz_datamgr:open_doc(AccountDb, DocId) of
         {'error', _}=Error -> Error;
         {'ok', JObj} ->
@@ -754,7 +550,7 @@ delete(Context) ->
 delete(Context, ?SOFT_DELETE) ->
     Doc = cb_context:doc(Context),
     lager:info("soft-deleting doc ~s", [kz_doc:id(Doc)]),
-    case kz_datamgr:lookup_doc_rev(cb_context:account_db(Context), kz_doc:id(Doc)) of
+    case kz_datamgr:lookup_doc_rev(cb_context:db_name(Context), kz_doc:id(Doc)) of
         {'ok', Rev}   -> soft_delete(Context, Rev);
         {'error', _E} -> soft_delete(Context, kz_doc:revision(Doc))
     end;
@@ -778,12 +574,12 @@ soft_delete(Context, Rev) ->
                                  kz_datamgr:data_error()).
 
 -spec do_delete(cb_context:context(), kz_json:object(), delete_fun()) ->
-                       cb_context:context().
+          cb_context:context().
 do_delete(Context, JObj, CouchFun) ->
-    case CouchFun(cb_context:account_db(Context), JObj) of
+    case CouchFun(cb_context:db_name(Context), JObj) of
         {'error', 'not_found'} ->
             lager:debug("doc ~s wasn't found in ~s, not deleting"
-                       ,[kz_doc:id(JObj), cb_context:account_db(Context)]
+                       ,[kz_doc:id(JObj), cb_context:db_name(Context)]
                        ),
             handle_datamgr_success(JObj, Context);
         {'error', Error} ->
@@ -791,7 +587,7 @@ do_delete(Context, JObj, CouchFun) ->
             handle_datamgr_errors(Error, DocId, Context);
         {'ok', _} ->
             lager:debug("'deleted' ~s from ~s using ~p"
-                       ,[kz_doc:id(JObj), cb_context:account_db(Context), CouchFun]
+                       ,[kz_doc:id(JObj), cb_context:db_name(Context), CouchFun]
                        ),
             Context1 = handle_datamgr_success(JObj, Context),
             _ = case kz_doc:type(JObj) =/= <<"account">> of
@@ -811,16 +607,16 @@ do_delete(Context, JObj, CouchFun) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec delete_attachment(kz_term:ne_binary(), kz_term:ne_binary(), cb_context:context()) ->
-                               cb_context:context().
+          cb_context:context().
 delete_attachment(DocId, AName, Context) ->
-    case kz_datamgr:delete_attachment(cb_context:account_db(Context), DocId, AName) of
+    case kz_datamgr:delete_attachment(cb_context:db_name(Context), DocId, AName) of
         {'error', 'not_found'} -> handle_datamgr_success(kz_json:new(), Context);
         {'error', Error} ->
             lager:debug("failed to delete attachment: ~p", [Error]),
             handle_datamgr_errors(Error, AName, Context);
         {'ok', _} ->
             lager:debug("deleted attachment ~s from doc ~s from ~s"
-                       ,[AName, DocId, cb_context:account_db(Context)]
+                       ,[AName, DocId, cb_context:db_name(Context)]
                        ),
             handle_datamgr_success(kz_json:new(), Context)
     end.
@@ -831,7 +627,7 @@ delete_attachment(DocId, AName, Context) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec rev_to_etag(kz_json:object() | kz_json:objects() | kz_term:ne_binary()) ->
-                         'automatic' | kz_term:api_string().
+          'automatic' | kz_term:api_string().
 rev_to_etag([_|_])-> 'automatic';
 rev_to_etag([]) -> 'undefined';
 rev_to_etag(Rev) when is_binary(Rev) -> kz_term:to_list(Rev);
@@ -841,192 +637,10 @@ rev_to_etag(JObj) ->
         Rev -> kz_term:to_list(Rev)
     end.
 
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec update_pagination_envelope_params(cb_context:context(), any(), kz_term:api_non_neg_integer()) ->
-                                               cb_context:context().
-update_pagination_envelope_params(Context, StartKey, PageSize) ->
-    update_pagination_envelope_params(Context
-                                     ,StartKey
-                                     ,PageSize
-                                     ,'undefined'
-                                     ,cb_context:should_paginate(Context)
-                                     ).
-
--spec update_pagination_envelope_params(cb_context:context(), any(), kz_term:api_non_neg_integer(), kz_term:api_binary()) ->
-                                               cb_context:context().
-update_pagination_envelope_params(Context, StartKey, PageSize, NextStartKey) ->
-    update_pagination_envelope_params(Context
-                                     ,StartKey
-                                     ,PageSize
-                                     ,NextStartKey
-                                     ,cb_context:should_paginate(Context)
-                                     ).
-
--spec update_pagination_envelope_params(cb_context:context(), any(), kz_term:api_non_neg_integer(), kz_term:api_binary(), boolean()) ->
-                                               cb_context:context().
-update_pagination_envelope_params(Context, _StartKey, _PageSize, _NextStartKey, 'false') ->
-    lager:debug("pagination disabled, removing resp envelope keys"),
-    RespEnvelope = kz_json:delete_keys([<<"start_key">>
-                                       ,<<"page_size">>
-                                       ,<<"next_start_key">>
-                                       ]
-                                      ,cb_context:resp_envelope(Context)
-                                      ),
-    cb_context:set_resp_envelope(Context, RespEnvelope);
-
-update_pagination_envelope_params(Context, StartKey, PageSize, NextStartKey, 'true') ->
-    RespEnvelope = cb_context:resp_envelope(Context),
-    CurrentPageSize = kz_json:get_integer_value(<<"page_size">>, RespEnvelope, 0),
-    NewRespEnvelope = kz_json:set_values(props:filter_undefined(
-                                           [{<<"start_key">>, StartKey}
-                                           ,{<<"page_size">>, PageSize + CurrentPageSize}
-                                           ,{<<"next_start_key">>, NextStartKey}
-                                           ])
-                                        ,RespEnvelope
-                                        ),
-    cb_context:set_resp_envelope(Context, NewRespEnvelope).
-
--spec handle_datamgr_pagination_success(kz_json:objects(), kz_term:api_pos_integer(), kz_term:ne_binary(), load_view_params()) ->
-                                               cb_context:context().
-%% If v1, just append results and try next database
-handle_datamgr_pagination_success(JObjs
-                                 ,_PageSize
-                                 ,?VERSION_1
-                                 ,#load_view_params{context = Context
-                                                   ,filter_fun = FilterFun
-                                                   ,direction = Direction
-                                                   ,dbs=[_Db|Dbs]
-                                                   } = LVPs
-                                 ) ->
-    NewDoc = apply_filter(FilterFun, JObjs, Context, Direction) ++ cb_context:doc(Context),
-    load_view(LVPs#load_view_params{context = cb_context:set_doc(Context, NewDoc)
-                                   ,dbs=Dbs
-                                   });
-
-%% if no results from this db, go to next db (if any)
-handle_datamgr_pagination_success([]
-                                 ,_PageSize
-                                 ,_Version
-                                 ,#load_view_params{context = Context
-                                                   ,start_key = StartKey
-                                                   ,dbs=[_Db|Dbs]
-                                                   } = LVPs
-                                 ) ->
-    load_view(LVPs#load_view_params{context = update_pagination_envelope_params(Context, StartKey, 0)
-                                   ,dbs=Dbs
-                                   });
-
-%% if no page size was specified
-handle_datamgr_pagination_success([_|_]=JObjs
-                                 ,'undefined'
-                                 ,_Version
-                                 ,#load_view_params{context = Context
-                                                   ,start_key = StartKey
-                                                   ,filter_fun = FilterFun
-                                                   ,page_size = PageSize
-                                                   ,direction = Direction
-                                                   ,dbs = [_|Dbs]
-                                                   } = LVPs
-                                 ) ->
-    Filtered = apply_filter(FilterFun, JObjs, Context, Direction),
-    FilteredCount = length(Filtered),
-    ContextWithDocs = cb_context:set_doc(Context, Filtered ++ cb_context:doc(Context)),
-    NewContext = update_pagination_envelope_params(ContextWithDocs, StartKey, FilteredCount),
-    load_view(LVPs#load_view_params{context = NewContext
-                                   ,page_size = PageSize - FilteredCount
-                                   ,dbs = Dbs
-                                   });
-
-handle_datamgr_pagination_success([_|_]=JObjs
-                                 ,PageSize
-                                 ,_Version
-                                 ,#load_view_params{context = Context
-                                                   ,page_size = CurrentPageSize
-                                                   ,start_key = StartKey
-                                                   ,filter_fun = FilterFun
-                                                   ,direction = Direction
-                                                   ,dbs = [_|Dbs]
-                                                   } = LVPs
-                                 ) ->
-    try lists:split(PageSize, JObjs) of
-        {Results, []} ->
-            %% exhausted this db, but may need more from Dbs to fulfill PageSize
-            Filtered = apply_filter(FilterFun, Results, Context, Direction),
-            UpdatedContext = update_pagination_envelope_params(Context, StartKey, PageSize),
-            NewContext = cb_context:set_doc(UpdatedContext, Filtered ++ cb_context:doc(Context)),
-            load_view(LVPs#load_view_params{context = NewContext
-                                           ,page_size = CurrentPageSize - PageSize
-                                           ,dbs = Dbs
-                                           });
-        {Results, [NextJObj]} ->
-            %% Current db may have more results to give
-            NextStartKey = kz_json:get_value(<<"key">>, NextJObj),
-            Filtered = apply_filter(FilterFun, Results, Context, Direction),
-            lager:debug("next start key: ~p", [NextStartKey]),
-            lager:debug("page size: ~p filtered: ~p", [PageSize, length(Filtered)]),
-            UpdatedContext = update_pagination_envelope_params(Context, StartKey, PageSize, NextStartKey),
-            NewContext = cb_context:set_doc(UpdatedContext, Filtered ++ cb_context:doc(Context)),
-            load_view(LVPs#load_view_params{context = NewContext
-                                           ,page_size = PageSize - length(Filtered)
-                                           ,start_key = NextStartKey
-                                           })
-    catch
-        'error':'badarg' ->
-            Filtered = apply_filter(FilterFun, JObjs, Context, Direction),
-            FilteredCount = length(Filtered),
-            lager:debug("recv less than ~p results: ~p", [PageSize, FilteredCount]),
-            UpdatedContext = update_pagination_envelope_params(Context, StartKey, FilteredCount),
-            NewContext = cb_context:set_doc(UpdatedContext, Filtered ++ cb_context:doc(Context)),
-            load_view(LVPs#load_view_params{context = NewContext
-                                           ,page_size = PageSize - FilteredCount
-                                           ,dbs = Dbs
-                                           })
-    end.
-
--type filter_fun() :: fun((kz_json:object(), kz_json:objects()) -> kz_json:objects()) |
-                      fun((cb_context:context(), kz_json:object(), kz_json:objects()) -> kz_json:objects()) |
-                      'undefined'.
-
--spec apply_filter(filter_fun(), kz_json:objects(), cb_context:context(), direction()) ->
-                          kz_json:objects().
-apply_filter(FilterFun, JObjs, Context, Direction) ->
-    apply_filter(FilterFun, JObjs, Context, Direction, crossbar_filter:is_defined(Context)).
-
--spec apply_filter(filter_fun(), kz_json:objects(), cb_context:context(), direction(), boolean()) ->
-                          kz_json:objects().
-apply_filter(FilterFun, JObjs, Context, Direction, HasQSFilter) ->
-    lager:debug("applying filter fun: ~p, qs filter: ~p to dir ~p", [FilterFun, HasQSFilter, Direction]),
-    Filtered0 = [JObj
-                 || JObj <- JObjs,
-                    crossbar_filter:by_doc(kz_json:get_value(<<"doc">>, JObj), Context, HasQSFilter)
-                ],
-    Filtered = maybe_apply_custom_filter(Context, FilterFun, Filtered0),
-    lager:debug("filter resulted in ~p out of ~p objects", [length(Filtered), length(JObjs)]),
-    case Direction of
-        'ascending' -> Filtered;
-        'descending' -> lists:reverse(Filtered)
-    end.
-
--spec maybe_apply_custom_filter(cb_context:context(), filter_fun(), kz_json:objects()) -> kz_json:objects().
-maybe_apply_custom_filter(_Context, 'undefined', JObjs) -> JObjs;
-maybe_apply_custom_filter(Context, FilterFun, JObjs) ->
-    Fun = case is_function(FilterFun, 2) of
-              'true' -> FilterFun;
-              'false' -> fun(J, Acc) -> FilterFun(Context, J, Acc) end
-          end,
-    [JObj
-     || JObj <- lists:foldl(Fun, [], JObjs),
-        not kz_term:is_empty(JObj)
-    ].
-
--spec handle_datamgr_success(kz_json:object() | kz_json:objects(), cb_context:context()) -> cb_context:context().
+-spec handle_datamgr_success(kz_json:json_term(), cb_context:context()) -> cb_context:context().
 handle_datamgr_success([], Context) ->
-    cb_context:setters(handle_thing_success([], Context)
-                      ,version_specific_success([], Context)
-                      );
+    RespEnv = kz_json:set_value(<<"page_size">>, 0, cb_context:resp_envelope(Context)),
+    handle_thing_success([], cb_context:set_resp_envelope(Context, RespEnv));
 handle_datamgr_success([JObj|_]=JObjs, Context) ->
     case kz_json:is_json_object(JObj) of
         'true' -> handle_json_success(JObjs, Context);
@@ -1038,7 +652,7 @@ handle_datamgr_success(JObj, Context) ->
         'false' -> handle_thing_success(JObj, Context)
     end.
 
--spec handle_thing_success(any(), cb_context:context()) -> cb_context:context().
+-spec handle_thing_success(kz_json:json_term(), cb_context:context()) -> cb_context:context().
 handle_thing_success(Thing, Context) ->
     cb_context:setters(Context
                       ,[{fun cb_context:set_doc/2, Thing}
@@ -1048,10 +662,11 @@ handle_thing_success(Thing, Context) ->
                        ]).
 
 -spec handle_json_success(kz_json:object() | kz_json:objects(), cb_context:context()) ->
-                                 cb_context:context().
+          cb_context:context().
 handle_json_success(JObj, Context) ->
     handle_json_success(JObj, Context, cb_context:req_verb(Context)).
 
+-spec public_and_read_only(kz_json:object()) -> kz_json:object().
 public_and_read_only(JObj) ->
     Public = kz_doc:public_fields(JObj),
     case kz_json:get_json_value(<<"_read_only">>, JObj) of
@@ -1059,11 +674,12 @@ public_and_read_only(JObj) ->
         ReadOnly -> kz_json:set_value(<<"_read_only">>, ReadOnly, Public)
     end.
 
+-spec add_location_header(kz_json:object(), map()) -> map().
 add_location_header(JObj, RHs) ->
     maps:put(<<"location">>, kz_doc:id(JObj), RHs).
 
 -spec handle_json_success(kz_json:object() | kz_json:objects(), cb_context:context(), http_method()) ->
-                                 cb_context:context().
+          cb_context:context().
 handle_json_success(JObjs, Context, ?HTTP_PUT) when is_list(JObjs) ->
     RespData = [public_and_read_only(JObj)
                 || JObj <- JObjs,
@@ -1085,12 +701,13 @@ handle_json_success(JObjs, Context, _Verb) when is_list(JObjs) ->
                 || JObj <- JObjs,
                    not kz_doc:is_soft_deleted(JObj)
                ],
+    RespEnv = kz_json:set_value(<<"page_size">>, length(JObjs), cb_context:resp_envelope(Context)),
     cb_context:setters(Context
                       ,[{fun cb_context:set_doc/2, JObjs}
                        ,{fun cb_context:set_resp_status/2, 'success'}
                        ,{fun cb_context:set_resp_data/2, RespData}
                        ,{fun cb_context:set_resp_etag/2, rev_to_etag(JObjs)}
-                        | version_specific_success(JObjs, Context)
+                       ,{fun cb_context:set_resp_envelope/2, RespEnv}
                        ]);
 handle_json_success(JObj, Context, ?HTTP_PUT) ->
     RespHeaders = add_location_header(JObj, cb_context:resp_headers(Context)),
@@ -1118,37 +735,26 @@ handle_json_success(JObj, Context, _Verb) ->
                        ,{fun cb_context:set_resp_etag/2, rev_to_etag(JObj)}
                        ]).
 
--spec version_specific_success(kz_json:objects(), cb_context:context()) -> list().
-version_specific_success(JObjs, Context) ->
-    version_specific_success(JObjs, Context, cb_context:api_version(Context)).
-version_specific_success(_JObjs, _Context, ?VERSION_1) ->
-    [];
-version_specific_success(JObjs, Context, _Version) ->
-    [{fun cb_context:set_resp_envelope/2
-     ,kz_json:set_value(<<"page_size">>, length(JObjs), cb_context:resp_envelope(Context))
-     }
-    ].
-
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_datamgr_errors(kz_datamgr:data_errors(), kz_term:api_ne_binary() | kz_term:api_ne_binaries(), cb_context:context()) ->
-                                   cb_context:context().
+          cb_context:context().
 handle_datamgr_errors('invalid_db_name', _, Context) ->
-    lager:debug("datastore ~s not_found", [cb_context:account_db(Context)]),
-    cb_context:add_system_error('datastore_missing', kz_json:from_list([{<<"cause">>, cb_context:account_db(Context)}]), Context);
+    lager:debug("datastore ~s not_found", [cb_context:db_name(Context)]),
+    cb_context:add_system_error('datastore_missing', kz_json:from_list([{<<"cause">>, cb_context:db_name(Context)}]), Context);
 handle_datamgr_errors('db_not_reachable', _DocId, Context) ->
-    lager:debug("operation on doc ~s from ~s failed: db_not_reachable", [_DocId, cb_context:account_db(Context)]),
+    lager:debug("operation on doc ~s from ~s failed: db_not_reachable", [_DocId, cb_context:db_name(Context)]),
     cb_context:add_system_error('datastore_unreachable', Context);
 handle_datamgr_errors('not_found', DocId, Context) ->
-    lager:debug("operation on doc ~s from ~s failed: not_found", [DocId, cb_context:account_db(Context)]),
+    lager:debug("operation on doc ~s from ~s failed: not_found", [DocId, cb_context:db_name(Context)]),
     cb_context:add_system_error('bad_identifier', kz_json:from_list([{<<"cause">>, DocId}]),  Context);
 handle_datamgr_errors('conflict', DocId, Context) ->
-    lager:debug("failed to update doc ~s in ~s: conflicts", [DocId, cb_context:account_db(Context)]),
+    lager:debug("failed to update doc ~s in ~s: conflicts", [DocId, cb_context:db_name(Context)]),
     cb_context:add_system_error('datastore_conflict', Context);
 handle_datamgr_errors('invalid_view_name', View, Context) ->
-    lager:debug("loading view ~s from ~s failed: invalid view", [View, cb_context:account_db(Context)]),
+    lager:debug("loading view ~s from ~s failed: invalid view", [View, cb_context:db_name(Context)]),
     cb_context:add_system_error('datastore_missing_view', kz_json:from_list([{<<"cause">>, kz_term:to_binary(View)}]), Context);
 handle_datamgr_errors(Else, _View, Context) ->
     lager:debug("operation failed: ~p on ~p", [Else, _View]),
@@ -1164,7 +770,7 @@ handle_datamgr_errors(Else, _View, Context) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec update_pvt_parameters(kz_json:object() | kz_json:objects(), cb_context:context()) ->
-                                   kz_json:object() | kz_json:objects().
+          kz_json:object() | kz_json:objects().
 update_pvt_parameters(JObjs, Context) when is_list(JObjs) ->
     [update_pvt_parameters(JObj, Context) || JObj <- JObjs];
 update_pvt_parameters(JObj0, Context) ->
@@ -1189,20 +795,20 @@ add_pvt_vsn(JObj, Updates, _) ->
     end.
 
 -spec add_pvt_account_db(kz_json:object(), kz_json:json_proplist(), cb_context:context()) ->
-                                kz_json:json_proplist().
+          kz_json:json_proplist().
 add_pvt_account_db(JObj, Updates, Context) ->
     %% if no account db and the request is for an account, set db
     case kz_doc:account_db(JObj) =:= 'undefined' of
         'false' -> Updates;
         'true' ->
-            case cb_context:account_db(Context) of
+            case cb_context:db_name(Context) of
                 'undefined' -> Updates;
                 AccountDb -> [{kz_doc:path_account_db(), AccountDb} | Updates]
             end
     end.
 
 -spec add_pvt_account_id(kz_json:object(), kz_json:json_proplist(), cb_context:context()) ->
-                                kz_json:json_proplist().
+          kz_json:json_proplist().
 add_pvt_account_id(JObj, Updates, Context) ->
     case kz_doc:account_id(JObj) =:= 'undefined' of
         'false' -> Updates;
@@ -1214,7 +820,7 @@ add_pvt_account_id(JObj, Updates, Context) ->
     end.
 
 -spec add_pvt_created(kz_json:object(), kz_json:json_proplist(), cb_context:context()) ->
-                             kz_json:json_proplist().
+          kz_json:json_proplist().
 add_pvt_created(JObj, Updates, _Context) ->
     case kz_doc:revision(JObj) =:= 'undefined' of
         'true' -> [{kz_doc:path_created(), kz_time:now_s()} | Updates];
@@ -1222,12 +828,12 @@ add_pvt_created(JObj, Updates, _Context) ->
     end.
 
 -spec add_pvt_modified(kz_json:object(), kz_json:json_proplist(), cb_context:context()) ->
-                              kz_json:json_proplist().
+          kz_json:json_proplist().
 add_pvt_modified(_JObj, Updates, _Context) ->
     [{kz_doc:path_modified(), kz_time:now_s()} | Updates].
 
 -spec add_pvt_request_id(kz_json:object(), kz_json:json_proplist(), cb_context:context()) ->
-                                kz_json:json_proplist().
+          kz_json:json_proplist().
 add_pvt_request_id(_JObj, Updates, Context) ->
     [{<<"pvt_request_id">>, cb_context:req_id(Context)} | Updates].
 
@@ -1240,7 +846,7 @@ add_pvt_request_id(_JObj, Updates, Context) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec add_pvt_auth(kz_json:object(), kz_json:json_proplist(), cb_context:context()) ->
-                          kz_json:json_proplist().
+          kz_json:json_proplist().
 add_pvt_auth(_JObj, Updates, Context) ->
     case cb_context:is_authenticated(Context) of
         'false' ->
@@ -1257,13 +863,13 @@ add_pvt_auth(_JObj, Updates, Context) ->
     end.
 
 -spec add_pvt_alphanum_name(kz_json:object(), kz_json:json_proplist(), cb_context:context()) ->
-                                   kz_json:json_proplist().
+          kz_json:json_proplist().
 add_pvt_alphanum_name(JObj, Updates, Context) ->
     add_pvt_alphanum_name(JObj, Updates, Context, kz_json:get_value(<<"name">>, JObj), kz_doc:type(JObj)).
 
--spec add_pvt_alphanum_name(kz_json:object(), kz_json:json_proplist(), cb_context:context(), kz_term:api_binary(), kz_term:ne_binary()) ->
-                                   kz_json:json_proplist().
-add_pvt_alphanum_name(JObj, Updates, _Context, 'undefined', <<"user">>) ->
+-spec add_pvt_alphanum_name(kz_json:object(), kz_json:json_proplist(), cb_context:context(), kz_term:api_binary(), kz_term:api_ne_binary()) ->
+          kz_json:json_proplist().
+add_pvt_alphanum_name(JObj, Updates, Context, 'undefined', <<"user">>) ->
     Name = case {kz_json:get_ne_binary_value(<<"first_name">>, JObj)
                 ,kz_json:get_ne_binary_value(<<"last_name">>, JObj)
                 }
@@ -1273,22 +879,23 @@ add_pvt_alphanum_name(JObj, Updates, _Context, 'undefined', <<"user">>) ->
                {FirstName, 'undefined'} -> FirstName;
                {FirstName, LastName} -> <<FirstName/binary, LastName/binary>>
            end,
+    add_pvt_alphanum_name(JObj, Updates, Context, Name, 'undefined');
+add_pvt_alphanum_name(_JObj, Updates, _Context, 'undefined', _Type) ->
+    Updates;
+add_pvt_alphanum_name(_JObj, Updates, _Context, Name, _Type)
+  when is_binary(Name) ->
     [{<<"pvt_alphanum_name">>, cb_modules_util:normalize_alphanum_name(Name)}
      | Updates
     ];
-add_pvt_alphanum_name(_JObj, Updates, _Context, 'undefined', _Type) ->
-    Updates;
-add_pvt_alphanum_name(_JObj, Updates, _Context, Name, _Type) ->
-    [{<<"pvt_alphanum_name">>, cb_modules_util:normalize_alphanum_name(Name)}
-     | Updates
-    ].
+add_pvt_alphanum_name(_JObj, Updates, _Context, _Name, _Type) ->
+    Updates.
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
 -spec extract_included_docs(cb_context:context(), kz_json:objects()) ->
-                                   {kz_json:objects(), cb_context:context()}.
+          {kz_json:objects(), cb_context:context()}.
 extract_included_docs(Context, JObjs) ->
     lists:foldl(fun extract_included_docs_fold/2, {[], Context}, JObjs).
 

@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kazoo_oauth_client).
@@ -18,7 +22,7 @@
 %% @end
 %%------------------------------------------------------------------------------
 -spec authenticate(kz_json:object()) -> {'ok', kz_json:object()} |
-                                        {'error', kz_term:ne_binary()}.
+          {'error', kz_term:ne_binary()}.
 authenticate(JObj) ->
     case {kz_json:get_value(<<"access_token">>, JObj)
          ,kz_json:get_value(<<"provider">>, JObj)
@@ -34,8 +38,8 @@ authenticate(JObj) ->
     end.
 
 -spec authenticate(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
-                          {'ok', kz_json:object()} |
-                          {'error', kz_term:ne_binary()}.
+          {'ok', kz_json:object()} |
+          {'error', kz_term:ne_binary()}.
 authenticate(AccessToken, ProviderId, JObj) ->
     case kazoo_oauth_util:verify_token(ProviderId, AccessToken) of
         {'ok', Token} -> maybe_add_oauth_user(JObj, Token);

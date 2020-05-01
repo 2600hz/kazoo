@@ -2,7 +2,7 @@
              [{applications,[kazoo,kazoo_amqp,kazoo_apps,kazoo_caches,
                              kazoo_call,kazoo_data,kazoo_documents,
                              kazoo_endpoint,kazoo_events,kazoo_globals,
-                             kazoo_ledgers,kazoo_modb,kazoo_number_manager,
+                             kazoo_ledgers,kazoo_modb,kazoo_numbers,
                              kazoo_services,kazoo_stdlib,kernel,lager,stdlib]},
               {description,"Jonny 5 - Short circuit accounts exceeding call volume"},
               {env,[{is_kazoo_app,true}]},

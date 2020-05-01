@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2016-2019, 2600Hz
+%%% @copyright (C) 2016-2020, 2600Hz
 %%% @doc Discover available tasks.
 %%% @author Pierre Fenoll
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_tasks_help).
@@ -32,7 +37,7 @@ help() ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec help(kz_term:ne_binary()) -> {'ok', kz_json:object()} |
-                                   kz_tasks:help_error().
+          kz_tasks:help_error().
 help(Category=?NE_BINARY) ->
     HelpJObj = tasks_bindings:fold(<<"tasks.help">>, [kz_json:new(), Category]),
     JObj = parse_apis(HelpJObj),
@@ -46,7 +51,7 @@ help(Category=?NE_BINARY) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec help(kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', kz_json:object()} |
-                                                        kz_tasks:help_error().
+          kz_tasks:help_error().
 help(Category=?NE_BINARY, Action=?NE_BINARY) ->
     HelpJObj = tasks_bindings:fold(<<"tasks.help">>, [kz_json:new(), Category, Action]),
     JObj = parse_apis(HelpJObj),
@@ -86,7 +91,7 @@ handle_lookup_req(JObj, _Props) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_help(kz_json:object()) -> kz_json:object() |
-                                    kz_tasks:help_error().
+          kz_tasks:help_error().
 get_help(JObj) ->
     case {kapi_tasks:category(JObj), kapi_tasks:action(JObj)} of
         {'undefined', 'undefined'} -> help();
@@ -94,12 +99,12 @@ get_help(JObj) ->
         {Category, Action} -> lookup_result(Category, Action, help(Category, Action))
     end.
 
-lookup_result(_, {error, _}=E) -> E;
-lookup_result(Category, {ok, JObj}) ->
+lookup_result(_, {'error', _}=E) -> E;
+lookup_result(Category, {'ok', JObj}) ->
     kz_json:from_list([{Category, JObj}]).
 
-lookup_result(_, _, {error, _}=E) -> E;
-lookup_result(Category, Action, {ok, JObj}) ->
+lookup_result(_, _, {'error', _}=E) -> E;
+lookup_result(Category, Action, {'ok', JObj}) ->
     kz_json:set_value([Category, Action], JObj, kz_json:new()).
 
 -spec parse_apis(kz_json:object()) -> kz_json:object().

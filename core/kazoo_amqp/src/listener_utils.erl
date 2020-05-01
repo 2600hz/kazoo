@@ -1,7 +1,11 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Utility functions for AMQP listeners to use to add/remove responders.
 %%% @author James Aimonetti
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(listener_utils).
@@ -33,7 +37,7 @@ add_responder(Responders, Responder, Keys) ->
     end.
 
 -spec update_responders(responders(), responder_mfa(), responder_callback_mappings()) ->
-                               responders().
+          responders().
 update_responders(Responders, ResponderMFA, Keys) ->
     lists:foldr(fun maybe_add_mapping/2
                ,Responders
@@ -41,7 +45,7 @@ update_responders(Responders, ResponderMFA, Keys) ->
                ).
 
 -spec rm_responder(responders(), responder_callback(), responder_callback_mapping()) ->
-                          responders().
+          responders().
 %% remove all events for responder
 rm_responder(Responders, Responder, Keys) when is_atom(Responder) ->
     rm_responder(Responders, {Responder, ?DEFAULT_CALLBACK}, Keys);
@@ -108,8 +112,7 @@ responder({Module, Fun}) when is_atom(Module), is_atom(Fun) ->
     responder_mfa(Module, Fun);
 responder(CallbackFun)
   when is_function(CallbackFun, 2);
-       is_function(CallbackFun, 3);
-       is_function(CallbackFun, 4) ->
+       is_function(CallbackFun, 3) ->
     {'arity', Arity} = erlang:fun_info(CallbackFun, 'arity'),
     {CallbackFun, Arity};
 responder(_) -> 'undefined'.
@@ -126,8 +129,7 @@ init_responder(Responder) ->
         _Init ->
             lager:debug("responder ~s init: ~p", [Responder, _Init])
     catch
-        _E:_R ->
-            ST = erlang:get_stacktrace(),
-            lager:debug("responder ~s crashed: ~s: ~p", [Responder, _E, _R]),
-            kz_util:log_stacktrace(ST)
-    end.
+        ?STACKTRACE(_E, _R, ST)
+        lager:debug("responder ~s crashed: ~s: ~p", [Responder, _E, _R]),
+        kz_log:log_stacktrace(ST)
+        end.

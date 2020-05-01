@@ -17,7 +17,7 @@ function check_index {
     fi
 }
 
-docs=$(find {scripts,doc,core,applications} \( -path 'doc/mkdocs' -o -path 'applications/*/doc/ref' \) -prune -o -type f -regex ".+\.md$")
+docs=$(find {scripts,doc,core,applications} \( -path 'doc/mkdocs' -o -path 'applications/*/doc/ref' -o -path 'core/*/doc/ref' \) -prune -o -type f -regex ".+\.md$")
 for doc in $docs; do
     ((doc_count+=1))
     check_index $doc

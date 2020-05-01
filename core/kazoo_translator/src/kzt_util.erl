@@ -1,7 +1,11 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kzt_util).
@@ -75,7 +79,7 @@ http_method(Method) -> http_method(kz_term:to_binary(Method)).
 
 -spec resolve_uri(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 resolve_uri(Path, NewPath) ->
-    kz_util:resolve_uri(Path, NewPath).
+    kz_http_util:resolve_uri(Path, NewPath).
 
 %% see cf_offnet.erl
 -spec offnet_req(kz_term:proplist(), kapps_call:call()) -> 'ok'.
@@ -297,7 +301,7 @@ set_amqp_listener(Pid, Call) -> kapps_call:kvs_store(<<"amqp_listener">>, Pid, C
 get_amqp_listener(Call) -> kapps_call:kvs_fetch(<<"amqp_listener">>, Call).
 
 -spec set_gather_pidref(kz_term:pid_ref() | 'undefined', kapps_call:call()) ->
-                               kapps_call:call().
+          kapps_call:call().
 set_gather_pidref('undefined', Call) ->
     kapps_call:kvs_store(<<"gather_pidref">>, 'undefined', Call);
 set_gather_pidref({_, _}=PidRef, Call) ->
@@ -305,41 +309,41 @@ set_gather_pidref({_, _}=PidRef, Call) ->
     kapps_call:kvs_store(<<"gather_pidref">>, PidRef, Call).
 
 -spec get_gather_pidref(kapps_call:call()) ->
-                               kz_term:pid_ref() | 'undefined'.
+          kz_term:pid_ref() | 'undefined'.
 get_gather_pidref(Call) -> kapps_call:kvs_fetch(<<"gather_pidref">>, Call).
 
 -spec set_conference_profile(kz_json:object(), kapps_call:call()) ->
-                                    kapps_call:call().
+          kapps_call:call().
 set_conference_profile(JObj, Call) ->
     kapps_call:kvs_store(<<"conference_profile">>, JObj, Call).
 
 -spec get_conference_profile(kapps_call:call()) ->
-                                    kz_json:object().
+          kz_json:object().
 get_conference_profile(Call) ->
     kapps_call:kvs_fetch(<<"conference_profile">>, Call).
 
 -spec set_caller_controls(kz_json:object(), kapps_call:call()) ->
-                                 kapps_call:call().
+          kapps_call:call().
 set_caller_controls(JObj, Call) ->
     kapps_call:kvs_store(<<"caller_controls">>, JObj, Call).
 
 -spec get_caller_controls(kapps_call:call()) ->
-                                 kz_json:object().
+          kz_json:object().
 get_caller_controls(Call) ->
     kapps_call:kvs_fetch(<<"caller_controls">>, Call).
 
 -spec set_advertise(kz_json:object(), kapps_call:call()) ->
-                           kapps_call:call().
+          kapps_call:call().
 set_advertise(JObj, Call) ->
     kapps_call:kvs_store(<<"advertise">>, JObj, Call).
 
 -spec get_advertise(kapps_call:call()) ->
-                           kz_json:object().
+          kz_json:object().
 get_advertise(Call) ->
     kapps_call:kvs_fetch(<<"advertise">>, Call).
 
 -spec set_chat_permissions(kz_json:object(), kapps_call:call()) ->
-                                  kapps_call:call().
+          kapps_call:call().
 set_chat_permissions(JObj, Call) ->
     kapps_call:kvs_store(<<"chat_permissions">>, JObj, Call).
 

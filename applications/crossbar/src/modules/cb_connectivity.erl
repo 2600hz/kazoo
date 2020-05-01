@@ -1,8 +1,13 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Handle client requests for connectivity documents
 %%% @author Karl Anderson
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cb_connectivity).
@@ -29,7 +34,7 @@
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec init() -> ok.
+-spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.connectivity">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.connectivity">>, ?MODULE, 'resource_exists'),
@@ -38,7 +43,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.post.connectivity">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.patch.connectivity">>, ?MODULE, 'patch'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.connectivity">>, ?MODULE, 'delete'),
-    ok.
+    'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc This function determines the verbs that are appropriate for the
@@ -181,7 +186,7 @@ track_assignment('delete', Context) ->
 %%------------------------------------------------------------------------------
 -spec  get_numbers(kz_json:object()) -> kz_term:ne_binaries().
 get_numbers(JObj) ->
-    Servers = kz_json:get_value(<<"servers">>, JObj, []),
+    Servers = kzd_connectivity:servers(JObj),
     lists:foldl(fun get_numbers_fold/2, [], Servers).
 
 -spec get_numbers_fold(kz_json:object(), kz_term:ne_binaries()) -> kz_term:ne_binaries().
@@ -199,7 +204,11 @@ create(Context) ->
 
                         Doc = cb_context:doc(C1),
                         Nums = get_numbers(Doc),
-                        cb_modules_util:validate_number_ownership(Nums, C1)
+
+                        AccountDoc = cb_context:account_doc(Context),
+                        WithRealm = kzd_connectivity:set_account_auth_realm(Doc, kzd_accounts:realm(AccountDoc)),
+
+                        cb_modules_util:validate_number_ownership(Nums, cb_context:set_doc(C1, WithRealm))
                 end,
     cb_context:validate_request_data(<<"connectivity">>, Context, OnSuccess).
 
@@ -223,7 +232,11 @@ update(Id, Context) ->
 
                         Doc = cb_context:doc(C1),
                         Nums = get_numbers(Doc),
-                        cb_modules_util:validate_number_ownership(Nums, C1)
+
+                        AccountDoc = cb_context:account_doc(Context),
+                        WithRealm = kzd_connectivity:set_account_auth_realm(Doc, kzd_accounts:realm(AccountDoc)),
+
+                        cb_modules_util:validate_number_ownership(Nums, cb_context:set_doc(C1, WithRealm))
                 end,
     cb_context:validate_request_data(<<"connectivity">>, Context, OnSuccess).
 
@@ -242,7 +255,8 @@ validate_patch(Id, Context) ->
 %%------------------------------------------------------------------------------
 -spec on_successful_validation(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
-    cb_context:set_doc(Context, kz_doc:set_type(cb_context:doc(Context), <<"sys_info">>));
+    Doc = kz_doc:set_type(cb_context:doc(Context), <<"sys_info">>),
+    cb_context:set_doc(Context, Doc);
 on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context, ?TYPE_CHECK_OPTION(<<"sys_info">>)).
 
@@ -253,16 +267,7 @@ on_successful_validation(Id, Context) ->
 %%------------------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    crossbar_doc:load_view(?CB_LIST
-                          ,[{'reduce', 'false'}]
-                          ,Context
-                          ,fun normalize_view_results/2
-                          ).
-
-%%------------------------------------------------------------------------------
-%% @doc Normalizes the results of a view.
-%% @end
-%%------------------------------------------------------------------------------
--spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
-normalize_view_results(JObj, Acc) ->
-    [kz_doc:id(JObj) | Acc].
+    Options = [{'mapper', crossbar_view:get_id_fun()}
+              ,{'reduce', 'false'}
+              ],
+    crossbar_view:load(Context, ?CB_LIST, Options).

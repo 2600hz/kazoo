@@ -70,8 +70,8 @@ cycle through kazoo_ledgers: [kazoo_ledgers,kazoo_config,kazoo_services,
                               kazoo_ledgers]
 cycle through kazoo_media: [kazoo_media,kazoo_config,kazoo_call,kazoo_media]
 cycle through kazoo_modb: [kazoo_modb,kazoo_apps,kazoo_modb]
-cycle through kazoo_number_manager: [kazoo_number_manager,kazoo_apps,
-                                     kazoo_number_manager]
+cycle through kazoo_numbers: [kazoo_numbers,kazoo_apps,
+                                     kazoo_numbers]
 cycle through kazoo_oauth: [kazoo_oauth,kazoo,kazoo_documents,kazoo_apps,
                             kazoo_proper,crossbar,kazoo_oauth]
 cycle through kazoo_perf: [kazoo_perf,kazoo,kazoo_documents,kazoo_apps,
@@ -99,18 +99,29 @@ cycle through kazoo_transactions: [kazoo_transactions,kazoo_documents,
 cycle through kazoo_voicemail: [kazoo_voicemail,kazoo_apps,kazoo_voicemail]
 cycle through kazoo_web: [kazoo_web,kazoo_stdlib,kazoo_documents,kazoo_web]
 cycle through kazoo_xml: [kazoo_xml,kazoo_stdlib,kazoo_documents,kazoo_apps,
-                          kazoo_number_manager,kazoo_xml]
+                          kazoo_numbers,kazoo_xml]
 cycle through tasks: [tasks,kazoo_apps,kazoo_proper,tasks]
 ```
 
-## bump-copyright-year.sh
+## bump-copyright-year.py
 
 Python script to walk the supplied files and bumps the copyright year if appropriate.
 
 ```shell
-./scripts/bump-copyright-year.sh [FILE]
+./scripts/bump-copyright-year.py [FILE]
 ```
 
+## calculate-dep-targets.escript
+
+Given the KAZOO root directory and an app (in core or applications), calculate the core applications it relies on (and transitive dependencies). This listing is then stored to `{APP}/.test.deps` for use in compilation of dependant apps when running tests on an app (vs compiling the whole project for testing).
+
+```shell
+ERL_LIBS=deps:core:applications ./scripts/calculate-dep-targets {KAZOO_ROOT} {APP}
+```
+
+## check-admonitions.escript
+
+Walks changed markdown files and fixes admonitions
 
 ## check-app-registered.sh
 
@@ -135,7 +146,7 @@ Now you have a listing of registered processes to put in your .app.src
 
 ## check-dialyzer.escript
 
-An Erlang escript that dialyzes changed files. Run it using the makefile target 'dialyze' with the files to dialyze:
+An Erlang escript that dialyzes changed files. Run it using the Makefile target 'dialyze' with the files to dialyze:
 
 ```shell
 TO_DIALYZE=applications/callflow/ebin/callflow_sup.beam make dialyze
@@ -166,6 +177,9 @@ Takes the misspellings.txt and checks for common mistakes.
 
 Each line on the text file has the format `{correct}|{mispelt} [{misspelt} ...]`
 
+## check-stacktrace.py
+
+With OTP 21+, `erlang:get_stacktrace()` is deprecated. A macro is added to `kz_types.hrl` for getting the stacktrace in a catch clause. This script automates the conversion of the catch clause+get_stacktrace to the macro-ized version.
 
 ## check-unstaged.bash
 
@@ -435,12 +449,22 @@ Options:
 -s BASE_URL             Defaults to http://localhost:8000; include the http(s) scheme
 ```
 
-## format-json.sh
+## format-json.py
 
 Python script to format JSON files (like CouchDB views, JSON schemas) and write the formatted version back to the file. 'make apis' runs this as part of its instructions.
 
 ```shell
-./scripts/format-json.sh path/to/file.json [path/to/other/file.json,...]
+./scripts/format-json.py path/to/file.json [path/to/other/file.json,...]
+```
+
+
+## format-couchdb-views.py
+
+Python script to make JavaScript codes in CouchDB view files beautify and multi-line so they are more readable to developers and also makes keep tracking changes in PR reviews easy.
+'make apis' runs this as part of its instructions.
+
+```shell
+./scripts/format-couchdb-views.py path/to/file.json [path/to/other/file.json,...]
 ```
 
 
@@ -451,7 +475,7 @@ Builds the Crossbar reference docs in 'applications/crossbar/doc/ref'. Helps det
 Also builds the [Swagger](http://swagger.io/) JSON file in applications/crossbar/priv/api/swagger.json
 
 
-## generate-doc-schemas.sh
+## generate-doc-schemas.py
 
 Updates crossbar docs with the schema table from the ref (auto-gen) version
 
@@ -533,8 +557,7 @@ Init.d script for rabbitmq
 
 ## `reconcile_docs_to_index.bash`
 
-Finds all docs in the repo and checks which are included in the [mkdocs.yml](/doc/mkdocs/mkdocs.yml) index
-
+Finds all docs in the repo and checks which are included in the [mkdocs.yml](https://github.com/2600hz/kazoo/blob/master/doc/mkdocs/mkdocs.yml) index
 
 ## setup-dev.sh
 
@@ -572,14 +595,15 @@ Starts a VM in the background with name kazoo\_apps
 Starts a VM in the background with name ecallmgr
 
 
-## state-of-docs.sh
+## state-of-docs.py
 
 Searches for undocumented APIs and reports percentage of doc coverage.
 
 ```shell
-./scripts/state-of-docs.sh
+./scripts/state-of-docs.py
 ```
 
+```
     Undocumented API endpoints:
     > DELETE /v2/templates/{TEMPLATE_NAME}
     > PUT /v2/templates/{TEMPLATE_NAME}
@@ -587,177 +611,10 @@ Searches for undocumented APIs and reports percentage of doc coverage.
     > GET /v2/accounts/{ACCOUNT_ID}/agents
     > GET /v2/accounts/{ACCOUNT_ID}/agents/stats
     > GET /v2/accounts/{ACCOUNT_ID}/agents/status
-    > POST /v2/accounts/{ACCOUNT_ID}/agents/status/{USER_ID}
-    > GET /v2/accounts/{ACCOUNT_ID}/agents/status/{USER_ID}
-    > GET /v2/accounts/{ACCOUNT_ID}/agents/{USER_ID}
-    > GET /v2/accounts/{ACCOUNT_ID}/agents/{USER_ID}/queue_status
-    > POST /v2/accounts/{ACCOUNT_ID}/agents/{USER_ID}/queue_status
-    > GET /v2/accounts/{ACCOUNT_ID}/agents/{USER_ID}/status
-    > POST /v2/accounts/{ACCOUNT_ID}/agents/{USER_ID}/status
-    > GET /v2/accounts/{ACCOUNT_ID}/alerts
-    > PUT /v2/accounts/{ACCOUNT_ID}/alerts
-    > DELETE /v2/accounts/{ACCOUNT_ID}/alerts/{ALERT_ID}
-    > GET /v2/accounts/{ACCOUNT_ID}/alerts/{ALERT_ID}
-    > GET /v2/accounts/{ACCOUNT_ID}/blacklists
-    > PUT /v2/accounts/{ACCOUNT_ID}/blacklists
-    > GET /v2/accounts/{ACCOUNT_ID}/blacklists/{BLACKLIST_ID}
-    > POST /v2/accounts/{ACCOUNT_ID}/blacklists/{BLACKLIST_ID}
-    > DELETE /v2/accounts/{ACCOUNT_ID}/blacklists/{BLACKLIST_ID}
-    > PATCH /v2/accounts/{ACCOUNT_ID}/blacklists/{BLACKLIST_ID}
-    > DELETE /v2/accounts/{ACCOUNT_ID}/bulk
-    > POST /v2/accounts/{ACCOUNT_ID}/bulk
-    > PUT /v2/accounts/{ACCOUNT_ID}/cccps
-    > PUT /v2/accounts/{ACCOUNT_ID}/cccps/{CCCP_ID}
-    > POST /v2/accounts/{ACCOUNT_ID}/cccps/{CCCP_ID}
-    > GET /v2/accounts/{ACCOUNT_ID}/cccps/{CCCP_ID}
-    > DELETE /v2/accounts/{ACCOUNT_ID}/cccps/{CCCP_ID}
-    > GET /v2/accounts/{ACCOUNT_ID}/cdrs/summary
-    > PUT /v2/accounts/{ACCOUNT_ID}/clicktocall
-    > PATCH /v2/accounts/{ACCOUNT_ID}/clicktocall/{C2C_ID}
-    > POST /v2/accounts/{ACCOUNT_ID}/clicktocall/{C2C_ID}
-    > GET /v2/accounts/{ACCOUNT_ID}/clicktocall/{C2C_ID}
-    > DELETE /v2/accounts/{ACCOUNT_ID}/clicktocall/{C2C_ID}
-    > GET /v2/accounts/{ACCOUNT_ID}/clicktocall/{C2C_ID}/connect
-    > POST /v2/accounts/{ACCOUNT_ID}/clicktocall/{C2C_ID}/connect
-    > GET /v2/accounts/{ACCOUNT_ID}/clicktocall/{C2C_ID}/history
-    > GET /v2/accounts/{ACCOUNT_ID}/conferences
-    > PUT /v2/accounts/{ACCOUNT_ID}/conferences
-    > PATCH /v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
-    > GET /v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
-    > POST /v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
-    > DELETE /v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
-    > GET /v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}/participants
-    > GET /v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}/participants/{PARTICIPANT_ID}
-    > PATCH /v2/accounts/{ACCOUNT_ID}/configs/{CONFIG_ID}
-    > DELETE /v2/accounts/{ACCOUNT_ID}/configs/{CONFIG_ID}
-    > GET /v2/accounts/{ACCOUNT_ID}/configs/{CONFIG_ID}
-    > PUT /v2/accounts/{ACCOUNT_ID}/configs/{CONFIG_ID}
-    > POST /v2/accounts/{ACCOUNT_ID}/configs/{CONFIG_ID}
-    > PUT /v2/accounts/{ACCOUNT_ID}/connectivity
-    > DELETE /v2/accounts/{ACCOUNT_ID}/connectivity/{CONNECTIVITY_ID}
-    > PATCH /v2/accounts/{ACCOUNT_ID}/connectivity/{CONNECTIVITY_ID}
-    > POST /v2/accounts/{ACCOUNT_ID}/connectivity/{CONNECTIVITY_ID}
-    > GET /v2/accounts/{ACCOUNT_ID}/connectivity/{CONNECTIVITY_ID}
-    > PUT /v2/accounts/{ACCOUNT_ID}/directories
-    > POST /v2/accounts/{ACCOUNT_ID}/directories/{DIRECTORY_ID}
-    > PATCH /v2/accounts/{ACCOUNT_ID}/directories/{DIRECTORY_ID}
-    > GET /v2/accounts/{ACCOUNT_ID}/faxboxes
-    > PUT /v2/accounts/{ACCOUNT_ID}/faxboxes
-    > DELETE /v2/accounts/{ACCOUNT_ID}/faxboxes/{FAXBOX_ID}
-    > GET /v2/accounts/{ACCOUNT_ID}/faxboxes/{FAXBOX_ID}
-    > PATCH /v2/accounts/{ACCOUNT_ID}/faxboxes/{FAXBOX_ID}
-    > POST /v2/accounts/{ACCOUNT_ID}/faxboxes/{FAXBOX_ID}
-    > PUT /v2/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}
-    > GET /v2/accounts/{ACCOUNT_ID}/freeswitch
-    > PUT /v2/accounts/{ACCOUNT_ID}/global_provisioner_templates
-    > GET /v2/accounts/{ACCOUNT_ID}/global_provisioner_templates
-    > GET /v2/accounts/{ACCOUNT_ID}/global_provisioner_templates/{TEMPLATE_ID}
-    > DELETE /v2/accounts/{ACCOUNT_ID}/global_provisioner_templates/{TEMPLATE_ID}
-    > POST /v2/accounts/{ACCOUNT_ID}/global_provisioner_templates/{TEMPLATE_ID}
-    > POST /v2/accounts/{ACCOUNT_ID}/global_provisioner_templates/{TEMPLATE_ID}/image
-    > GET /v2/accounts/{ACCOUNT_ID}/global_provisioner_templates/{TEMPLATE_ID}/image
-    > DELETE /v2/accounts/{ACCOUNT_ID}/global_provisioner_templates/{TEMPLATE_ID}/image
-    > GET /v2/accounts/{ACCOUNT_ID}/hotdesks
-    > GET /v2/accounts/{ACCOUNT_ID}/local_provisioner_templates
-    > PUT /v2/accounts/{ACCOUNT_ID}/local_provisioner_templates
-    > GET /v2/accounts/{ACCOUNT_ID}/local_provisioner_templates/{TEMPLATE_ID}
-    > POST /v2/accounts/{ACCOUNT_ID}/local_provisioner_templates/{TEMPLATE_ID}
-    > DELETE /v2/accounts/{ACCOUNT_ID}/local_provisioner_templates/{TEMPLATE_ID}
-    > GET /v2/accounts/{ACCOUNT_ID}/local_provisioner_templates/{TEMPLATE_ID}/image
-    > POST /v2/accounts/{ACCOUNT_ID}/local_provisioner_templates/{TEMPLATE_ID}/image
-    > DELETE /v2/accounts/{ACCOUNT_ID}/local_provisioner_templates/{TEMPLATE_ID}/image
-    > GET /v2/accounts/{ACCOUNT_ID}/menus
-    > PUT /v2/accounts/{ACCOUNT_ID}/menus
-    > PATCH /v2/accounts/{ACCOUNT_ID}/menus/{MENU_ID}
-    > GET /v2/accounts/{ACCOUNT_ID}/menus/{MENU_ID}
-    > POST /v2/accounts/{ACCOUNT_ID}/menus/{MENU_ID}
-    > DELETE /v2/accounts/{ACCOUNT_ID}/menus/{MENU_ID}
-    > GET /v2/accounts/{ACCOUNT_ID}/metaflows
-    > DELETE /v2/accounts/{ACCOUNT_ID}/metaflows
-    > POST /v2/accounts/{ACCOUNT_ID}/metaflows
-    > PUT /v2/accounts/{ACCOUNT_ID}/onboard
-    > GET /v2/accounts/{ACCOUNT_ID}/parked_calls
-    > POST /v2/accounts/{ACCOUNT_ID}/presence
-    > GET /v2/accounts/{ACCOUNT_ID}/presence/report-{REPORT_ID}
-    > GET /v2/accounts/{ACCOUNT_ID}/presence/{EXTENSION}
-    > PUT /v2/accounts/{ACCOUNT_ID}/queues/eavesdrop
-    > PUT /v2/accounts/{ACCOUNT_ID}/queues/{QUEUE_ID}/eavesdrop
-    > POST /v2/accounts/{ACCOUNT_ID}/queues/{QUEUE_ID}/roster
-    > GET /v2/accounts/{ACCOUNT_ID}/rate_limits
-    > DELETE /v2/accounts/{ACCOUNT_ID}/rate_limits
-    > POST /v2/accounts/{ACCOUNT_ID}/rate_limits
-    > GET /v2/accounts/{ACCOUNT_ID}/resource_selectors
-    > GET /v2/accounts/{ACCOUNT_ID}/resource_selectors/name/{SELECTOR_NAME}/resource/{RESOURCE_ID}
-    > GET /v2/accounts/{ACCOUNT_ID}/resource_selectors/rules
-    > POST /v2/accounts/{ACCOUNT_ID}/resource_selectors/rules
-    > DELETE /v2/accounts/{ACCOUNT_ID}/resource_selectors/{UUID}
-    > GET /v2/accounts/{ACCOUNT_ID}/resource_selectors/{UUID}
-    > POST /v2/accounts/{ACCOUNT_ID}/resource_selectors/{UUID}
-    > PUT /v2/accounts/{ACCOUNT_ID}/resource_templates
-    > GET /v2/accounts/{ACCOUNT_ID}/resource_templates
-    > POST /v2/accounts/{ACCOUNT_ID}/resource_templates/{RESOURCE_TEMPLATE_ID}
-    > DELETE /v2/accounts/{ACCOUNT_ID}/resource_templates/{RESOURCE_TEMPLATE_ID}
-    > GET /v2/accounts/{ACCOUNT_ID}/resource_templates/{RESOURCE_TEMPLATE_ID}
-    > PATCH /v2/accounts/{ACCOUNT_ID}/resource_templates/{RESOURCE_TEMPLATE_ID}
-    > POST /v2/accounts/{ACCOUNT_ID}/service_plans/reconciliation
-    > POST /v2/accounts/{ACCOUNT_ID}/service_plans/synchronization
-    > GET /v2/accounts/{ACCOUNT_ID}/services/plan
-    > POST /v2/accounts/{ACCOUNT_ID}/services/status
-    > GET /v2/accounts/{ACCOUNT_ID}/services/status
-    > PUT /v2/accounts/{ACCOUNT_ID}/signup
-    > POST /v2/accounts/{ACCOUNT_ID}/signup/{THING}
-    > PUT /v2/accounts/{ACCOUNT_ID}/sms
-    > GET /v2/accounts/{ACCOUNT_ID}/sms/{SMS_ID}
-    > DELETE /v2/accounts/{ACCOUNT_ID}/sms/{SMS_ID}
-    > PATCH /v2/accounts/{ACCOUNT_ID}/storage
-    > DELETE /v2/accounts/{ACCOUNT_ID}/storage
-    > PUT /v2/accounts/{ACCOUNT_ID}/storage
-    > POST /v2/accounts/{ACCOUNT_ID}/storage
-    > PUT /v2/accounts/{ACCOUNT_ID}/storage/plans
-    > GET /v2/accounts/{ACCOUNT_ID}/storage/plans
-    > PATCH /v2/accounts/{ACCOUNT_ID}/storage/plans/{STORAGE_PLAN_ID}
-    > GET /v2/accounts/{ACCOUNT_ID}/storage/plans/{STORAGE_PLAN_ID}
-    > DELETE /v2/accounts/{ACCOUNT_ID}/storage/plans/{STORAGE_PLAN_ID}
-    > POST /v2/accounts/{ACCOUNT_ID}/storage/plans/{STORAGE_PLAN_ID}
-    > GET /v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/output
-    > PUT /v2/accounts/{ACCOUNT_ID}/temporal_rules
-    > POST /v2/accounts/{ACCOUNT_ID}/temporal_rules/{TEMPORAL_RULE_ID}
-    > GET /v2/accounts/{ACCOUNT_ID}/temporal_rules/{TEMPORAL_RULE_ID}
-    > DELETE /v2/accounts/{ACCOUNT_ID}/temporal_rules/{TEMPORAL_RULE_ID}
-    > PATCH /v2/accounts/{ACCOUNT_ID}/temporal_rules/{TEMPORAL_RULE_ID}
-    > PUT /v2/accounts/{ACCOUNT_ID}/temporal_rules_sets
-    > GET /v2/accounts/{ACCOUNT_ID}/temporal_rules_sets
-    > POST /v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{TEMPORAL_RULE_SET}
-    > PATCH /v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{TEMPORAL_RULE_SET}
-    > GET /v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{TEMPORAL_RULE_SET}
-    > DELETE /v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{TEMPORAL_RULE_SET}
-    > DELETE /v2/accounts/{ACCOUNT_ID}/whitelabel
-    > PUT /v2/accounts/{ACCOUNT_ID}/whitelabel
-    > POST /v2/accounts/{ACCOUNT_ID}/whitelabel
-    > GET /v2/accounts/{ACCOUNT_ID}/whitelabel
-    > POST /v2/accounts/{ACCOUNT_ID}/whitelabel/icon
-    > GET /v2/accounts/{ACCOUNT_ID}/whitelabel/icon
-    > POST /v2/accounts/{ACCOUNT_ID}/whitelabel/logo
-    > GET /v2/accounts/{ACCOUNT_ID}/whitelabel/logo
-    > POST /v2/accounts/{ACCOUNT_ID}/whitelabel/welcome
-    > GET /v2/accounts/{ACCOUNT_ID}/whitelabel/welcome
-    > GET /v2/accounts/{ACCOUNT_ID}/whitelabel/{WHITELABEL_DOMAIN}
-    > GET /v2/accounts/{ACCOUNT_ID}/whitelabel/{WHITELABEL_DOMAIN}/icon
-    > GET /v2/accounts/{ACCOUNT_ID}/whitelabel/{WHITELABEL_DOMAIN}/logo
-    > GET /v2/accounts/{ACCOUNT_ID}/whitelabel/{WHITELABEL_DOMAIN}/welcome
     > GET /v2/sup/{MODULE}/{FUNCTION}
     > GET /v2/sup/{MODULE}/{FUNCTION}/{ARGS}
     > DELETE /v2/auth/links
-    > GET /v2/about
-    > GET /v2/auth/links
-    > GET /v2/auth/tokeninfo
-    > GET /v2/templates
-    > POST /v2/auth/links
-    > PUT /v2/auth/authorize
-    > PUT /v2/auth/callback
-    > PUT /v2/ip_auth
-    > PUT /v2/shared_auth
-
+....
     349 / 526 ( 66% documented )
 
     Documented but not matching any allowed_method:
@@ -767,22 +624,7 @@ Searches for undocumented APIs and reports percentage of doc coverage.
     > PATCH /v2/accounts/{ACCOUNT_ID}/descendants/webhooks
     > DELETE /v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/access_lists
     > GET /v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/channels
-    > GET /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/cdrs
-    > GET /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/channels
-    > GET /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/devices
-    > GET /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/recordings
-    > GET /v1/accounts
-    > GET /v2/channels
-    > GET /v2/notifications
-    > GET /v2/phone_numbers
-    > GET /v2/resource_selectors/rules
-    > GET /v2/search
-    > GET /v2/search/multi
-    > GET /v2/tasks
-    > GET /v2/webhooks
-    > GET /v2/websockets
-    > POST /v2/resource_selectors/rules
-    > POST /v2/whitelabel/domains
+```
 
 ## state-of-edoc.escript
 
@@ -831,7 +673,7 @@ Searches for undocumented source files:
 
 ## `sync_mkdocs_pages.sh`
 
-A script to missing pages (MakrDown files) from `mkdocs.yml` to other YAML files. Flag those files which are deleted or rename.
+A script to missing pages (Markdown files) from `mkdocs.yml` to other YAML files. Flag those files which are deleted or rename.
 
 ## `sync_to_remote.bash`
 
@@ -861,7 +703,7 @@ Generates a [TAGS file](https://www.emacswiki.org/emacs/EmacsTags) based on all 
 Used to search the code looking for deprecated Erlang functions and types and replace them with the newer versions as appropriate
 
 
-## validate-js.sh
+## validate-js.py
 
 Processes JSON files:
 
@@ -869,12 +711,12 @@ Processes JSON files:
 -   Checks map functions in CouchDB views for 'Object.keys' usage
 
 
-## validate-schemas.sh
+## validate-schemas.py
 
 Validate JSON schema files:
 
 ```shell
-./scripts/validate-schemas.sh applications/crossbar/priv/couchdb/schemas/
+./scripts/validate-schemas.py applications/crossbar/priv/couchdb/schemas/
 Traceback (most recent call last):
   File "/usr/local/bin/jsonschema", line 11, in <module>
     sys.exit(main())
@@ -913,16 +755,16 @@ Bad schema: /home/pete/wefwefwef/kazoo.git/applications/crossbar/priv/couchdb/sc
 }
 
 Run again with:
-./scripts/validate-schemas.sh /home/pete/wefwefwef/kazoo.git/applications/crossbar/priv/couchdb/schemas/callflows.lookupcidname.json
+./scripts/validate-schemas.py /home/pete/wefwefwef/kazoo.git/applications/crossbar/priv/couchdb/schemas/callflows.lookupcidname.json
 ```
 
 
-## validate-swagger.sh
+## validate-swagger.py
 
 Validate Swagger file using online validator
 
 ```shell
-./scripts/validate-swagger.sh
+./scripts/validate-swagger.py
 ```
 
       % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
@@ -945,6 +787,10 @@ Part of the great rename, converts Whistle-related names to Kazoo-specific names
 ## `make-swag.sh`
 
 Generate API clients in multiple languages from the Swagger file.
+
+## `make-prerequisite.sh`
+
+Check make dependency and prerequisite such as git version.
 
 ## `next_version`
 

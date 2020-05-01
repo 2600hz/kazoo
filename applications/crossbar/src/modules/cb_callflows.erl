@@ -1,8 +1,13 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Callflow gen server for CRUD
 %%% @author Vladimir Darmin
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cb_callflows).
@@ -115,14 +120,14 @@ post(Context, _CallflowId) ->
     case cb_context:resp_status(Context1) of
         'success' ->
             'ok' = track_assignment('post', Context),
-            maybe_reconcile_numbers(Context1);
+            Context1;
         _Status -> Context1
     end.
 
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
 patch(Context, _CallflowId) ->
     'ok' = track_assignment('post', Context),
-    maybe_reconcile_numbers(crossbar_doc:save(Context)).
+    crossbar_doc:save(Context).
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
@@ -130,7 +135,7 @@ put(Context) ->
     case cb_context:resp_status(Context1) of
         'success' ->
             'ok' = track_assignment('put', Context),
-            maybe_reconcile_numbers(Context1);
+            Context1;
         _Status -> Context1
     end.
 
@@ -151,7 +156,7 @@ delete(Context, _CallflowId) ->
 %%------------------------------------------------------------------------------
 -spec load_callflow_summary(cb_context:context()) -> cb_context:context().
 load_callflow_summary(Context) ->
-    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
+    crossbar_view:load(Context, ?CB_LIST, [{'mapper', crossbar_view:get_value_fun()}]).
 
 %%------------------------------------------------------------------------------
 %% @doc Load a callflow document from the database
@@ -162,8 +167,8 @@ load_callflow(CallflowId, Context) ->
     Context1 = crossbar_doc:load(CallflowId, Context, ?TYPE_CHECK_OPTION(kzd_callflows:type())),
     case cb_context:resp_status(Context1) of
         'success' ->
-            Meta = get_metadata(kz_json:get_value(<<"flow">>, cb_context:doc(Context1))
-                               ,cb_context:account_db(Context1)
+            Meta = get_metadata(kzd_callflows:flow(cb_context:doc(Context1))
+                               ,cb_context:db_name(Context1)
                                ),
             cb_context:set_resp_data(Context1
                                     ,kz_json:set_value(<<"metadata">>, Meta, cb_context:resp_data(Context1))
@@ -171,13 +176,13 @@ load_callflow(CallflowId, Context) ->
         _Status -> Context1
     end.
 
--spec request_numbers(cb_context:context()) -> kz_term:ne_binaries() | kz_json:json_term().
+-spec request_numbers(cb_context:context()) -> kz_json:api_json_term().
 request_numbers(Context) ->
-    kz_json:get_ne_value(<<"numbers">>, cb_context:req_data(Context), []).
+    kz_json:get_value(<<"numbers">>, cb_context:req_data(Context)).
 
--spec request_patterns(cb_context:context()) -> kz_term:ne_binaries() | kz_json:json_term().
+-spec request_patterns(cb_context:context()) -> kz_json:api_json_term().
 request_patterns(Context) ->
-    kz_json:get_ne_value(<<"patterns">>, cb_context:req_data(Context), []).
+    kz_json:get_value(<<"patterns">>, cb_context:req_data(Context)).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -187,15 +192,16 @@ request_patterns(Context) ->
 validate_request(CallflowId, Context) ->
     case request_numbers(Context) of
         [] -> validate_patterns(CallflowId, Context);
-        OriginalNumbers
-          when is_list(OriginalNumbers) ->
+        'undefined' -> validate_patterns(CallflowId, Context);
+        OriginalNumbers when is_list(OriginalNumbers) ->
             validate_callflow_schema(CallflowId, normalize_numbers(Context, OriginalNumbers));
-        OriginalNumbers ->
-            Msg = kz_json:from_list(
-                    [{<<"message">>, <<"Value is not of type array">>}
-                    ,{<<"cause">>, OriginalNumbers}
-                    ]),
-            cb_context:add_validation_error(<<"numbers">>, <<"type">>, Msg, Context)
+        FailedValue ->
+            Error = kz_json:from_list(
+                      [{<<"message">>, <<"Value did not match type: array">>}
+                      ,{<<"target">>, <<"array">>}
+                      ,{<<"value">>, FailedValue}
+                      ]),
+            cb_context:add_validation_error(<<"numbers">>, <<"type">>, Error, Context)
     end.
 
 -spec normalize_numbers(cb_context:context(), kz_term:ne_binaries()) -> cb_context:context().
@@ -215,21 +221,25 @@ validate_patch(CallflowId, Context) ->
 -spec validate_patterns(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 validate_patterns(CallflowId, Context) ->
     case request_patterns(Context) of
-        [] ->
-            Msg = kz_json:from_list(
-                    [{<<"message">>, <<"Callflows must be assigned at least one number or pattern">>}
-                    ]),
-            cb_context:add_validation_error(<<"numbers">>, <<"required">>, Msg, Context);
-        Patterns
-          when is_list(Patterns) ->
+        'undefined' -> error_no_numbers_or_patterns(Context);
+        [] -> error_no_numbers_or_patterns(Context);
+        Patterns when is_list(Patterns) ->
             validate_callflow_schema(CallflowId, Context);
-        Patterns ->
-            Msg = kz_json:from_list(
-                    [{<<"message">>, <<"Value is not of type array">>}
-                    ,{<<"cause">>, Patterns}
-                    ]),
-            cb_context:add_validation_error(<<"patterns">>, <<"type">>, Msg, Context)
+        FailedValue ->
+            Error = kz_json:from_list(
+                      [{<<"message">>, <<"Value did not match type: array">>}
+                      ,{<<"target">>, <<"array">>}
+                      ,{<<"value">>, FailedValue}
+                      ]),
+            cb_context:add_validation_error(<<"patterns">>, <<"type">>, Error, Context)
     end.
+
+-spec error_no_numbers_or_patterns(cb_context:context()) -> cb_context:context().
+error_no_numbers_or_patterns(Context) ->
+    Msg = kz_json:from_list(
+            [{<<"message">>, <<"Callflows must be assigned at least one number or pattern">>}]
+           ),
+    cb_context:add_validation_error(<<"numbers">>, <<"required">>, Msg, Context).
 
 -spec validate_uniqueness(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 validate_uniqueness(CallflowId, Context) ->
@@ -246,7 +256,7 @@ validate_unique_numbers(Context, CallflowId) ->
 validate_unique_numbers(Context, _CallflowId, []) -> Context;
 validate_unique_numbers(Context, CallflowId, Numbers) ->
     Options = [{'keys', Numbers}],
-    case kz_datamgr:get_results(cb_context:account_db(Context), ?CB_LIST_BY_NUMBER, Options) of
+    case kz_datamgr:get_results(cb_context:db_name(Context), ?CB_LIST_BY_NUMBER, Options) of
         {'error', Error} ->
             lager:debug("failed to load callflows from account: ~p", [Error]),
             cb_context:add_system_error(Error, Context);
@@ -284,7 +294,7 @@ validate_unique_patterns(Context, CallflowId) ->
 validate_unique_patterns(Context, _CallflowId, []) -> Context;
 validate_unique_patterns(Context, CallflowId, Patterns) ->
     Options = [{'keys', Patterns}],
-    case kz_datamgr:get_results(cb_context:account_db(Context), ?CB_LIST_BY_PATTERN, Options) of
+    case kz_datamgr:get_results(cb_context:db_name(Context), ?CB_LIST_BY_PATTERN, Options) of
         {'error', Error} ->
             lager:debug("failed to load callflows from account: ~p", [Error]),
             cb_context:add_system_error(Error, Context);
@@ -320,7 +330,7 @@ validate_callflow_schema(CallflowId, Context) ->
                         C1 = validate_uniqueness(CallflowId, on_successful_validation(CallflowId, C)),
 
                         Doc = cb_context:doc(C1),
-                        Nums = kz_json:get_list_value(<<"numbers">>, Doc, []),
+                        Nums = kzd_callflows:numbers(Doc),
                         cb_modules_util:validate_number_ownership(Nums, C1)
                 end,
     cb_context:validate_request_data(<<"callflows">>, Context, OnSuccess).
@@ -334,42 +344,13 @@ on_successful_validation(CallflowId, Context) ->
     crossbar_doc:load_merge(CallflowId, Context, ?TYPE_CHECK_OPTION(kzd_callflows:type())).
 
 %%------------------------------------------------------------------------------
-%% @doc Normalizes the results of a view.
-%% @end
-%%------------------------------------------------------------------------------
--spec normalize_view_results(kz_json:object(), kz_json:objects()) ->
-                                    kz_json:objects().
-normalize_view_results(JObj, Acc) ->
-    [kz_json:get_value(<<"value">>, JObj)|Acc].
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec maybe_reconcile_numbers(cb_context:context()) -> cb_context:context().
-maybe_reconcile_numbers(Context) ->
-    case kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"default_reconcile_numbers">>, 'false') of
-        'false' -> Context;
-        'true' ->
-            CurrentJObj = cb_context:fetch(Context, 'db_doc', kz_json:new()),
-            Set1 = sets:from_list(kz_json:get_value(<<"numbers">>, CurrentJObj, [])),
-            Set2 = sets:from_list(kz_json:get_value(<<"numbers">>, cb_context:doc(Context), [])),
-            NewNumbers = sets:to_list(sets:subtract(Set2, Set1)),
-            Options = [{'assign_to', cb_context:account_id(Context)}
-                      ,{'dry_run', not cb_context:accepting_charges(Context)}
-                      ],
-            _ = knm_numbers:reconcile(NewNumbers, Options),
-            Context
-    end.
-
-%%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
 -spec track_assignment(atom(), cb_context:context()) -> 'ok' | 'error'.
 track_assignment('post', Context) ->
-    NewNums = kz_json:get_value(<<"numbers">>, cb_context:doc(Context), []),
-    OldNums = kz_json:get_value(<<"numbers">>, cb_context:fetch(Context, 'db_doc'), []),
+    NewNums = kzd_callflows:numbers(cb_context:doc(Context)),
+    OldNums = kzd_callflows:numbers(cb_context:fetch(Context, 'db_doc')),
     AccountId = cb_context:account_id(Context),
 
     Unassigned = [{Num, 'undefined'}
@@ -442,7 +423,7 @@ get_metadata('undefined', _Db) -> kz_json:new();
 get_metadata(Flow, Db) -> get_metadata(Flow, Db, kz_json:new()).
 
 -spec get_metadata(kz_json:object(), kz_term:ne_binary(), kz_json:object()) ->
-                          kz_json:object().
+          kz_json:object().
 get_metadata(Flow, Db, Metadata) ->
     UpdatedMetadata
         = lists:foldl(fun(ID, MetaAcc) -> create_metadata(Db, ID, MetaAcc) end
@@ -470,21 +451,23 @@ get_metadata(Flow, Db, Metadata) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec create_metadata(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
-                             kz_json:object().
+          kz_json:object().
 create_metadata(_, <<"_">>, Metadata) -> Metadata;
 create_metadata(_, Id, Metadata) when byte_size(Id) < 2 -> Metadata;
 create_metadata(Db, Id, Metadata) ->
-    case 'undefined' =:= kz_json:get_ne_binary_value(Id, Metadata)
-        andalso fetch_id_from_db(Db, Id)
-    of
-        'false' -> Metadata;
+    create_metadata(Db, Id, Metadata, kz_json:get_ne_binary_value(Id, Metadata)).
+
+create_metadata(Db, Id, Metadata, 'undefined') ->
+    case fetch_id_from_db(Db, Id) of
         {'ok', Doc} ->  kz_json:set_value(Id, create_metadata(Doc), Metadata);
         {'error', _E} -> Metadata
-    end.
+    end;
+create_metadata(_Db, _Id, Metadata, _Value) ->
+    Metadata.
 
 -spec fetch_id_from_db(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                              {'ok', kz_json:object()} |
-                              kz_datamgr:data_error().
+          {'ok', kz_json:object()} |
+          kz_datamgr:data_error().
 -ifdef(TEST).
 fetch_id_from_db(_Db, <<"{USER_ID}">>) ->
     {'ok', ?TEST_USER};
@@ -508,7 +491,7 @@ create_metadata(Doc) ->
                ).
 
 -spec metadata_builder(kz_json:key(), kz_json:object(), kz_json:object()) ->
-                              kz_json:object().
+          kz_json:object().
 metadata_builder(<<"name">> = Key, Doc, Metadata) ->
     case kz_doc:type(Doc) of
         <<"user">> ->
@@ -520,7 +503,7 @@ metadata_builder(Key, Doc, Metadata) ->
     maybe_copy_value(Key, Doc, Metadata).
 
 -spec maybe_copy_value(kz_json:key(), kz_json:object(), kz_json:object()) ->
-                              kz_json:object().
+          kz_json:object().
 maybe_copy_value(Key, Doc, Metadata) ->
     case kz_json:get_value(Key, Doc) of
         'undefined' -> Metadata;

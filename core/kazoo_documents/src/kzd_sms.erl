@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kzd_sms).
@@ -8,9 +12,9 @@
 -export([new/0]).
 -export([body/1, body/2, set_body/2]).
 -export([from/1, from/2, set_from/2]).
--export([scheduled/1, scheduled/2, set_scheduled/2]).
 -export([to/1, to/2, set_to/2]).
 
+-export([type/0]).
 
 -include("kz_documents.hrl").
 
@@ -18,6 +22,7 @@
 -export_type([doc/0]).
 
 -define(SCHEMA, <<"sms">>).
+-define(TYPE, <<"sms">>).
 
 -spec new() -> doc().
 new() ->
@@ -47,18 +52,6 @@ from(Doc, Default) ->
 set_from(Doc, From) ->
     kz_json:set_value([<<"from">>], From, Doc).
 
--spec scheduled(doc()) -> kz_term:api_integer().
-scheduled(Doc) ->
-    scheduled(Doc, 'undefined').
-
--spec scheduled(doc(), Default) -> integer() | Default.
-scheduled(Doc, Default) ->
-    kz_json:get_integer_value([<<"scheduled">>], Doc, Default).
-
--spec set_scheduled(doc(), integer()) -> doc().
-set_scheduled(Doc, Scheduled) ->
-    kz_json:set_value([<<"scheduled">>], Scheduled, Doc).
-
 -spec to(doc()) -> kz_term:api_binary().
 to(Doc) ->
     to(Doc, 'undefined').
@@ -70,3 +63,6 @@ to(Doc, Default) ->
 -spec set_to(doc(), binary()) -> doc().
 set_to(Doc, To) ->
     kz_json:set_value([<<"to">>], To, Doc).
+
+-spec type() -> kz_term:ne_binary().
+type() -> ?TYPE.

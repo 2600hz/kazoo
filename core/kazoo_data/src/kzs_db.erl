@@ -1,6 +1,11 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc data adapter behaviour
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kzs_db).
@@ -20,9 +25,15 @@
         ,db_archive/3
         ,db_import/3
         ,db_list/2
+        ,system_dbs/0
         ]).
 
 -include("kz_data.hrl").
+
+-export_type([db_create_options/0]).
+
+-spec system_dbs() -> list().
+system_dbs() -> ?KZ_SYSTEM_DBS.
 
 %%% DB-related functions ---------------------------------------------
 -spec db_compact(map(), kz_term:ne_binary()) -> boolean().
@@ -55,7 +66,7 @@ db_create_others(#{}=Map, DbName, Options) ->
 do_db_create_others(Map, DbName, Options) ->
     Others = maps:get('others', Map, []),
     lists:all(fun({_Tag, M1}) ->
-                      do_db_create(#{server => M1}, DbName, Options) =/= 'false'
+                      do_db_create(M1, DbName, Options) =/= 'false'
               end, Others).
 
 -spec do_db_create(map(), kz_term:ne_binary(), db_create_options()) -> boolean() | 'exists'.
@@ -83,7 +94,7 @@ db_delete_others(#{}=Map, DbName, Options) ->
 do_db_delete_others(Map, DbName) ->
     Others = maps:get('others', Map, []),
     lists:all(fun({_Tag, M1}) ->
-                      do_db_delete(#{server => M1}, DbName)
+                      do_db_delete(M1, DbName)
               end, Others).
 
 -spec do_db_delete(map(), kz_term:ne_binary()) -> boolean().
@@ -91,17 +102,17 @@ do_db_delete(#{server := {App, Conn}}, DbName) ->
     App:db_delete(Conn, DbName).
 
 -spec db_replicate(map(), kz_json:object() | kz_term:proplist()) ->
-                          {'ok', kz_json:object()} |
-                          data_error().
+          {'ok', kz_json:object()} |
+          data_error().
 db_replicate(#{server := {App, Conn}}, Prop) ->
-    App:db_replicate(Conn,Prop).
+    App:db_replicate(Conn, Prop).
 
 -spec db_view_cleanup(map(), kz_term:ne_binary()) -> boolean().
 db_view_cleanup(#{}=Map, DbName) ->
     Others = maps:get('others', Map, []),
     do_db_view_cleanup(Map, DbName)
         andalso lists:all(fun({_Tag, M1}) ->
-                                  do_db_view_cleanup(#{server => M1}, DbName)
+                                  do_db_view_cleanup(M1, DbName)
                           end, Others).
 
 -spec do_db_view_cleanup(map(), kz_term:ne_binary()) -> boolean().
@@ -109,7 +120,18 @@ do_db_view_cleanup(#{server := {App, Conn}}, DbName) ->
     App:db_view_cleanup(Conn, DbName).
 
 -spec db_info(map()) -> {'ok', kz_term:ne_binaries()} |data_error().
-db_info(#{server := {App, Conn}}) -> App:db_info(Conn).
+db_info(#{server := {App, Conn}}=Map) ->
+    db_info_all(App:db_info(Conn), maps:get('others', Map, [])).
+
+-spec db_info_all({atom(), kz_term:ne_binaries()}, [{atom(), map()}]) -> {'ok', kz_term:ne_binaries()} |data_error().
+db_info_all(DBs, []) -> DBs;
+db_info_all({'ok', DBs}, Others) ->
+    lists:foldl(fun db_info_all_fold/2, DBs, Others).
+
+-spec db_info_all_fold({atom(), map()}, kz_term:ne_binaries()) -> {'ok', kz_term:ne_binaries()} |data_error().
+db_info_all_fold({_Tag, Server}, DBs) ->
+    {_, DBList} = db_info(Server),
+    {'ok', lists:usort(DBs ++ DBList)}.
 
 -spec db_info(map(), kz_term:ne_binary()) -> {'ok', kz_json:object()} | data_error().
 db_info(#{server := {App, Conn}}, DbName) -> App:db_info(Conn, DbName).
@@ -132,6 +154,19 @@ maybe_cache_db_exists('true', #{server := {App, Conn}}, DbName) ->
     kz_cache:store_local(?KAZOO_DATA_PLAN_CACHE, {'database', {App, Conn}, DbName}, 'true', Props),
     'true'.
 
+%%------------------------------------------------------------------------------
+%% @doc Makes sure databases exist across all configured connections
+%%
+%% Since KAZOO can store different doc types using different connections, the database
+%% itself must exist on all connections; it is the doc being saved that will determine
+%% which connection will be used to save the doc.
+%%
+%% For example, you may wish KAZOO to store CDRs in Couch cluster A
+%% You may also wish to store call recordings in Couch cluster B
+%% The MODB for those docs must exist on both connections, which is what this function
+%% is ensuring.
+%% @end
+%%------------------------------------------------------------------------------
 -spec db_exists_all(map(), kz_term:ne_binary()) -> boolean().
 db_exists_all(Map, DbName) ->
     case kz_cache:fetch_local(?KAZOO_DATA_PLAN_CACHE, {'database', DbName}) of
@@ -143,7 +178,7 @@ db_exists_all(Map, DbName) ->
 -spec db_exists_others(kz_term:ne_binary(), list()) -> boolean().
 db_exists_others(_, []) -> 'true';
 db_exists_others(DbName, Others) ->
-    lists:all(fun({_Tag, M}) -> db_exists(#{server => M}, DbName) end, Others).
+    lists:all(fun({_Tag, M}) -> db_exists(M, DbName) end, Others).
 
 -spec db_archive(map(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok' | data_error().
 db_archive(#{server := {App, Conn}}=Server, DbName, Filename) ->
@@ -156,7 +191,10 @@ db_archive(#{server := {App, Conn}}=Server, DbName, Filename) ->
 db_import(#{server := {App, Conn}}=Server, DbName, Filename) ->
     case db_exists(Server, DbName) of
         'true' -> App:db_import(Conn, DbName, Filename);
-        'false' -> 'ok'
+        'false' ->
+            io:format("db ~s doesn't exist, creating~n", [DbName]),
+            'true' = db_create(Server, DbName),
+            App:db_import(Conn, DbName, Filename)
     end.
 
 -spec db_list(map(), view_options()) -> {'ok', kz_term:ne_binaries()} | data_error().
@@ -170,19 +208,28 @@ db_list_all({'ok', DBs}, Options, Others) ->
 
 db_list_all_fold({_Tag, Server}, {Options, DBs}) ->
     {'ok', DBList} = db_list(Server, Options),
-    {Options, lists:usort(DBs ++ DBList)}.
+    {Options, {'ok', lists:usort(DBs ++ DBList)}}.
 
--spec db_view_update(map(), kz_term:ne_binary(), views_listing(), boolean()) -> boolean().
+-spec db_view_update(map(), kz_term:ne_binary(), views_listing(), boolean()) ->
+          boolean() |
+          {'error', 'db_not_found'}.
 db_view_update(#{}=Map, DbName, Views, Remove) ->
     Others = maps:get('others', Map, []),
-    do_db_view_update(Map, DbName, Views, Remove)
-        andalso lists:all(fun({_Tag, M1}) ->
-                                  do_db_view_update(#{server => M1}, DbName, Views, Remove)
-                          end
-                         ,Others
-                         ).
+    case do_db_view_update(Map, DbName, Views, Remove) of
+        'true' ->
+            lists:all(fun({_Tag, M1}) ->
+                              do_db_view_update(M1, DbName, Views, Remove) =:= 'true'
+                      end
+                     ,Others
+                     );
+        FalseError ->
+            FalseError
+    end.
 
--spec do_db_view_update(map(), kz_term:ne_binary(), views_listing(), boolean()) -> boolean().
+
+-spec do_db_view_update(map(), kz_term:ne_binary(), views_listing(), boolean()) ->
+          boolean() |
+          {'error', 'db_not_found'}.
 do_db_view_update(#{server := {App, Conn}}=Server, Db, NewViews, Remove) ->
     case kzs_view:all_design_docs(Server, Db, ['include_docs']) of
         {'ok', JObjs} ->
@@ -195,12 +242,12 @@ do_db_view_update(#{server := {App, Conn}}=Server, Db, NewViews, Remove) ->
                 'true' ->
                     add_update_remove_views(Server, Db, [], NewViews, Remove);
                 'false' ->
-                    lager:error("error fetching current views for db ~s", [Db]),
-                    'true'
+                    lager:error("error fetching current views for db ~s: db_not_found", [Db]),
+                    {'error', 'db_not_found'}
             end
     end.
 
--spec add_update_remove_views(map(), kz_term:ne_binary(), views_listing(), views_listing(), boolean()) -> 'true'.
+-spec add_update_remove_views(map(), kz_term:ne_binary(), views_listing(), views_listing(), boolean()) -> boolean().
 add_update_remove_views(Server, Db, CurrentViews, NewViews, ShouldRemoveDangling) ->
     Current = sets:from_list([Id || {Id, _} <- CurrentViews]),
     New = sets:from_list([Id || {Id, _} <- NewViews]),

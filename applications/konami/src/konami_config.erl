@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Handles Konami code configs
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(konami_config).
@@ -125,7 +130,7 @@ konami_doc(Account) ->
         {'ok', JObj} -> kz_json:get_value(<<"metaflows">>, JObj);
         {'error', 'not_found'} -> 'undefined';
         {'error', _E} ->
-            AccountId = kz_util:format_account_id(Account, 'raw'),
+            AccountId = kzs_util:format_account_id(Account),
             lager:debug("failed to open account(~s)'s konami doc: ~p", [AccountId, _E]),
             'undefined'
     end.

@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_services_limits).
@@ -14,7 +18,7 @@
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec fetch(kz_services:services() | kz_term:ne_binary()) -> kz_json:object().
+-spec fetch(kz_services:services() | kz_term:ne_binary()) -> kzd_limits:doc().
 fetch(?NE_BINARY = AccountId) ->
     fetch(kz_services:fetch(AccountId));
 fetch(Services) ->
@@ -43,7 +47,7 @@ limits_foldl(_BookkeeperHash, [], Acc) ->
     Acc;
 limits_foldl(_BookkeeperHash, PlansList, #{cache_origins := CacheOrigins}=Acc) ->
     Origins = [{'db'
-               ,kz_util:format_account_db(kz_services_plan:vendor_id(Plan))
+               ,kzs_util:format_account_db(kz_services_plan:vendor_id(Plan))
                ,kz_services_plan:id(Plan)
                }
                || Plan <- PlansList
@@ -63,7 +67,7 @@ limits_foldl(_BookkeeperHash, PlansList, #{cache_origins := CacheOrigins}=Acc) -
 %%------------------------------------------------------------------------------
 -spec get_account_limits(kz_services:services()) -> {origin_tuples(), kz_json:object()}.
 get_account_limits(Services) ->
-    AccountDb = kz_util:format_account_db(kz_services:account_id(Services)),
+    AccountDb = kzs_util:format_account_db(kz_services:account_id(Services)),
     case kz_datamgr:open_doc(AccountDb, <<"limits">>) of
         {'ok', JObj} ->
             {[{'db', AccountDb, <<"limits">>}], JObj};
@@ -78,17 +82,7 @@ get_account_limits(Services) ->
 
 -spec create_account_limits_jobj(kz_term:ne_binary()) -> {origin_tuples(), kz_json:object()}.
 create_account_limits_jobj(AccountDb) ->
-    TStamp = kz_time:now_s(),
-    JObj = kz_json:from_list(
-             [{<<"_id">>, <<"limits">>}
-             ,{<<"pvt_account_db">>, AccountDb}
-             ,{<<"pvt_account_id">>, kz_util:format_account_id(AccountDb)}
-             ,{<<"pvt_type">>, <<"limits">>}
-             ,{<<"pvt_created">>, TStamp}
-             ,{<<"pvt_modified">>, TStamp}
-             ,{<<"pvt_vsn">>, 1}
-             ]),
-    case kz_datamgr:save_doc(AccountDb, JObj) of
+    case kz_datamgr:save_doc(AccountDb, kzd_limits:new(AccountDb)) of
         {'ok', SavedJObj} ->
             lager:debug("created initial limits document in db ~s", [AccountDb]),
             {[{'db', AccountDb, <<"limits">>}], SavedJObj};

@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Accessors for `sms' document.
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -8,7 +8,6 @@
 -export([new/0]).
 -export([body/1, body/2, set_body/2]).
 -export([from/1, from/2, set_from/2]).
--export([scheduled/1, scheduled/2, set_scheduled/2]).
 -export([to/1, to/2, set_to/2]).
 
 
@@ -46,18 +45,6 @@ from(Doc, Default) ->
 -spec set_from(doc(), binary()) -> doc().
 set_from(Doc, From) ->
     kz_json:set_value([<<"from">>], From, Doc).
-
--spec scheduled(doc()) -> kz_term:api_integer().
-scheduled(Doc) ->
-    scheduled(Doc, 'undefined').
-
--spec scheduled(doc(), Default) -> integer() | Default.
-scheduled(Doc, Default) ->
-    kz_json:get_integer_value([<<"scheduled">>], Doc, Default).
-
--spec set_scheduled(doc(), integer()) -> doc().
-set_scheduled(Doc, Scheduled) ->
-    kz_json:set_value([<<"scheduled">>], Scheduled, Doc).
 
 -spec to(doc()) -> kz_term:api_binary().
 to(Doc) ->

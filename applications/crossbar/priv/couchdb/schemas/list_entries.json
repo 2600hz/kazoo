@@ -3,6 +3,14 @@
     "_id": "list_entries",
     "description": "Schema for a match list entries",
     "properties": {
+        "capture_group_key": {
+            "description": "The number which is used to select this entry, length should be same as `capture_group_length`",
+            "type": "string"
+        },
+        "capture_group_length": {
+            "description": "Length of the numbers in the list entries for which it used to select desire Caller ID",
+            "type": "integer"
+        },
         "displayname": {
             "description": "Display name",
             "maxLength": 128,

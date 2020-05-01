@@ -20,6 +20,7 @@ Key | Description | Type | Default | Required | Support Level
 `ringtones.external` | Ring tone for calls from external sources | `string()` |   | `false` |  
 `ringtones.internal` | Ring tone for calls from external sources | `string()` |   | `false` |  
 `ringtones` |   | `object()` |   | `false` |  
+`skip_module` | When set to true this callflow action is skipped, advancing to the wildcard branch (if any) | `boolean()` |   | `false` |  
 `strategy` | How to ring the endpoints | `string('single' | 'simultaneous')` | `simultaneous` | `false` |  
 `timeout` | How long to attempt the group | `integer()` | `20` | `false` |  
 

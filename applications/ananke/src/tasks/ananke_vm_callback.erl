@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2015-2019, 2600Hz
+%%% @copyright (C) 2015-2020, 2600Hz
 %%% @doc
 %%% @author SIPLABS, LLC (Ilya Ashchepkov)
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(ananke_vm_callback).
@@ -35,7 +40,7 @@ check(AccountId, VMBoxId) ->
         'false' -> lager:info("no unread messages");
         'true' ->
             lager:info("found unread messages"),
-            AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+            AccountDb = kzs_util:format_account_db(AccountId),
             handle_req(kz_json:from_list([{<<"Account-ID">>, AccountId}
                                          ,{<<"Account-DB">>, AccountDb}
                                          ,{<<"Voicemail-Box">>, VMBoxId}
@@ -53,7 +58,7 @@ has_unread(AccountId, VMBoxId) ->
 handle_req(JObj, Props) ->
     'true' = props:get_value(<<"skip_verification">>, Props, 'false')
         orelse kapi_notifications:voicemail_saved_v(JObj),
-    _ = kz_util:put_callid(JObj),
+    _ = kz_log:put_callid(JObj),
     AccountId = kz_json:get_value(<<"Account-ID">>, JObj),
     AccountDb = kz_json:get_value(<<"Account-DB">>, JObj),
     VMBoxId = kz_json:get_value(<<"Voicemail-Box">>, JObj),

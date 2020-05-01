@@ -28,7 +28,7 @@ sup module_maintenance function [arg1, arg2,...]
 The Crossbar URL is similarly constructed:
 
 ```
-/v1/sup/module/[function[/arg1/arg2/...]]
+/v2/sup/module/[function[/arg1/arg2/...]]
 ```
 
 The important differences are:
@@ -40,7 +40,7 @@ The important differences are:
 
 | Command line | Crossbar |
 |--------------------------------------------|-----------------------------------------|
-| `sup kazoo_maintenance syslog_level debug` | `curl /v1/sup/kazoo/syslog_level/debug` |
+| `sup kazoo_maintenance syslog_level debug` | `curl /v2/sup/kazoo/syslog_level/debug` |
 
 ## Execute Maintenance Status Command
 

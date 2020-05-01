@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc
 %%% @author Karl Anderson
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(braintree_request).
@@ -75,7 +80,7 @@ do_request(Method, Path, Body) ->
 
 -spec request(http_verb(), nonempty_string(), binary()) -> bt_xml().
 request(Method, Path, Body) ->
-    StartTime = os:timestamp(),
+    StartTime = kz_time:start_time(),
 
     lager:debug("making ~s request to braintree ~s", [Method, Path]),
     Url = build_url(Path),

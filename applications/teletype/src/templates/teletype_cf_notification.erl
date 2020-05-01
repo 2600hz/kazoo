@@ -1,8 +1,13 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2014-2019, 2600Hz
+%%% @copyright (C) 2014-2020, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
 %%% @author Sergey Safarov <s.safarov@gmail.com>, Sponsored by Audian
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(teletype_cf_notification).
@@ -16,7 +21,7 @@
 
 -spec init() -> 'ok'.
 init() ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     teletype_bindings:bind(<<"cf_notification">>, ?MODULE, 'handle_req').
 
 -spec handle_req(kz_json:object()) -> template_response().

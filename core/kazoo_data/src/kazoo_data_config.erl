@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kazoo_data_config).
@@ -76,7 +80,7 @@ get_is_true(Key, Default) ->
     end.
 
 -spec get(kz_term:ne_binary()) -> 'undefined' |
-                                  {'ok', any()}.
+          {'ok', any()}.
 get(<<_/binary>>=Key) ->
     application:get_env(?APP, kz_term:to_atom(Key, 'true')).
 

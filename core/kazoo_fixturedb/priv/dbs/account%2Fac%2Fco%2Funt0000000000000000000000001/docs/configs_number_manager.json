@@ -1,0 +1,13 @@
+{
+    "_id": "configs_number_manager",
+    "_rev": "1-936ed912df1e21f7d82a37e678c05f8e",
+    "cnam_provider": "knm_telnyx_cnam",
+    "e911_provider": "knm_telnyx_e911",
+    "pvt_account_db": "account%2Fac%2Fco%2Funt0000000000000000000000001",
+    "pvt_account_id": "account0000000000000000000000001",
+    "pvt_created": 63731917618,
+    "pvt_document_hash": "fc6e1355ba55323e3b98242ade45c731",
+    "pvt_modified": 63731917618,
+    "pvt_node": "fixturedb@testing.com",
+    "pvt_type": "account_config"
+}

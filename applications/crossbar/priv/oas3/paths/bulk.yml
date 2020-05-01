@@ -1,0 +1,35 @@
+paths:
+  /accounts/{ACCOUNT_ID}/bulk:
+    delete:
+      operationId: DeleteAccountsAccountIdBulk
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of bulk
+      tags:
+        - bulk
+    get:
+      operationId: GetAccountsAccountIdBulk
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get all bulk
+      tags:
+        - bulk
+    post:
+      operationId: PostAccountsAccountIdBulk
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of bulk
+      tags:
+        - bulk

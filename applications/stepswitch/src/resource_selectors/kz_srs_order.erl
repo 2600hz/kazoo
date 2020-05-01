@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_srs_order).
@@ -15,7 +19,7 @@
 -define(DEFAULT_ASC_WEIGHT, 9999).
 
 -spec handle_req(stepswitch_resources:resources(), kz_term:ne_binary(), kapi_offnet_resource:req(), kz_term:ne_binary(), kz_json:object()) ->
-                        stepswitch_resources:resources().
+          stepswitch_resources:resources().
 handle_req([], _Number, _OffnetJObj, _DB, _Params) ->
     lager:warning("empty resource list", []),
     [];
@@ -31,7 +35,7 @@ handle_req(Resources, Number, OffnetJObj, DB, Params) ->
     order_by(Resources, Values, SortOrder).
 
 -spec order_by(stepswitch_resources:resources(), kz_json:object(), kz_term:ne_binary()) ->
-                      stepswitch_resources:resources().
+          stepswitch_resources:resources().
 order_by(Resources, Values, SortOrder) ->
     lists:sort(fun(R1, R2) ->
                        Id1 = stepswitch_resources:get_resrc_id(R1),

@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kzd_service_plan).
@@ -36,6 +40,12 @@
 -export([ratedeck_name/1
         ,ratedeck_name/2
         ,set_ratedeck_name/2
+        ]).
+-export([asr/1
+        ,asr/2
+        ]).
+-export([im/1
+        ,im/2
         ]).
 -export([applications/1
         ,applications/2
@@ -278,6 +288,30 @@ applications(JObj, Default) ->
 -spec set_applications(doc(), kz_json:object()) -> doc().
 set_applications(JObj, Applications) ->
     kz_json:set_value(?APPLICATIONS, Applications, JObj).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec asr(doc()) -> kz_json:object().
+asr(JObj) ->
+    asr(JObj, kz_json:new()).
+
+-spec asr(doc(), Default) -> Default | kz_json:object().
+asr(JObj, Default) ->
+    kz_json:get_ne_json_value(<<"asr">>, JObj, Default).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec im(doc()) -> kz_json:object().
+im(JObj) ->
+    im(JObj, kz_json:new()).
+
+-spec im(doc(), Default) -> Default | kz_json:object().
+im(JObj, Default) ->
+    kz_json:get_ne_json_value(<<"im">>, JObj, Default).
 
 %%------------------------------------------------------------------------------
 %% @doc

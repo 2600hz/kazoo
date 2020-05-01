@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(j5_allotments).
@@ -90,12 +94,12 @@ get_allotment_seconds(BillingSeconds, Allotment) ->
     end.
 
 -spec reconcile_allotment(non_neg_integer(), kz_json:object(), j5_request:request(), j5_limits:limits()) ->
-                                 'ok'.
+          'ok'.
 reconcile_allotment(0, _, _, _) -> 'ok';
 reconcile_allotment(Seconds, Allotment, Request, Limits) ->
     CallId = j5_request:call_id(Request),
     AccountId = j5_limits:account_id(Limits),
-    LedgerDb = kz_util:format_account_mod_id(AccountId),
+    LedgerDb = kzs_util:format_account_mod_id(AccountId),
     Timestamp = kz_time:now_s(),
     Id = <<CallId/binary, "-allotment-consumption">>,
     lager:debug("adding allotment debit ~s to ledger ~s for ~wsec"
@@ -158,8 +162,8 @@ find_allotment_by_classification(Classification, Limits) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec allotment_consumed_so_far(kz_json:object(), j5_limits:limits()) ->
-                                       integer() |
-                                       {'error', any()}.
+          integer() |
+          {'error', any()}.
 allotment_consumed_so_far(Allotment, Limits) ->
     Classification = kz_json:get_value(<<"classification">>, Allotment),
     Cycle = kz_json:get_ne_value(<<"cycle">>, Allotment, <<"monthly">>),
@@ -173,12 +177,12 @@ allotment_consumed_so_far(Allotment, Limits) ->
     end.
 
 -spec allotment_consumed_so_far(non_neg_integer(), non_neg_integer(), kz_term:ne_binary(), j5_limits:limits(), 0..3) ->
-                                       integer() |
-                                       {'error', any()}.
+          integer() |
+          {'error', any()}.
 allotment_consumed_so_far(_, _, _, _, Attempts) when Attempts > 2 -> 0;
 allotment_consumed_so_far(CycleStart, CycleEnd, Classification, Limits, Attempts) ->
     AccountId = j5_limits:account_id(Limits),
-    LedgerDb = kz_util:format_account_mod_id(AccountId),
+    LedgerDb = kzs_util:format_account_mod_id(AccountId),
     ViewOptions = [{'startkey', [Classification, CycleStart]}
                   ,{'endkey', [Classification, CycleEnd]}
                   ,{'reduce', 'false'}
@@ -186,7 +190,7 @@ allotment_consumed_so_far(CycleStart, CycleEnd, Classification, Limits, Attempts
     case kz_datamgr:get_results(LedgerDb, <<"allotments/consumed">>, ViewOptions) of
         {'ok', JObjs} -> sum_allotment_consumed_so_far(JObjs, CycleStart);
         {'error', 'not_found'} ->
-            kazoo_modb:refresh_views(LedgerDb),
+            _ = kazoo_modb:refresh_views(LedgerDb),
             allotment_consumed_so_far(CycleStart, CycleEnd, Classification, Limits, Attempts + 1);
         {'error', _R}=Error ->
             lager:debug("unable to get consumed quantity for ~s allotment from ~s: ~p"

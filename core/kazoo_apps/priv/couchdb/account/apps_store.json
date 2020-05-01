@@ -11,7 +11,7 @@
     "views": {
         "crossbar_listing": {
             "map": [
-                "function (doc) {",
+                "function(doc) {",
                 "  if (doc.pvt_type !== 'app' || doc.pvt_deleted) return;",
                 "  emit(doc.name, {",
                 "    id: doc._id,",

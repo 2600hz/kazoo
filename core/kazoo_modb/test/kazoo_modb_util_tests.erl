@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2018, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kazoo_modb_util_tests).
@@ -40,7 +44,7 @@ split_account_mod_test() ->
 
 get_year_month_sequence_test() ->
     AccountId = <<"a05ced59126846892856c1fecbc3d5d9">>,
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kzs_util:format_account_db(AccountId),
     ?assertEqual( [ <<AccountDb/binary, "-201311">>
                   , <<AccountDb/binary, "-201312">>
                   , <<AccountDb/binary, "-201401">>

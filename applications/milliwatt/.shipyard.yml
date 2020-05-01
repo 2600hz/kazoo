@@ -1,0 +1,21 @@
+---
+name: kazoo-application-milliwatt
+base_branch: origin/master
+metapackage:
+  - name: meta-kazoo-applications
+    type: required
+    branch: master
+    package: kazoo-application-milliwatt
+base_core: kazoo
+template: kazoo-application.spec.tmpl
+package:
+  centos7:
+    name: kazoo-application-milliwatt
+    summary: Kazoo core application
+    description: |
+      Provides some basic call testing - echo and tone tests
+    app_name: milliwatt
+    license: MPL 2.0
+    group: Productivity/Telephony
+    url: https://2600hz.org/
+    vendor: 2600Hz

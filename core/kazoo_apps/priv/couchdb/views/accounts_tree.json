@@ -1,0 +1,23 @@
+{
+    "_id": "_design/accounts_tree",
+    "kazoo": {
+        "view_map": [
+            {
+                "database": "accounts"
+            }
+        ]
+    },
+    "language": "javascript",
+    "views": {
+        "list_by_tree_length": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'account' || doc.pvt_deleted) return;",
+                "  var tree = doc.pvt_tree.slice(0);",
+                "  emit(tree.length, tree);",
+                "}"
+            ],
+            "reduce": "_count"
+        }
+    }
+}

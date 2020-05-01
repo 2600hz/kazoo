@@ -3,6 +3,11 @@
     "_id": "system_config.pivot",
     "description": "Schema for pivot system_config",
     "properties": {
+        "request_timeout_ms": {
+            "default": 5000,
+            "description": "pivot request_timeout_ms",
+            "type": "integer"
+        },
         "tts_texts_size": {
             "default": 4000,
             "description": "pivot tts texts size",

@@ -1,0 +1,15 @@
+{
+    "_id": "configs_number_manager",
+    "_rev": "1-a3e9b31cc0b4f36d2bef7bd055dcfc36",
+    "carrier_modules": [
+        "knm_local",
+        "knm_bandwidth2"
+    ],
+    "pvt_account_db": "account%2Fac%2Fco%2Funt0000000000000000000000003",
+    "pvt_account_id": "account0000000000000000000000003",
+    "pvt_created": 63731917618,
+    "pvt_document_hash": "fc6e1355ba55323e3b98242ade45c731",
+    "pvt_modified": 63731917618,
+    "pvt_node": "fixturedb@testing.com",
+    "pvt_type": "account_config"
+}

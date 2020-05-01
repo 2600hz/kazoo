@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
 %%% @author Peter Defebvre
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cb_apps_maintenance).
@@ -37,10 +42,10 @@ migrate(Account) when is_binary(Account) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec save(kz_term:ne_binary(), kzd_apps_store:doc()) ->
-                  {'ok', kzd_accounts:doc()} |
-                  kz_datamgr:data_error().
+          {'ok', kzd_accounts:doc()} |
+          kz_datamgr:data_error().
 save(Account, AppsStoreDoc) ->
-    AccountDb = kz_util:format_account_id(Account, 'encoded'),
+    AccountDb = kzs_util:format_account_db(Account),
     case kz_datamgr:save_doc(AccountDb, AppsStoreDoc) of
         {'error', _R}=Error -> Error;
         {'ok', _SavedAppsStoreDoc}=Ok ->
@@ -51,7 +56,7 @@ save(Account, AppsStoreDoc) ->
 
 -spec save_account(kz_term:ne_binary()) -> 'ok'.
 save_account(Account) ->
-    case kzd_accounts:update(Account, [{<<"apps">>, 'null'}]) of
+    case kzd_accounts:update(Account, [{[<<"apps">>], 'null'}]) of
         {'error', _R} ->
             lager:error("failed to save ~s : ~p", [Account, _R]);
         {'ok', _AccountDoc} -> 'ok'

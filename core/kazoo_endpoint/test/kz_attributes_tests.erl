@@ -1,12 +1,16 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2014-2018, 2600Hz
+%%% @copyright (C) 2014-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_attributes_tests).
 
 -include_lib("eunit/include/eunit.hrl").
--include_lib("kazoo_stdlib/include/kz_types.hrl").
+-include_lib("kazoo_stdlib/include/kz_log.hrl").
 -include_lib("kazoo_fixturedb/include/kz_fixturedb.hrl").
 
 -define(NEW_CF_FLAGS, [fun(C) -> kapps_call:set_account_id(?FIXTURE_RESELLER_ACCOUNT_ID, C) end
@@ -23,35 +27,23 @@
                       ,fun(C) -> kapps_call:set_authorizing_id(<<"trunkstore0000000000000000000002">>, C) end
                       ]).
 
+-define(DISA_CID_CALL, [fun(C) -> kapps_call:set_account_id(?FIXTURE_PARENT_ACCOUNT_ID, C) end
+                       ,fun(C) -> kapps_call:set_caller_id_name(<<"disa">>, C) end
+                       ,fun(C) -> kapps_call:set_caller_id_number(<<"+12225552600">>, C) end
+                       ]).
+
 kz_attributes_test_() ->
-    {setup
-    ,fun setup_db/0
-    ,fun terminate_db/1
+    {'setup'
+    ,fun kzd_test_fixtures:setup/0
+    ,fun kzd_test_fixtures:cleanup/1
     ,fun(_ReturnOfSetup) ->
              [test_get_flags_callflow()
              ,test_get_flags_trunkstore()
              ,test_process_dynamic_flags()
+             ,test_account_cid()
              ]
      end
     }.
-
-setup_db() ->
-    ?LOG_DEBUG(":: Starting Kazoo FixtureDB"),
-    {ok, _} = application:ensure_all_started(kazoo_config),
-    kazoo_fixturedb:start().
-
-terminate_db(Pid) ->
-    _DataLink = erlang:exit(Pid, normal),
-    Ref = monitor(process, Pid),
-    receive
-        {'DOWN', Ref, process, Pid, _Reason} ->
-            _KConfig = application:stop(kazoo_config),
-            ?LOG_DEBUG(":: Stopped Kazoo FixtureDB, data_link: ~p kazoo_config: ~p", [_DataLink, _KConfig])
-    after 1000 ->
-            _KConfig = application:stop(kazoo_config),
-            ?LOG_DEBUG(":: Stopped Kazoo FixtureDB, data_link: timeout kazoo_config: ~p", [_KConfig])
-    end.
-
 
 test_get_flags_callflow() ->
     Call = kapps_call_tests:create_callflow_call(),
@@ -113,5 +105,18 @@ test_process_dynamic_flags() ->
      }
     ,{"verify that dynamic flags are added to a provided list of static flags"
      ,?_assertEqual([<<"local">>, <<"static">>], kz_attributes:process_dynamic_flags([<<"zone">>], [<<"static">>], Call))
+     }
+    ].
+
+test_account_cid() ->
+    Call = kapps_call_tests:create_callflow_call(),
+    DISACall = kapps_call:exec(?DISA_CID_CALL, Call),
+    {CIDNumber, CIDName} = kz_attributes:get_account_external_cid(DISACall),
+
+    [{"account external caller id number chosen"
+     ,?_assertEqual(<<"+19995552600">>, CIDNumber)
+     }
+    ,{"account external caller id name chosen"
+     ,?_assertEqual(<<"account-external-name">>, CIDName)
      }
     ].

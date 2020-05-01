@@ -184,6 +184,12 @@
             "minimum": 1,
             "type": "integer"
         },
+        "time_between_db_ms": {
+            "default": 50,
+            "description": "number_manager time_between_db_ms",
+            "minimum": 1,
+            "type": "integer"
+        },
         "time_between_numbers_ms": {
             "default": 1000,
             "description": "time to pause in between the processing of numbers in milliseconds",

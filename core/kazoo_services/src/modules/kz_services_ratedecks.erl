@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_services_ratedecks).
@@ -8,8 +12,10 @@
 -export([fetch/1]).
 -export([id/1]).
 -export([name/1]).
+-export([ratedecks/0]).
 
 -include("services.hrl").
+-include_lib("kazoo_documents/include/kzd_ratedeck.hrl").
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -45,6 +51,19 @@ id(Thing) ->
 -spec name(kz_services:services() | kz_term:ne_binary()) -> kz_term:api_ne_binary().
 name(Thing) ->
     kzd_ratedeck:name(fetch(Thing)).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec ratedecks() -> kz_term:ne_binaries().
+ratedecks() ->
+    {'ok', Dbs} = kz_datamgr:db_list([{'startkey', ?KZ_RATES_DB}
+                                     ,{'endkey',   ?UNENCODED_RATEDECK_DB(<<"\ufff0">>)}
+                                     ]),
+    [kzd_ratedeck:format_ratedeck_db(Db)
+     || Db <- Dbs
+    ].
 
 %%------------------------------------------------------------------------------
 %% @doc

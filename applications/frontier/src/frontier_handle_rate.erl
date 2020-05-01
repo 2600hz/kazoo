@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
 %%% @author SIPLABS, LLC (Maksim Krzhemenevskiy)
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(frontier_handle_rate).
@@ -178,7 +183,7 @@ make_deny_rates(Entity, IncludeRealm, MethodList) ->
         'false' -> Rates
     end.
 
-%% Kamailio expects -1 for unkown entities
+%% Kamailio expects -1 for unknown entities
 -spec deny_rates_for_entity(kz_term:ne_binary(), kz_term:ne_binaries()) -> kz_json:objects().
 deny_rates_for_entity(Entity, MethodList) ->
     lists:flatmap(fun(Method) ->
@@ -188,7 +193,7 @@ deny_rates_for_entity(Entity, MethodList) ->
                  ).
 
 -spec construct_records(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary() | integer(), kz_term:ne_binary() | integer()) ->
-                               kz_json:objects().
+          kz_json:objects().
 construct_records(Method, Entity, RPM, RPS) ->
     {Name, Type} = case binary:split(Entity, <<"@">>) of
                        [User, _] -> {User, <<"device">>};
@@ -212,7 +217,7 @@ section_type(<<"realm">>) -> <<"account">>;
 section_type(<<"device">>) -> <<"device">>.
 
 -spec fetch_rates_from_sys_config(kz_term:ne_binary() | kz_term:ne_binaries(), kz_term:ne_binary(), kz_term:ne_binaries()) ->
-                                         kz_json:objects().
+          kz_json:objects().
 fetch_rates_from_sys_config(_, _, []) ->
     lager:info("sysconfig: Empty request - empty response"),
     [];
@@ -245,7 +250,7 @@ fetch_rates(EntityList, IncludeRealm, MethodList, AccountDB) ->
                       lager:info("got ~p records for entities ~p from db document", [length(JObjs), EntityList]),
                       JObjs;
                   _ ->
-                      lager:info("can not get device rates drom db"),
+                      lager:info("can not get device rates from db"),
                       []
               end,
     Status = handle_db_response(Results, IncludeRealm),
@@ -263,7 +268,7 @@ fetch_from_parents(AccountDb, MethodList, Realm) ->
             Tree = lists:reverse(kzd_accounts:tree(JObj)),
             check_fallbacks(Tree, MethodList, Realm);
         {'error', _Reason} ->
-            lager:info("cant't access to db: ~p", [_Reason])
+            lager:info("can't access to db: ~p", [_Reason])
     end.
 
 -spec check_fallbacks(kz_term:ne_binaries(), kz_term:ne_binaries(), kz_term:ne_binary()) -> kz_json:objects().
@@ -275,9 +280,9 @@ check_fallbacks(Tree, MethodList, Realm) ->
     end.
 
 -spec check_fallback(kz_term:ne_binary(), atom() | kz_json:objects(), kz_term:ne_binaries(), kz_term:ne_binary()) ->
-                            atom() | kz_json:objects().
+          atom() | kz_json:objects().
 check_fallback(AccountId, 'empty', MethodList, Realm) ->
-    AccountDB = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDB = kzs_util:format_account_db(AccountId),
     ViewOpts = [{'key', AccountId}],
     case kz_datamgr:get_results(AccountDB, ?RATES_LISTING_BY_OWNER, ViewOpts) of
         {'ok', []} -> 'empty';

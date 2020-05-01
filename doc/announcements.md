@@ -4,6 +4,32 @@ This file will serve as a reference point for upcoming announcements, both of th
 
 ## Versions
 
+### 5.0
+
+The 5.0 release will start Kazoo's official support for OTP 21 ([21.3](http://www.erlang.org/news/127) currently being the preferred version).
+
+1. The big change for Erlang code is the deprecation of using `erlang:get_stacktrace()`. There is a target in the root Makefile `make check_stacktrace` that will update uses of `get_stacktrace()` from `try/catch` clauses. Please ensure any private code is adjusted accordingly.
+2. Community-supported and deprecated apps will be moved out of Kazoo and into a [kazoo-community](https://github.com/kazoo-community) organization. De-factor maintainers of the community apps have been added to remove 2600Hz from blocking PR and code management for those apps. Tooling will continue to be improved for those apps (and 3rd party apps in general). If you would like to take on a maintainer's role for any of the kazoo-community apps, let us know!
+3. Dependencies have been re-evaluated, updated, or removed as necessary. Please check that your use of them is still available. We're thinking on how community/private apps can include unique dependencies within themselves without impacting core Kazoo's dependency list.
+4. All Crossbar API version 1 modules are removed. The supported API version is now version 2. Please upgrade your applications, UI or scripts to work with version 2.
+5. These long deprecated and unused Crossbar modules are remove:
+    * `cb_bulk `: Old unused, error prone, and version 1 API. There is no substituted API.
+    * `cb_freeswitch`: Old unused module. There is no substituted API.
+    * `cb_global_provisioner_templates`: Long deprecated and unsupported provisioner, you should use already migrated to the new 2600Hz provisioner.
+    * `cb_local_provisioner_templates`: Long deprecated and unsupported provisioner, you should use already migrated to the new 2600Hz provisioner.
+    * `cb_local_resources`: APIs for `/local_resources` and `/global_resources` are deprecated for along time. Use the new `/resources` API with or without `{ACCOUNT_ID}`  for configuring global or local resources instead.
+    * `cb_onboard`: Old unused, error prone modules. There is no substituted API.
+    * `cb_shared_auth`: Old unused module with possible security issues.
+    * `cb_templates`
+    * `cb_ubiquiti_auth` and `cb_ubiquiti_util`
+6. These long deprecated and unsupported provisioner are remove:
+    * `super_awesome_provisioner`
+    * `awesome_provisioner`
+    * `simple_provisioner`
+    * Database `global_provisioner` used by these provisioners are remove.
+
+5. Kazoo Number Manager core application has been renamed to `kazoo_numbers`. This should be almost transparent to the client users. Applications not included in KAZOO repo should do this rename if they are depending on knm app or include one of its header files. `scripts/kz_diaspora.bash` script has been updated to do this rename.
+
 ### 4.3
 
 1. The Kazoo services have been significantly refactored.  This has resulted in changes to the APIs related to services (prior service_plans), ledgers and transactions as well as the documents in the services database and service plans.  See the documentation in `core/kazoo_services/doc` for more information.
@@ -20,6 +46,26 @@ The old `save/2` took an updater function and tried to save the result. Because 
 
 4. New parameters were added to the account, user and device documents to set the asserted identity.  These parameters are currently free-form but will be strictly verified by default in the future!
 
+5. Crossbar API version 1 has been deprecated. This is the last major version of Kazoo with support of `v1`. Please consider migrating your customize Crossbar modules from version 1 to version 2. Also upgrade your applications, UI or scripts to use version 2. This is the last version of Kazoo which is deprecated Kazoo-UI works with.
+
+6. The default prompt for the voicemail configuration menu has changed.
+
+Two new **en-US** prompts have been added to handle this feature and should be imported in conjunction with the upgrade of KAZOO.
+
+* vm-settings\_menu\_announcement_on
+* vm-settings\_menu\_announcement_off
+
+For instructions on how to import prompts please consult the [Kazoo Core Media](https://github.com/2600hz/kazoo-sounds/tree/master/kazoo-core#importing-prompts-for-a-language) documentation.
+
+7. Adds kazoo_telemetry application
+
+KAZOO collects anonymous telemetry data by default so that we can provide you with the best performance, stability, and security. It enables us to continuously improve the platform for you and helps inform our roadmap decisions so we can create the products, features, and functionality that will best serve you. Rest assured — no sensitive data is transmitted and metrics are limited to aggregate values, aggregate statistics, and software version information. By allowing us to collect this data, you are making a contribution to the KAZOO community and are helping us make KAZOO better for you and the entire KAZOO community. You can opt-out at any time by consulting the configuration document in the system_config database.
+
+Here are a few examples:
+- https://success.trendmicro.com/data-collection-disclosure
+- https://www.mozilla.org/en-US/privacy/firefox/
+- https://derflounder.wordpress.com/2019/07/23/suppressing-microsoft-autoupdates-required-data-notice-screen/
+
 ### 4.2
 
 1.  Erlang Version Support
@@ -28,7 +74,7 @@ The old `save/2` took an updater function and tried to save the result. Because 
 
 2. Time
 
-    In accordance with the new [time correction](http://erlang.org/doc/apps/erts/time_correction.html) work in Erlang 19+, cleanup of [kz_time](core/kazoo_stdlib/src/kz_time.erl) has been done to ensure Kazoo uses the proper time functions.
+    In accordance with the new [time correction](http://erlang.org/doc/apps/erts/time_correction.html) work in Erlang 19+, cleanup of [kz_time](https://github.com/2600hz/kazoo/blob/master/core/kazoo_stdlib/src/kz_time.erl) has been done to ensure Kazoo uses the proper time functions.
 
     The big change (that should be mostly transparent) is that `kz_time:now_s/0` returns Gregorian seconds instead of Unix Epoch seconds. The majority of code either doesn't care or expected Gregorian seconds, so this change should have minimal impact on existing code. If you need a Unix timestamp, `kz_time:current_unix_tstamp/0` is what you want.
 

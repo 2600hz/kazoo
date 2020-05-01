@@ -1,8 +1,13 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
 %%% @author Peter Defebvre
 %%% @author Roman Galeev
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(bh_object).
@@ -66,7 +71,7 @@ validate(Context, #{keys := Keys}) ->
 bindings(_Context, #{account_id := AccountId
                     ,keys := [Action, Type]
                     }=Map) ->
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kzs_util:format_account_db(AccountId),
     AccountMODB = kazoo_modb:get_modb(AccountId),
     Requested = ?OBJECT(Action, Type),
     Map#{requested => Requested

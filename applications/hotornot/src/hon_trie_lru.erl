@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Trie LRU.
 %%% ```
 %%% (Words * Bytes/Word) div (Prefixes) ~= Bytes per Prefix
@@ -18,6 +18,11 @@
 %%% Progressively load rates instead of seeding from the database.
 %%%
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(hon_trie_lru).
@@ -41,7 +46,7 @@
 -record(state, {trie = trie:new() :: trie:trie()
                ,ratedeck_db :: kz_term:api_ne_binary()
                ,check_ref :: reference()
-               ,start_time_ms = kz_time:now() :: kz_time:now()
+               ,start_time = kz_time:start_time() :: kz_time:start_time()
                ,expires_s :: pos_integer()
                }).
 -define(STATE_READY(Trie, RatedeckDb, CheckRef)
@@ -67,7 +72,7 @@ start_link(RatedeckDb, ExpiresS) ->
     gen_server:start_link({'local', ProcName}, ?MODULE, [RatedeckDb, ExpiresS], []).
 
 -spec stop(kz_term:ne_binary()) -> 'ok'.
-stop(<<_/binary>>=RatedeckId) ->
+stop(<<RatedeckId/binary>>) ->
     ProcName = hon_trie:trie_proc_name(RatedeckId),
     case whereis(ProcName) of
         'undefined' -> 'ok';
@@ -81,8 +86,8 @@ cache_rates(RatedeckId, Rates) ->
 
 -spec init([kz_term:ne_binary() | pos_integer()]) -> {'ok', state()}.
 init([RatedeckDb, ExpiresS]) ->
-    kz_util:put_callid(hon_trie:trie_proc_name(RatedeckDb)),
-    lager:info("starting LRU for ~s", [RatedeckDb]),
+    kz_log:put_callid(hon_trie:trie_proc_name(RatedeckDb)),
+    lager:debug("starting LRU for ~s", [RatedeckDb]),
     {'ok', #state{trie=trie:new()
                  ,ratedeck_db=RatedeckDb
                  ,check_ref=start_expires_check_timer(ExpiresS)
@@ -92,19 +97,19 @@ init([RatedeckDb, ExpiresS]) ->
 
 -spec start_expires_check_timer(pos_integer()) -> reference().
 start_expires_check_timer(ExpiresS) ->
-    Check = (ExpiresS * ?MILLISECONDS_IN_SECOND) div 2,
+    Check = (ExpiresS * ?MILLISECONDS_IN_SECOND) div 3,
     erlang:start_timer(Check, self(), ?CHECK_MSG(ExpiresS)).
 
 -spec handle_call(any(), kz_term:pid_ref(), state()) ->
-                         {'noreply', state()} |
-                         {'reply', match_return(), state()}.
+          {'noreply', state()} |
+          {'reply', 'ok' | match_return(), state()}.
 handle_call({'match_did', DID}, _From, ?STATE_READY(Trie, RatedeckDb, CheckRef)=State) ->
-    io:format("~pms elapsed~n", [kz_time:elapsed_ms(State#state.start_time_ms)]),
+    io:format("~pms elapsed~n", [kz_time:elapsed_ms(State#state.start_time)]),
     {UpdatedTrie, Resp} = match_did_in_trie(DID, Trie, State#state.expires_s),
     io:format("  matched ~p: ~p~n  trie: ~p~n", [DID, Resp, trie:to_list(UpdatedTrie)]),
     {'reply', Resp, State?STATE_READY(UpdatedTrie, RatedeckDb, CheckRef)};
 handle_call({'cache_rates', Rates}, _From, ?STATE_READY(Trie, RatedeckDb, CheckRef)=State) ->
-    io:format("~pms elapsed~n", [kz_time:elapsed_ms(State#state.start_time_ms)]),
+    io:format("~pms elapsed~n", [kz_time:elapsed_ms(State#state.start_time)]),
     UpdatedTrie = handle_caching_of_rates(Trie, Rates),
     io:format("  after caching rates: ~p~n", [trie:to_list(UpdatedTrie)]),
     {'reply', 'ok', State?STATE_READY(UpdatedTrie, RatedeckDb, CheckRef)};
@@ -113,7 +118,6 @@ handle_call(_Req, _From, State) ->
 
 -spec handle_cast(any(), state()) -> {'noreply', state()}.
 handle_cast('stop', State) ->
-    lager:info("requested to stop"),
     {'stop', 'normal', State};
 handle_cast(_Req, State) ->
     lager:debug("unhandled cast ~p", [_Req]),
@@ -123,7 +127,7 @@ handle_cast(_Req, State) ->
 handle_info({'timeout', CheckRef, ?CHECK_MSG(ExpiresS)}
            ,?STATE_READY(Trie, RatedeckDb, CheckRef)=State
            ) ->
-    io:format("~pms elapsed~n", [kz_time:elapsed_ms(State#state.start_time_ms)]),
+    io:format("~pms elapsed~n", [kz_time:elapsed_ms(State#state.start_time)]),
     UpdatedTrie = check_expired_entries(Trie, ExpiresS),
     io:format("  updated trie: ~p~n", [trie:to_list(UpdatedTrie)]),
     {'noreply', State?STATE_READY(UpdatedTrie, RatedeckDb, start_expires_check_timer(ExpiresS))};
@@ -142,10 +146,10 @@ check_expired_entries(Trie, ExpiresS) ->
 
 -spec oldest_ms(pos_integer()) -> pos_integer().
 oldest_ms(ExpiresS) ->
-    kz_time:now_ms() - (ExpiresS * 1000).
+    kz_time:now_ms() - (ExpiresS * ?MILLISECONDS_IN_SECOND).
 
 -spec check_if_expired(prefix(), [{kz_term:ne_binary(), pos_integer()}], {pid(), pos_integer()}) ->
-                              {pid(), pos_integer()}.
+          {pid(), pos_integer()}.
 check_if_expired(Prefix, Rates, {Trie, OldestTimestamp}=Acc) ->
     case has_expired_rates(Rates, OldestTimestamp) of
         'false' -> Acc;
@@ -154,7 +158,7 @@ check_if_expired(Prefix, Rates, {Trie, OldestTimestamp}=Acc) ->
     end.
 
 -spec has_expired_rates([{kz_term:ne_binary(), pos_integer()}], pos_integer()) ->
-                               boolean().
+          boolean().
 has_expired_rates([], _) -> 'false';
 has_expired_rates([{_RateId, LastUsed}|Rates], OldestTimestamp) ->
     case LastUsed < OldestTimestamp of
@@ -166,6 +170,8 @@ has_expired_rates([{_RateId, LastUsed}|Rates], OldestTimestamp) ->
     end.
 
 -spec terminate(any(), state()) -> 'ok'.
+terminate('normal', _State) -> 'ok';
+terminate('shutdown', _State) -> 'ok';
 terminate(_Reason, _State) ->
     lager:info("terminating: ~p", [_Reason]).
 
@@ -202,7 +208,7 @@ bump_prefix_timestamp(Trie, Prefix, RateIds, OldestMs) ->
          ]
     of
         [] ->
-            io:format("  eraseing prefix ~p from trie~n", [Prefix]),
+            io:format("  erasing prefix ~p from trie~n", [Prefix]),
             trie:erase(Prefix, Trie);
         BumpedRateIds ->
             trie:store(Prefix, BumpedRateIds, Trie)

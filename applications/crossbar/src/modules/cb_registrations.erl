@@ -1,15 +1,20 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Registration viewer / creator
-%%% GET /v1/accounts/{account_id}/registrations :
+%%% GET /v2/accounts/{account_id}/registrations :
 %%%   Get a list of account registrations
-%%% GET /v1/accounts/{account_id}/registrations/count :
+%%% GET /v2/accounts/{account_id}/registrations/count :
 %%%   Get a count of account registrations
-%%% GET /v1/registrations :
+%%% GET /v2/registrations :
 %%%   Get a count of system-wide registrations - for superduper admins only
 %%%
 %%%
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cb_registrations).
@@ -49,7 +54,7 @@
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.registrations">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.registrations">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
+    _ = crossbar_bindings:bind(<<"*.authorize.registrations">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.validate.registrations">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.registrations">>, ?MODULE, 'delete').
 
@@ -138,7 +143,7 @@ validate_sip_username(Context, Username) ->
 -spec sip_username_exists(cb_context:context(), kz_term:ne_binary()) -> boolean().
 sip_username_exists(Context, Username) ->
     ViewOptions = [{'key', kz_term:to_lower_binary(Username)}],
-    case kz_datamgr:get_results(cb_context:account_db(Context)
+    case kz_datamgr:get_results(cb_context:db_name(Context)
                                ,<<"devices/sip_credentials">>
                                ,ViewOptions
                                )

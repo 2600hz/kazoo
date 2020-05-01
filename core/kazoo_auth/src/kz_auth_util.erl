@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_auth_util).
@@ -37,15 +41,15 @@ get_json_from_url(Url, ReqHeaders) ->
     end.
 
 -spec fetch_access_code(kz_term:ne_binary() | map(), kz_term:ne_binary() ) ->
-                               {'ok', kz_json:object()} |
-                               {'error', any()}.
+          {'ok', kz_json:object()} |
+          {'error', any()}.
 fetch_access_code(AppId, AuthorizationCode) ->
     fetch_access_code(AppId, AuthorizationCode, <<"postmessage">>).
 
 
 -spec fetch_access_code(kz_term:ne_binary() | map(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                               {'ok', kz_json:object()} |
-                               {'error', any()}.
+          {'ok', kz_json:object()} |
+          {'error', any()}.
 fetch_access_code(AppId, AuthorizationCode, RedirectUri)
   when is_binary(AppId) ->
     lager:debug("getting auth-app ~p",[AppId]),
@@ -93,8 +97,8 @@ run(Token, [Fun | Routines]) ->
         {'error', Error} -> {'error', Token#{error => Error}};
         NewToken -> run(NewToken, Routines)
     catch
-        _E:_R ->
-            lager:debug("exception executing ~p : ~p , ~p, ~p", [Fun, _E, _R, Token]),
-            kz_util:log_stacktrace(),
-            {'error', Token}
-    end.
+        ?STACKTRACE(_E, _R, ST)
+        lager:debug("exception executing ~p : ~p , ~p, ~p", [Fun, _E, _R, Token]),
+        kz_log:log_stacktrace(ST),
+        {'error', Token}
+        end.

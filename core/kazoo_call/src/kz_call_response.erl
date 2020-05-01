@@ -1,7 +1,11 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2019, 2600Hz
+%%% @copyright (C) 2013-2020, 2600Hz
 %%% @doc
 %%% @author Karl Anderson
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_call_response).
@@ -27,14 +31,14 @@ config_doc_id() ->
 %%------------------------------------------------------------------------------
 
 -spec send(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()) ->
-                  {'ok', kz_term:ne_binary()} |
-                  {'error', 'no_response'}.
+          {'ok', kz_term:ne_binary()} |
+          {'error', 'no_response'}.
 send(CallId, CtrlQ, Code) ->
     send(CallId, CtrlQ, Code, 'undefined').
 
 -spec send(kz_term:ne_binary() | kapps_call:call(), kz_term:ne_binary(), kz_term:api_binary(), kz_term:api_binary()) ->
-                  {'ok', kz_term:ne_binary()} |
-                  {'error', 'no_response'}.
+          {'ok', kz_term:ne_binary()} |
+          {'error', 'no_response'}.
 send(<<_/binary>> = CallId, CtrlQ, Code, Cause) ->
     send(CallId, CtrlQ, Code, Cause, 'undefined');
 send(Call, Code, Cause, Media) ->
@@ -43,8 +47,8 @@ send(Call, Code, Cause, Media) ->
     send(CallId, CtrlQ, Code, Cause, Media).
 
 -spec send(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()) ->
-                  {'ok', kz_term:ne_binary()} |
-                  {'error', 'no_response'}.
+          {'ok', kz_term:ne_binary()} |
+          {'error', 'no_response'}.
 send(_, _, 'undefined', 'undefined', 'undefined') ->
     {'error', 'no_response'};
 send(CallId, CtrlQ, Code, Cause, Media) ->
@@ -119,8 +123,8 @@ do_send(CallId, CtrlQ, Commands) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec send_default(kapps_call:call(), kz_term:api_binary()) ->
-                          {'ok', kz_term:ne_binary()} |
-                          {'error', 'no_response'}.
+          {'ok', kz_term:ne_binary()} |
+          {'error', 'no_response'}.
 send_default(_Call, 'undefined') ->
     {'error', 'no_response'};
 send_default(Call, Cause) ->
@@ -134,8 +138,8 @@ send_default(Call, Cause) ->
     end.
 
 -spec send_default_response(kapps_call:call(), kz_json:object()) ->
-                                   {'ok', kz_term:ne_binary()} |
-                                   {'error', 'no_response'}.
+          {'ok', kz_term:ne_binary()} |
+          {'error', 'no_response'}.
 send_default_response(Call, Response) ->
     Media = kz_json:get_ne_binary_value(<<"Media">>, Response),
 

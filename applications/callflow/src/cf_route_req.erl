@@ -1,12 +1,19 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Handler for route requests, responds if Callflows match.
 %%% @author Karl Anderson
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cf_route_req).
 
--export([handle_req/2]).
+-export([handle_req/2
+        ,allow_no_match/1
+        ]).
 
 -include("callflow.hrl").
 
@@ -21,10 +28,9 @@
 -spec handle_req(kapi_route:req(), kz_term:proplist()) -> 'ok'.
 handle_req(RouteReq, Props) ->
     CallId = kapi_route:call_id(RouteReq),
-    kz_util:put_callid(CallId),
+    kz_log:put_callid(CallId),
     'true' = kapi_route:req_v(RouteReq),
 
-    gproc:reg({'p', 'l', {'route_req', CallId}}),
     Routines = [fun maybe_referred_call/1
                ,fun maybe_device_redirected/1
                ],
@@ -74,7 +80,7 @@ maybe_prepend_preflow(RouteReq, Props, Call, Callflow, NoMatch) ->
     end.
 
 -spec maybe_reply_to_req(kapi_route:req(), kz_term:proplist()
-                        ,kapps_call:call(), kz_json:object(), boolean()) -> 'ok'.
+                        ,kapps_call:call(), kzd_callflows:doc(), boolean()) -> 'ok'.
 maybe_reply_to_req(RouteReq, Props, Call, Flow, NoMatch) ->
     lager:info("callflow ~s in ~s satisfies request for ~s", [kz_doc:id(Flow)
                                                              ,kapps_call:account_id(Call)
@@ -83,7 +89,7 @@ maybe_reply_to_req(RouteReq, Props, Call, Flow, NoMatch) ->
     case cf_util:token_check(Call, Flow) of
         'false' -> 'ok';
         'true' ->
-            ControllerQ = props:get_value('queue', Props),
+            ControllerQ = kapi:encode_pid(props:get_value('queue', Props)),
             NewCall = update_call(Flow, NoMatch, ControllerQ, Call),
             send_route_response(Flow, RouteReq, NewCall)
     end.
@@ -153,76 +159,70 @@ callflow_should_respond(Call) ->
             'false'
     end.
 
+-spec ccvs(kz_json:object(), kapi_route:req(), kapps_call:call()) -> kz_term:api_object().
+ccvs(Flow, _RouteReq, _Call) ->
+    kz_json:from_list([{<<"CallFlow-ID">>, kz_doc:id(Flow)}]).
+
+-spec cavs(kz_json:object(), kapi_route:req(), kapps_call:call()) -> kz_term:api_object().
+cavs(_Flow, _RouteReq, _Call) -> 'undefined'.
+
 %%------------------------------------------------------------------------------
 %% @doc Send a route response for a route request that can be fulfilled by this
 %% process.
 %% @end
 %%------------------------------------------------------------------------------
--spec send_route_response(kz_json:object(), kapi_route:req(), kapps_call:call()) -> 'ok'.
+-spec send_route_response(kzd_callflows:doc(), kapi_route:req(), kapps_call:call()) -> 'ok'.
 send_route_response(Flow, RouteReq, Call) ->
     lager:info("callflows knows how to route the call! sending park response"),
     AccountId = kapps_call:account_id(Call),
+    CallId = kapps_call:call_id(Call),
+    ControllerQ = kapps_call:controller_queue(Call),
+    FetchId =  kz_api:msg_id(RouteReq),
+
     Resp = props:filter_undefined(
-             [{?KEY_MSG_ID, kz_api:msg_id(RouteReq)}
-             ,{?KEY_MSG_REPLY_ID, kapps_call:call_id_direct(Call)}
+             [{?KEY_MSG_ID, FetchId}
+             ,{?KEY_API_ACCOUNT_ID, AccountId}
+             ,{?KEY_API_CALL_ID, CallId}
              ,{<<"Routes">>, []}
              ,{<<"Method">>, <<"park">>}
              ,{<<"Transfer-Media">>, get_transfer_media(Flow, RouteReq)}
              ,{<<"Ringback-Media">>, get_ringback_media(Flow, RouteReq)}
              ,{<<"Pre-Park">>, pre_park_action(Call)}
              ,{<<"From-Realm">>, kzd_accounts:fetch_realm(AccountId)}
-             ,{<<"Custom-Channel-Vars">>, kapps_call:custom_channel_vars(Call)}
-             ,{<<"Custom-Application-Vars">>, kapps_call:custom_application_vars(Call)}
+             ,{<<"Custom-Channel-Vars">>, ccvs(Flow, RouteReq, Call)}
+             ,{<<"Custom-Application-Vars">>, cavs(Flow, RouteReq, Call)}
              ,{<<"Context">>, kapps_call:context(Call)}
-              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+              | kz_api:default_headers(ControllerQ, ?APP_NAME, ?APP_VERSION)
              ]),
     ServerId = kz_api:server_id(RouteReq),
-    Publisher = fun(P) -> kapi_route:publish_resp(ServerId, P) end,
-    case kz_amqp_worker:call(Resp
-                            ,Publisher
-                            ,fun kapi_route:win_v/1
-                            ,?ROUTE_WIN_TIMEOUT
-                            )
-    of
-        {'ok', RouteWin} ->
-            lager:info("callflow has received a route win, taking control of the call"),
-            NewCall = cf_route_win:execute_callflow(RouteWin, kapps_call:from_route_win(RouteWin, Call)),
-            wait_for_running(NewCall, 0);
-        {'error', _E} ->
-            lager:info("callflow didn't received a route win, exiting : ~p", [_E])
-    end.
+    kapi_route:publish_resp(ServerId, Resp),
+    wait_for_route_win(Call, FetchId).
 
--spec wait_for_running(kapps_call:call(), 0..5) -> 'ok'.
-wait_for_running(_Call, 5) ->
-    lager:info("callflow not ready after 5 tries, exiting");
-wait_for_running(Call, N) ->
-    FetchId = kapps_call:fetch_id(Call),
+wait_for_route_win(Call, FetchId) ->
     receive
-        {'channel_destroy', 'undefined'} ->
-            cf_exe:hard_stop(Call),
-            lager:info("received channel destroy with undefined fetch-id while setting up callflow executor, exiting");
-        {'channel_destroy', FetchId} ->
-            cf_exe:hard_stop(Call),
-            lager:info("received channel destroy while setting up callflow executor, exiting")
-    after 250 ->
-            case cf_exe:status(Call) of
-                'not_running' -> lager:info("callflow not running");
-                'running' -> lager:info("callflow up & running");
-                _ -> wait_for_running(Call, N + 1)
-            end
+        {'kapi', {_, {'call_event', 'CHANNEL_DESTROY'}, JObj}} ->
+            case kz_call_event:fetch_id(JObj) of
+                FetchId -> lager:info("received channel destroy while waiting for route_win, exiting");
+                _Other -> wait_for_route_win(Call, FetchId)
+            end;
+        {'kapi', {_, {'dialplan', 'route_win'}, RouteWin}} ->
+            lager:info("callflow has received a route win, taking control of the call"),
+            cf_route_win:execute_callflow(RouteWin, kapps_call:from_route_win(RouteWin, Call))
+    after ?ROUTE_WIN_TIMEOUT ->
+            lager:warning("callflow didn't received a route win, exiting")
     end.
 
--spec get_transfer_media(kz_json:object(), kapi_route:req()) -> kz_term:api_binary().
+-spec get_transfer_media(kzd_callflows:doc(), kapi_route:req()) -> kz_term:api_ne_binary().
 get_transfer_media(Flow, RouteReq) ->
-    case kz_json:get_value([<<"ringback">>, <<"transfer">>], Flow) of
+    case kzd_callflows:ringback_transfer(Flow) of
         'undefined' ->
             kz_json:get_ne_binary_value(<<"Transfer-Media">>, RouteReq);
         MediaId -> MediaId
     end.
 
--spec get_ringback_media(kz_json:object(), kapi_route:req()) -> kz_term:api_binary().
+-spec get_ringback_media(kzd_callflows:doc(), kapi_route:req()) -> kz_term:api_ne_binary().
 get_ringback_media(Flow, RouteReq) ->
-    case kz_json:get_value([<<"ringback">>, <<"early">>], Flow) of
+    case kzd_callflows:ringback_early(Flow) of
         'undefined' ->
             kz_json:get_ne_binary_value(<<"Ringback-Media">>, RouteReq);
         MediaId -> MediaId
@@ -236,7 +236,6 @@ get_ringback_media(Flow, RouteReq) ->
 pre_park_action(Call) ->
     case kapps_config:get_is_true(?CF_CONFIG_CAT, <<"ring_ready_offnet">>, 'true')
         andalso kapps_call:inception(Call) =/= 'undefined'
-        andalso kapps_call:authorizing_type(Call) =:= 'undefined'
     of
         'false' -> <<"none">>;
         'true' -> <<"ring_ready">>
@@ -246,16 +245,15 @@ pre_park_action(Call) ->
 %% @doc process
 %% @end
 %%------------------------------------------------------------------------------
--spec update_call(kz_json:object(), boolean(), kz_term:ne_binary(), kapps_call:call()) ->
-                         kapps_call:call().
+-spec update_call(kzd_callflows:doc(), boolean(), kz_term:ne_binary(), kapps_call:call()) ->
+          kapps_call:call().
 update_call(Flow, NoMatch, ControllerQ, Call) ->
     Props = [{'cf_flow_id', kz_doc:id(Flow)}
-            ,{'cf_flow_name', kz_json:get_ne_binary_value(<<"name">>, Flow, kapps_call:request_user(Call))}
-            ,{'cf_flow', kz_json:get_value(<<"flow">>, Flow)}
-            ,{'cf_capture_group', kz_json:get_ne_value(<<"capture_group">>, Flow)}
-            ,{'cf_capture_groups', kz_json:get_value(<<"capture_groups">>, Flow, kz_json:new())}
+            ,{'cf_flow_name', kzd_callflows:name(Flow, kapps_call:request_user(Call))}
+            ,{'cf_flow', kzd_callflows:flow(Flow)}
+            ,{'cf_capture_group', kzd_callflows:capture_group(Flow)}
+            ,{'cf_capture_groups', kzd_callflows:capture_groups(Flow, kz_json:new())}
             ,{'cf_no_match', NoMatch}
-            ,{'cf_metaflow', kz_json:get_value(<<"metaflows">>, Flow, ?DEFAULT_METAFLOWS(kapps_call:account_id(Call)))}
             ],
 
     Updaters = [{fun kapps_call:kvs_store_proplist/2, Props}

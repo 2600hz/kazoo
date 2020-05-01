@@ -8,8 +8,12 @@
 
 -type heuristic() :: ?HEUR_NONE | ?HEUR_RATIO.
 
+%% Ratio of legacy data, including metadata, to current data in the database file size.
+%% The percentage is expressed as an integer percentage. Taken
+%% from http://docs.couchdb.org/en/stable/config/compaction.html#compactions
+%% `db_framentation' section.
 -define(MIN_RATIO
-       ,kapps_config:get_float(?SYSCONFIG_COUCH, <<"min_ratio">>, 1.2)
+       ,kapps_config:get_float(?SYSCONFIG_COUCH, <<"min_ratio">>, 25)
        ).
 -define(MIN_DATA
        ,kapps_config:get_integer(?SYSCONFIG_COUCH, <<"min_data_size">>, 131072)  %% 128Kb
@@ -32,6 +36,14 @@
 
 -define(COMPACT_AUTOMATICALLY
        ,kapps_config:get_is_true(?SYSCONFIG_COUCH, <<"compact_automatically">>, 'false')
+       ).
+%% How many dbs to read between pauses.
+-define(COMPACTION_LIST_DBS_CHUNK_SIZE
+       ,kapps_config:get_integer(?CONFIG_CAT, <<"compaction_list_dbs_chunk_size">>, 20)
+       ).
+%% How long to pause before attempting to get the next chunk of dbs.
+-define(COMPACTION_LIST_DBS_PAUSE
+       ,kapps_config:get_integer(?CONFIG_CAT, <<"compaction_list_dbs_pause_ms">>, 200)
        ).
 
 -define(ADMIN_PORT

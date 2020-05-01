@@ -1,7 +1,11 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2015-2019, 2600Hz
+%%% @copyright (C) 2015-2020, 2600Hz
 %%% @doc Call Event JSON Object
 %%% @author James Aimonetti
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_call_event).
@@ -10,13 +14,18 @@
         ,application_data/1
         ,application_event/1
         ,application_name/1
-        ,application_response/1
+        ,application_response/1, application_response/2
+        ,application_uuid/1
         ,authorizing_id/1
         ,authorizing_type/1
         ,billing_seconds/1
         ,call_direction/1, call_direction/2
         ,call_id/1
+        ,channel_answer_state/1
+        ,channel_call_state/1
         ,channel_name/1
+        ,channel_state/1
+        ,connecting_b_leg_id/1
         ,custom_channel_var/2, custom_channel_var/3
         ,custom_channel_vars/1, custom_channel_vars/2
         ,custom_application_var/2, custom_application_var/3
@@ -28,7 +37,7 @@
         ,error_message/1, error_message/2
         ,event_name/1
         ,hangup_cause/1, hangup_cause/2
-        ,hangup_code/1
+        ,hangup_code/1, hangup_code/2
         ,is_authorized/1
         ,is_call_forwarded/1, is_call_forwarded/2
         ,other_leg_call_id/1
@@ -88,6 +97,22 @@ request(JObj) ->
 channel_name(JObj) ->
     kz_json:get_ne_binary_value(<<"Channel-Name">>, JObj).
 
+-spec channel_state(doc()) -> kz_term:api_ne_binary().
+channel_state(JObj) ->
+    kz_json:get_ne_binary_value(<<"Channel-State">>, JObj).
+
+-spec channel_call_state(doc()) -> kz_term:api_ne_binary().
+channel_call_state(JObj) ->
+    kz_json:get_ne_binary_value(<<"Channel-Call-State">>, JObj).
+
+-spec channel_answer_state(doc()) -> kz_term:api_ne_binary().
+channel_answer_state(JObj) ->
+    kz_json:get_ne_binary_value(<<"Channel-Answer-State">>, JObj).
+
+-spec connecting_b_leg_id(doc()) -> kz_term:api_ne_binary().
+connecting_b_leg_id(JObj) ->
+    kz_json:get_ne_binary_value(<<"Connecting-Leg-B-UUID">>, JObj).
+
 -spec custom_channel_vars(doc()) -> kz_term:api_object().
 custom_channel_vars(JObj) ->
     custom_channel_vars(JObj, 'undefined').
@@ -97,12 +122,12 @@ custom_channel_vars(JObj, Default) ->
     kz_json:get_json_value(<<"Custom-Channel-Vars">>, JObj, Default).
 
 -spec custom_channel_var(doc(), kz_json:key()) ->
-                                kz_term:api_ne_binary().
+          kz_term:api_ne_binary().
 custom_channel_var(JObj, Key) ->
     custom_channel_var(JObj, Key, 'undefined').
 
 -spec custom_channel_var(doc(), kz_json:key(), Default) ->
-                                kz_term:ne_binary() | Default.
+          kz_term:ne_binary() | Default.
 custom_channel_var(JObj, Key, Default) ->
     kz_json:get_ne_binary_value([<<"Custom-Channel-Vars">>, Key], JObj, Default).
 
@@ -115,12 +140,12 @@ custom_application_vars(JObj, Default) ->
     kz_json:get_json_value(<<"Custom-Application-Vars">>, JObj, Default).
 
 -spec custom_application_var(doc(), kz_json:key()) ->
-                                    kz_term:api_ne_binary().
+          kz_term:api_ne_binary().
 custom_application_var(JObj, Key) ->
     custom_application_var(JObj, Key, 'undefined').
 
 -spec custom_application_var(doc(), kz_json:key(), Default) ->
-                                    kz_term:ne_binary() | Default.
+          kz_term:ne_binary() | Default.
 custom_application_var(JObj, Key, Default) ->
     kz_json:get_ne_binary_value([<<"Custom-Application-Vars">>, Key], JObj, Default).
 
@@ -160,7 +185,11 @@ hangup_cause(JObj, Default) ->
 
 -spec hangup_code(doc()) -> kz_term:api_ne_binary().
 hangup_code(JObj) ->
-    kz_json:get_ne_binary_value(<<"Hangup-Code">>, JObj).
+    hangup_code(JObj, 'undefined').
+
+-spec hangup_code(doc(), Default) -> kz_term:ne_binary() | Default.
+hangup_code(JObj, Default) ->
+    kz_json:get_ne_binary_value(<<"Hangup-Code">>, JObj, Default).
 
 -spec disposition(doc()) -> kz_term:api_ne_binary().
 disposition(JObj) ->
@@ -178,9 +207,17 @@ application_event(JObj) ->
 application_data(JObj) ->
     kz_json:get_json_value(<<"Application-Data">>, JObj, kz_json:new()).
 
+-spec application_uuid(doc()) -> kz_term:api_binary().
+application_uuid(JObj) ->
+    kz_json:get_ne_binary_value(<<"Application-UUID">>, JObj).
+
 -spec application_response(doc()) -> kz_term:api_ne_binary().
 application_response(JObj) ->
-    kz_json:get_ne_binary_value(<<"Application-Response">>, JObj).
+    application_response(JObj, 'undefined').
+
+-spec application_response(doc(), Default) -> kz_term:ne_binary() | Default.
+application_response(JObj, Default) ->
+    kz_json:get_ne_binary_value(<<"Application-Response">>, JObj, Default).
 
 -spec response_message(doc()) -> kz_term:api_ne_binary().
 response_message(JObj) ->

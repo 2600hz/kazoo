@@ -1,3 +1,12 @@
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2020, 2600Hz
+%%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
+%%% @end
+%%%-----------------------------------------------------------------------------
 -module(cb_storage_tests).
 
 -include_lib("eunit/include/eunit.hrl").
@@ -5,7 +14,7 @@
 -include("cb_token_restrictions_test.hrl").
 
 -define(ACCOUNT_DB_CURRENT_MONTH
-       ,kazoo_modb:get_modb(kz_util:format_account_id(?FIXTURE_MASTER_ACCOUNT_ID))
+       ,kazoo_modb:get_modb(kzs_util:format_account_id(?FIXTURE_MASTER_ACCOUNT_ID))
        ).
 
 %%%=============================================================================
@@ -156,18 +165,18 @@ open_doc(Server, DbName, DocId, Options) ->
     end.
 
 -spec get_s3_key(kz_term:ne_binary(), kz_term:ne_binary(), cb_context:context()) ->
-                        pos_integer() | atom() | kz_term:ne_binary().
+          pos_integer() | atom() | kz_term:ne_binary().
 get_s3_key(Key, UUID, Context) ->
     Path = [<<"attachments.", UUID/binary>>, <<"invalid">>, Key],
     ValidationErrors = cb_context:validation_errors(Context),
     kz_json:get_value(Path, ValidationErrors).
 
 -spec s3_error_code(kz_term:ne_binary(), cb_context:context()) ->
-                           pos_integer() | atom().
+          pos_integer() | atom().
 s3_error_code(UUID, Context) ->
     get_s3_key(<<"error_code">>, UUID, Context).
 
 -spec s3_message(kz_term:ne_binary(), cb_context:context()) ->
-                        kz_term:ne_binary().
+          kz_term:ne_binary().
 s3_message(UUID, Context) ->
     get_s3_key(<<"message">>, UUID, Context).

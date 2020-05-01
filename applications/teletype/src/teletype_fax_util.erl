@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(teletype_fax_util).
@@ -101,7 +106,7 @@ to_email_addresses(_DataJObj, TemplateId, _) ->
     lager:debug("can not find email address for the fax notification, maybe using defaults"),
     case teletype_util:template_system_value(TemplateId, <<"default_to">>) of
         'undefined' -> 'undefined';
-        ?NE_BINARY=Email -> [Email];
+        <<Email/binary>> -> [Email];
         Emails when is_list(Emails) -> Emails
     end.
 
@@ -203,7 +208,7 @@ fax_db(DataJObj, FaxId) ->
 -spec maybe_get_fax_db_from_id(kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> kz_term:ne_binary().
 maybe_get_fax_db_from_id('undefined', _) -> ?KZ_FAXES_DB;
 maybe_get_fax_db_from_id(?MATCH_MODB_SUFFIX_ENCODED(_, _, _)=Db, _) -> Db;
-maybe_get_fax_db_from_id(Db, ?MATCH_MODB_PREFIX(Year, Month, _)) -> kazoo_modb:get_modb(kz_util:format_account_id(Db), Year, Month);
+maybe_get_fax_db_from_id(Db, ?MATCH_MODB_PREFIX(Year, Month, _)) -> kazoo_modb:get_modb(kzs_util:format_account_id(Db), Year, Month);
 maybe_get_fax_db_from_id(Db, _) -> Db.
 
 -spec maybe_fetch_attachments(kz_json:object(), kz_json:object(), kz_term:proplist(), boolean()) -> attachments().

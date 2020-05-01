@@ -1,0 +1,22 @@
+---
+name: kazoo-application-teletype
+base_branch: origin/master
+metapackage:
+  - name: meta-kazoo-applications
+    type: required
+    branch: master
+    package: kazoo-application-teletype
+base_core: kazoo
+template: kazoo-application.spec.tmpl
+package:
+  centos7:
+    name: kazoo-application-teletype
+    summary: Kazoo core application
+    description: |
+      Provides email notification and branding services for receiving emails
+      about events within KAZOO
+    app_name: teletype
+    license: MPL 2.0
+    group: Productivity/Telephony
+    url: https://2600hz.org/
+    vendor: 2600Hz

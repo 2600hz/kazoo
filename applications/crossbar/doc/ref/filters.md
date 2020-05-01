@@ -11,6 +11,7 @@ Filter | Operates On | Description
 `has_key` | `{KEY}` | 
 `key_missing` | `{KEY}` | 
 `has_value` | `{KEY}` | 
+`value_missing` | `{KEY}` | 
 `created_from` | `{VALUE}` | 
 `created_to` | `{VALUE}` | 
 `modified_from` | `{VALUE}` | 

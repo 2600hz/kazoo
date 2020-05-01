@@ -1,0 +1,142 @@
+paths:
+  /accounts/{ACCOUNT_ID}/notifications:
+    delete:
+      operationId: DeleteAccountsAccountIdNotifications
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of notifications
+      tags:
+        - notifications
+    get:
+      operationId: GetAccountsAccountIdNotifications
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get all notifications
+      tags:
+        - notifications
+    put:
+      operationId: PutAccountsAccountIdNotifications
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/notifications'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of notifications
+      tags:
+        - notifications
+  /accounts/{ACCOUNT_ID}/notifications/customer_update/message:
+    post:
+      operationId: PostAccountsAccountIdNotificationsCustomerUpdateMessage
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/notifications'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of notifications
+      tags:
+        - notifications
+  /accounts/{ACCOUNT_ID}/notifications/smtplog:
+    get:
+      operationId: GetAccountsAccountIdNotificationsSmtplog
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get smtplog of notifications
+      tags:
+        - notifications
+  /accounts/{ACCOUNT_ID}/notifications/smtplog/{SMTP_LOG_ID}:
+    get:
+      operationId: GetAccountsAccountIdNotificationsSmtplogSmtpLogId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/SMTP_LOG_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a notifications by ID
+      tags:
+        - notifications
+  /accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}:
+    delete:
+      operationId: DeleteAccountsAccountIdNotificationsNotificationId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/NOTIFICATION_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of notifications
+      tags:
+        - notifications
+    get:
+      operationId: GetAccountsAccountIdNotificationsNotificationId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/NOTIFICATION_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a notifications by ID
+      tags:
+        - notifications
+    post:
+      operationId: PostAccountsAccountIdNotificationsNotificationId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/NOTIFICATION_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/notifications'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of notifications
+      tags:
+        - notifications
+  /accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}/preview:
+    post:
+      operationId: PostAccountsAccountIdNotificationsNotificationIdPreview
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/NOTIFICATION_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/notifications'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of notifications
+      tags:
+        - notifications

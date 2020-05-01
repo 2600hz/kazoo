@@ -1,6 +1,6 @@
 {application,kazoo_caches,
-             [{applications,[kazoo,kazoo_amqp,kazoo_globals,kazoo_stdlib,
-                             kernel,lager,stdlib]},
+             [{applications,[kazoo,kazoo_amqp,kazoo_bindings,kazoo_globals,
+                             kazoo_stdlib,kernel,lager,stdlib]},
               {description,"Caches - Make sure system caches are available for system processes"},
               {vsn,"4.0.0"},
               {modules,[]},

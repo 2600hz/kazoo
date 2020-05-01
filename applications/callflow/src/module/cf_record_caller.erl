@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc Handles starting/stopping a call recording.
 %%%
 %%% <h4>Data options:</h4>
@@ -15,6 +15,11 @@
 %%% </dl>
 %%%
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cf_record_caller).
@@ -32,7 +37,7 @@
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     Url = kz_json:get_value(<<"url">>, Data),
-    case kzc_recording:should_store_recording(kapps_call:account_id(Call), Url) of
+    case kapps_call_recording:should_store_recording(kapps_call:account_id(Call), Url) of
         'false' ->
             lager:debug("cannot store the recording, bad or no URL"),
             cf_exe:continue(Call);
@@ -46,15 +51,15 @@ handle(Data, Call) ->
 record_caller(Data, Call, Url) ->
     kapps_call_command:answer_now(Call),
 
-    Format = kzc_recording:get_format(kz_json:get_value(<<"format">>, Data)),
-    MediaName = kzc_recording:get_media_name(kapps_call:call_id(Call), Format),
+    Format = kapps_call_recording:get_format(kz_json:get_value(<<"format">>, Data)),
+    MediaName = kapps_call_recording:get_media_name(kapps_call:call_id(Call), Format),
 
     _ = set_recording_url(Data, Call, Url, MediaName),
 
     lager:info("recording caller starting"),
     _ = kapps_call_command:b_record(MediaName
                                    ,?ANY_DIGIT
-                                   ,kzc_recording:get_timelimit(Data)
+                                   ,kapps_call_recording:get_timelimit(Data)
                                    ,Call
                                    ),
     lager:debug("recording caller ended").

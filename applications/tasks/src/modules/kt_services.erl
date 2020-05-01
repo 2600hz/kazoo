@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2016-2019, 2600Hz
+%%% @copyright (C) 2016-2020, 2600Hz
 %%% @doc
 %%% @author Pierre Fenoll
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kt_services).
@@ -14,16 +19,13 @@
         ]).
 
 %% Verifiers
--export([
-        ]).
+-export([]).
 
 %% Appliers
--export([descendant_quantities/2
-        ]).
+-export([descendant_quantities/2]).
 
 %% Triggerables
--export([cleanup/1
-        ]).
+-export([cleanup/1]).
 
 -include("tasks.hrl").
 -include_lib("kazoo_services/include/kazoo_services.hrl").
@@ -46,11 +48,10 @@
 %%------------------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    _ = tasks_bindings:bind(?TRIGGER_SYSTEM, ?MODULE, cleanup),
+    _ = tasks_bindings:bind(?TRIGGER_SYSTEM, ?MODULE, 'cleanup'),
     _ = tasks_bindings:bind(<<"tasks.help">>, ?MODULE, 'help'),
     _ = tasks_bindings:bind(<<"tasks."?CATEGORY".output_header">>, ?MODULE, 'output_header'),
     tasks_bindings:bind_actions(<<"tasks."?CATEGORY>>, ?MODULE, ?ACTIONS).
-
 
 -spec output_header(kz_term:ne_binary()) -> kz_tasks:output_header().
 output_header(<<"descendant_quantities">>) ->
@@ -99,13 +100,14 @@ action(<<"descendant_quantities">>) ->
 %%% Appliers
 
 -spec descendant_quantities(kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
-descendant_quantities(#{account_id := AccountId}, init) ->
+descendant_quantities(#{account_id := AccountId}, 'init') ->
     Descendants = kapps_util:account_descendants(AccountId),
     DescendantsMoDBs = lists:flatmap(fun kapps_util:get_account_mods/1, Descendants),
     lager:debug("found ~p descendants & ~p MoDBs in total"
-               ,[length(Descendants), length(DescendantsMoDBs)]),
-    {ok, DescendantsMoDBs};
-descendant_quantities(_, []) -> stop;
+               ,[length(Descendants), length(DescendantsMoDBs)]
+               ),
+    {'ok', DescendantsMoDBs};
+descendant_quantities(_, []) -> 'stop';
 descendant_quantities(_, [SubAccountMoDB | DescendantsMoDBs]) ->
     ?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, YYYY, MM) = SubAccountMoDB,
     AccountId = ?MATCH_ACCOUNT_RAW(A, B, Rest),
@@ -114,19 +116,17 @@ descendant_quantities(_, [SubAccountMoDB | DescendantsMoDBs]) ->
     case rows_for_quantities(AccountId, YYYY, MM, BoM, EoM) of
         [] ->
             %% No rows generated: ask worker to skip writing for this step.
-            {ok, DescendantsMoDBs};
+            {'ok', DescendantsMoDBs};
         Rows -> {Rows, DescendantsMoDBs}
     end.
 
-
 %%% Triggerables
 
--spec cleanup(kz_term:ne_binary()) -> ok.
+-spec cleanup(kz_term:ne_binary()) -> 'ok'.
 cleanup(?KZ_SERVICES_DB) ->
     lager:debug("checking ~s for abandoned accounts", [?KZ_SERVICES_DB]),
     cleanup_orphaned_services_docs();
-cleanup(_SystemDb) -> ok.
-
+cleanup(_SystemDb) -> 'ok'.
 
 %%%=============================================================================
 %%% Internal functions
@@ -183,7 +183,6 @@ maybe_integer_to_binary(Item, JObj) ->
         Quantity -> integer_to_binary(Quantity)
     end.
 
-
 -spec cleanup_orphaned_services_docs() -> 'ok'.
 cleanup_orphaned_services_docs() ->
     case kz_datamgr:all_docs(?KZ_SERVICES_DB) of
@@ -201,11 +200,11 @@ cleanup_orphaned_services_docs([View|Views]) ->
 -spec cleanup_orphaned_services_doc(kz_json:object() | kz_term:ne_binary()) -> 'ok'.
 cleanup_orphaned_services_doc(<<"_design/", _/binary>>) -> 'ok';
 cleanup_orphaned_services_doc(AccountId=?NE_BINARY) ->
-    case kz_datamgr:db_exists(kz_util:format_account_id(AccountId, 'encoded')) of
+    case kz_datamgr:db_exists(kzs_util:format_account_db(AccountId)) of
         'true' -> 'ok';
         'false' ->
             lager:info("account ~s no longer exists but has a services doc", [AccountId]),
-            kz_datamgr:del_doc(?KZ_SERVICES_DB, AccountId),
+            _ = kz_datamgr:del_doc(?KZ_SERVICES_DB, AccountId),
             timer:sleep(5 * ?MILLISECONDS_IN_SECOND)
     end;
 cleanup_orphaned_services_doc(View) ->

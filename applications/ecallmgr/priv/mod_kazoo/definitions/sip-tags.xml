@@ -1,0 +1,4 @@
+<definition name="sip-tags">
+	<field name="variable_sip_to_tag" as="To-Tag" />
+	<field name="variable_sip_from_tag" as="From-Tag" />
+</definition>

@@ -1,8 +1,13 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc
 %%% @author Karl Anderson
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cb_groups).
@@ -181,8 +186,13 @@ validate_patch(Id, Context) ->
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
     case cb_context:user_id(Context) of
-        'undefined' -> crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2);
-        UserId -> crossbar_doc:load_view(?CB_LIST_BY_USER, [{'key', UserId}], Context, fun normalize_view_results/2)
+        'undefined' ->
+            crossbar_view:load(Context, ?CB_LIST, [{'mapper', crossbar_view:get_value_fun()}]);
+        UserId ->
+            Options = [{'key', UserId}
+                      ,{'mapper', crossbar_view:get_value_fun()}
+                      ],
+            crossbar_view:load(Context, ?CB_LIST_BY_USER, Options)
     end.
 
 %%------------------------------------------------------------------------------
@@ -194,11 +204,3 @@ on_successful_validation('undefined', Context) ->
     cb_context:set_doc(Context, kz_doc:set_type(cb_context:doc(Context), <<"group">>));
 on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context, ?TYPE_CHECK_OPTION(<<"group">>)).
-
-%%------------------------------------------------------------------------------
-%% @doc Normalizes the results of a view.
-%% @end
-%%------------------------------------------------------------------------------
--spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
-normalize_view_results(JObj, Acc) ->
-    [kz_json:get_value(<<"value">>, JObj)|Acc].

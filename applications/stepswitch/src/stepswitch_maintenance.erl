@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Preforms maintenance operations against the stepswitch dbs
 %%% @author Karl Anderson
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(stepswitch_maintenance).
@@ -9,7 +14,6 @@
 -export([resources/0]).
 -export([reverse_lookup/1]).
 -export([flush/0
-        ,cnam_flush/0
         ]).
 -export([lookup_number/1
         ,number_tree/1
@@ -50,7 +54,7 @@ pretty_print_lookup([{Key, Value}|Props]) ->
 %%------------------------------------------------------------------------------
 -spec number_tree(kz_term:ne_binary()) -> 'ok'.
 number_tree(DID) ->
-    case knm_number:lookup_account(DID) of
+    case knm_numbers:lookup_account(DID) of
         {'error', _} -> io:format("DID ~s was not found~n", [DID]);
         {'ok', AccountId, _Props} ->
             case kz_datamgr:open_doc(?KZ_ACCOUNTS_DB, AccountId) of
@@ -109,10 +113,6 @@ pretty_print_resource([{Key, Value}|Props]) ->
 -spec flush() -> 'ok'.
 flush() -> kz_cache:flush_local(?CACHE_NAME).
 
--spec cnam_flush() -> 'ok'.
-cnam_flush() ->
-    io:format("flushed ~p entries from cnam cache~n", [stepswitch_cnam:flush()]).
-
 -spec register_views() -> 'ok'.
 register_views() ->
     kz_datamgr:register_views_from_folder('stepswitch').
@@ -123,7 +123,7 @@ register_views() ->
 %%------------------------------------------------------------------------------
 -spec lookup_number(kz_term:text()) -> 'ok'.
 lookup_number(Number) ->
-    case knm_number:lookup_account(Number) of
+    case knm_numbers:lookup_account(Number) of
         {'ok', AccountId, Props} ->
             io:format("~-19s: ~s~n", [<<"Account-ID">>, AccountId]),
             Classification = knm_converters:classify(Number),
@@ -152,7 +152,7 @@ reload_resources() ->
 
 -spec reload_resources(kz_term:ne_binary()) -> 'ok'.
 reload_resources(Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kzs_util:format_account_id(Account),
     _ = stepswitch_resources:fetch_local_resources(AccountId),
     'ok'.
 

@@ -10,7 +10,19 @@
     "language": "javascript",
     "views": {
         "crossbar_listing": {
-            "map": "function(doc) {if (doc.pvt_type != 'notification' || doc.pvt_deleted) return; var id = doc._id.replace(\"notification.\", \"\"); emit(id, {'id': id, 'category':doc.category, 'friendly_name':doc.friendly_name, 'macros':doc.macros, 'enabled': doc.enabled});}"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'notification' || doc.pvt_deleted) return;",
+                "  var id = doc._id.replace(\"notification.\", \"\");",
+                "  emit(id, {",
+                "    'id': id,",
+                "    'category': doc.category,",
+                "    'friendly_name': doc.friendly_name,",
+                "    'macros': doc.macros,",
+                "    'enabled': doc.enabled",
+                "  });",
+                "}"
+            ]
         }
     }
 }

@@ -10,13 +10,28 @@
     "language": "javascript",
     "views": {
         "most_recent_by_agent": {
-            "map": "function(doc) { if ( doc.pvt_type != 'status_stat' ) return; emit([doc.agent_id, doc.timestamp], null); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'status_stat') return;",
+                "  emit([doc.agent_id, doc.timestamp], null);",
+                "}"
+            ]
         },
         "most_recent_by_timestamp": {
-            "map": "function(doc) { if ( doc.pvt_type != 'status_stat' ) return; emit([doc.timestamp, doc.agent_id], null); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'status_stat') return;",
+                "  emit([doc.timestamp, doc.agent_id], null);",
+                "}"
+            ]
         },
         "status_log": {
-            "map": "function(doc) { if ( doc.pvt_type != 'status_stat' ) return; emit([doc.agent_id, doc.timestamp], doc.status); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'status_stat') return;",
+                "  emit([doc.agent_id, doc.timestamp], doc.status);",
+                "}"
+            ]
         }
     }
 }

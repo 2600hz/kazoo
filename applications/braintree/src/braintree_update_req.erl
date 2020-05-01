@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2019, 2600Hz
+%%% @copyright (C) 2013-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(braintree_update_req).
@@ -9,14 +13,15 @@
 
 -include("braintree.hrl").
 
--record(update, {item :: kz_json:api_object()
+-record(update, {item :: kz_term:api_object()
                 ,plan_id :: kz_term:api_ne_binary()
                 ,addon_id :: kz_term:api_ne_binary()
-                ,mapping :: kz_json:api_object()
+                ,mapping :: kz_term:api_object()
                 ,subscription :: braintree_subscription:subscription() | 'undefined'
                 }).
 
--record(request, {request_jobj = kz_json:new() :: kz_json:object()
+-record(request, {activation_charges = [] :: kz_json:objects()
+                 ,request_jobj = kz_json:new() :: kz_json:object()
                  ,account_id :: kz_term:api_ne_binary()
                  ,items = [] :: kz_json:objects()
                  ,vendor_id :: kz_term:api_ne_binary()
@@ -44,9 +49,10 @@ handle_req(JObj, _Props) ->
         'false' ->
             lager:debug("skipping service update for another bookkeeper");
         'true' ->
-            sync(#request{request_jobj=JObj
+            sync(#request{activation_charges=kz_json:get_list_value([<<"Invoice">>, <<"activation_charges">>], JObj, [])
+                         ,request_jobj=JObj
                          ,account_id=AccountId
-                         ,items=kz_json:get_value(<<"Items">>, JObj, [])
+                         ,items=kz_json:get_list_value([<<"Invoice">>, <<"items">>], JObj, [])
                          ,vendor_id=kz_json:get_value(<<"Vendor-ID">>, JObj)
                          ,bookkeeper_id=kz_json:get_value(<<"Bookkeeper-ID">>, JObj)
                          }
@@ -102,10 +108,12 @@ reply(#request{request_jobj=JObj}, Reply) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+-spec sync(request()) -> 'ok'.
 sync(#request{bookkeeper_jobj='undefined'
              ,items=[]
              }=Request) ->
-    reply(Request);
+    _ = reply(Request),
+    process_activations(Request);
 sync(#request{bookkeeper_jobj='undefined'
              ,vendor_id=VendorId
              ,bookkeeper_id=BookkeeperId
@@ -113,7 +121,7 @@ sync(#request{bookkeeper_jobj='undefined'
     lager:debug("fetching bookkeeper document ~s/~s"
                ,[VendorId, BookkeeperId]
                ),
-    VendorDb = kz_util:format_account_db(VendorId),
+    VendorDb = kzs_util:format_account_db(VendorId),
     case kz_datamgr:open_cache_doc(VendorDb, BookkeeperId) of
         {'ok', BookkeeperJObj} ->
             ?APP_NAME = kzd_bookkeeper:bookkeeper_type(BookkeeperJObj),
@@ -189,6 +197,94 @@ sync(#request{items=[Item|Items]
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+-spec process_activations(request()) -> 'ok'.
+process_activations(#request{activation_charges=[]}) ->
+    'ok';
+process_activations(Request) ->
+    Transaction = create_activation_transaction(Request),
+    handle_transaction_sale_response(kz_transaction:sale(Transaction)).
+
+-spec handle_transaction_sale_response({'ok', kz_transaction:transaction()} | {'error', any()}) -> 'ok'.
+handle_transaction_sale_response({'ok', Transaction}) ->
+    case kz_transaction:status_completed(Transaction) of
+        'false' ->
+            lager:debug("activation charge failed: transaction_incomplete");
+        'true' ->
+            lager:debug("activation charge succeeded")
+    end;
+handle_transaction_sale_response({'error', 'invalid_bookkeeper' = _Reason}) ->
+    lager:debug("activation charge failed: ~p", [_Reason]);
+handle_transaction_sale_response({'error', _Reason}) ->
+    lager:debug("activation charge failed: ~p", [_Reason]).
+
+-spec create_activation_transaction(request()) -> kz_transaction:transaction().
+create_activation_transaction(#request{account_id=AccountId
+                                      ,activation_charges=Activations
+                                      ,request_jobj=JObj
+                                      ,vendor_id=VendorId
+                                      }) ->
+    AmountUnits = kz_currency:dollars_to_units(get_activation_amount(JObj, Activations)),
+    AuditLog = kz_json:get_json_value(<<"Audit-Log">>, JObj, kz_json:new()),
+    Metadata = kz_json:from_list([{<<"automatic_description">>, 'true'}]),
+    Setters =
+        props:filter_empty(
+          [{fun kz_transaction:set_account_id/2, AccountId}
+          ,{fun kz_transaction:set_account_name/2, kzd_accounts:fetch_name(AccountId)}
+          ,{fun kz_transaction:set_audit/2, AuditLog}
+          ,{fun kz_transaction:set_bookkeeper_type/2, ?APP_NAME}
+          ,{fun kz_transaction:set_bookkeeper_vendor_id/2, VendorId}
+          ,{fun kz_transaction:set_description/2, create_description(Activations)}
+          ,{fun kz_transaction:set_executor_trigger/2, <<"service_update">>}
+          ,{fun kz_transaction:set_executor_module/2, kz_term:to_binary(?MODULE)}
+          ,{fun kz_transaction:set_metadata/2, Metadata}
+          ,{fun kz_transaction:set_unit_amount/2, AmountUnits}
+          ]
+         ),
+    kz_transaction:setters(Setters).
+
+-spec get_activation_amount(kz_json:object(), kz_json:objects()) -> float().
+get_activation_amount(JObj, Activations) ->
+    Today = kz_json:get_float_value([<<"Invoice">>, <<"summary">>, <<"today">>], JObj),
+    get_activation_amount(JObj, Activations, Today).
+
+-spec get_activation_amount(kz_json:object(), kz_json:objects(), kz_term:api_float()) -> float().
+get_activation_amount(_, Activations, 'undefined') ->
+    lists:sum([kzd_activation_item:total(ActivationItem)
+               || ActivationItem <- Activations
+              ]
+             );
+get_activation_amount(_, _, Today) ->
+    Today.
+
+-spec create_description(kz_json:objects()) -> kz_term:ne_binary().
+create_description([ActivationItem]) ->
+    Name = kzd_activation_item:name(ActivationItem, <<>>),
+    <<Name/binary, " activation charge">>;
+create_description(Activations) ->
+    Items = [create_activation_item_desc(ActivationItem)
+             || ActivationItem <- Activations
+            ],
+    <<"activation charges for items ", (kz_binary:join(Items))/binary>>.
+
+-spec create_activation_item_desc(kz_json:object()) -> kz_term:ne_binary().
+create_activation_item_desc(ActivationItem) ->
+    Billable = kz_term:to_binary(kzd_activation_item:billable(ActivationItem, 1)),
+    Category = kzd_activation_item:category(ActivationItem, <<>>),
+    ItemName = kzd_activation_item:item(ActivationItem, <<>>),
+    CatItem = kz_binary:join([Bin || Bin <- [Category, ItemName],
+                                     Bin =/= <<>>
+                             ]
+                            ,<<$/>>
+                            ),
+    case kzd_activation_item:name(ActivationItem, CatItem) of
+        <<>> -> <<Billable/binary, " x Item(s)">>;
+        Name -> <<Billable/binary, " x ", Name/binary>>
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec update_subscription(braintree_subscription:subscription()) -> kz_term:proplist().
 update_subscription(Subscription) ->
     SubscriptionId = braintree_subscription:get_id(Subscription),
@@ -223,7 +319,7 @@ get_plan_subscription(PlanId, #request{updates=Updates
     end.
 
 -spec get_plan_subscription(kz_term:ne_binary(), request(), braintree_customer:customer()) ->
-                                   braintree_subscription:subscription().
+          braintree_subscription:subscription().
 get_plan_subscription(PlanId, Request, #bt_customer{}=Customer) ->
     try braintree_customer:get_subscription(PlanId, Customer) of
         Subscription ->

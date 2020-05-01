@@ -23,6 +23,8 @@
 
 -define(CB_APPS_STORE_LIST, <<"apps_store/crossbar_listing">>).
 
+-define(NO_ENVELOPE_CONTENT_TYPES, []).
+
 -define(INBOUND_HOOK, <<"hooks">>).
 
 -define(NO_ENVELOPE_VERSIONS, [?INBOUND_HOOK]).
@@ -34,7 +36,11 @@
 
 -define(CB_ACCOUNT_TOKEN_RESTRICTIONS, <<"token_restrictions">>).
 
--define(CONTENT_PROVIDED, [{'to_json', ?JSON_CONTENT_TYPES}]).
+-define(DEFAULT_ACCEPT_HEADER, [{{<<"*">>, <<"*">>, []}, 1000, []}]).
+
+-define(CONTENT_PROVIDED, [{'to_json', ?JSON_CONTENT_TYPES}
+                          ,{'to_csv', ?CSV_CONTENT_TYPES}
+                          ]).
 -define(CONTENT_ACCEPTED, [{'from_json', ?JSON_CONTENT_TYPES}
                           ,{'from_form', ?MULTIPART_CONTENT_TYPES}
                           ,{'from_binary', ?CSV_CONTENT_TYPES}
@@ -47,7 +53,6 @@
                          ,?HTTP_PATCH
                          ,?HTTP_OPTIONS
                          ]).
-
 -define(QUICKCALL_PATH_TOKEN, <<"quickcall">>).
 -define(DEVICES_QCALL_NOUNS(DeviceId, Number)
        ,[{<<"quickcall">>, [Number]}
@@ -113,7 +118,6 @@
                          ,'cb_sms'
                          ,'cb_system_configs'
                          ,'cb_tasks'
-                         ,'cb_templates'
                          ,'cb_temporal_rules'
                          ,'cb_temporal_rules_sets'
                          ,'cb_token_auth'
@@ -127,9 +131,17 @@
                          ,'cb_whitelabel'
                          ]).
 
--define(DEPRECATED_MODULES, ['cb_local_resources'
+-define(DEPRECATED_MODULES, ['cb_bulk'
+                            ,'cb_freeswitch'
+                            ,'cb_global_provisioner_templates'
                             ,'cb_global_resources'
+                            ,'cb_local_provisioner_templates'
+                            ,'cb_local_resources'
+                            ,'cb_onboard'
+                            ,'cb_shared_auth'
                             ,'cb_signup'
+                            ,'cb_templates'
+                            ,'cb_ubiquiti_auth'
                             ]).
 
 -record(cb_context, {content_types_provided = [] :: crossbar_content_handlers()
@@ -140,7 +152,7 @@
                     ,charsets_provided = [<<"iso-8859-1">>] :: kz_term:ne_binaries() %% all charsets provided
                     ,encodings_provided = [<<"gzip;q=1.0">>,<<"identity;q=0.5">>] :: kz_term:ne_binaries() %% gzip and identity
                     ,auth_token = 'undefined' :: kz_term:api_ne_binary()
-                    ,auth_token_type = 'x-auth-token' :: 'x-auth-token' | 'basic' | 'oauth' | 'unknown'
+                    ,auth_token_type = 'x-auth-token' :: 'x-auth-token' | 'basic' | 'bearer' | 'unknown'
                     ,auth_account_id :: kz_term:api_ne_binary()
                     ,auth_doc :: kz_term:api_object()
                     ,req_verb = ?HTTP_GET :: http_method() % see ?ALLOWED_METHODS
@@ -156,7 +168,7 @@
                     ,device_id :: kz_term:api_ne_binary()   % Will be loaded in validate stage for endpoints such as /accounts/{acct-id}/devices/{device-id}/*
                     ,reseller_id :: kz_term:api_ne_binary()
                     ,db_name :: kz_term:api_binary() | kz_term:ne_binaries()
-                    ,doc :: kz_term:api_object() | kz_json:objects()
+                    ,doc :: kz_json:api_json_term()
                     ,pretty_print = 'false' :: boolean()
                     ,resp_expires = {{1999,1,1},{0,0,0}} :: kz_time:datetime()
                     ,resp_etag :: 'automatic' | string() | kz_term:api_binary()
@@ -165,9 +177,9 @@
                     ,resp_error_code :: kz_term:api_integer()
                     ,resp_file = <<>> :: binary()
                     ,resp_data :: resp_data()
-                    ,resp_headers = #{} :: cowboy:http_headers() %% allow the modules to set headers (like Location: XXX to get a 201 response code)
+                    ,resp_headers = #{<<"content-type">> => <<"application/json">>} :: cowboy:http_headers() %% allow the modules to set headers (like Location: XXX to get a 201 response code)
                     ,resp_envelope = kz_json:new() :: kz_json:object()
-                    ,start = os:timestamp() :: kz_time:now()
+                    ,start = kz_time:start_time() :: kz_time:start_time()
                     ,req_id = ?DEFAULT_LOG_SYSTEM_ID :: binary()
                     ,storage = [] :: kz_term:proplist()
                     ,raw_host = <<>> :: binary()
@@ -179,12 +191,13 @@
                     ,client_ip = <<"127.0.0.1">> :: kz_term:api_ne_binary()
                     ,load_merge_bypass :: kz_term:api_object()
                     ,profile_id :: kz_term:api_ne_binary()
-                    ,api_version = ?VERSION_1 :: kz_term:ne_binary()
+                    ,api_version = ?VERSION_2 :: kz_term:ne_binary()
                     ,magic_pathed = 'false' :: boolean()
                     ,should_paginate :: kz_term:api_boolean()
                     ,host_url = <<>> :: binary()
                     ,is_superduper_admin = 'undefined' :: kz_term:api_boolean()
                     ,is_account_admin = 'undefined' :: kz_term:api_boolean()
+                    ,master_account_id = 'undefined' :: kz_term:api_ne_binary()
                     }).
 
 -define(MAX_RANGE, kapps_config:get_pos_integer(?CONFIG_CAT
@@ -201,10 +214,6 @@
                                ,{<<"connectivity">>, <<"sys_info">>}
                                ,{<<"directories">>, <<"directory">>}
                                ,{<<"faxes">>, <<"fax">>}
-                               ,{<<"global_provisioner_templates">>, <<"provisioner_template">>}
-                               ,{<<"global_resources">>, <<"resource">>}
-                               ,{<<"local_provisioner_templates">>, <<"provisioner_template">>}
-                               ,{<<"local_resources">>, <<"resource">>}
                                ,{<<"rate_limit">>, <<"resource">>}
                                ,{<<"sms">>, <<"sms">>}
                                ,{<<"phone_numbers">>, <<"phone_numbers">>} %% weird...

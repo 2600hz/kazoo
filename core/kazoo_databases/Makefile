@@ -1,4 +1,5 @@
-ROOT = ../..
+CWD = $(shell pwd -P)
+ROOT = $(realpath $(CWD)/../..)
 PROJECT = kazoo_databases
 
 SOURCES = $(wildcard src/*.erl)

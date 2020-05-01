@@ -1,8 +1,8 @@
-### Queues
+### ACDC Queues
 
 #### About Queues
 
-When you have more callers than agents to handle those calls, you can create a call queue to put the callers on hold while agents process callers in the order they arrived in.  It is important to note that the information is for ACDC and NOT Qubicle.
+When you have more callers than agents to handle those calls, you can create a call queue to put the callers on hold while agents process callers in the order they arrived in.  It is important to note that the information is for ACDC and NOT Qubicle. If you are looking for Qubicle Queues API documentation [click here](https://docs.2600hz.com/qubicle/doc/crossbar/qubicle_queues/)
 
 #### Schema
 
@@ -270,4 +270,4 @@ curl -v -X GET \
 
 ##### Set the queue roster
 
-    curl -v -X POST -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://server.com:8000/v1/accounts/{ACCOUNT_ID}/queues/{QUEUE_ID}/roster -d '{"data": ["f3ced8ea7bccc352a2124e8a34351e81", "e154a97ec2942599865a1591a477fd19"]}'
+    curl -v -X POST -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://server.com:8000/v2/accounts/{ACCOUNT_ID}/queues/{QUEUE_ID}/roster -d '{"data": ["f3ced8ea7bccc352a2124e8a34351e81", "e154a97ec2942599865a1591a477fd19"]}'

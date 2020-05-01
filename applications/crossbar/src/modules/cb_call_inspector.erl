@@ -1,8 +1,13 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc
 %%% @author Karl Anderson
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cb_call_inspector).
@@ -156,11 +161,15 @@ sanitize(JObjs) ->
 %%------------------------------------------------------------------------------
 -spec get_view_options(req_nouns()) -> {kz_term:api_ne_binary(), crossbar_view:options()}.
 get_view_options([{<<"call_inspector">>, []}, {?KZ_ACCOUNTS_DB, _}|_]) ->
-    {?CB_LIST, []};
+    {?CB_LIST
+    ,[{'range_start_keymap', []}
+     ,{'range_end_keymap', crossbar_view:suffix_key_fun([kz_json:new()])}
+     ]
+    };
 get_view_options([{<<"call_inspector">>, []}, {<<"users">>, [OwnerId]}|_]) ->
     {?CB_LIST_BY_USER
     ,[{'range_start_keymap', [OwnerId]}
-     ,{'range_end_keymap', [OwnerId]}
+     ,{'range_end_keymap', fun(Ts) -> [OwnerId, Ts, kz_json:new()] end}
      ]
     };
 get_view_options(_) ->
@@ -193,7 +202,7 @@ cdrs_listing_mapper(Context, JObjs) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec filter_callids(kz_term:ne_binaries()) -> {'ok', kz_term:ne_binaries()} |
-                                               {'error', kz_term:ne_binary()}.
+          {'error', kz_term:ne_binary()}.
 filter_callids([]) -> {'ok', []};
 filter_callids(CallIds) ->
     Req = [{<<"Call-IDs">>, CallIds}

@@ -24,14 +24,13 @@ pages:
 #    - 'Controlling Calls' : 'tutorial/call_control.md'
 
   - 'Authentication':
+    - 'applications/crossbar/doc/how_to_authenticate.md'
 #    - 'applications/crossbar/doc/auth.md'
     - 'applications/crossbar/doc/basic_auth.md' ##
 #    - 'applications/crossbar/doc/ip_auth.md' ##
 #    - 'Adding Multi-factor': 'applications/crossbar/doc/multi_factor.md'
 #    - 'applications/crossbar/doc/security.md'
-#    - 'applications/crossbar/doc/shared_auth.md' ##
 #    - 'applications/crossbar/doc/token_auth.md'
-#    - 'applications/crossbar/doc/ubiquiti_auth.md'
 #    - 'applications/crossbar/doc/user_authentication.md'
 
 - 'System Preparation':
@@ -124,6 +123,7 @@ pages:
   - 'Media Management':
     - 'applications/crossbar/doc/media.md'
     - 'Play Media To Caller': 'applications/callflow/doc/play.md' ##
+    - 'Set Caller Language': 'applications/callflow/doc/language.md'
 
   - 'Storage':
     - 'applications/crossbar/doc/storage.md'
@@ -141,12 +141,17 @@ pages:
 
   - 'Call Actions':
     - 'applications/crossbar/doc/clicktocall.md' ##
+    - 'applications/crossbar/doc/quickcall.md'
 
   - 'HTTP Event Notifications':
     - 'Administration': 'applications/webhooks/doc/maintenance.md'
     - 'API': 'applications/crossbar/doc/webhooks.md'
+    - 'Webhook Events':
+      - 'Channel Event Webhooks': 'applications/webhooks/doc/events/channels.md'
+      - 'Channel Parking Event Webhook': 'applications/webhooks/doc/events/parking.md'
+      - 'Notification Event Webhooks': 'applications/webhooks/doc/events/notifications.md'
+      - 'Object Change Event Webhook': 'applications/webhooks/doc/events/object.md'
 
-  - 'Webhooks': 'applications/callflow/doc/webhooks.md'
   - 'Custom Webhook': 'applications/callflow/doc/webhook.md' ##
 
 - 'Billing, Reporting and Notifications':
@@ -171,12 +176,10 @@ pages:
 #    - 'applications/crossbar/doc/auth.md'
     - 'applications/crossbar/doc/basic_auth.md' ##
 #    - 'applications/crossbar/doc/ip_auth.md' ##
-#    - 'Adding Multi-factor': 'applications/crossbar/doc/multi_factor.md'
-#    - 'applications/crossbar/doc/security.md'
-#    - 'applications/crossbar/doc/shared_auth.md' ##
+    - 'Adding Multi-factor': 'applications/crossbar/doc/multi_factor.md'
+    - 'applications/crossbar/doc/security.md'
 #    - 'applications/crossbar/doc/token_auth.md'
-#    - 'applications/crossbar/doc/ubiquiti_auth.md'
-#    - 'applications/crossbar/doc/user_authentication.md'
+    - 'applications/crossbar/doc/user_authentication.md'
 
 - 'Advanced System Configuration':
   - 'Connectivity':
@@ -184,7 +187,9 @@ pages:
     - 'applications/crossbar/doc/connectivity.md' ##
     - 'applications/crossbar/doc/ips.md'
     - 'applications/crossbar/doc/rate_limits.md'
-    - 'applications/crossbar/doc/rates.md'
+    - 'Rates':
+        - 'API': 'applications/crossbar/doc/rates.md'
+        - 'System Administrators': 'applications/tasks/doc/rates.md'
     - 'applications/crossbar/doc/resource_selectors.md'
     - 'applications/crossbar/doc/resource_templates.md' ##
     - 'applications/crossbar/doc/resources.md'
@@ -194,6 +199,7 @@ pages:
   - 'Misc':
     - 'applications/crossbar/doc/comments.md' ##
     - 'applications/crossbar/doc/lists.md'
+    - 'applications/crossbar/doc/tasks.md'
 
 - 'Advanced Call Routing':
   - 'Nuisance Call Handling':
@@ -226,7 +232,7 @@ pages:
   - 'Dialplans': 'applications/crossbar/doc/dialplans.md'
   - 'System Prompts': 'doc/internationalization/prompts.md'
 
-#- 'Advanced Integrations':
+- 'Advanced Integrations':
 #  - 'Call Actions':
 #    - 'applications/crossbar/doc/metaflows.md'
 #    - 'Call Parking': 'applications/callflow/doc/park.md'
@@ -253,10 +259,10 @@ pages:
 #        - 'applications/pivot/doc/twiml/README.md'
 #    - 'Known_Issues':
 #      - 'applications/pivot/doc/issues.md'
-#  - 'Websockets':
+  - 'Websockets':
 #    - 'applications/blackhole/doc/README.md'
 #    - 'Bindings': 'applications/blackhole/doc/bindings.md'
-#    - 'API': 'applications/crossbar/doc/websockets.md'
+    - 'API': 'applications/crossbar/doc/websockets.md'
 #    - 'HAProxy configuration': 'applications/blackhole/doc/haproxy.md' ###
 #    - 'Troubleshooting': 'applications/blackhole/doc/troubleshooting.md' ###
 #    - 'Presentations':
@@ -279,7 +285,7 @@ pages:
     - 'FAQ' : 'doc/appexchange/build_faq.md'
   - 'List Your App':
     - 'Submit Your App': 'doc/appexchange/submit_app.md'
-    - 'Approval Process': 'doc/appexchange/approval_process.md'
+    - 'Approval Process': 'doc/appexchange/states_workflows.md'
     - 'FAQ' : 'doc/appexchange/list_faq.md'
   - 'Sell Your App':
     - 'How to Sell Your App': 'doc/appexchange/how_to_sell.md'
@@ -306,15 +312,6 @@ pages:
 #    - 'applications/crossbar/doc/system_configs.md'
 #    - 'applications/crossbar/doc/tasks.md'
 #    - 'applications/crossbar/doc/token_restrictions.md'
-#  - 'Deprecated':
-#    - 'applications/crossbar/doc/bulk.md'
-#    - 'applications/crossbar/doc/global_provisioner_templates.md'
-#    - 'applications/crossbar/doc/local_provisioner_templates.md'
-#    - 'applications/crossbar/doc/onboard.md'
-#    - 'applications/crossbar/doc/onboarding.md'
-#    - 'applications/crossbar/doc/signup.md'
-#    - 'applications/crossbar/doc/templates.md'
-
 #  - 'System Status':
 #    - 'applications/crossbar/doc/about.md'
 #    - 'applications/crossbar/doc/acls.md' ##

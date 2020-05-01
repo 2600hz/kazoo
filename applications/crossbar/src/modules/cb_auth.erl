@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc
 %%% @author Daniel Finke
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cb_auth).
@@ -35,7 +40,6 @@
 -define(PROVIDERS_VIEW, <<"providers/list_by_type">>).
 -define(PROVIDERS_APP_VIEW, <<"apps/list_by_provider">>).
 -define(APPS_VIEW, <<"apps/list_by_account">>).
--define(KEYS_VIEW, <<"auth/list_keys">>).
 
 -define(PUBLIC_KEY_MIME, [{<<"application">>, <<"x-pem-file">>}]).
 
@@ -205,13 +209,13 @@ authenticate_nouns(?TOKENINFO_PATH, ?HTTP_POST, [{<<"auth">>, _}]) -> 'true';
 authenticate_nouns(_, _, _) -> 'false'.
 
 -spec validate_resource(cb_context:context()) -> cb_context:context().
-validate_resource(Context) -> cb_context:set_account_db(Context, ?KZ_AUTH_DB).
+validate_resource(Context) -> cb_context:set_db_name(Context, ?KZ_AUTH_DB).
 
 -spec validate_resource(cb_context:context(), path_token()) -> cb_context:context().
-validate_resource(Context, _Path) -> cb_context:set_account_db(Context, ?KZ_AUTH_DB).
+validate_resource(Context, _Path) -> cb_context:set_db_name(Context, ?KZ_AUTH_DB).
 
 -spec validate_resource(cb_context:context(), path_token(), kz_term:ne_binary()) -> cb_context:context().
-validate_resource(Context, _Path, _Id) -> cb_context:set_account_db(Context, ?KZ_AUTH_DB).
+validate_resource(Context, _Path, _Id) -> cb_context:set_db_name(Context, ?KZ_AUTH_DB).
 
 %%------------------------------------------------------------------------------
 %% @doc This function determines if the parameters and content are correct
@@ -277,22 +281,29 @@ validate_path(Context, ?TOKENINFO_PATH, ?HTTP_POST) ->
 %% validating /auth/links
 validate_path(Context, ?LINKS_PATH, ?HTTP_GET) ->
     Options = [{'key', [cb_context:auth_account_id(Context), cb_context:auth_user_id(Context)]}
+              ,{'databases', [?KZ_AUTH_DB]}
+              ,{'mapper', crossbar_view:get_value_fun()}
               ,'include_docs'
               ],
-    crossbar_doc:load_view(?LINKS_VIEW, Options, Context, fun normalize_view/2);
+    crossbar_view:load(Context, ?LINKS_VIEW, Options);
 
 %% validating /auth/providers
 validate_path(Context, ?PROVIDERS_PATH, ?HTTP_GET) ->
-    crossbar_doc:load_view(?PROVIDERS_VIEW, [], Context, fun normalize_view/2);
+    Options = [{'databases', [?KZ_AUTH_DB]}
+              ,{'mapper', crossbar_view:get_value_fun()}
+              ],
+    crossbar_view:load(Context, ?PROVIDERS_VIEW, Options);
 validate_path(Context, ?PROVIDERS_PATH, ?HTTP_PUT) ->
     cb_context:validate_request_data(<<"auth.provider">>, Context, fun add_provider/1);
 
 %% validating /auth/apps
 validate_path(Context, ?APPS_PATH, ?HTTP_GET) ->
     Options = [{'key', account_id(Context)}
+              ,{'databases', [?KZ_AUTH_DB]}
+              ,{'mapper', crossbar_view:get_value_fun()}
               ,'include_docs'
               ],
-    crossbar_doc:load_view(?APPS_VIEW, Options, Context, fun normalize_view/2);
+    crossbar_view:load(Context, ?APPS_VIEW, Options);
 validate_path(Context, ?APPS_PATH, ?HTTP_PUT) ->
     cb_context:validate_request_data(<<"auth.app">>, Context, fun add_app/1);
 
@@ -316,7 +327,7 @@ validate_path(Context, ?PROVIDERS_PATH, Id, ?HTTP_POST) ->
     crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"provider">>));
 validate_path(Context, ?PROVIDERS_PATH, Id, ?HTTP_DELETE) ->
     Options = [{'key', Id}],
-    case kz_datamgr:get_result_keys(cb_context:account_db(Context), ?PROVIDERS_APP_VIEW, Options) of
+    case kz_datamgr:get_result_keys(cb_context:db_name(Context), ?PROVIDERS_APP_VIEW, Options) of
         {'ok', []} -> Context;
         {'ok', _} -> cb_context:add_system_error(<<"apps exist for provider">>, Context);
         {'error', _E} ->
@@ -456,20 +467,16 @@ maybe_authorize(Context) ->
             cb_context:add_system_error('invalid_credentials', Context)
     end.
 
--spec normalize_view(kz_json:object(), kz_json:objects()) -> kz_json:objects().
-normalize_view(JObj, Acc) ->
-    [kz_json:get_value(<<"value">>, JObj)|Acc].
-
--spec account_id(cb_contxt:context()) -> kz_term:ne_binary().
+-spec account_id(cb_context:context()) -> kz_term:ne_binary().
 account_id(Context) ->
-    {ok, Master} = kapps_util:get_master_account_id(),
+    {'ok', Master} = kapps_util:get_master_account_id(),
     Source = [cb_context:req_param(Context, <<"account_id">>)
              ,cb_context:account_id(Context)
              ,cb_context:auth_account_id(Context)
              ,Master
              ],
-    AccountId = hd(lists:filter(fun(undefined) -> false;
-                                   (_Id) -> true
+    AccountId = hd(lists:filter(fun('undefined') -> 'false';
+                                   (_Id) -> 'true'
                                 end, Source)),
     case kz_services_reseller:is_reseller(AccountId)
         orelse AccountId =:= Master

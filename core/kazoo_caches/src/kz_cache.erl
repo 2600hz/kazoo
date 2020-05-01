@@ -1,8 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc API interface to the cache system
 %%% @author James Aimonetti
 %%% @author Karl Anderson
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_cache).
@@ -17,6 +21,8 @@
 -export([flush_local/1]).
 -export([filter_local/2, filter_erase_local/2]).
 -export([dump_local/1, dump_local/2]).
+-export([count_local/2, count_local/3, count_local/5]).
+
 -export([wait_for_key_local/2
         ,wait_for_key_local/3
         ,wait_for_stampede_local/2, wait_for_stampede_local/3
@@ -28,7 +34,8 @@
 
 -type store_options() :: [{'origin', origin_tuple() | origin_tuples()} |
                           {'expires', timeout()} |
-                          {'callback', 'undefined' | callback_fun()}
+                          {'callback', 'undefined' | callback_fun()} |
+                          {'monitor', boolean() | [pid()]}
                          ].
 
 -type start_option() :: {'origin_bindings', origin_tuples()} |
@@ -74,14 +81,14 @@ store_local_async(Srv, K, V, Props) ->
     kz_cache_ets:store_async(Srv, K, V, Props).
 
 -spec peek_local(atom(), any()) -> {'ok', any()} |
-                                   {?MITIGATION, pid()} |
-                                   {'error', 'not_found'}.
+          {?MITIGATION, pid()} |
+          {'error', 'not_found'}.
 peek_local(Srv, Key) ->
     kz_cache_ets:peek(Srv, Key).
 
 -spec fetch_local(atom(), any()) -> {'ok', any()} |
-                                    {?MITIGATION, pid()} |
-                                    {'error', 'not_found'}.
+          {?MITIGATION, pid()} |
+          {'error', 'not_found'}.
 fetch_local(Srv, K) ->
     kz_cache_ets:fetch(Srv, K).
 
@@ -106,7 +113,7 @@ fetch_keys_local(Srv) ->
     ets:select(Srv, MatchSpec).
 
 -spec filter_erase_local(atom(), fun((any(), any()) -> boolean())) ->
-                                non_neg_integer().
+          non_neg_integer().
 filter_erase_local(Srv, Pred) when is_function(Pred, 2) ->
     ets:foldl(fun(#cache_obj{key=K, value=V}, Count) ->
                       case Pred(K, V) of
@@ -155,6 +162,21 @@ dump_table(Tab, ShowValue) ->
         ],
     'ok'.
 
+-spec count_local(atom(), any()) -> non_neg_integer().
+count_local(Srv, KeyMatchHead) ->
+    count_local(Srv, KeyMatchHead, '_').
+
+-spec count_local(atom(), any(), any()) -> non_neg_integer().
+count_local(Srv, KeyMatchHead, ValMatchHead) ->
+    kz_cache_ets:count(Srv, KeyMatchHead, 'undefined', ValMatchHead, 'undefined').
+
+-spec count_local(atom(), any(), any(), any(), any()) -> non_neg_integer().
+count_local(Srv
+           ,KeyMatchHead, KeyMatchCondition
+           ,ValMatchHead, ValMatchCondition
+           ) ->
+    kz_cache_ets:count(Srv, KeyMatchHead, KeyMatchCondition, ValMatchHead, ValMatchCondition).
+
 -spec display_cache_obj(cache_obj(), boolean(), kz_time:gregorian_seconds()) -> 'ok'.
 display_cache_obj(#cache_obj{key=Key
                             ,value=Value
@@ -184,25 +206,25 @@ display_cache_obj(#cache_obj{key=Key
     io:format('user', "~n", []).
 
 -spec wait_for_key_local(kz_types:server_ref(), any()) -> {'ok', any()} |
-                                                          {'error', 'timeout'}.
+          {'error', 'timeout'}.
 wait_for_key_local(Srv, Key) ->
     wait_for_key_local(Srv, Key, ?DEFAULT_WAIT_TIMEOUT_MS).
 
 -spec wait_for_key_local(kz_types:server_ref(), any(), pos_integer()) ->
-                                {'ok', any()} |
-                                {'error', 'timeout'}.
+          {'ok', any()} |
+          {'error', 'timeout'}.
 wait_for_key_local(Srv, Key, Timeout) when is_integer(Timeout) ->
     kz_cache_ets:wait_for_key(Srv, Key, Timeout).
 
 -spec wait_for_stampede_local(kz_types:server_ref(), any()) ->
-                                     {'ok', any()} |
-                                     {'error', 'timeout'}.
+          {'ok', any()} |
+          {'error', 'timeout'}.
 wait_for_stampede_local(Srv, Key) ->
     wait_for_stampede_local(Srv, Key, ?DEFAULT_WAIT_TIMEOUT_MS).
 
 -spec wait_for_stampede_local(kz_types:server_ref(), any(), pos_integer()) ->
-                                     {'ok', any()} |
-                                     {'error', 'timeout'}.
+          {'ok', any()} |
+          {'error', 'timeout'}.
 wait_for_stampede_local(Srv, Key, Timeout) when is_integer(Timeout) ->
     wait_for_key_local(Srv, Key, Timeout).
 

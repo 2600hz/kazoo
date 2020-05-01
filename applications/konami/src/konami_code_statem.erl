@@ -1,8 +1,13 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2014-2019, 2600Hz
+%%% @copyright (C) 2014-2020, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
 %%% @author Daniel Finke
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(konami_code_statem).
@@ -372,9 +377,9 @@ listen_on(Call, JObj) ->
     end.
 
 -spec has_metaflow(kz_term:ne_binary(), kz_json:object(), kz_json:object()) ->
-                          'false' |
-                          {'number', kz_json:object()} |
-                          {'patterm', kz_json:object()}.
+          'false' |
+          {'number', kz_json:object()} |
+          {'pattern', kz_json:object()}.
 has_metaflow(Collected, Ns, Ps) ->
     case has_number(Collected, Ns) of
         'false' -> has_pattern(Collected, Ps);
@@ -382,8 +387,8 @@ has_metaflow(Collected, Ns, Ps) ->
     end.
 
 -spec has_number(kz_term:ne_binary(), kz_json:object()) ->
-                        'false' |
-                        {'number', kz_json:object()}.
+          'false' |
+          {'number', kz_json:object()}.
 has_number(Collected, Ns) ->
     case kz_json:get_value(Collected, Ns) of
         'undefined' -> 'false';
@@ -391,8 +396,8 @@ has_number(Collected, Ns) ->
     end.
 
 -spec has_pattern(kz_term:ne_binary(), kz_json:object()) ->
-                         'false' |
-                         {'pattern', kz_json:object()}.
+          'false' |
+          {'pattern', kz_json:object()}.
 has_pattern(Collected, Ps) ->
     Regexes = kz_json:get_keys(Ps),
     has_pattern(Collected, Ps, Regexes).

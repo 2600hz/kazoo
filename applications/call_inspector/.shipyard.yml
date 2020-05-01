@@ -1,0 +1,21 @@
+---
+name: kazoo-application-call_inspector
+base_branch: origin/master
+metapackage:
+  - name: meta-kazoo-applications
+    type: required
+    branch: master
+    package: kazoo-application-call_inspector
+base_core: kazoo
+template: kazoo-application.spec.tmpl
+package:
+  centos7:
+    name: kazoo-application-call_inspector
+    summary: Kazoo core application
+    description: |
+      An inspectortron application useful for quickly troubleshooting issues
+    app_name: call_inspector
+    license: MPL 2.0
+    group: Productivity/Telephony
+    url: https://2600hz.org/
+    vendor: 2600Hz

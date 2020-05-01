@@ -1,0 +1,5 @@
+<definition name="hangup-fields">
+	<field name="hangup-code" type="reference" />
+	<field name="hangup-cause" type="reference" />
+	<field name="hangup-disposition" type="reference" />
+</definition>

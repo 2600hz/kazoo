@@ -16,7 +16,7 @@
             "map": [
                 "function(doc) {",
                 "  for (var node in doc['by_node']) {",
-                "      emit([node, doc._id], null);",
+                "    emit([node, doc._id], null);",
                 "  }",
                 "}"
             ]

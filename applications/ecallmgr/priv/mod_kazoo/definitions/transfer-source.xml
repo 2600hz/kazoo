@@ -1,0 +1,7 @@
+<definition name="transfer-source">
+	<filters>
+		<filter name="variable_transfer_source" type="include" compare="exists" />
+	</filters>
+	<field name="Transfer-Source" type="expand"
+		value="${kz_json_history(variable_transfer_source)}" serialize-as="raw" />
+</definition>

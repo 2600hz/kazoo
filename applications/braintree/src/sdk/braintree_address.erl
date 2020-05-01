@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc
 %%% @author Karl Anderson
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(braintree_address).
@@ -84,8 +89,9 @@ update(#bt_address{id=AddressId
 -spec delete(bt_address()) -> bt_address().
 delete(#bt_address{customer_id=CustomerId
                   ,id=AddressId
-                  }) ->
-    delete(CustomerId, AddressId).
+                  }=Address) ->
+    _ = delete(CustomerId, AddressId),
+    Address.
 
 -spec delete(kz_term:ne_binary() | nonempty_string(), kz_term:ne_binary() | nonempty_string()) ->  bt_address().
 delete(CustomerId, AddressId) ->

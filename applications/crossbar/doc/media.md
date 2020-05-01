@@ -112,7 +112,7 @@ curl -v -X GET \
     "auth_token": "{AUTH_TOKEN}",
     "data": [
         {
-            "id": "0c347bba3754056caad610bb8a337342",
+            "id": "{MEDIA_ID}",
             "is_prompt": false,
             "language": "en-us",
             "media_source": "tts",
@@ -215,7 +215,7 @@ curl -v -X DELETE \
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/0c347bba3754056caad610bb8a337342
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}
 ```
 
 ```json
@@ -223,7 +223,7 @@ curl -v -X GET \
     "auth_token": "{AUTH_TOKEN}",
     "data": {
         "description": "tts file",
-        "id": "0c347bba3754056caad610bb8a337342",
+        "id": "{MEDIA_ID}",
         "language": "en-us",
         "media_source": "tts",
         "name": "Main AA BG",
@@ -331,38 +331,64 @@ curl -v -X GET \
 
 ## Get the raw media file
 
-> GET /v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}/raw
+Streams back an the uploaded media.
+
+> GET /v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}/
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H 'Accept: audio/mp3' \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}/raw
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}/
 ```
 
-Streams back an MP3-encoded media.
+!!! note
+    There is a deprecated but maintained URL, `GET /v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}/raw`, as well.
 
 ## Add the media binary file to the media meta data
 
-> POST /v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}/raw
+> POST /v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}/
 
 ```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H 'Content-Type: audio/mp3' \
     --data-binary @/path/to/file.mp3 \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}/raw
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}/
+```
+```json
+{
+  "auth_token": "{AUTH_TOKEN}",
+  "data": {
+    "id": "{MEDIA_ID}",
+    "language": "{LANG}",
+    "media_source": "upload",
+    "name": "{FRIENDLY_NAME}",
+    "streamable": true,
+    "tts": {
+      "voice": "female/en-US"
+    }
+  },
+  "node": "{NODENAME}",
+  "request_id": "{REQUEST_ID}",
+  "revision": "{REVISION}",
+  "status": "success",
+  "timestamp": "{TIMESTAMP}"
+}
 ```
 
 ```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -H 'Content-Type: audio/x-wav \
+    -H 'Content-Type: audio/x-wav' \
     --data-binary @/path/to/file.wav \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}/raw
 ```
 
 Only one of the above; any subsequent POSTs will overwrite the existing binary data.
+
+!!! note
+    There is a deprecated but maintained URL, `GET /v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}/raw`, as well.
 
 ## List all translations of a given prompt
 

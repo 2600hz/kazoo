@@ -1,7 +1,11 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_tracers).
@@ -43,8 +47,7 @@ gen_load(N) ->
 
 -spec gen_load(non_neg_integer(), non_neg_integer()) -> 'ok'.
 gen_load(N, D) ->
-    Start = os:timestamp(),
-    _ = rand:seed('exsplus', Start),
+    Start = kz_time:start_time(),
 
     {PointerTab, MonitorTab} = gen_listener:call(?CACHE_NAME, {'tables'}),
     Tables = [?CACHE_NAME, PointerTab, MonitorTab],
@@ -85,15 +88,14 @@ table_status(Ts) ->
 
 do_load_gen(Ds) ->
     AccountId = kz_binary:rand_hex(16),
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kzs_util:format_account_db(AccountId),
     'true' = kz_datamgr:db_create(AccountDb),
 
     io:format("building ~p with ~p docs~n", [AccountDb, Ds]),
 
     Docs = [new_doc(AccountDb, Doc) || Doc <- lists:seq(1,Ds)],
 
-    Start = os:timestamp(),
-    _ = rand:seed('exsplus', Start),
+    Start = kz_time:start_time(),
 
     case rand:uniform(100) of
         42 ->
@@ -189,7 +191,7 @@ perform_op({'edit', Doc}, Acc, AccountDb) ->
     {'ok', _Loaded} = kz_datamgr:open_cache_doc(AccountDb, kz_doc:id(Saved)),
     [Saved | Acc];
 perform_op({'delete', Doc}, Acc, AccountDb) ->
-    kz_datamgr:del_doc(AccountDb, Doc),
+    _ = kz_datamgr:del_doc(AccountDb, Doc),
     Acc;
 perform_op({'noop', Doc}, Acc, _AccountDb) ->
     [Doc | Acc].

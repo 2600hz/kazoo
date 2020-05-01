@@ -1,0 +1,6 @@
+<definition name="application">
+	<field name="Application-Name" type="first-of"
+		value="Application-UUID-Name|kazoo_application_name|Application|Event-Subclass" />
+	<field name="Application-Response" type="first-of"
+		value="kazoo_application_response|Application-Response" />
+</definition>

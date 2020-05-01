@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc
 %%% @author Hesaam Farhang
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(braintree_maintenance).
@@ -25,7 +30,7 @@ sync_all_accounts_payments_info() ->
 
 -spec sync_all_accounts_payments_info_fold(kz_term:ne_binary(), non_neg_integer(), non_neg_integer()) -> integer().
 sync_all_accounts_payments_info_fold(Account, Count, TotalLength) ->
-    AccountId = kz_util:format_account_id(Account),
+    AccountId = kzs_util:format_account_id(Account),
     io:format(" (~b/~b) ", [Count, TotalLength]),
     sync_account_services_payments_info(AccountId),
     timer:sleep(1000),
@@ -45,7 +50,7 @@ sync_account_services_payments_info(AccountId, Services) ->
                 {'error', _} -> io:format("failed to update service doc~n", [])
             end;
         #bt_api_error{errors = Errors} ->
-            io:format("braintree failed with ~p~n", format_errors(Errors))
+            io:format("braintree failed with ~p~n", [format_errors(Errors)])
     catch
         'throw':{_, ErrJObj} -> io:format("braintree failed with ~s ~n", [kz_json:encode(ErrJObj)])
     end.
@@ -66,7 +71,7 @@ sync_payment_info(AccountId, CardId) ->
         #bt_card{} ->
             io:format("card not found~n");
         #bt_api_error{errors = Errors} ->
-            io:format("braintree failed with ~p~n", format_errors(Errors))
+            io:format("braintree failed with ~p~n", [format_errors(Errors)])
     catch
         'throw':{_, ErrJObj} -> io:format("braintree failed with ~s ~n", [kz_json:encode(ErrJObj)])
     end.

@@ -183,6 +183,9 @@
             ],
             "type": "string"
         },
+        "Original-Resource-Type": {
+            "type": "string"
+        },
         "Origination-Call-ID": {
             "type": "string"
         },
@@ -199,6 +202,15 @@
             "type": "string"
         },
         "Presence-ID": {
+            "type": "string"
+        },
+        "Privacy-Hide-Name": {
+            "type": "string"
+        },
+        "Privacy-Hide-Number": {
+            "type": "string"
+        },
+        "Privacy-Method": {
             "type": "string"
         },
         "Requestor-Custom-Channel-Vars": {

@@ -1,11 +1,16 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Renders a custom account email template, or the system default,
 %%% and sends the email with voicemail attachment to the user.
 %%%
 %%%
 %%% @author James Aimonetti <james@2600hz.org>
 %%% @author Karl Anderson <karl@2600hz.org>
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(notify_voicemail_to_email).
@@ -37,7 +42,7 @@ init() ->
 -spec handle_req(kz_json:object(), kz_term:proplist()) -> any().
 handle_req(JObj, _Props) ->
     'true' = kapi_notifications:voicemail_new_v(JObj),
-    _ = kz_util:put_callid(JObj),
+    _ = kz_log:put_callid(JObj),
 
     lager:debug("new voicemail left, sending to email if enabled"),
 
@@ -45,7 +50,7 @@ handle_req(JObj, _Props) ->
     MsgId = kz_api:msg_id(JObj),
     notify_util:send_update(RespQ, MsgId, <<"pending">>),
 
-    AccountDb = kz_util:format_account_db(kz_json:get_value(<<"Account-ID">>, JObj)),
+    AccountDb = kzs_util:format_account_db(kz_json:get_value(<<"Account-ID">>, JObj)),
 
     VMBoxId = kz_json:get_value(<<"Voicemail-Box">>, JObj),
     lager:debug("loading vm box ~s", [VMBoxId]),
@@ -66,7 +71,7 @@ handle_req(JObj, _Props) ->
 
 -spec continue_processing(kz_json:object(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binaries()) -> send_email_return().
 continue_processing(JObj, AccountDb, VMBox, Emails) ->
-    AccountDb = kz_util:format_account_db(kz_json:get_value(<<"Account-ID">>, JObj)),
+    AccountDb = kzs_util:format_account_db(kz_json:get_value(<<"Account-ID">>, JObj)),
 
     lager:debug("VM->Email enabled for user, sending to ~p", [Emails]),
     {'ok', AccountJObj} = kzd_accounts:fetch(AccountDb),
@@ -97,7 +102,7 @@ get_owner(AccountDb, VMBox) ->
     get_owner(AccountDb, VMBox, kzd_voicemail_box:owner_id(VMBox)).
 
 -spec get_owner(kz_term:ne_binary(), kzd_voicemail_box:doc(), kz_term:api_binary()) ->
-                       {'ok', kzd_users:doc()}.
+          {'ok', kzd_users:doc()}.
 get_owner(_AccountDb, _VMBox, 'undefined') ->
     lager:debug("no owner of voicemail box ~s, using empty owner", [kz_doc:id(_VMBox)]),
     {'ok', kz_json:new()};
@@ -121,7 +126,7 @@ create_template_props(Event, Timezone, Account) ->
     DateCalled = kz_json:get_integer_value(<<"Voicemail-Timestamp">>, Event),
     DateTime = calendar:gregorian_seconds_to_datetime(DateCalled),
 
-    ClockTimezone = kapps_config:get_string(<<"servers">>, <<"clock_timezone">>, <<"UTC">>),
+    ClockTimezone = kapps_config:get_string(<<"servers">>, <<"clock_timezone">>, "UTC"),
 
     [{<<"account">>, notify_util:json_to_template_props(Account)}
     ,{<<"service">>, notify_util:get_service_props(Event, Account, ?MOD_CONFIG_CAT)}
@@ -130,7 +135,7 @@ create_template_props(Event, Timezone, Account) ->
                           %% sometimes the name is a number...
                          ,{<<"caller_id_name">>, knm_util:pretty_print(CIDName)}
                          ,{<<"date_called_utc">>, localtime:local_to_utc(DateTime, ClockTimezone)}
-                         ,{<<"date_called">>, localtime:local_to_local(DateTime, ClockTimezone, Timezone)}
+                         ,{<<"date_called">>, localtime:local_to_local(DateTime, ClockTimezone, kz_term:to_list(Timezone))}
                          ,{<<"from_user">>, knm_util:pretty_print(FromE164)}
                          ,{<<"from_realm">>, kz_json:get_value(<<"From-Realm">>, Event)}
                          ,{<<"to_user">>, knm_util:pretty_print(ToE164)}
@@ -151,7 +156,7 @@ magic_hash(Event) ->
     VMBoxId = kz_json:get_value(<<"Voicemail-Box">>, Event),
     MessageId = kz_json:get_value(<<"Voicemail-ID">>, Event),
 
-    try list_to_binary([<<"/v1/accounts/">>, AccountId, <<"/vmboxes/">>, VMBoxId
+    try list_to_binary([<<"/v2/accounts/">>, AccountId, <<"/vmboxes/">>, VMBoxId
                        ,<<"/messages/">>, MessageId, <<"/raw">>
                        ])
     of

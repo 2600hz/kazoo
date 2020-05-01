@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_auth).
@@ -20,20 +24,21 @@
 
 -include("kazoo_auth.hrl").
 
--spec create_token(kz_term:proplist()) -> {'ok', kz_term:ne_binary()} |
-                                          {'error', 'algorithm_not_supported'}.
+-spec create_token(kz_term:proplist()) ->
+          {'ok', kz_term:ne_binary()} |
+          {'error', 'algorithm_not_supported'}.
 create_token(Claims) ->
     kz_auth_jwt:encode(include_claims(Claims)).
 
 -spec validate_token(kz_term:ne_binary() | map()) ->
-                            {'ok', kz_json:object()} |
-                            {'error', any()}.
+          {'ok', kz_json:object()} |
+          {'error', any()}.
 validate_token(Token) ->
     validate_token(Token, []).
 
 -spec validate_token(kz_term:ne_binary() | map(), kz_term:proplist()) ->
-                            {'ok', kz_json:object()} |
-                            {'error', any()}.
+          {'ok', kz_json:object()} |
+          {'error', any()}.
 validate_token(JWToken, Options) ->
     case kz_auth_jwt:token(JWToken, Options) of
         #{verify_result := 'true'} = Token -> validate_claims(Token, Options);
@@ -42,8 +47,8 @@ validate_token(JWToken, Options) ->
     end.
 
 -spec access_code(kz_json:object()) ->
-                         {'ok', kz_json:object()} |
-                         {'error', any()}.
+          {'ok', kz_json:object()} |
+          {'error', any()}.
 access_code(JObj) ->
     Code = kz_json:get_value(<<"code">>, JObj),
     AppId = kz_json:get_first_defined(?APPID_KEYS, JObj),
@@ -51,8 +56,8 @@ access_code(JObj) ->
     kz_auth_util:fetch_access_code(AppId, Code, RedirectURI).
 
 -spec authenticate(map() | kz_term:ne_binary() | kz_json:object()) ->
-                          {'ok', kz_term:proplist()} |
-                          {'error', any()}.
+          {'ok', kz_term:proplist()} |
+          {'error', any()}.
 authenticate(JWTToken)
   when is_binary(JWTToken) ->
     case kz_auth_jwt:token(JWTToken) of
@@ -64,6 +69,7 @@ authenticate(Token)
   when is_map(Token) ->
     Routines = [fun kz_auth_token_util:add_application/1
                ,fun kz_auth_token_util:add_provider/1
+               ,fun kz_auth_token_util:add_discovery/1
                ,fun kz_auth_token_util:access_code/1
                ,fun kz_auth_token_util:access_token/1
                ,fun kz_auth_token_util:verify/1
@@ -112,13 +118,15 @@ validate_claims(#{user_map := #{<<"pvt_account_id">> := AccountId
                                ,<<"pvt_owner_id">> := OwnerId
                                }
                  ,payload := Payload
-                 }, Options) ->
+                 }
+               ,Options
+               ) ->
     case props:get_value(<<"account_id">>, Options, AccountId) of
         AccountId ->
             Props = [{<<"account_id">>, AccountId}
                     ,{<<"owner_id">>, OwnerId}
                     ],
-            case kz_datamgr:open_cache_doc(kz_util:format_account_db(AccountId), OwnerId) of
+            case kz_datamgr:open_cache_doc(kzs_util:format_account_db(AccountId), OwnerId) of
                 {'ok', _Doc} -> {'ok', kz_json:set_values(Props, kz_json:from_map(Payload))};
                 _ -> {'error', {403, <<"mapped account does not exist">>}}
             end;
@@ -172,7 +180,8 @@ include_claims(Claims) ->
 -spec include_identity_sign(kz_term:proplist()) -> kz_term:proplist().
 include_identity_sign(Claims) ->
     case kz_auth_identity:sign(Claims) of
-        {'ok', Signature} -> [{<<"identity_sig">>, kz_base64url:encode(Signature)} | Claims];
+        {'ok', Signature} ->
+            [{<<"identity_sig">>, kz_base64url:encode(Signature)} | Claims];
         _Else ->
             lager:debug("identity signing json token failed : ~p", [_Else]),
             Claims
@@ -190,17 +199,17 @@ authenticate_fold(Token, [Fun | Routines]) ->
     try Fun(Token) of
         NewToken -> authenticate_fold(NewToken, Routines)
     catch
-        _E:_R ->
-            lager:debug("exception executing ~p : ~p , ~p", [Fun, _E, _R]),
-            kz_util:log_stacktrace(),
-            authenticate_fold(Token, Routines)
-    end.
+        ?STACKTRACE(_E, _R, ST)
+        lager:debug("exception executing ~p : ~p , ~p", [Fun, _E, _R]),
+        kz_log:log_stacktrace(ST),
+        authenticate_fold(Token, Routines)
+        end.
 
 -spec link(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                  'ok' | kz_datamgr:data_error().
+          'ok' | kz_datamgr:data_error().
 link(AccountId, OwnerId, AuthId) ->
-    Updates = [{<<"pvt_account_id">>, AccountId}
-              ,{<<"pvt_owner_id">>, OwnerId}
+    Updates = [{[<<"pvt_account_id">>], AccountId}
+              ,{[<<"pvt_owner_id">>], OwnerId}
               ],
     UpdateOptions = [{'update', Updates}],
     case kz_datamgr:update_doc(?KZ_AUTH_DB, AuthId, UpdateOptions) of
@@ -209,10 +218,10 @@ link(AccountId, OwnerId, AuthId) ->
     end.
 
 -spec unlink(kz_term:ne_binary()) ->
-                    'ok' | kz_datamgr:data_error().
+          'ok' | kz_datamgr:data_error().
 unlink(AuthId) ->
-    Updates = [{<<"pvt_account_id">>, 'null'}
-              ,{<<"pvt_owner_id">>, 'null'}
+    Updates = [{[<<"pvt_account_id">>], 'null'}
+              ,{[<<"pvt_owner_id">>], 'null'}
               ],
     UpdateOptions = [{'update', Updates}],
     case kz_datamgr:update_doc(?KZ_AUTH_DB, AuthId, UpdateOptions) of

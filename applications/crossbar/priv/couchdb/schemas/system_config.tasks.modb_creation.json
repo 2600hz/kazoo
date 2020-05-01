@@ -1,0 +1,18 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "system_config.tasks.modb_creation",
+    "description": "Schema for tasks.modb_creation system_config",
+    "properties": {
+        "create_in_parallel": {
+            "default": 1,
+            "description": "How many accounts to process per pass (in parallel).",
+            "type": "integer"
+        },
+        "creation_day": {
+            "default": 28,
+            "description": "Which day of the month (of current month) to create next month's MODBs on",
+            "type": "integer"
+        }
+    },
+    "type": "object"
+}

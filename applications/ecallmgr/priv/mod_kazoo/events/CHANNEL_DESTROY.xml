@@ -1,0 +1,20 @@
+<event name="CHANNEL_DESTROY">
+	<fields verbose="false">
+		<field name="call_event" type="reference" />
+		<field name="from-to" type="reference" />
+		<field name="other-leg" type="reference" />
+		<field name="sdp" type="reference" />
+		<field name="call-duration" type="reference" />
+		<field name="hangup-fields" type="reference" />
+		<field name="variable_Media-Recordings" as="Media-Recordings" />
+		<field name="debug-call" type="reference" />
+		<field name="transfer-history" type="reference" />
+		<field name="originated-legs" type="reference" />
+
+	</fields>
+	<filters>
+		<filter name="variable_hangup_cause" type="exclude" compare="value"
+			value="CALL_REJECTED" />
+	</filters>
+
+</event>

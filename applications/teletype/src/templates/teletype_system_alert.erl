@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2015-2019, 2600Hz
+%%% @copyright (C) 2015-2020, 2600Hz
 %%% @doc
 %%% @author Peter Defebvre
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(teletype_system_alert).
@@ -57,7 +62,7 @@ reply_to() -> teletype_util:default_reply_to().
 
 -spec init() -> 'ok'.
 init() ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     teletype_templates:init(?MODULE),
     teletype_bindings:bind(id(), ?MODULE, 'handle_req').
 
@@ -167,7 +172,7 @@ details_groups(Details) ->
     details_groups(Details, {<<"details">>, []}).
 
 -spec details_groups(kz_term:proplist(), {kz_term:ne_binary(), kz_term:proplist()}) ->
-                            kz_term:proplist().
+          kz_term:proplist().
 details_groups([], {_, Acc}) -> Acc;
 
 details_groups([{<<"key_value_store">>, V} | KS], {Group, Acc}) ->
@@ -188,7 +193,7 @@ details_groups([KV | KS], {Group, Acc}) ->
     details_groups(KS, {Group, add_to_group(Group, KV, Acc)}).
 
 -spec add_to_group(kz_term:ne_binary(), {kz_term:ne_binary(), kz_json:json_term()}, kz_term:proplist()) ->
-                          kz_term:proplist().
+          kz_term:proplist().
 add_to_group(Group, KV, Acc) ->
     case props:get_value(Group, Acc) of
         'undefined' -> props:set_value(Group, [KV], Acc);

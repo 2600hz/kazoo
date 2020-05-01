@@ -1,0 +1,19 @@
+<definition name="conference-channel-vars">
+	<field name="Conference-Channel-Vars" type="static" serialize-as="object">
+		<fields verbose="false">
+			<field name="variable_conference_moderator" as="Is-Moderator"
+				serialize-as="boolean" />
+			<field name="Floor" serialize-as="boolean" />
+			<field name="Video" serialize-as="boolean" />
+			<field name="See" serialize-as="boolean" />
+			<field name="Speak" serialize-as="boolean" />
+			<field name="Hear" serialize-as="boolean" />
+			<field name="Talking" serialize-as="boolean" />
+			<field name="Mute-Detect" serialize-as="boolean" />
+			<field name="Energy-Level" serialize-as="number" />
+			<field name="Current-Energy" serialize-as="number" />
+			<field name="Member-ID" serialize-as="number" />
+			<field name="Member-Ghost" serialize-as="boolean" />
+		</fields>
+	</field>
+</definition>

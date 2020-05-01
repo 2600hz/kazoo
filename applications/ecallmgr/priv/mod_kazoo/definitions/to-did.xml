@@ -1,0 +1,4 @@
+<definition name="to-did">
+	<field name="To-DID" type="first-of"
+		value="variable_ecallmgr_E164-Destination|variable_ecallmgr_Original-Number|Caller-Destination-Number" />
+</definition>

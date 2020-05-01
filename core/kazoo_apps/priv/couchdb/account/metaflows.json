@@ -10,7 +10,12 @@
     "language": "javascript",
     "views": {
         "crossbar_listing": {
-            "map": "function(doc) { if (!doc.metaflows || doc.pvt_deleted) return; emit(doc._id, doc.metaflows); }"
+            "map": [
+                "function(doc) {",
+                "  if (!doc.metaflows || doc.pvt_deleted) return;",
+                "  emit(doc._id, doc.metaflows);",
+                "}"
+            ]
         }
     }
 }

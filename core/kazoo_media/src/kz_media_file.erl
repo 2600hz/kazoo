@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_media_file).
@@ -14,14 +19,14 @@
 -type build_uri() :: build_uri_args() | kz_term:ne_binary() | media_store_path().
 
 -spec get_uri(build_uri(), kz_json:object()) ->
-                     kz_term:ne_binary() |
-                     {'error', 'not_found'} |
-                     {'error', 'no_data'} |
-                     {'error', 'no_stream_strategy'}.
+          kz_term:ne_binary() |
+          {'error', 'not_found'} |
+          {'error', 'no_data'} |
+          {'error', 'no_stream_strategy'}.
 get_uri(#media_store_path{}=Store, JObj) ->
     maybe_proxy(JObj, Store);
 get_uri(Media, JObj) when is_binary(Media) ->
-    kz_util:put_callid(JObj),
+    kz_log:put_callid(JObj),
     Paths = [kz_http_util:urldecode(Path)
              || Path <- binary:split(Media, <<"/">>, ['global', 'trim']),
                 not kz_term:is_empty(Path)
@@ -59,7 +64,7 @@ start_media_file_cache(Db, Id, Attachment) ->
     end.
 
 -spec maybe_proxy(kz_json:object(), media_store_path()) ->
-                         kz_term:ne_binary() | {'error', 'no_stream_strategy'}.
+          kz_term:ne_binary() | {'error', 'no_stream_strategy'}.
 maybe_proxy(JObj, #media_store_path{db = Db
                                    ,id = Id
                                    ,att = Attachment
@@ -80,7 +85,7 @@ maybe_proxy(JObj, #media_store_path{db = Db
     end.
 
 -spec proxy_uri(media_store_path(), kz_term:ne_binary()) ->
-                       kz_term:ne_binary() | {'error', 'no_stream_strategy'}.
+          kz_term:ne_binary() | {'error', 'no_stream_strategy'}.
 proxy_uri(#media_store_path{db = Db
                            ,id = Id
                            ,att = Attachment
@@ -89,8 +94,8 @@ proxy_uri(#media_store_path{db = Db
          ,StreamType
          ) ->
     _ = maybe_prepare_proxy(StreamType, Store),
-    Path = kz_util:uri_encode(base64:encode(term_to_binary({Db, Id, Attachment, Options}))),
-    File = kz_util:uri_encode(Attachment),
+    Path = kz_http_util:urlencode(base64:encode(term_to_binary({Db, Id, Attachment, Options}))),
+    File = kz_http_util:urlencode(Attachment),
     UrlParts = [kz_media_util:proxy_base_url(StreamType)
                ,StreamType
                ,Path
@@ -99,8 +104,8 @@ proxy_uri(#media_store_path{db = Db
     kz_binary:join(UrlParts, <<"/">>).
 
 -spec find_attachment(build_uri_args() | kz_term:ne_binary()) ->
-                             {'ok', media_store_path()} |
-                             {'error', 'not_found'}.
+          {'ok', media_store_path()} |
+          {'error', 'not_found'}.
 find_attachment(Media) when is_binary(Media) ->
     Paths = [Path
              || Path <- binary:split(Media, <<"/">>, ['global', 'trim']),
@@ -126,7 +131,7 @@ find_attachment([Db = ?MEDIA_DB, Id, Attachment, Options])
                             }
     };
 find_attachment([?MATCH_ACCOUNT_RAW(Account), Id, Attachment, Options]) ->
-    AccountDb =  kz_util:format_account_id(Account, 'encoded'),
+    AccountDb =  kzs_util:format_account_db(Account),
     {'ok', #media_store_path{db = AccountDb
                             ,id = Id
                             ,att = Attachment
@@ -134,7 +139,7 @@ find_attachment([?MATCH_ACCOUNT_RAW(Account), Id, Attachment, Options]) ->
                             }
     };
 find_attachment([?MATCH_ACCOUNT_UNENCODED(Account), Id, Attachment, Options]) ->
-    AccountDb =  kz_util:format_account_id(Account, 'encoded'),
+    AccountDb =  kzs_util:format_account_db(Account),
     {'ok', #media_store_path{db = AccountDb
                             ,id = Id
                             ,att = Attachment
@@ -150,17 +155,17 @@ find_attachment([Db, Id, Attachment, Options]) ->
     }.
 
 -spec maybe_find_attachment(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                   {'ok', {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}} |
-                                   {'error', 'not_found' | 'no_data'}.
+          {'ok', {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}} |
+          {'error', 'not_found' | 'no_data'}.
 maybe_find_attachment(?MEDIA_DB = Db, Id) ->
     maybe_find_attachment_in_db(Db, Id);
 maybe_find_attachment(Db, Id) ->
-    AccountDb = kz_util:format_account_id(Db, 'encoded'),
+    AccountDb = kzs_util:format_account_db(Db),
     maybe_find_attachment_in_db(AccountDb, Id).
 
 -spec maybe_find_attachment_in_db(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                         {'ok', {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}} |
-                                         {'error', 'not_found' | 'no_data'}.
+          {'ok', {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}} |
+          {'error', 'not_found' | 'no_data'}.
 maybe_find_attachment_in_db(Db, Id) ->
     case kz_datamgr:open_cache_doc(Db, Id, [{'cache_failures', ['not_found']}]) of
         {'error', _R} ->
@@ -171,8 +176,8 @@ maybe_find_attachment_in_db(Db, Id) ->
     end.
 
 -spec maybe_find_attachment(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
-                                   {'ok', {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}} |
-                                   {'error', 'not_found' | 'no_data'}.
+          {'ok', {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}} |
+          {'error', 'not_found' | 'no_data'}.
 maybe_find_attachment(Db, Id, JObj) ->
     lager:debug("trying to find first attachment on doc ~s in db ~s", [Id, Db]),
     case kz_doc:attachment_names(JObj) of
@@ -180,7 +185,7 @@ maybe_find_attachment(Db, Id, JObj) ->
             lager:debug("media doc ~s in ~s has no attachments", [Id, Db]),
             {'error', 'no_data'};
         [AttachmentName | _] ->
-            AccountId = kz_util:format_account_id(Db, 'raw'),
+            AccountId = kzs_util:format_account_id(Db),
             lager:debug("found first attachment ~s on ~s in ~s", [AttachmentName, Id, Db]),
             find_attachment([AccountId, Id, AttachmentName, [{'doc_type', kz_doc:type(JObj)}
                                                             ,{'rev', kz_doc:revision(JObj)}

@@ -1,0 +1,21 @@
+---
+name: kazoo-application-edr
+base_branch: origin/master
+metapackage:
+  - name: meta-kazoo-applications
+    type: related
+    branch: master
+    package: kazoo-application-edr
+base_core: kazoo
+template: kazoo-application.spec.tmpl
+package:
+  centos7:
+    name: kazoo-application-edr
+    summary: Kazoo core application
+    description: |
+      Event Data Record application
+    app_name: edr
+    license: MPL 2.0
+    group: Productivity/Telephony
+    url: https://github.com/kazoo-community/kazoo-edr
+    vendor: Kazoo-Community

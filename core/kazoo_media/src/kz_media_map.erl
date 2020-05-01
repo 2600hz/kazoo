@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2014-2019, 2600Hz
+%%% @copyright (C) 2014-2020, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_media_map).
@@ -173,13 +178,13 @@ handle_call({'add_mapping', ?KZ_MEDIA_DB, JObj}, _From, State) ->
     _ = maybe_add_prompt(?KZ_MEDIA_DB, JObj),
     {'reply', 'ok', State};
 handle_call({'add_mapping', Account, JObj}, _From, State) ->
-    _ = maybe_add_prompt(kz_util:format_account_id(Account), JObj),
+    _ = maybe_add_prompt(kzs_util:format_account_id(Account), JObj),
     {'reply', 'ok', State};
 handle_call({'rm_mapping', ?KZ_MEDIA_DB, PromptId}, _From, State) ->
     lager:debug("removing prompt mappings for ~s/~s", [?KZ_MEDIA_DB, PromptId]),
     {'reply', ets:delete(table_id(), mapping_id(?KZ_MEDIA_DB, PromptId)), State};
 handle_call({'rm_mapping', Account, PromptId}, _From, State) ->
-    AccountId = kz_util:format_account_id(Account),
+    AccountId = kzs_util:format_account_id(Account),
     lager:debug("removing prompt mappings for ~s/~s", [AccountId, PromptId]),
     {'reply', ets:delete(table_id(), mapping_id(AccountId, PromptId)), State};
 handle_call({'new_map', Map}, _From, State) ->
@@ -198,26 +203,28 @@ handle_call(_Request, _From, State) ->
 handle_cast('flush', State) ->
     ets:delete_all_objects(table_id()),
     lager:debug("flushed all media mappings"),
-    _ = kz_util:spawn(fun init_map/0),
+    _ = kz_process:spawn(fun init_map/0),
     {'noreply', State};
 handle_cast({'add_mapping', ?KZ_MEDIA_DB, JObj}, State) ->
     _ = maybe_add_prompt(?KZ_MEDIA_DB, JObj),
     {'noreply', State};
 handle_cast({'add_mapping', AccountId, JObj}, State) ->
-    _ = maybe_add_prompt(kz_util:format_account_id(AccountId), JObj),
+    _ = maybe_add_prompt(kzs_util:format_account_id(AccountId), JObj),
     {'noreply', State};
 handle_cast({'rm_mapping', ?KZ_MEDIA_DB, PromptId}, State) ->
     lager:debug("removing prompt mappings for ~s/~s", [?KZ_MEDIA_DB, PromptId]),
     ets:delete(table_id(), mapping_id(?KZ_MEDIA_DB, PromptId)),
     {'noreply', State};
 handle_cast({'rm_mapping', Account, PromptId}, State) ->
-    AccountId = kz_util:format_account_id(Account),
+    AccountId = kzs_util:format_account_id(Account),
     lager:debug("removing prompt mappings for ~s/~s", [AccountId, PromptId]),
     ets:delete(table_id(), mapping_id(AccountId, PromptId)),
     {'noreply', State};
 handle_cast({'gen_listener', {'created_queue', _QueueNAme}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
+    {'noreply', State};
+handle_cast({'gen_listener',{'federators_consuming', _AreFederatorsConsuming}}, State) ->
     {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
@@ -230,7 +237,7 @@ handle_cast(_Msg, State) ->
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'ETS-TRANSFER', _TableId, _From, _GiftData}, State) ->
     lager:debug("recv control of ~p from ~p", [_TableId, _From]),
-    _ = kz_util:spawn(fun init_map/0),
+    _ = kz_process:spawn(fun init_map/0),
     {'noreply', State};
 handle_info(_Info, State) ->
     {'noreply', State}.
@@ -314,13 +321,13 @@ add_mapping(Db, SendFun, JObjs) ->
 
 -spec add_mapping(kz_term:ne_binary(), fun(), kz_json:objects(), pid()) -> 'ok'.
 add_mapping(Db, _SendFun, JObjs, Srv) when Srv =:= self() ->
-    AccountId = kz_util:format_account_id(Db, 'raw'),
+    AccountId = kzs_util:format_account_id(Db),
     _ = [maybe_add_prompt(AccountId, kz_json:get_value(<<"doc">>, JObj))
          || JObj <- JObjs
         ],
     'ok';
 add_mapping(Db, SendFun, JObjs, Srv) ->
-    AccountId = kz_util:format_account_id(Db, 'raw'),
+    AccountId = kzs_util:format_account_id(Db),
     _ = [SendFun(Srv, {'add_mapping', AccountId, kz_json:get_value(<<"doc">>, JObj)}) || JObj <- JObjs],
     'ok'.
 
@@ -431,7 +438,7 @@ new_map(Map, Srv) ->
 load_account_map(AccountId, PromptId) ->
     lager:debug("attempting to load account map for ~s/~s", [AccountId, PromptId]),
 
-    case kz_datamgr:get_results(kz_util:format_account_id(AccountId, 'encoded')
+    case kz_datamgr:get_results(kzs_util:format_account_db(AccountId)
                                ,<<"media/listing_by_prompt">>
                                ,[{'startkey', [PromptId]}
                                 ,{'endkey', [PromptId, kz_json:new()]}

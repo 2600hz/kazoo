@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
 %%% @author Karl Anderson
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_media_url).
@@ -58,18 +63,18 @@ playback(Doc, JObj) ->
     end.
 
 -spec store(kz_json:object(), kz_term:ne_binary()) ->
-                   build_media_url_ret().
+          build_media_url_ret().
 store(JObj, AName) ->
     Media = kz_media_util:store_path_from_doc(JObj, AName),
     kz_media_file:get_uri(Media, ?STREAM_TYPE_STORE).
 
 -spec store(kz_term:ne_binary(), kazoo_data:docid(), kz_term:ne_binary()) ->
-                   build_media_url_ret().
+          build_media_url_ret().
 store(Db, Id, Attachment) ->
     store(Db, Id, Attachment, []).
 
 -spec store(kz_term:ne_binary(), kazoo_data:docid(), kz_term:ne_binary(), kz_term:proplist()) ->
-                   build_media_url_ret().
+          build_media_url_ret().
 store(Db, {Type, Id}, Attachment, Options) ->
     store(Db, Id, Attachment, [{'doc_type', Type} | Options]);
 store(Db, ?NE_BINARY = Id, Attachment, Options) ->

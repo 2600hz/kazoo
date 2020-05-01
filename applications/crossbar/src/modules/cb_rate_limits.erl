@@ -1,11 +1,16 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc SBC Rate limits
 %%% /accounts/{account_id}/rate_limits - manip account's access lists
 %%% /accounts/{account_id}/devices/{device_id}/rate_limits - manip device's access lists
 %%%
 %%%
 %%% @author SIPLABS, LLC (Maksim Krzhemenevskiy)
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cb_rate_limits).
@@ -133,7 +138,7 @@ validate_post_rate_limits(Context) ->
 -spec get_rate_limits_id_for_thing(cb_context:context(), kz_term:ne_binary()) -> kz_term:api_binaries().
 get_rate_limits_id_for_thing(Context, ThingId) ->
     ViewOpt = [{'key', ThingId}],
-    case kz_datamgr:get_results(cb_context:account_db(Context), ?LISTING_BY_OWNER, ViewOpt) of
+    case kz_datamgr:get_results(cb_context:db_name(Context), ?LISTING_BY_OWNER, ViewOpt) of
         {'ok', JObjs} ->
             [get_id(JB) || JB <- JObjs];
         {'error', _Err} ->
@@ -155,7 +160,7 @@ validate_get_rate_limits(Context, ThingId) ->
         [RateLimitsId] -> crossbar_doc:load(RateLimitsId, Context, ?TYPE_CHECK_OPTION(<<"rate_limits">>));
         RateLimitsIds ->
             lager:error("found more than one result, please check ids(from db ~s): ~p"
-                       ,[cb_context:account_db(Context), RateLimitsIds]
+                       ,[cb_context:db_name(Context), RateLimitsIds]
                        ),
             crossbar_util:response('fatal', <<"data collection error">>, 503, Context)
     end.
@@ -170,19 +175,19 @@ validate_delete_rate_limits(Context, ThingId) ->
         [RateLimitsId] -> crossbar_doc:load(RateLimitsId, Context, ?TYPE_CHECK_OPTION(<<"rate_limits">>));
         RateLimitsIds ->
             lager:error("found more than one result, please check ids(from db ~s): ~p"
-                       ,[cb_context:account_db(Context), RateLimitsIds]
+                       ,[cb_context:db_name(Context), RateLimitsIds]
                        ),
             crossbar_util:response('fatal', <<"data collection error">>, 503, Context)
     end.
 
 -spec validate_set_rate_limits(cb_context:context()) ->
-                                      cb_context:context().
+          cb_context:context().
 validate_set_rate_limits(Context) ->
     lager:debug("rate limits data is valid, setting on thing"),
     validate_set_rate_limits(Context, thing_id(Context)).
 
 -spec validate_set_rate_limits(cb_context:context(), kz_term:api_binary()) ->
-                                      cb_context:context().
+          cb_context:context().
 validate_set_rate_limits(Context, 'undefined') ->
     lager:debug("no thing found"),
     crossbar_util:response_faulty_request(Context);
@@ -193,7 +198,7 @@ validate_set_rate_limits(Context, ThingId) ->
         [RateLimitsId] -> crossbar_doc:load_merge(RateLimitsId, Context, ?TYPE_CHECK_OPTION(<<"rate_limits">>));
         RateLimitsIds ->
             lager:error("found more than one result, please check ids(from db ~s): ~p"
-                       ,[cb_context:account_db(Context), RateLimitsIds]
+                       ,[cb_context:db_name(Context), RateLimitsIds]
                        ),
             crossbar_util:response('fatal', <<"data collection error">>, 503, Context)
     end.
@@ -201,7 +206,7 @@ validate_set_rate_limits(Context, ThingId) ->
 -spec set_pvt_fields(cb_context:context()) -> cb_context:context().
 set_pvt_fields(Context) ->
     ThingId = thing_id(Context),
-    {'ok', JObj} = kz_datamgr:open_cache_doc(cb_context:account_db(Context), ThingId),
+    {'ok', JObj} = kz_datamgr:open_cache_doc(cb_context:db_name(Context), ThingId),
     ThingType = kz_doc:type(JObj),
 
     Props = [{<<"pvt_type">>, <<"rate_limits">>}

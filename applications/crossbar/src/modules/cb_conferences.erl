@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Conferences module
 %%% Handle client requests for conference documents
 %%%
@@ -13,6 +13,11 @@
 %%% @author Karl Anderson
 %%% @author James Aimonetti
 %%% @author Roman Galeev
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cb_conferences).
@@ -127,7 +132,7 @@ validate(Context, ConferenceId, ?PARTICIPANTS, ParticipantId) ->
 %%------------------------------------------------------------------------------
 -spec validate_conferences(http_method(), cb_context:context()) -> cb_context:context().
 validate_conferences(?HTTP_GET, Context) ->
-    LoadedContext = crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2),
+    LoadedContext = crossbar_view:load(Context, ?CB_LIST, [{'mapper', crossbar_view:get_value_fun()}]),
     case cb_context:resp_status(LoadedContext) of
         'success' ->
             Context1 = search_conferences(LoadedContext),
@@ -263,10 +268,6 @@ on_successful_validation('undefined', Context) ->
 on_successful_validation(ConferenceId, Context) ->
     crossbar_doc:load_merge(ConferenceId, Context, ?TYPE_CHECK_OPTION(<<"conference">>)).
 
--spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
-normalize_view_results(ViewResult, Acc) ->
-    [kz_json:get_json_value(<<"value">>, ViewResult) | Acc].
-
 empty_realtime_data() ->
     kz_json:from_list_recursive(
       [{<<"_read_only">>
@@ -278,7 +279,7 @@ empty_realtime_data() ->
        }]).
 
 -spec move_to_read_only(kz_json:key(), kz_json:object()) ->
-                               {kz_json:key(), kz_json:object()}.
+          {kz_json:key(), kz_json:object()}.
 move_to_read_only(Id, Realtime) ->
     {Id, kz_json:from_list([{<<"id">>, Id}
                            ,{<<"_read_only">>, kz_json:normalize(Realtime)}
@@ -316,8 +317,8 @@ validate_numbers(Id, Context) ->
     Member = kz_json:get_value([<<"member">>, <<"numbers">>], Doc, []),
     Moderator = kz_json:get_value([<<"moderator">>, <<"numbers">>], Doc, []),
     Keys = Conf ++ Member ++ Moderator,
-    AccountDb = cb_context:account_db(Context),
-    case kz_datamgr:get_results(AccountDb, ?CB_LIST_BY_NUMBER, [{'keys', Keys}]) of
+    AccountId = cb_context:account_id(Context),
+    case kz_datamgr:get_results(AccountId, ?CB_LIST_BY_NUMBER, [{'keys', Keys}]) of
         {'error', _R} -> cb_context:add_system_error('datastore_fault', Context);
         {'ok', []} -> on_successful_validation(Id, Context);
         {'ok', JObjs} when Id =:= 'undefined' -> invalid_numbers(Context, JObjs);
@@ -354,19 +355,56 @@ handle_conference_action(Context, ConferenceId, ?PLAY) ->
     play(Context, ConferenceId, cb_context:req_value(Context, <<"data">>));
 handle_conference_action(Context, ConferenceId, <<"dial">>) ->
     dial(Context, ConferenceId, cb_context:req_value(Context, <<"data">>));
+handle_conference_action(Context, ConferenceId, <<"record">>) ->
+    record_conference(Context, ConferenceId, cb_context:req_value(Context, <<"data">>));
 handle_conference_action(Context, ConferenceId, Action) ->
     lager:error("unhandled conference id ~p action: ~p", [ConferenceId, Action]),
     cb_context:add_system_error('faulty_request', Context).
 
+-spec record_conference(cb_context:context(), kz_term:ne_binary(), kz_term:api_object()) ->
+          cb_context:context().
+record_conference(Context, _ConferenceId, 'undefined') ->
+    data_required(Context, <<"record">>);
+record_conference(Context, ConferenceId, RecordingData) ->
+    toggle_recording(Context, ConferenceId, kz_json:get_ne_binary_value(<<"action">>, RecordingData)).
+
+-spec toggle_recording(cb_context:context(), kz_term:ne_binary(), kz_term:api_ne_binary()) ->
+          cb_context:context().
+toggle_recording(Context, ConferenceId, <<"start">>) ->
+    lager:info("starting the recording of conference ~s", [ConferenceId]),
+    kapps_conference_command:record(conference(ConferenceId)),
+    crossbar_util:response_202(<<"starting recording">>, Context);
+toggle_recording(Context, ConferenceId, <<"stop">>) ->
+    lager:info("stopping the recording of conference ~s", [ConferenceId]),
+    kapps_conference_command:recordstop(conference(ConferenceId)),
+    crossbar_util:response_202(<<"stopping recording">>, Context);
+toggle_recording(Context, _ConferenceId, 'undefined') ->
+    cb_context:add_validation_error([<<"data">>, <<"action">>]
+                                   ,<<"required">>
+                                   ,kz_json:from_list([{<<"message">>, <<"recording requires an action">>}])
+                                   ,Context
+                                   );
+toggle_recording(Context, _ConferenceId, Action) ->
+    lager:debug("invalid action: ~p", [Action]),
+    cb_context:add_validation_error([<<"data">>, <<"action">>]
+                                   ,<<"enum">>
+                                   ,kz_json:from_list(
+                                      [{<<"message">>, <<"Value not found in enumerated list of values">>}
+                                      ,{<<"target">>, [<<"start">>, <<"stop">>]}
+                                      ,{<<"value">>, Action}
+                                      ])
+                                   ,Context
+                                   ).
+
 -spec play(cb_context:context(), path_token(), kz_term:api_object()) ->
-                  cb_context:context().
+          cb_context:context().
 play(Context, _ConferenceId, 'undefined') ->
     data_required(Context, <<"play">>);
 play(Context, ConferenceId, Data) ->
     play_media(Context, ConferenceId, kz_json:get_ne_binary_value(<<"media_id">>, Data)).
 
 -spec play(cb_context:context(), path_token(), pos_integer(), kz_term:api_object()) ->
-                  cb_context:context().
+          cb_context:context().
 play(Context, _ConferenceId, _ParticipantId, 'undefined') ->
     data_required(Context, <<"play">>);
 play(Context, ConferenceId, ParticipantId, Data) ->
@@ -381,7 +419,7 @@ data_required(Context, Action) ->
                                    ).
 
 -spec play_media(cb_context:context(), path_token(), kz_term:api_ne_binary()) ->
-                        cb_context:context().
+          cb_context:context().
 play_media(Context, _ConferenceId, 'undefined') ->
     media_id_required(Context);
 play_media(Context, ConferenceId, MediaId) ->
@@ -395,7 +433,7 @@ play_media(Context, ConferenceId, MediaId) ->
     end.
 
 -spec play_media(cb_context:context(), path_token(), pos_integer(), kz_term:api_ne_binary()) ->
-                        cb_context:context().
+          cb_context:context().
 play_media(Context, _ConferenceId, _ParticipantId, 'undefined') ->
     media_id_required(Context);
 play_media(Context, ConferenceId, ParticipantId, MediaId) ->
@@ -436,7 +474,7 @@ dial(Context, ConferenceId, Data) ->
     end.
 
 -spec build_valid_endpoints(cb_context:context(), kz_term:ne_binary(), kz_json:object()) ->
-                                   {cb_context:context(), kz_json:objects()}.
+          {cb_context:context(), kz_json:objects()}.
 build_valid_endpoints(Context, ConferenceId, Data) ->
     case kz_json_schema:validate(<<"conferences.dial">>, Data) of
         {'ok', ValidData} ->
@@ -447,7 +485,7 @@ build_valid_endpoints(Context, ConferenceId, Data) ->
     end.
 
 -spec exec_dial_endpoints(cb_context:context(), path_token(), kz_json:object(), kz_json:objects()) ->
-                                 kz_json:object().
+          kz_json:object().
 exec_dial_endpoints(Context, ConferenceId, Data, ToDial) ->
     Conference = cb_context:doc(Context),
     CAVs = kz_json:from_list(cb_modules_util:cavs_from_context(Context)),
@@ -533,7 +571,7 @@ zone(TargetCallId) ->
        ).
 
 -spec build_endpoints_to_dial(cb_context:context(), path_token(), kz_term:ne_binaries()) ->
-                                     {cb_context:context(), kz_json:objects()}.
+          {cb_context:context(), kz_json:objects()}.
 build_endpoints_to_dial(Context, ConferenceId, Endpoints) ->
     ?BUILD_ACC(ToDial, _Call, Context1, _Element) =
         lists:foldl(fun build_endpoint/2
@@ -556,8 +594,7 @@ error_no_endpoints(Context) ->
 create_call(Context, ConferenceId) ->
     Routines =
         [{F, V}
-         || {F, V} <- [{fun kapps_call:set_account_db/2, cb_context:account_db(Context)}
-                      ,{fun kapps_call:set_account_id/2, cb_context:account_id(Context)}
+         || {F, V} <- [{fun kapps_call:set_account_id/2, cb_context:account_id(Context)}
                       ,{fun kapps_call:set_resource_type/2, <<"audio">>}
                       ,{fun kapps_call:set_authorizing_id/2, ConferenceId}
                       ,{fun kapps_call:set_authorizing_type/2, <<"conference">>}
@@ -624,7 +661,7 @@ build_number_endpoint(Number, ?BUILD_ACC(Endpoints, Call, Context, Element)) ->
     ?BUILD_ACC([kz_json:from_list(Endpoint) | Endpoints], Call, Context, Element+1).
 
 -spec build_sip_endpoint(kz_term:ne_binary(), build_acc()) ->
-                                build_acc().
+          build_acc().
 build_sip_endpoint(URI, ?BUILD_ACC(Endpoints, Call, Context, Element)) ->
     [#uri{user=SipUsername
          ,domain=SipRealm
@@ -680,7 +717,7 @@ build_endpoint_from_doc(Endpoint, ?BUILD_ACC(Endpoints, Call, Context, Element),
     lager:info("ignoring endpoint type ~s for ~s", [_Type, kz_doc:id(Endpoint)]),
     ?BUILD_ACC(Endpoints, Call, add_not_found_error(Context, kz_doc:id(Endpoint), Element), Element+1).
 
--spec maybe_add_user_endpoints(kz_json:ne_binary(), kapps_call:call()) -> kz_json:objects().
+-spec maybe_add_user_endpoints(kz_json:object(), kapps_call:call()) -> kz_json:objects().
 maybe_add_user_endpoints(User, Call) ->
     Properties = kz_json:from_list([{<<"source">>, kz_term:to_binary(?MODULE)}]),
     lists:foldr(fun(EndpointId, Acc) ->
@@ -761,7 +798,7 @@ handle_participants_action(Context, _ConferenceId, _Action) ->
 %% action applicable to conference participants selected by selector function
 -type filter_fun() :: fun((kz_json:object()) -> boolean()).
 -spec handle_participants_action(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), filter_fun()) ->
-                                        cb_context:context().
+          cb_context:context().
 handle_participants_action(Context, ConferenceId, Action, Selector) ->
     ConfData = request_conference_details(ConferenceId),
     Participants = extract_participants(ConfData),
@@ -778,7 +815,7 @@ filter_participant(JObj, Fun) ->
     Fun(ConfVars).
 
 -spec handle_participants_relate(cb_context:context(), path_token()) ->
-                                        cb_context:context().
+          cb_context:context().
 handle_participants_relate(Context, ConferenceId) ->
     ConfData = request_conference_details(ConferenceId),
     Participants = extract_participants(ConfData),
@@ -801,7 +838,7 @@ handle_participants_relate(Context, ConferenceId) ->
     end.
 
 -spec relate(cb_context:context(), path_token(), pos_integer(), pos_integer()) ->
-                    cb_context:context().
+          cb_context:context().
 relate(Context, ConferenceId, ParticipantId, OtherParticipantId) ->
     Conference = conference(ConferenceId),
     Relationship = cb_context:req_value(Context, <<"relationship">>, <<"clear">>),
@@ -813,7 +850,7 @@ relate(Context, ConferenceId, ParticipantId, OtherParticipantId) ->
     crossbar_util:response_202(<<"relating participants">>, Context).
 
 -spec find_participants(kz_json:objects(), pos_integer(), pos_integer()) ->
-                               [pos_integer()].
+          [pos_integer()].
 find_participants(Participants, ParticipantId, OtherParticipantId) ->
     [PID || P <- Participants,
             PID <- [kz_json:get_integer_value(<<"Participant-ID">>, P)],
@@ -888,21 +925,29 @@ request_conference_details(ConferenceId) ->
         {'error', _E} ->
             lager:debug("unable to lookup conference details: ~p", [_E]),
             kz_json:new();
-        {_, JObjs} -> find_conference_details(JObjs)
+        {'ok', JObjs} -> find_conference_details(JObjs);
+        {'timeout', JObjs} ->
+            lager:info("failed to hear from all expected nodes, using what was received"),
+            find_conference_details(JObjs)
     end.
 
 -spec find_conference_details(kz_json:objects()) -> kz_json:object().
 find_conference_details(JObjs) ->
-    ValidRespones = [JObj || JObj <- JObjs, kapi_conference:search_resp_v(JObj)],
-    case lists:sort(fun(A, B) ->
-                            run_time(A) > run_time(B)
-                    end
-                   ,ValidRespones
-                   )
-    of
-        [Latest|_] -> Latest;
-        _Else -> kz_json:new()
+    ValidResponses = [JObj || JObj <- JObjs, kapi_conference:search_resp_v(JObj)],
+    case find_most_recent_conference(ValidResponses) of
+        'undefined' -> kz_json:new();
+        Latest -> Latest
     end.
+
+-spec find_most_recent_conference(kz_json:objects()) -> kz_term:api_object().
+find_most_recent_conference(ValidResponses) ->
+    case lists:sort(fun sort_by_runtime/2, ValidResponses) of
+        [Latest|_] -> Latest;
+        [] -> 'undefined'
+    end.
+
+-spec sort_by_runtime(kz_json:object(), kz_json:object()) -> boolean().
+sort_by_runtime(A, B) -> run_time(A) > run_time(B).
 
 %%%=============================================================================
 %%% Utility functions
@@ -959,12 +1004,19 @@ search_conferences(Context) ->
             lager:debug("error searching conferences for account ~s: ~p", [AccountId, _E]),
             cb_context:store(Context, 'conferences', kz_json:new());
         {'ok', JObjs} ->
-            Res = lists:foldl(fun search_conferences_fold/2, kz_json:new(), JObjs),
-            cb_context:store(Context, 'conferences', Res)
+            handle_search_resp(Context, JObjs);
+        {'timeout', JObjs} ->
+            lager:info("failed to hear from all expected nodes, using what was received"),
+            handle_search_resp(Context, JObjs)
     end.
 
+-spec handle_search_resp(cb_context:context(), kz_json:objects()) -> cb_context:context().
+handle_search_resp(Context, JObjs) ->
+    Res = lists:foldl(fun search_conferences_fold/2, kz_json:new(), JObjs),
+    cb_context:store(Context, 'conferences', Res).
+
 -spec search_conferences_fold(kz_json:object(), kz_json:object()) ->
-                                     kz_json:object().
+          kz_json:object().
 search_conferences_fold(JObj, Acc) ->
     V = kz_json:get_json_value(<<"Conferences">>, JObj, kz_json:new()),
     kz_json:merge_jobjs(V, Acc).

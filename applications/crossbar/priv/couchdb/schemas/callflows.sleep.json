@@ -10,6 +10,10 @@
             "minimum": 0,
             "type": "integer"
         },
+        "skip_module": {
+            "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+            "type": "boolean"
+        },
         "unit": {
             "default": "s",
             "description": "What time unit is 'duration' in",

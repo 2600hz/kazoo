@@ -1,0 +1,14 @@
+	"dial_plan": {
+		   "^00(\\d{5,})$": {
+			   "description": "international",
+			   "prefix": "+"
+		   },
+		   "^(\\d{10})$": {
+			   "description": "GR national",
+			   "prefix": "+30"
+		   },
+		   "^(\\d{8})$": {
+			   "description": "GR Athens local",
+			   "prefix": "+3021"
+		   }
+}

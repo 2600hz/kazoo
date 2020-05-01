@@ -1,0 +1,11 @@
+<definition name="originated-legs">
+	<filters>
+		<filter name="variable_originated_legs" type="include" compare="exists" />
+	</filters>
+	<field name="Other-Legs" type="static" serialize-as="object">
+		<fields verbose="false">
+			<field name="variable_originated_legs" as="Callee" />
+			<field name="variable_originate_causes" as="Causes" />
+		</fields>
+	</field>
+</definition>

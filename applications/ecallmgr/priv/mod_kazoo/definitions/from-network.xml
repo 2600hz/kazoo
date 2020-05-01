@@ -1,0 +1,6 @@
+<definition name="from-network">
+	<field name="From-Network-Addr" type="first-of"
+		value="variable_sip_h_X-AUTH-IP|variable_sip_received_ip" />
+	<field name="From-Network-Port" type="first-of"
+		value="variable_sip_h_X-AUTH-PORT|variable_sip_received_port" />
+</definition>

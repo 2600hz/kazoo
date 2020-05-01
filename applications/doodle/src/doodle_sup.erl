@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(doodle_sup).
@@ -14,20 +18,17 @@
 
 -define(SERVER, ?MODULE).
 
--define(ORIGIN_BINDINGS, [[{'db', ?KZ_SIP_DB }
-                          ,{'type', <<"device">>}
-                          ]
+-define(ORIGIN_BINDINGS, [[{'type', <<"callflow">>}]
+                         ,[{'type', <<"textflow">>}]
                          ]).
 
 -define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}
                      ]).
 
 -define(CHILDREN, [?CACHE_ARGS(?CACHE_NAME, ?CACHE_PROPS)
-                  ,?WORKER('doodle_listener')
-                  ,?WORKER('doodle_shared_listener')
-                  ,?SUPER('doodle_event_handler_sup')
-                  ,?SUPER('doodle_exe_sup')
-                  ,?SUPER('doodle_inbound_listener_sup')
+                  ,?WORKER('tf_exe_listener')
+                  ,?SUPER('tf_exe_sup')
+                  ,?WORKER('doodle_listener_sup')
                   ]).
 
 %%==============================================================================
@@ -55,11 +56,9 @@ start_link() ->
 %%------------------------------------------------------------------------------
 -spec init(any()) -> kz_types:sup_init_ret().
 init([]) ->
-    kz_util:set_startup(),
+    _ = kz_util:set_startup(),
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,
-
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-
     {'ok', {SupFlags, ?CHILDREN}}.

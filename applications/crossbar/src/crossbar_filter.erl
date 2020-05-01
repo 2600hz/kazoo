@@ -1,8 +1,13 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
 %%% @author Roman Galeev
 %%% @author Hesaam Farhang
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(crossbar_filter).
@@ -176,6 +181,7 @@ is_filter_key({<<"filter_not_", _/binary>>, _}) -> 'true';
 is_filter_key({<<"has_key", _/binary>>, _}) -> 'true';
 is_filter_key({<<"key_missing", _/binary>>, _}) -> 'true';
 is_filter_key({<<"has_value", _/binary>>, _}) -> 'true';
+is_filter_key({<<"value_missing", _/binary>>, _}) -> 'true';
 is_filter_key({<<"created_from">>, _}) -> 'true';
 is_filter_key({<<"created_to">>, _}) -> 'true';
 is_filter_key({<<"modified_from">>, _}) -> 'true';
@@ -212,6 +218,8 @@ filter_prop(Doc, <<"key_missing">>, Key) ->
     not has_key(Doc, Key);
 filter_prop(Doc, <<"has_value">>, Key) ->
     has_value(Doc, Key);
+filter_prop(Doc, <<"value_missing">>, Key) ->
+    not has_value(Doc, Key);
 filter_prop(Doc, <<"created_from">>, Val) ->
     lowerbound(kz_doc:created(Doc), kz_term:to_integer(Val));
 filter_prop(Doc, <<"created_to">>, Val) ->

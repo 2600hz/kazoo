@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(freeswitch).
@@ -19,10 +23,7 @@
 -export([bind/2
         ,bind/3
         ]).
--export([fetch_reply/4
-        ,fetch_reply/5
-        ,fetch_reply/6
-        ]).
+-export([fetch_reply/1]).
 -export([api/2
         ,api/3
         ,api/4
@@ -31,6 +32,11 @@
         ,bgapi/4
         ,bgapi/5
         ,bgapi/6
+        ]).
+-export([json_api/2
+        ,json_api/3
+        ,json_api/4
+        ,json_api/5
         ]).
 -export([event/2
         ,event/3
@@ -52,6 +58,8 @@
         ]).
 -export([get_option/2, set_option/3]).
 
+-export([async_api/3]).
+
 -include("ecallmgr.hrl").
 
 -define(TIMEOUT, 5 * ?MILLISECONDS_IN_SECOND).
@@ -59,12 +67,16 @@
 -define(FS_MODULE, (mod(Node))).
 
 
--type fs_api_ok() :: mod_kazoo:fs_api_ok().
--type fs_api_error():: mod_kazoo:fs_api_error().
--type fs_api_return() :: mod_kazoo:fs_api_return().
+-type fs_json_api_ok() :: {'ok', kz_json:object()}.
+-type fs_api_ok() :: {'ok', binary()}.
+-type fs_api_error():: {'error', 'baduuid' | 'timeout' | 'exception' | binary()}.
+-type fs_api_return() :: fs_api_ok() | fs_api_error() | 'ok'.
+-type fs_json_api_return() :: fs_json_api_ok() | fs_api_error().
 -export_type([fs_api_ok/0
              ,fs_api_error/0
              ,fs_api_return/0
+             ,fs_json_api_ok/0
+             ,fs_json_api_return/0
              ]).
 
 -spec mod(atom()) -> atom().
@@ -100,22 +112,9 @@ bind(Node, Type) -> ?FS_MODULE:bind(Node, Type).
 -spec bind(atom(), atom(), pos_integer()) -> fs_api_return().
 bind(Node, Type, Timeout) -> ?FS_MODULE:bind(Node, Type, Timeout).
 
--spec fetch_reply(atom(), binary(), atom() | binary(), binary() | string()) -> 'ok'.
-fetch_reply(Node, FetchID, Section, Reply) ->
-    fetch_reply(Node, FetchID, Section, Reply, #{}).
-
--spec fetch_reply(atom(), binary(), atom() | binary(), binary() | string(), map() | pos_integer() | 'infinity') ->
-                         'ok' | {'error', 'baduuid'}.
-fetch_reply(Node, FetchID, Section, Reply, Map)
-  when is_map(Map) ->
-    ?FS_MODULE:fetch_reply(Node, FetchID, Section, Reply, Map);
-fetch_reply(Node, FetchID, Section, Reply, Timeout) ->
-    ?FS_MODULE:fetch_reply(Node, FetchID, Section, Reply, #{}, Timeout).
-
--spec fetch_reply(atom(), binary(), atom() | binary(), binary() | string(), map(), pos_integer() | 'infinity') ->
-                         'ok' | {'error', 'baduuid'}.
-fetch_reply(Node, FetchID, Section, Reply, Map, Timeout) ->
-    ?FS_MODULE:fetch_reply(Node, FetchID, Section, Reply, Map, Timeout).
+-spec fetch_reply(map()) -> 'ok' | {'ok', any()} | {'error', any()}.
+fetch_reply(#{node := Node} = Context) ->
+    ?FS_MODULE:fetch_reply(Context).
 
 -spec api(atom(), kz_term:text()) -> fs_api_return().
 api(Node, Cmd) -> ?FS_MODULE:api(Node, Cmd).
@@ -125,6 +124,18 @@ api(Node, Cmd, Args) -> ?FS_MODULE:api(Node, Cmd, Args).
 
 -spec api(atom(), kz_term:text(), kz_term:text(), timeout()) -> fs_api_return().
 api(Node, Cmd, Args, Timeout) -> ?FS_MODULE:api(Node, Cmd, Args, Timeout).
+
+-spec json_api(atom(), kz_term:text()) -> fs_json_api_return().
+json_api(Node, Cmd) -> ?FS_MODULE:json_api(Node, Cmd).
+
+-spec json_api(atom(), kz_term:text(), kz_term:api_object()) -> fs_json_api_return().
+json_api(Node, Cmd, Args) -> ?FS_MODULE:json_api(Node, Cmd, Args).
+
+-spec json_api(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_object()) -> fs_json_api_return().
+json_api(Node, UUID, Cmd, Args) -> ?FS_MODULE:json_api(Node, UUID, Cmd, Args).
+
+-spec json_api(atom(), kz_term:api_ne_binary(), kz_term:text(), kz_term:api_object(), timeout()) -> fs_json_api_return().
+json_api(Node, UUID, Cmd, Args, Timeout) -> ?FS_MODULE:json_api(Node, UUID, Cmd, Args, Timeout).
 
 %%------------------------------------------------------------------------------
 %% @doc Make a background API call to FreeSWITCH. The asynchronous reply is
@@ -185,8 +196,8 @@ config(Node, Section) ->
     ?FS_MODULE:config(Node, Section).
 
 -spec bgapi4(atom(), atom(), string() | binary(), fun(), list()) ->
-                    {'ok', binary()} |
-                    {'error', 'timeout' | 'exception' | binary()}.
+          {'ok', binary()} |
+          {'error', 'timeout' | 'exception' | binary()}.
 bgapi4(Node, Cmd, Args, Fun, CallBackParams) -> ?FS_MODULE:bgapi4(Node, Cmd, Args, Fun, CallBackParams).
 
 -spec release(atom() | kz_term:ne_binary()) -> {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()} | fs_api_return().
@@ -237,3 +248,6 @@ get_option(Node, Option) ->
            ,Option
            ],
     api(Node, 'erlang', kz_binary:join(Args, <<" ">>)).
+
+-spec async_api(atom(), atom(), string() | binary()) -> fs_api_return().
+async_api(Node, Cmd, Args) -> ?FS_MODULE:async_api(Node, Cmd, Args).

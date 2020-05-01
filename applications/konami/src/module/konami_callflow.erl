@@ -1,11 +1,16 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Overlay a callflow onto the caller
 %%% data:{
 %%%   "id":"callflow_id"
 %%% }
 %%%
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(konami_callflow).
@@ -17,7 +22,7 @@
 -define(LIST_BY_NUMBER, <<"callflows/listing_by_number">>).
 
 -spec handle(kz_json:object(), kapps_call:call()) ->
-                    {'stop', kapps_call:call()}.
+          {'stop', kapps_call:call()}.
 handle(Data, Call) ->
     {'ok', CallflowJObj} = callflow(Data, Call),
     Flow = kz_json:get_value(<<"flow">>, CallflowJObj),

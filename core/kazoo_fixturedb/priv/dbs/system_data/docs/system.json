@@ -1,4 +1,6 @@
 {
+    "_id": "system",
+    "_rev": "1-4a96cc4a4fcce6416a09349ff14e39d5",
     "attachments": {},
     "connections": {
         "local": {}
@@ -20,6 +22,6 @@
             "types": {}
         }
     },
-    "pvt_document_hash": "64ab72f00d91eded86dd3feb31ed108b",
+    "pvt_document_hash": "7c09baf3c3e3fedc66b7abe578dbe837",
     "pvt_type": "storage"
 }

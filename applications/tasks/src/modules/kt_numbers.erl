@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2016-2019, 2600Hz
+%%% @copyright (C) 2016-2020, 2600Hz
 %%% @doc
 %%% @author Pierre Fenoll
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kt_numbers).
@@ -40,7 +45,7 @@
         ,delete/3
         ]).
 
--include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
+-include_lib("kazoo_numbers/include/knm_phone_number.hrl").
 -include("tasks.hrl").
 
 -define(MOD_CAT, <<(?CONFIG_CAT)/binary, ".numbers">>).
@@ -379,11 +384,11 @@ is_cell_true(_) -> 'false'.
 %%% Appliers
 
 -spec list(kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
-list(#{account_id := ForAccount}, 'init') ->
+list(#{'account_id' := ForAccount}, 'init') ->
     ToList = [{ForAccount, NumberDb} || NumberDb <- knm_util:get_all_number_dbs()],
     {'ok', ToList};
 list(_, []) -> 'stop';
-list(#{auth_account_id := AuthBy}, Todo) ->
+list(#{'auth_account_id' := AuthBy}, Todo) ->
     list_assigned_to(AuthBy, Todo).
 
 -spec list_numbers(kz_term:ne_binary(), kz_term:ne_binaries()) -> [kz_csv:row()].
@@ -391,9 +396,11 @@ list_numbers(AuthBy, E164s) ->
     Options = [{'auth_by', AuthBy}
               ,{'batch_run', 'true'}
               ],
-    #{ok := Ns, ko := KOs} = knm_numbers:get(E164s, Options),
-    maps:fold(fun list_bad_rows/3, [], KOs)
-        ++ [list_number(N) || N <- Ns].
+    Collection = knm_ops:get(E164s, Options),
+    PNs = knm_pipe:succeeded(Collection),
+    Failed = knm_pipe:failed(Collection),
+    maps:fold(fun list_bad_rows/3, [], Failed)
+        ++ [list_number(PN) || PN <- PNs].
 
 list_bad_rows(E164, 'not_reconcilable', Rows) ->
     %% Numbers that shouldn't be in the system (e.g. '+141510010+14')
@@ -404,9 +411,8 @@ list_bad_rows(_E164, _R, Rows) ->
     lager:error("wild number ~s appeared: ~p", [_E164, _R]),
     Rows.
 
--spec list_number(knm_number:knm_number()) -> map().
-list_number(N) ->
-    PN = knm_number:phone_number(N),
+-spec list_number(knm_phone_number:record()) -> map().
+list_number(PN) ->
     InboundCNAM = knm_phone_number:feature(PN, ?FEATURE_CNAM_INBOUND),
     OutboundCNAM = knm_phone_number:feature(PN, ?FEATURE_CNAM_OUTBOUND),
     E911 = knm_phone_number:feature(PN, ?FEATURE_E911),
@@ -437,7 +443,7 @@ list_number(N) ->
      ,<<"prepend.number">> => kz_json:get_ne_binary_value(?PREPEND_NUMBER, Prepend)
      ,<<"ringback.early">> => kz_json:get_ne_binary_value(?RINGBACK_EARLY, Ringback)
      ,<<"ringback.transfer">> => kz_json:get_ne_binary_value(?RINGBACK_TRANSFER, Ringback)
-     ,<<"force_outbound">> => kz_term:to_binary(knm_number:force_outbound_feature(PN))
+     ,<<"force_outbound">> => kz_term:to_binary(knm_lib:force_outbound_feature(PN))
      ,<<"failover.e164">> => kz_json:get_ne_binary_value(?FAILOVER_E164, Failover)
      ,<<"failover.sip">> => quote(kz_json:get_ne_binary_value(?FAILOVER_SIP, Failover))
      }.
@@ -454,20 +460,21 @@ quote('undefined') -> 'undefined';
 quote(Bin) -> <<$\", Bin/binary, $\">>.
 
 -spec list_all(kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
-list_all(#{account_id := Account}, 'init') ->
+list_all(#{'account_id' := Account}, 'init') ->
     ForAccounts = [Account | kapps_util:account_descendants(Account)],
     ToList = [{ForAccount, NumberDb}
               || ForAccount <- ForAccounts,
                  NumberDb <- knm_util:get_all_number_dbs()
              ],
     {'ok', ToList};
-list_all(_, []) -> stop;
+list_all(_, []) -> 'stop';
 list_all(_, Todo) ->
     list_assigned_to(?KNM_DEFAULT_AUTH_BY, Todo).
 
 -spec find(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) -> kz_tasks:return().
-find(#{auth_account_id := AuthBy}, _IterValue, Args=#{<<"e164">> := Num}) ->
-    handle_result(Args, knm_number:get(Num, [{'auth_by', AuthBy}])).
+find(#{'auth_account_id' := AuthBy}, _IterValue, Args=#{<<"e164">> := Num}) ->
+    %% FIXME: use knm_numbers, update list_number/1 to use kzd_phone_number
+    handle_result(Args, knm_ops:get(Num, [{'auth_by', AuthBy}])).
 
 -spec dump(kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
 dump(ExtraArgs, 'init') ->
@@ -533,13 +540,13 @@ dump_reserved(_, []) -> 'stop';
 dump_reserved(_, Todo) -> dump_by_state(?NUMBER_STATE_RESERVED, Todo).
 
 -spec import(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) ->
-                    {kz_tasks:return(), sets:set()}.
+          {kz_tasks:return(), sets:set()}.
 import(ExtraArgs, 'init', Args) ->
     kz_datamgr:suppress_change_notice(),
     IterValue = sets:new(),
     import(ExtraArgs, IterValue, Args);
-import(#{account_id := Account
-        ,auth_account_id := AuthAccountId
+import(#{'account_id' := Account
+        ,'auth_account_id' := AuthAccountId
         }
       ,AccountIds
       ,Args=#{<<"e164">> := E164
@@ -562,7 +569,8 @@ import(#{account_id := Account
               ,{'public_fields', public_fields(Args)}
                | import_state(AuthAccountId, State)
               ],
-    Row = handle_result(Args, knm_number:create(E164, Options)),
+    %% FIXME: use knm_numbers, update list_number/1 to use kzd_phone_number
+    Row = handle_result(Args, knm_ops:create(E164, Options)),
     {Row, sets:add_element(AccountId, AccountIds)}.
 
 public_fields(Args) -> kz_json:from_list(lists:flatten(pub_fields(Args))).
@@ -666,7 +674,7 @@ select_account_id(?MATCH_ACCOUNT_RAW(_)=AccountId, _) -> AccountId;
 select_account_id(_, AccountId) -> AccountId.
 
 -spec assign_to(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) -> kz_tasks:return().
-assign_to(#{auth_account_id := AuthBy, account_id := Account}
+assign_to(#{'auth_account_id' := AuthBy, 'account_id' := Account}
          ,_IterValue
          ,Args=#{<<"e164">> := Num, <<"account_id">> := AccountId0}
          ) ->
@@ -674,10 +682,11 @@ assign_to(#{auth_account_id := AuthBy, account_id := Account}
     Options = [{'auth_by', AuthBy}
               ,{'batch_run', 'true'}
               ],
-    handle_result(Args, knm_number:move(Num, AccountId, Options)).
+    %% FIXME: use knm_numbers, update list_number/1 to use kzd_phone_number
+    handle_result(Args, knm_ops:move(Num, AccountId, Options)).
 
 -spec update_merge(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) -> kz_tasks:return().
-update_merge(#{auth_account_id := AuthBy}
+update_merge(#{'auth_account_id' := AuthBy}
             ,_IterValue
             ,Args=#{<<"e164">> := Num}
             ) ->
@@ -685,10 +694,11 @@ update_merge(#{auth_account_id := AuthBy}
               ,{'batch_run', 'true'}
               ],
     Updates = [{fun knm_phone_number:update_doc/2, public_fields(Args)}],
-    handle_result(Args, knm_number:update(Num, Updates, Options)).
+    %% FIXME: use knm_numbers, update list_number/1 to use kzd_phone_number
+    handle_result(Args, knm_ops:update(Num, Updates, Options)).
 
 -spec update_overwrite(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) -> kz_tasks:return().
-update_overwrite(#{auth_account_id := AuthBy}
+update_overwrite(#{'auth_account_id' := AuthBy}
                 ,_IterValue
                 ,Args=#{<<"e164">> := Num}
                 ) ->
@@ -696,20 +706,22 @@ update_overwrite(#{auth_account_id := AuthBy}
               ,{'batch_run', 'true'}
               ],
     Updates = [{fun knm_phone_number:reset_doc/2, public_fields(Args)}],
-    handle_result(Args, knm_number:update(Num, Updates, Options)).
+    %% FIXME: use knm_numbers, update list_number/1 to use kzd_phone_number
+    handle_result(Args, knm_ops:update(Num, Updates, Options)).
 
 -spec release(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) -> kz_tasks:return().
-release(#{auth_account_id := AuthBy}
+release(#{'auth_account_id' := AuthBy}
        ,_IterValue
        ,Args=#{<<"e164">> := Num}
        ) ->
     Options = [{'auth_by', AuthBy}
               ,{'batch_run', 'true'}
               ],
-    handle_result(Args, knm_number:release(Num, Options)).
+    %% FIXME: use knm_numbers, update list_number/1 to use kzd_phone_number
+    handle_result(Args, knm_ops:release(Num, Options)).
 
 -spec reserve(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) -> kz_tasks:return().
-reserve(#{auth_account_id := AuthBy, account_id := Account}
+reserve(#{'auth_account_id' := AuthBy, 'account_id' := Account}
        ,_IterValue
        ,Args=#{<<"e164">> := Num, <<"account_id">> := AccountId0}
        ) ->
@@ -717,17 +729,19 @@ reserve(#{auth_account_id := AuthBy, account_id := Account}
               ,{'batch_run', 'true'}
               ,{'assign_to', select_account_id(AccountId0, Account)}
               ],
-    handle_result(Args, knm_number:reserve(Num, Options)).
+    %% FIXME: use knm_numbers, update list_number/1 to use kzd_phone_number
+    handle_result(Args, knm_ops:reserve(Num, Options)).
 
 -spec delete(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) -> kz_tasks:return().
-delete(#{auth_account_id := AuthBy}
+delete(#{'auth_account_id' := AuthBy}
       ,_IterValue
       ,Args=#{<<"e164">> := Num}
       ) ->
     Options = [{'auth_by', AuthBy}
               ,{'batch_run', 'true'}
               ],
-    handle_result(Args, knm_number:delete(Num, Options)).
+    %% FIXME: use knm_numbers, update list_number/1 to use kzd_phone_number
+    handle_result(Args, knm_ops:delete(Num, Options)).
 
 %%%=============================================================================
 %%% Internal functions
@@ -735,90 +749,97 @@ delete(#{auth_account_id := AuthBy}
 
 %%------------------------------------------------------------------------------
 %% @doc
+%% FIXME: use knm_numbers, update list_number/1 to use kzd_phone_number
+%% TODO: kt_numbers is processing numbers one at a time
+%% refactor it to use use bulk operation
 %% @end
 %%------------------------------------------------------------------------------
--spec handle_result(kz_tasks:args(), knm_number_return()) -> kz_tasks:return().
-handle_result(Args, {'ok', N}) ->
-    format_result(Args, N);
-handle_result(Args, {'dry_run', _Quotes}) ->
-    format_result(Args, <<"accept_charges">>);
-handle_result(Args, {'error', Reason})
-  when is_atom(Reason) ->
+-spec handle_result(kz_tasks:args(), knm_pipe:collection()) -> kz_tasks:return().
+handle_result(Args, Collection) ->
+    IsDryRun = knm_options:dry_run(knm_pipe:options(Collection)),
+    case knm_pipe:succeeded(Collection) of
+        [_PN] when IsDryRun -> format_result(Args, <<"accept_charges">>);
+        [PN] -> format_result(Args, PN);
+        _ -> format_error(knm_pipe:failed_to_proplist(Collection), Args)
+    end.
+
+-spec format_error(knm_errors:proplist(), kz_tasks:args()) -> kz_csv:mapped_row().
+format_error([{_, Reason} | _], Args) when is_atom(Reason) ->
     format_result(Args, kz_term:to_binary(Reason));
-handle_result(Args, {'error', KNMError}) ->
+format_error([{_, KNMError} | _], Args) ->
     Reason = case knm_errors:message(KNMError) of
                  'undefined' -> knm_errors:error(KNMError);
                  R -> R
              end,
     format_result(Args, kz_term:to_binary(Reason)).
 
--spec format_result(kz_tasks:args(), kz_term:ne_binary() | knm_number:knm_number()) -> kz_csv:mapped_row().
+-spec format_result(kz_tasks:args(), kz_term:ne_binary() | knm_phone_number:record()) -> kz_csv:mapped_row().
 format_result(Args, Reason=?NE_BINARY) ->
     Args#{?OUTPUT_CSV_HEADER_ERROR => Reason};
-format_result(_, N) ->
-    Map = list_number(N),
+format_result(_, PN) ->
+    Map = list_number(PN),
     Map#{?OUTPUT_CSV_HEADER_ERROR => 'undefined'}.
 
 -type accountid_or_startkey_and_numberdbs() :: [{kz_term:ne_binary() | kz_term:ne_binaries(), kz_term:ne_binary()}].
 -spec list_assigned_to(kz_term:ne_binary(), accountid_or_startkey_and_numberdbs()) ->
-                              {ok | error  | [kz_csv:row()], accountid_or_startkey_and_numberdbs()}.
+          {'ok' | 'error'  | [kz_csv:row()], accountid_or_startkey_and_numberdbs()}.
 list_assigned_to(AuthBy, [{Next,NumberDb}|Rest]) ->
-    ViewOptions = [{limit,?DB_DUMP_BULK_SIZE} | view_for_list_assigned(Next)],
+    ViewOptions = [{'limit', ?DB_DUMP_BULK_SIZE} | view_for_list_assigned(Next)],
     case kz_datamgr:get_result_keys(NumberDb, <<"numbers/assigned_to">>, ViewOptions) of
-        {ok, []} -> {ok, Rest};
-        {error, _R} ->
+        {'ok', []} -> {'ok', Rest};
+        {'error', _R} ->
             lager:error("could not get ~p's numbers in ~s: ~p", [ViewOptions, NumberDb, _R]),
-            {error, Rest};
-        {ok, Keys} ->
+            {'error', Rest};
+        {'ok', Keys} ->
             Rows = list_numbers(AuthBy, [lists:last(Key) || Key <- Keys]),
             {Rows, [{lists:last(Keys),NumberDb}|Rest]}
     end.
 
 -spec view_for_list_assigned(kz_term:ne_binary() | kz_term:ne_binaries()) -> kz_datamgr:view_options().
 view_for_list_assigned(?MATCH_ACCOUNT_RAW(AccountId)) ->
-    [{startkey, [AccountId]}
-    ,{endkey, [AccountId, kz_json:new()]}
+    [{'startkey', [AccountId]}
+    ,{'endkey', [AccountId, kz_json:new()]}
     ];
 view_for_list_assigned(StartKey=[AccountId,_]) ->
-    [{startkey, StartKey}
-    ,{endkey, [AccountId, kz_json:new()]}
-    ,{skip, 1}
+    [{'startkey', StartKey}
+    ,{'endkey', [AccountId, kz_json:new()]}
+    ,{'skip', 1}
     ].
 
 -type startkey_or_numberdb() :: kz_term:ne_binary() | kz_term:ne_binaries().
 -spec dump_next(fun((startkey_or_numberdb()) -> {kz_term:ne_binary(), kz_datamgr:view_options()}), startkey_or_numberdb()) ->
-                       {ok | error | [kz_csv:row()], [startkey_or_numberdb()]}.
+          {'ok' | 'error' | [kz_csv:row()], [startkey_or_numberdb()]}.
 dump_next(ViewFun, [Next|Rest]) ->
     {NumberDb, MoreViewOptions} = ViewFun(Next),
     ViewOptions = [{limit, ?DB_DUMP_BULK_SIZE} | MoreViewOptions],
     case kz_datamgr:get_result_keys(NumberDb, <<"numbers/status">>, ViewOptions) of
-        {ok, []} -> {ok, Rest};
-        {error, _R} ->
+        {'ok', []} -> {'ok', Rest};
+        {'error', _R} ->
             lager:error("could not get ~p from ~s: ~p", [ViewOptions, NumberDb, _R]),
-            {error, Rest};
-        {ok, Keys} ->
+            {'error', Rest};
+        {'ok', Keys} ->
             Rows = list_numbers(?KNM_DEFAULT_AUTH_BY, [lists:last(Key) || Key <- Keys]),
             {Rows, [lists:last(Keys)|Rest]}
     end.
 
 -spec db_and_view_for_dump(kz_term:ne_binary() | kz_term:ne_binaries()) -> {kz_term:ne_binary(), kz_datamgr:view_options()}.
-db_and_view_for_dump(NumberDb=?NE_BINARY) -> {NumberDb, []};
-db_and_view_for_dump(StartKey=[_,_,LastNum]) ->
-    ViewOpts = [{startkey, StartKey}
-               ,{skip, 1}
+db_and_view_for_dump(<<NumberDb/binary>>) -> {NumberDb, []};
+db_and_view_for_dump(StartKey=[_, _, LastNum]) ->
+    ViewOpts = [{'startkey', StartKey}
+               ,{'skip', 1}
                ],
     {knm_converters:to_db(LastNum), ViewOpts}.
 
 -spec db_and_view_for_dump_by_state(kz_term:ne_binary(), kz_term:ne_binary() | kz_term:ne_binaries()) -> {kz_term:ne_binary(), kz_datamgr:view_options()}.
-db_and_view_for_dump_by_state(State, NumberDb=?NE_BINARY) ->
-    ViewOptions = [{startkey, [State]}
-                  ,{endkey, [State, kz_json:new()]}
+db_and_view_for_dump_by_state(State, <<NumberDb/binary>>) ->
+    ViewOptions = [{'startkey', [State]}
+                  ,{'endkey', [State, kz_json:new()]}
                   ],
     {NumberDb, ViewOptions};
-db_and_view_for_dump_by_state(State, StartKey=[_,_,LastNum]) ->
-    ViewOptions = [{startkey, StartKey}
-                  ,{endkey, [State, kz_json:new()]}
-                  ,{skip, 1}
+db_and_view_for_dump_by_state(State, StartKey=[_ ,_, LastNum]) ->
+    ViewOptions = [{'startkey', StartKey}
+                  ,{'endkey', [State, kz_json:new()]}
+                  ,{'skip', 1}
                   ],
     {knm_converters:to_db(LastNum), ViewOptions}.
 

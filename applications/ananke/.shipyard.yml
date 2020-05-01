@@ -1,0 +1,23 @@
+---
+name: kazoo-application-ananke
+base_branch: origin/master
+metapackage:
+  - name: meta-kazoo-applications
+    type: related
+    branch: master
+    package: kazoo-application-ananke
+base_core: kazoo
+template: kazoo-application.spec.tmpl
+package:
+  centos7:
+    name: kazoo-application-ananke
+    summary: Kazoo core application
+    description: |
+      Ananke was the personification of destiny, necessity and fate, depicted as
+      holding a spindle in ancient Greek religion. This application to schedule
+      calls on events.
+    app_name: ananke
+    license: MPL 2.0
+    group: Productivity/Telephony
+    url: https://github.com/kazoo-community/kazoo-ananke
+    vendor: Kazoo-Community

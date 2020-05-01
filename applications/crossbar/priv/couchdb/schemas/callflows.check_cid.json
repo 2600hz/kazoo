@@ -26,6 +26,10 @@
             "description": "Determine match/nomatch when use_absolute_mode is false",
             "type": "string"
         },
+        "skip_module": {
+            "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+            "type": "boolean"
+        },
         "use_absolute_mode": {
             "default": false,
             "description": "If true, direct call down a branch that matches the caller ID",

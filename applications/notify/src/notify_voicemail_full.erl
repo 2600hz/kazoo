@@ -1,10 +1,15 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Renders a custom account email template, or the system default,
 %%% and sends the email with voicemail attachment to the user.
 %%%
 %%%
 %%% @author Peter Defebvre
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(notify_voicemail_full).
@@ -38,7 +43,7 @@ init() ->
 -spec handle_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = kapi_notifications:voicemail_full_v(JObj),
-    kz_util:put_callid(JObj),
+    kz_log:put_callid(JObj),
 
     lager:debug("voicemail full notice, sending to email if enabled"),
 
@@ -69,7 +74,7 @@ send(JObj, Account) ->
     CustomSubjectTemplate = kz_json:get_value([<<"notifications">>, <<"vm_full">>, <<"email_subject_template">>], Account),
     {'ok', Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
 
-    AccountDb = kz_util:format_account_db(kz_json:get_value(<<"Account-ID">>, JObj)),
+    AccountDb = kzs_util:format_account_db(kz_json:get_value(<<"Account-ID">>, JObj)),
 
     VMBoxId = kz_json:get_value(<<"Voicemail-Box">>, JObj),
     lager:debug("loading vm box ~s", [VMBoxId]),
@@ -107,7 +112,7 @@ get_owner(AccountDb, VMBox) ->
     get_owner(AccountDb, VMBox, kzd_voicemail_box:owner_id(VMBox)).
 
 -spec get_owner(kz_term:ne_binary(), kzd_voicemail_box:doc(), kz_term:api_binary()) ->
-                       {'ok', kzd_users:doc()}.
+          {'ok', kzd_users:doc()}.
 get_owner(_AccountDb, _VMBox, 'undefined') ->
     lager:debug("no owner of voicemail box ~s, using empty owner", [kz_doc:id(_VMBox)]),
     {'ok', kz_json:new()};
@@ -125,7 +130,7 @@ maybe_add_user_email(BoxEmails, UserEmail) -> [UserEmail | BoxEmails].
 %%------------------------------------------------------------------------------
 -spec create_template_props(kz_json:object()) -> kz_term:proplist().
 create_template_props(JObj) ->
-    AccountDb = kz_util:format_account_db(kz_json:get_value(<<"Account-ID">>, JObj)),
+    AccountDb = kzs_util:format_account_db(kz_json:get_value(<<"Account-ID">>, JObj)),
     {'ok', AccountJObj} = kzd_accounts:fetch(AccountDb),
 
     [{<<"service">>, notify_util:get_service_props(JObj, AccountJObj, ?MOD_CONFIG_CAT)}
@@ -147,7 +152,7 @@ get_vm_name(JObj) ->
 -spec get_vm_doc(kz_json:object()) -> kz_json:object() | 'error'.
 get_vm_doc(JObj) ->
     VMId = kz_json:get_value(<<"Voicemail-Box">>, JObj),
-    AccoundDB = kz_util:format_account_db(kz_json:get_value(<<"Account-ID">>, JObj)),
+    AccoundDB = kzs_util:format_account_db(kz_json:get_value(<<"Account-ID">>, JObj)),
     case kz_datamgr:open_cache_doc(AccoundDB, VMId) of
         {'ok', VMDoc} -> VMDoc;
         {'error', _E} ->

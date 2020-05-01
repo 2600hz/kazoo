@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_fixturedb_attachments).
@@ -32,7 +36,7 @@ fetch_attachment(Server, DbName, DocId, AName) ->
 stream_attachment(Server, DbName, DocId, AName, Caller) ->
     AttResult = fetch_attachment(Server, DbName, DocId, AName),
     Ref = erlang:make_ref(),
-    kz_util:spawn(fun relay_stream_attachment/3, [Caller, Ref, AttResult]),
+    kz_process:spawn(fun relay_stream_attachment/3, [Caller, Ref, AttResult]),
     {ok, Ref}.
 
 -spec put_attachment(server_map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_data:options()) -> doc_resp().
@@ -40,7 +44,7 @@ put_attachment(Server, DbName, DocId, AName, Contents, Options) ->
     Doc = kz_fixturedb_doc:open_doc(Server, DbName, DocId, Options),
     prepare_att_doc(Doc, AName, Contents, Options).
 
--spec delete_attachment(server_map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_data:options()) -> docs_resp().
+-spec delete_attachment(server_map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_data:options()) -> doc_resp().
 delete_attachment(Server, DbName, DocId, _AName, Options) ->
     Doc = kz_fixturedb_doc:open_doc(Server, DbName, DocId, Options),
     del_att_response(Doc).
@@ -65,11 +69,11 @@ relay_stream_attachment(Caller, Ref, AttResult) ->
 -spec prepare_att_doc(doc_resp(), kz_term:ne_binary(), kz_term:ne_binary(), kz_data:options()) -> doc_resp().
 prepare_att_doc({ok, Doc}, AName, Contents, Options) ->
     JObj = kz_fixturedb_util:update_revision(Doc),
-    [RevPos|_] = kz_doc:revision(JObj),
+    Rev = kz_doc:revision(JObj),
     Att = kz_json:from_list_recursive(
             [{<<"_attachments">>
              ,[{AName, [{<<"content_type">>, props:get_value(content_type, Options, <<"application/octet-stream">>)}
-                       ,{<<"revpos">>, RevPos}
+                       ,{<<"revpos">>, Rev}
                        ,{<<"digest">>, <<"md5-", (base64:encode(crypto:hash(md5, Contents)))/binary>>}
                        ,{<<"length">>, erlang:size(Contents)}
                        ,{<<"stub">>, true}

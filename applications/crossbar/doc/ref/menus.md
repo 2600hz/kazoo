@@ -11,6 +11,8 @@ Schema for a menus
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
 `allow_record_from_offnet` | Determines if the record pin can be used by external calls | `boolean()` | `false` | `false` | `supported`
+`flags.[]` |   | `string()` |   | `false` | `supported`
+`flags` | Flags set by external applications | `array(string())` |   | `false` | `supported`
 `hunt` | Determines if the callers can dial internal extensions directly | `boolean()` | `true` | `false` | `supported`
 `hunt_allow` | A regular expression that an extension the caller dialed must match to be allowed to continue | `string(1..256)` |   | `false` | `supported`
 `hunt_deny` | A regular expression that if matched does not allow the caller to dial directly | `string(1..256)` |   | `false` | `supported`

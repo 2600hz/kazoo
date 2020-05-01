@@ -1,9 +1,13 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2014-2019, 2600Hz
+%%% @copyright (C) 2014-2020, 2600Hz
 %%% @doc API interface for buckets
 %%% ETS writer for table
 %%%
 %%% @author James Aimonetti
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_buckets).
@@ -18,6 +22,7 @@
         ,start_bucket/1, start_bucket/2, start_bucket/3, start_bucket/4, start_bucket/5
         ,exists/1, exists/2
         ,tokens/0
+        ,tokens_remaining/2
 
         ,get_bucket/2, get_bucket/3
         ]).
@@ -192,27 +197,27 @@ exists(App, Key) ->
     end.
 
 -spec start_bucket(kz_term:ne_binary()) ->
-                          'ok' | 'error' | 'exists'.
+          'ok' | 'error' | 'exists'.
 start_bucket(Name) ->
     start_bucket(?DEFAULT_APP, Name).
 
 -spec start_bucket(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                          'ok' | 'error' | 'exists'.
+          'ok' | 'error' | 'exists'.
 start_bucket(App, Name) ->
     start_bucket(App, Name, ?MAX_TOKENS(App)).
 
 -spec start_bucket(kz_term:ne_binary(), kz_term:ne_binary(), pos_integer()) ->
-                          'ok' | 'error' | 'exists'.
+          'ok' | 'error' | 'exists'.
 start_bucket(App, Name, MaxTokens) ->
     start_bucket(App, Name, MaxTokens, ?FILL_RATE(App)).
 
 -spec start_bucket(kz_term:ne_binary(), kz_term:ne_binary(), pos_integer(), pos_integer()) ->
-                          'ok' | 'error' | 'exists'.
+          'ok' | 'error' | 'exists'.
 start_bucket(App, Name, MaxTokens, FillRate) ->
     start_bucket(App, Name, MaxTokens, FillRate, kz_token_bucket:default_fill_time(App)).
 
 -spec start_bucket(kz_term:ne_binary(), kz_term:ne_binary(), pos_integer(), pos_integer(), kz_token_bucket:fill_rate_time()) ->
-                          'ok' | 'error' | 'exists'.
+          'ok' | 'error' | 'exists'.
 start_bucket(App, Name, MaxTokens, FillRate, FillTime) ->
     case exists(App, Name) of
         'true' ->
@@ -255,6 +260,15 @@ print_bucket_info(#bucket{key={App, _}}=Bucket, _OldApp) ->
              ),
     print_bucket_info(Bucket, App).
 
+-spec tokens_remaining(kz_term:ne_binary(), kz_term:ne_binary()) -> non_neg_integer().
+tokens_remaining(App, Key) ->
+    case ets:lookup(table_id(), {App, Key}) of
+        [] ->
+            ?MAX_TOKENS(App);
+        [#bucket{srv=P}] ->
+            kz_token_bucket:tokens(P)
+    end.
+
 %%%=============================================================================
 %%% ETS
 %%%=============================================================================
@@ -283,7 +297,7 @@ gift_data() -> 'ok'.
 %%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     {'ok', #state{inactivity_timer_ref=start_inactivity_timer()}}.
 
 %%------------------------------------------------------------------------------
@@ -308,12 +322,12 @@ handle_call({'start', App, Name, MaxTokens, FillRate, FillTime}, _From, #state{t
     of
         {'ok', Pid} when is_pid(Pid) ->
             T = {App, Name},
-            case ets:insert_new(Tbl, new_bucket(Pid, T)) of
-                'true' -> lager:debug("new bucket for ~s, ~s: ~p", [App, Name, Pid]);
-                'false' ->
-                    lager:debug("hmm, bucket appears to exist for ~s, ~s, stopping ~p", [App, Name, Pid]),
-                    kz_buckets_sup:stop_bucket(Pid)
-            end,
+            _ = case ets:insert_new(Tbl, new_bucket(Pid, T)) of
+                    'true' -> lager:debug("new bucket for ~s, ~s: ~p", [App, Name, Pid]);
+                    'false' ->
+                        lager:debug("hmm, bucket appears to exist for ~s, ~s, stopping ~p", [App, Name, Pid]),
+                        kz_buckets_sup:stop_bucket(Pid)
+                end,
             kz_token_bucket:set_name(Pid, T),
             {'reply', 'ok', State};
         'false' ->
@@ -365,7 +379,7 @@ handle_info({'DOWN', Ref, 'process', Pid, _Reason}, #state{table_id=Tbl}=State) 
     end,
     {'noreply', State};
 handle_info(?INACTIVITY_MSG, #state{inactivity_timer_ref=_OldRef}=State) ->
-    _Pid = kz_util:spawn(fun check_for_inactive_buckets/0),
+    _Pid = kz_process:spawn(fun check_for_inactive_buckets/0),
     {'noreply', State#state{inactivity_timer_ref=start_inactivity_timer()}};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
@@ -412,7 +426,7 @@ start_inactivity_timer() ->
 
 -spec check_for_inactive_buckets() -> 'ok'.
 check_for_inactive_buckets() ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     Now = kz_time:now_s(),
     InactivityTimeout = ?INACTIVITY_TIMEOUT_S,
 

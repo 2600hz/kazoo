@@ -2,7 +2,7 @@
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "port_requests.to_scheduled",
     "description": "Schema for a port request to be transitioned to the 'scheduled' state",
-    "oneOf": [
+    "anyOf": [
         {
             "required": [
                 "scheduled_date"

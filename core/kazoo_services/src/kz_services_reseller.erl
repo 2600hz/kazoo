@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_services_reseller).
@@ -29,7 +33,7 @@
 -spec is_reseller(kz_term:api_ne_binary() | kz_services:services()) -> boolean().
 is_reseller('undefined') -> 'false';
 is_reseller(Account=?NE_BINARY) ->
-    AccountId = kz_util:format_account_id(Account),
+    AccountId = kzs_util:format_account_id(Account),
     case kz_datamgr:open_cache_doc(?KZ_SERVICES_DB, AccountId) of
         {'ok', JObj} -> kzd_services:is_reseller(JObj);
         {'error', _} -> 'false'
@@ -44,13 +48,13 @@ is_reseller(Services) ->
 %% an 'undefined' account id returns the master account (if present)
 %% @end
 %%------------------------------------------------------------------------------
--spec get_id(kz_term:api_ne_binary() | kz_services:services()) -> kz_json:api_ne_binary().
+-spec get_id(kz_term:api_ne_binary() | kz_services:services()) -> kz_term:api_ne_binary().
 get_id('undefined') ->
     case kapps_util:get_master_account_id() of
         {'error', _} -> 'undefined';
         {'ok', MasterAccountId} -> MasterAccountId
     end;
-get_id(Account=?NE_BINARY) ->
+get_id(<<Account/binary>>) ->
     get_id(kz_services:fetch(Account));
 get_id(Services) ->
     kzd_services:reseller_id(kz_services:services_jobj(Services)).
@@ -60,9 +64,9 @@ get_id(Services) ->
 %% and walks the account tree until it finds the first reseller
 %% @end
 %%------------------------------------------------------------------------------
--spec find_id(kz_term:ne_binaries() | kz_term:api_binary() | kz_services:services()) -> kz_term:ne_binary().
+-spec find_id(kz_term:ne_binaries() | kz_term:api_binary() | kz_services:services()) -> kz_term:api_ne_binary().
 find_id('undefined') -> find_id([]);
-find_id(Account=?NE_BINARY) ->
+find_id(<<Account/binary>>) ->
     case kzd_accounts:fetch(Account) of
         {'ok', AccountJObj} ->
             find_id(lists:reverse(kzd_accounts:tree(AccountJObj)));
@@ -71,8 +75,10 @@ find_id(Account=?NE_BINARY) ->
             find_id([])
     end;
 find_id([]) ->
-    {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
-    MasterAccountId;
+    case kapps_util:get_master_account_id() of
+        {'ok', MasterAccountId} -> MasterAccountId;
+        {'error', 'not_found'} -> 'undefined'
+    end;
 find_id([Parent|Ancestors]) ->
     case is_reseller(Parent) of
         'false' -> find_id(Ancestors);
@@ -89,7 +95,7 @@ find_id(Services) ->
 %%------------------------------------------------------------------------------
 -spec promote(kz_term:ne_binary()) -> {'error', _} | 'ok'.
 promote(Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kzs_util:format_account_id(Account),
     case kapps_util:is_master_account(AccountId) of
         'true' -> {'error', 'master_account'};
         'false' ->
@@ -101,7 +107,7 @@ promote(Account) ->
 
 -spec force_promote(kz_term:ne_binary()) -> {'error', _} | 'ok'.
 force_promote(Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kzs_util:format_account_id(Account),
     do_promote(AccountId).
 
 -spec do_promote(kz_term:ne_binary()) -> {'error', _} | 'ok'.
@@ -120,7 +126,7 @@ do_promote(AccountId) ->
 %%------------------------------------------------------------------------------
 -spec demote(kz_term:ne_binary()) -> {'error', _} | 'ok'.
 demote(Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kzs_util:format_account_id(Account),
     case kapps_util:is_master_account(AccountId) of
         'true' -> {'error', 'master_account'};
         'false' ->
@@ -132,7 +138,7 @@ demote(Account) ->
 
 -spec force_demote(kz_term:ne_binary()) -> {'error', _} | 'ok'.
 force_demote(Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kzs_util:format_account_id(Account),
     do_demote(AccountId).
 
 -spec do_demote(kz_term:ne_binary()) -> {'error', _} | 'ok'.
@@ -151,8 +157,8 @@ do_demote(AccountId) ->
 %%------------------------------------------------------------------------------
 -spec cascade_reseller_id(kz_term:ne_binary(), kz_term:ne_binary()) -> {'error', _} | 'ok'.
 cascade_reseller_id(Reseller, Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
-    ResellerId = kz_util:format_account_id(Reseller, 'raw'),
+    AccountId = kzs_util:format_account_id(Account),
+    ResellerId = kzs_util:format_account_id(Reseller),
     ViewOptions = [{'startkey', [AccountId]}
                   ,{'endkey', [AccountId, kz_json:new()]}
                   ],
@@ -175,8 +181,8 @@ cascade_reseller_id(Reseller, Account) ->
 %%------------------------------------------------------------------------------
 -spec set_reseller_id(kz_term:ne_binary(), kz_term:ne_binary()) -> {'error', _} | 'ok'.
 set_reseller_id(Reseller, Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
-    ResellerId = kz_util:format_account_id(Reseller, 'raw'),
+    AccountId = kzs_util:format_account_id(Account),
+    ResellerId = kzs_util:format_account_id(Reseller),
     io:format("setting account ~s reseller id to ~s~n", [AccountId, ResellerId]),
 
     Update = [{kzd_accounts:path_reseller_id(), ResellerId}],

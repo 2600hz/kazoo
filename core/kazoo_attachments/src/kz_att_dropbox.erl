@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2017-2019, 2600Hz
+%%% @copyright (C) 2017-2020, 2600Hz
 %%% @doc Dropbox for attachments.
 %%% @author Luis Azedo
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_att_dropbox).
@@ -148,8 +153,8 @@ dropbox_format_url(Map, AttInfo) ->
     kz_att_util:format_url(Map, AttInfo, dropbox_default_fields()).
 
 -spec dropbox_post(binary(), kz_term:proplist(), binary()) ->
-                          {'ok', binary(), [{binary(), binary()}]} |
-                          {'error', kz_term:ne_binary(), kz_http:ret() | atom()}.
+          {'ok', binary(), [{binary(), binary()}]} |
+          {'error', kz_term:ne_binary(), kz_http:ret() | atom()}.
 dropbox_post(Url, Headers, Body) ->
     case kz_http:post(Url, Headers, Body) of
         {'ok', 200, ResponseHeaders, ResponseBody} ->

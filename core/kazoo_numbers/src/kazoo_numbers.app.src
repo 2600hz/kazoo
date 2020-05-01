@@ -1,0 +1,10 @@
+{application,kazoo_numbers,
+             [{applications,[kazoo,kazoo_amqp,kazoo_apps,kazoo_caches,
+                             kazoo_data,kazoo_documents,kazoo_ledgers,
+                             kazoo_services,kazoo_stdlib,kazoo_web,kazoo_xml,
+                             kernel,lager,stdlib,xmerl]},
+              {description,"Kazoo Number Management"},
+              {vsn,"4.0.0"},
+              {modules,[]},
+              {registered,[kazoo_numbers_sup]},
+              {mod,{kazoo_numbers_app,[]}}]}.

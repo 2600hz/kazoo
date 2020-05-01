@@ -1,0 +1,13 @@
+{
+    "_id": "number_manager.vitelity",
+    "_rev": "1-4ab53df47452c2ae334cc4799789ae87",
+    "default": {
+        "routesip": "1.2.3.4"
+    },
+    "pvt_account_db": "system_config",
+    "pvt_account_id": "system_config",
+    "pvt_created": 63705827127,
+    "pvt_document_hash": "6746f4ca32235ebe25c24fb6083dcf10",
+    "pvt_node": "kazoo_apps@kazoo_apps.1",
+    "pvt_type": "config"
+}

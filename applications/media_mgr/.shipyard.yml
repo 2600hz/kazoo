@@ -1,0 +1,23 @@
+---
+name: kazoo-application-media_mgr
+base_branch: origin/master
+metapackage:
+  - name: meta-kazoo-applications
+    type: required
+    branch: master
+    package: kazoo-application-media_mgr
+base_core: kazoo
+template: kazoo-application.spec.tmpl
+package:
+  centos7:
+    name: kazoo-application-media_mgr
+    summary: Kazoo core application
+    description: |
+      Provides media services such as converting media paths (such as
+      /{ACCOUNT_ID}/{MEDIA_ID}) into a HTTP URL for FreeSWITCH to use
+      for streaming.
+    app_name: media_mgr
+    license: MPL 2.0
+    group: Productivity/Telephony
+    url: https://2600hz.org/
+    vendor: 2600Hz

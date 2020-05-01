@@ -1,0 +1,21 @@
+---
+name: kazoo-application-konami
+base_branch: origin/master
+metapackage:
+  - name: meta-kazoo-applications
+    type: related
+    branch: master
+    package: kazoo-application-konami
+base_core: kazoo
+template: kazoo-application.spec.tmpl
+package:
+  centos7:
+    name: kazoo-application-konami
+    summary: Kazoo core application
+    description: |
+      Listens on configured calls for DTMF sequences to trigger metaflows
+    app_name: konami
+    license: MPL 2.0
+    group: Productivity/Telephony
+    url: https://github.com/kazoo-community/kazoo-konami
+    vendor: Kazoo-Community

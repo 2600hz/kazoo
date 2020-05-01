@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2019, 2600Hz
+%%% @copyright (C) 2013-2020, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(pusher_module_sup).
@@ -18,9 +23,7 @@
 
 -define(SERVER, ?MODULE).
 
--define(CHILDREN, [ ?WORKER(kz_term:to_atom(Mod, 'true'))
-                    || Mod <- kapps_config:get_ne_binaries(?CONFIG_CAT, <<"modules">>, [])
-                  ]).
+-define(CHILDREN, [?WORKER(Mod) || Mod <- ?MODULES]).
 
 %%%=============================================================================
 %%% API functions

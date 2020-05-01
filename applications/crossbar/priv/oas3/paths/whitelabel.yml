@@ -1,0 +1,220 @@
+paths:
+  /accounts/{ACCOUNT_ID}/whitelabel:
+    delete:
+      operationId: DeleteAccountsAccountIdWhitelabel
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of whitelabel
+      tags:
+        - whitelabel
+    get:
+      operationId: GetAccountsAccountIdWhitelabel
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get all whitelabel
+      tags:
+        - whitelabel
+    post:
+      operationId: PostAccountsAccountIdWhitelabel
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/whitelabel'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of whitelabel
+      tags:
+        - whitelabel
+    put:
+      operationId: PutAccountsAccountIdWhitelabel
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/whitelabel'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of whitelabel
+      tags:
+        - whitelabel
+  /accounts/{ACCOUNT_ID}/whitelabel/domains:
+    get:
+      operationId: GetAccountsAccountIdWhitelabelDomains
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get domains of whitelabel
+      tags:
+        - whitelabel
+    post:
+      operationId: PostAccountsAccountIdWhitelabelDomains
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/whitelabel'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of whitelabel
+      tags:
+        - whitelabel
+  /accounts/{ACCOUNT_ID}/whitelabel/icon:
+    get:
+      operationId: GetAccountsAccountIdWhitelabelIcon
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get icon of whitelabel
+      tags:
+        - whitelabel
+    post:
+      operationId: PostAccountsAccountIdWhitelabelIcon
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/whitelabel'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of whitelabel
+      tags:
+        - whitelabel
+  /accounts/{ACCOUNT_ID}/whitelabel/logo:
+    get:
+      operationId: GetAccountsAccountIdWhitelabelLogo
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get logo of whitelabel
+      tags:
+        - whitelabel
+    post:
+      operationId: PostAccountsAccountIdWhitelabelLogo
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/whitelabel'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of whitelabel
+      tags:
+        - whitelabel
+  /accounts/{ACCOUNT_ID}/whitelabel/welcome:
+    get:
+      operationId: GetAccountsAccountIdWhitelabelWelcome
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get welcome of whitelabel
+      tags:
+        - whitelabel
+    post:
+      operationId: PostAccountsAccountIdWhitelabelWelcome
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/whitelabel'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of whitelabel
+      tags:
+        - whitelabel
+  /accounts/{ACCOUNT_ID}/whitelabel/{WHITELABEL_DOMAIN}:
+    get:
+      operationId: GetAccountsAccountIdWhitelabelWhitelabelDomain
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/WHITELABEL_DOMAIN'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a whitelabel by ID
+      tags:
+        - whitelabel
+  /accounts/{ACCOUNT_ID}/whitelabel/{WHITELABEL_DOMAIN}/icon:
+    get:
+      operationId: GetAccountsAccountIdWhitelabelWhitelabelDomainIcon
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/WHITELABEL_DOMAIN'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get icon of whitelabel
+      tags:
+        - whitelabel
+  /accounts/{ACCOUNT_ID}/whitelabel/{WHITELABEL_DOMAIN}/logo:
+    get:
+      operationId: GetAccountsAccountIdWhitelabelWhitelabelDomainLogo
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/WHITELABEL_DOMAIN'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get logo of whitelabel
+      tags:
+        - whitelabel
+  /accounts/{ACCOUNT_ID}/whitelabel/{WHITELABEL_DOMAIN}/welcome:
+    get:
+      operationId: GetAccountsAccountIdWhitelabelWhitelabelDomainWelcome
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/WHITELABEL_DOMAIN'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get welcome of whitelabel
+      tags:
+        - whitelabel

@@ -1,7 +1,11 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Account document
 %%% @author Peter Defebvre
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kzd_apps_store).
@@ -25,7 +29,7 @@
 fetch('undefined') ->
     {'error', 'account_id_undefined'};
 fetch(Account) ->
-    AccoundDb = kz_util:format_account_id(Account, 'encoded'),
+    AccoundDb = kzs_util:format_account_db(Account),
     kz_datamgr:open_cache_doc(AccoundDb, ?ID).
 
 %%------------------------------------------------------------------------------
@@ -36,11 +40,11 @@ fetch(Account) ->
 new(Account) ->
     Routines = [fun(JObj) -> kz_doc:set_id(JObj, ?ID) end
                ,fun(JObj) ->
-                        AccountId = kz_util:format_account_id(Account, 'raw'),
+                        AccountId = kzs_util:format_account_id(Account),
                         kz_doc:set_account_id(JObj, AccountId)
                 end
                ,fun(JObj) ->
-                        AccountDb = kz_util:format_account_id(Account, 'encoded'),
+                        AccountDb = kzs_util:format_account_db(Account),
                         kz_doc:set_account_db(JObj, AccountDb)
                 end
                ],

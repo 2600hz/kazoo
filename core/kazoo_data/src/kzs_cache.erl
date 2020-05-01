@@ -1,6 +1,11 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc data adapter behaviour
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kzs_cache).
@@ -50,9 +55,9 @@
 -define(CACHE_KEY(DbName, DocId), {?MODULE, DbName, DocId}).
 
 -spec open_cache_doc(kz_term:text(), kz_term:ne_binary(), kz_term:proplist()) ->
-                            {'ok', kz_json:object()} |
-                            data_error() |
-                            {'error', 'not_found'}.
+          {'ok', kz_json:object()} |
+          data_error() |
+          {'error', 'not_found'}.
 open_cache_doc(DbName, DocId, Options) ->
     MitigationKey = kz_cache:mitigation_key(),
     CacheStrategy = cache_strategy(),
@@ -63,7 +68,7 @@ open_cache_doc(DbName, DocId, Options) ->
         {MitigationKey, _Pid} ->
             fetch_doc(DbName, DocId, Options, CacheStrategy);
         {'ok', {'error', _}=E} -> E;
-        {'ok', _}=Ok -> Ok;
+        {'ok', _Doc}=Ok -> Ok;
         {'error', 'not_found'} when CacheStrategy =:= 'stampede' ->
             mitigate_stampede(DbName, DocId, Options, CacheStrategy);
         {'error', 'not_found'} ->
@@ -71,9 +76,9 @@ open_cache_doc(DbName, DocId, Options) ->
     end.
 
 -spec mitigate_stampede(kz_term:text(), kz_term:ne_binary(), kz_term:proplist(), cache_strategy()) ->
-                               {'ok', kz_json:object()} |
-                               data_error() |
-                               {'error', 'not_found'}.
+          {'ok', kz_json:object()} |
+          data_error() |
+          {'error', 'not_found'}.
 mitigate_stampede(DbName, DocId, Options, CacheStrategy) ->
     CacheKey = ?CACHE_KEY(DbName, DocId),
     case kz_cache:mitigate_stampede_local(?CACHE_NAME, CacheKey) of
@@ -84,25 +89,27 @@ mitigate_stampede(DbName, DocId, Options, CacheStrategy) ->
     end.
 
 -spec fetch_doc(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), cache_strategy()) ->
-                       {'ok', kz_json:object()} |
-                       data_error() |
-                       {'error', 'not_found'}.
+          {'ok', kz_json:object()} |
+          data_error() |
+          {'error', 'not_found'}.
 fetch_doc(DbName, DocId, Options, CacheStrategy) ->
     R = kz_datamgr:open_doc(DbName, DocId, remove_cache_options(Options)),
     _ = maybe_cache(DbName, DocId, Options, R, CacheStrategy),
     R.
 
 -spec maybe_cache(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), data_error() | {'ok', kz_json:object()}, cache_strategy()) ->
-                         'ok'.
+          'ok'.
+maybe_cache(DbName, DocId, _Options, {'error', 'conflict'}, _CacheStrategy) ->
+    flush_cache_doc(DbName, DocId);
 maybe_cache(DbName, DocId, Options, {'error', _}=E, CacheStrategy) ->
     maybe_cache_failure(DbName, DocId, Options, E, CacheStrategy);
 maybe_cache(DbName, DocId, _, {'ok', JObj}, CacheStrategy) ->
     add_to_doc_cache(DbName, DocId, JObj, CacheStrategy).
 
 -spec open_cache_doc(map(), kz_term:text(), kz_term:ne_binary(), kz_term:proplist()) ->
-                            {'ok', kz_json:object()} |
-                            data_error() |
-                            {'error', 'not_found'}.
+          {'ok', kz_json:object()} |
+          data_error() |
+          {'error', 'not_found'}.
 open_cache_doc(Server, DbName, DocId, Options) ->
     MitigationKey = kz_cache:mitigation_key(),
     CacheStrategy = cache_strategy(),
@@ -113,7 +120,7 @@ open_cache_doc(Server, DbName, DocId, Options) ->
         {MitigationKey, _Pid} ->
             fetch_doc(Server, DbName, DocId, remove_cache_options(Options), CacheStrategy);
         {'ok', {'error', _}=E} -> E;
-        {'ok', _}=Ok -> Ok;
+        {'ok', _Doc}=Ok -> Ok;
         {'error', 'not_found'} ->
             fetch_doc(Server, DbName, DocId, remove_cache_options(Options), CacheStrategy)
     end.
@@ -124,41 +131,44 @@ fetch_doc(Server, DbName, DocId, Options, CacheStrategy) ->
     R.
 
 -spec open_cache_docs(kz_term:text(), kz_term:ne_binaries(), kz_term:proplist()) ->
-                             {'ok', kz_json:objects()} |
-                             data_error().
+          {'ok', kz_json:objects()} |
+          data_error().
 open_cache_docs(DbName, DocIds, Options) ->
     {Cached, MissedDocIds} = fetch_locals(DbName, DocIds),
-    case MissedDocIds =/= []
-        andalso kz_datamgr:open_docs(DbName, MissedDocIds, remove_cache_options(Options))
-    of
-        {error, _}=E -> E;
-        Other ->
-            prepare_jobjs(DbName, DocIds, Options, Cached, Other)
+    ?LOG_INFO("fetched cached ~p and missing ~p", [Cached, MissedDocIds]),
+    open_non_cached_docs(DbName, DocIds, Options, Cached, MissedDocIds).
+
+open_non_cached_docs(DbName, DocIds, Options, Cached, []) ->
+    prepare_jobjs(DbName, DocIds, Options, Cached, []);
+open_non_cached_docs(DbName, DocIds, Options, Cached, MissedDocIds) ->
+    case kz_datamgr:open_docs(DbName, MissedDocIds, remove_cache_options(Options)) of
+        {'error', _}=E -> E;
+        {'ok', Found} ->
+            prepare_jobjs(DbName, DocIds, Options, Cached, Found)
     end.
 
--spec prepare_jobjs(kz_term:text(), kz_term:ne_binaries(), kz_term:proplist(), docs_returned(), {ok, kz_json:objects()} | 'false') ->
-                           {'ok', kz_json:objects()} |
-                           data_error().
-prepare_jobjs(DbName, DocIds, Options, Cached, false) ->
-    prepare_jobjs(DbName, DocIds, Options, Cached, {ok, []});
-prepare_jobjs(DbName, DocIds, Options, Cached, {ok, Opened}) ->
+-spec prepare_jobjs(kz_term:text(), kz_term:ne_binaries(), kz_term:proplist(), docs_returned(), kz_json:objects()) ->
+          {'ok', kz_json:objects()} |
+          data_error().
+prepare_jobjs(DbName, DocIds, Options, Cached, Opened) ->
     FromBulk = disassemble_jobjs(DbName, Options, Opened),
-    {ok, assemble_jobjs(DocIds, Cached, FromBulk)}.
+    {'ok', assemble_jobjs(DocIds, Cached, FromBulk)}.
 
+-spec fetch_locals(kz_term:ne_binary(), kz_term:ne_binaries()) -> {docs_returned(), kz_term:ne_binaries()}.
 fetch_locals(DbName, DocIds) ->
     F = fun (DocId, {Cached, Missed}) ->
                 case kz_cache:fetch_local(?CACHE_NAME, ?CACHE_KEY(DbName, DocId)) of
-                    {error, not_found} -> {Cached, [DocId|Missed]};
-                    {ok, {error, Reason}} ->
-                        {[{DocId, error, Reason}|Cached], Missed};
-                    {ok, Doc} ->
-                        {[{DocId, ok, Doc}|Cached], Missed}
+                    {'error', 'not_found'} -> {Cached, [DocId|Missed]};
+                    {'ok', {'error', Reason}} ->
+                        {[{DocId, 'error', Reason}|Cached], Missed};
+                    {'ok', Doc} ->
+                        {[{DocId, 'ok', Doc}|Cached], Missed}
                 end
         end,
     lists:foldl(F, {[], []}, DocIds).
 
--type doc_returned() :: {kz_term:ne_binary(), ok, kz_json:object()} |
-                        {kz_term:ne_binary(), error, kz_term:ne_binary()}.
+-type doc_returned() :: {kz_term:ne_binary(), 'ok', kz_json:object()} |
+                        {kz_term:ne_binary(), 'error', kz_term:ne_binary()}.
 -type docs_returned() :: [doc_returned()].
 -spec disassemble_jobjs(kz_term:ne_binary(), kz_term:proplist(), kz_json:objects()) -> docs_returned().
 disassemble_jobjs(DbName, Options, JObjs) ->
@@ -183,15 +193,15 @@ assemble_jobjs(DocIds, Cached, DocsReturned) ->
     kz_json:order_by([<<"key">>], DocIds, [JObjs1,JObjs2]).
 
 -spec to_nonbulk_format(doc_returned()) -> kz_json:object().
-to_nonbulk_format({DocId, ok, Doc}) ->
+to_nonbulk_format({DocId, 'ok', Doc}) ->
     kz_json:from_list(
       [{<<"key">>, DocId}
       ,{<<"doc">>, Doc}
       ]);
-to_nonbulk_format({DocId, error, Reason}) ->
+to_nonbulk_format({DocId, 'error', Reason}) ->
     kz_json:from_list(
       [{<<"key">>, DocId}
-      ,{<<"error">>, kz_term:to_atom(Reason, true)}
+      ,{<<"error">>, kz_term:to_atom(Reason, 'true')}
       ]).
 
 -spec remove_cache_options(kz_term:proplist()) -> kz_term:proplist().
@@ -257,21 +267,37 @@ cache_if_not_media(CacheProps, DbName, DocId, CacheValue, CacheStrategy) ->
     %%   url is built in media IF everything uses that helper function,
     %%   which is not currently the case...)
     case kzs_util:db_classification(DbName) =/= 'system'
-        andalso lists:member(kz_doc:type(CacheValue), ?NO_CACHING_TYPES) of
+        andalso lists:member(kz_doc:type(CacheValue), ?NO_CACHING_TYPES)
+    of
         'true' ->
             kz_cache:erase_local(?CACHE_NAME, ?CACHE_KEY(DbName, DocId));
         'false' when CacheStrategy =:= 'none';
                      CacheStrategy =:= 'stampede' ->
-            kz_cache:store_local(?CACHE_NAME
-                                ,?CACHE_KEY(DbName, DocId)
-                                ,CacheValue
-                                ,CacheProps
-                                );
+            check_if_newer_revision(CacheProps, DbName, DocId, CacheValue);
         'false' when CacheStrategy =:= 'stampede_async' ->
             maybe_cache(DbName, DocId, CacheValue, CacheProps);
         'false' ->
             kz_cache:store_local_async(?CACHE_NAME, ?CACHE_KEY(DbName, DocId), CacheValue, CacheProps)
     end.
+
+-spec check_if_newer_revision(kz_term:proplist(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
+check_if_newer_revision(CacheProps, DbName, DocId, CacheValue) ->
+    case kz_cache:peek_local(?CACHE_NAME, ?CACHE_KEY(DbName, DocId)) of
+        {'ok', Current} ->
+            case kz_doc:revision_id(Current) > kz_doc:revision_id(CacheValue) of
+                'true' -> 'ok';
+                'false' -> cache_it(CacheProps, DbName, DocId, CacheValue)
+            end;
+        {_, _} -> cache_it(CacheProps, DbName, DocId, CacheValue)
+    end.
+
+-spec cache_it(kz_term:proplist(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
+cache_it(CacheProps, DbName, DocId, CacheValue) ->
+    kz_cache:store_local(?CACHE_NAME
+                        ,?CACHE_KEY(DbName, DocId)
+                        ,CacheValue
+                        ,CacheProps
+                        ).
 
 -spec expires_policy_value(kz_term:ne_binary(), kz_json:object() | data_error()) -> timeout().
 expires_policy_value(_DbName, {'error', _}) ->
@@ -296,16 +322,18 @@ expires_policy_value(DbName, Classification, Type) ->
         Timeout -> kz_term:to_integer(Timeout)
     end.
 
--spec flush_cache_doc(kz_term:ne_binary() | db(), kz_term:ne_binary() | kz_json:object()) -> 'ok'.
+-spec flush_cache_doc(kz_term:ne_binary() | db(), kz_term:api_ne_binary() | kz_json:object()) -> 'ok'.
 flush_cache_doc(#db{name=Name}, Doc) ->
     flush_cache_doc(#db{name=Name}, Doc, []);
 flush_cache_doc(Db, Doc) when is_binary(Db) ->
     flush_cache_doc(Db, Doc, []).
 
--spec flush_cache_doc(kz_term:ne_binary() | db(), kz_term:ne_binary() | kz_json:object(), kz_term:proplist()) -> 'ok'.
+-spec flush_cache_doc(kz_term:ne_binary() | db(), kz_term:api_ne_binary() | kz_json:object(), kz_term:proplist()) -> 'ok'.
+flush_cache_doc(_Db, 'undefined', _Options) ->
+    lager:debug("failed to supply a doc id for flushing, ignoring");
 flush_cache_doc(#db{name=Name}, Doc, Options) ->
     flush_cache_doc(kz_term:to_binary(Name), Doc, Options);
-flush_cache_doc(DbName, DocId, _Options) when is_binary(DocId) ->
+flush_cache_doc(DbName, <<DocId/binary>>, _Options) ->
     kz_cache:erase_local(?CACHE_NAME, ?CACHE_KEY(DbName, DocId));
 flush_cache_doc(DbName, Doc, Options) ->
     flush_cache_doc(DbName, kz_doc:id(Doc), Options).

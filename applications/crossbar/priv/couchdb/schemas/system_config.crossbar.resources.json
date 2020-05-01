@@ -3,6 +3,11 @@
     "_id": "system_config.crossbar.resources",
     "description": "Schema for crossbar.resources system_config",
     "properties": {
+        "allow_peers": {
+            "default": false,
+            "description": "crossbar.resources allow peers",
+            "type": "boolean"
+        },
         "job_recovery_threshold_s": {
             "default": 3600,
             "description": "crossbar.resources job recovery threshold in seconds",

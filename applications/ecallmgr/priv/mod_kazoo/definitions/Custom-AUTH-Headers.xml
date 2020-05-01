@@ -1,0 +1,11 @@
+<definition name="Custom-AUTH-Headers">
+	<field name="Custom-AUTH-Headers" type="static" serialize-as="object">
+		<filters>
+			<filter name="Fetch-Section" type="include" value="directory" />
+		</filters>
+		<fields verbose="false">
+            <field name="variable_sip_h_X-AUTH-" type="prefix" exclude-prefix="true" />
+            <field name="X-AUTH-" type="prefix" exclude-prefix="true" />
+		</fields>
+	</field>
+</definition>

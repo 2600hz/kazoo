@@ -1,9 +1,14 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc
 %%% @author Karl Anderson
 %%% @author James Aimonetti
 %%% @author Jon Blanton
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(blackhole_init).
@@ -31,7 +36,7 @@ api_path() ->
 %%------------------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->
-    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
+    kz_log:put_callid(?DEFAULT_LOG_SYSTEM_ID),
 
     Dispatch = cowboy_router:compile(blackhole_routes()),
 
@@ -60,10 +65,11 @@ maybe_start_plaintext(Dispatch, IP) ->
             try
                 lager:info("trying to bind to address ~s port ~b", [inet:ntoa(IP), Port]),
                 cowboy:start_clear('blackhole_socket_handler'
-                                  ,[{'ip', IP}
-                                   ,{'port', Port}
-                                   ,{'num_acceptors', Workers}
-                                   ]
+                                  ,#{'socket_opts' => [{'ip', IP}
+                                                      ,{'port', Port}
+                                                      ]
+                                    ,'num_acceptors' => Workers
+                                    }
                                   ,#{'env' => #{'dispatch' => Dispatch
                                                ,'timeout' => ReqTimeout
                                                }
@@ -105,10 +111,9 @@ start_ssl(Dispatch, IP) ->
                            ]
                           ),
                 cowboy:start_tls('blackhole_socket_handler_ssl'
-                                ,[{'ip', IP}
-                                 ,{'num_acceptors', Workers}
-                                  | SSLOpts
-                                 ]
+                                ,#{'socket_opts' => [{'ip', IP} | SSLOpts]
+                                  ,'num_acceptors' => Workers
+                                  }
                                 ,#{'env' => #{'dispatch' => Dispatch
                                              ,'timeout' => ReqTimeout
                                              }

@@ -1,0 +1,254 @@
+paths:
+  /accounts/{ACCOUNT_ID}/vmboxes:
+    get:
+      operationId: GetAccountsAccountIdVmboxes
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get all vmboxes
+      tags:
+        - vmboxes
+    put:
+      operationId: PutAccountsAccountIdVmboxes
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/vmboxes'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of vmboxes
+      tags:
+        - vmboxes
+  /accounts/{ACCOUNT_ID}/vmboxes/messages:
+    get:
+      operationId: GetAccountsAccountIdVmboxesMessages
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get messages of vmboxes
+      tags:
+        - vmboxes
+  /accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}:
+    delete:
+      operationId: DeleteAccountsAccountIdVmboxesVmBoxId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/VM_BOX_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of vmboxes
+      tags:
+        - vmboxes
+    get:
+      operationId: GetAccountsAccountIdVmboxesVmBoxId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/VM_BOX_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a vmboxes by ID
+      tags:
+        - vmboxes
+    patch:
+      operationId: PatchAccountsAccountIdVmboxesVmBoxId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/VM_BOX_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/vmboxes'
+      responses:
+        200:
+          description: Successful operation
+      summary: Patch specific fields of vmboxes
+      tags:
+        - vmboxes
+    post:
+      operationId: PostAccountsAccountIdVmboxesVmBoxId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/VM_BOX_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/vmboxes'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of vmboxes
+      tags:
+        - vmboxes
+  /accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages:
+    delete:
+      operationId: DeleteAccountsAccountIdVmboxesVmBoxIdMessages
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/VM_BOX_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of vmboxes
+      tags:
+        - vmboxes
+    get:
+      operationId: GetAccountsAccountIdVmboxesVmBoxIdMessages
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/VM_BOX_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get messages of vmboxes
+      tags:
+        - vmboxes
+    post:
+      operationId: PostAccountsAccountIdVmboxesVmBoxIdMessages
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/VM_BOX_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/vmboxes'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of vmboxes
+      tags:
+        - vmboxes
+    put:
+      operationId: PutAccountsAccountIdVmboxesVmBoxIdMessages
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/VM_BOX_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/vmboxes'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of vmboxes
+      tags:
+        - vmboxes
+  /accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/raw:
+    post:
+      operationId: PostAccountsAccountIdVmboxesVmBoxIdMessagesRaw
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/VM_BOX_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/vmboxes'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of vmboxes
+      tags:
+        - vmboxes
+  /accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/{VM_MSG_ID}:
+    delete:
+      operationId: DeleteAccountsAccountIdVmboxesVmBoxIdMessagesVmMsgId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/VM_BOX_ID'
+        - $ref: '../oas3-parameters.yml#/VM_MSG_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of vmboxes
+      tags:
+        - vmboxes
+    get:
+      operationId: GetAccountsAccountIdVmboxesVmBoxIdMessagesVmMsgId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/VM_BOX_ID'
+        - $ref: '../oas3-parameters.yml#/VM_MSG_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a vmboxes by ID
+      tags:
+        - vmboxes
+    post:
+      operationId: PostAccountsAccountIdVmboxesVmBoxIdMessagesVmMsgId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/VM_BOX_ID'
+        - $ref: '../oas3-parameters.yml#/VM_MSG_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/vmboxes'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of vmboxes
+      tags:
+        - vmboxes
+  /accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/{VM_MSG_ID}/raw:
+    get:
+      operationId: GetAccountsAccountIdVmboxesVmBoxIdMessagesVmMsgIdRaw
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/VM_BOX_ID'
+        - $ref: '../oas3-parameters.yml#/VM_MSG_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get raw of vmboxes
+      tags:
+        - vmboxes
+    put:
+      operationId: PutAccountsAccountIdVmboxesVmBoxIdMessagesVmMsgIdRaw
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/VM_BOX_ID'
+        - $ref: '../oas3-parameters.yml#/VM_MSG_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/vmboxes'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of vmboxes
+      tags:
+        - vmboxes

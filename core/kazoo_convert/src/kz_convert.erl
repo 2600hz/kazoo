@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_convert).
@@ -12,7 +16,7 @@
 
 %% @equiv fax(FromFormat, ToFormat, Content, [])
 -spec fax(kz_term:api_ne_binary(), kz_term:api_ne_binary(), binary()|{'file', filename:name()}) ->
-                 gen_kz_converter:converted().
+          gen_kz_converter:converted().
 fax(FromFormat, ToFormat, Content) ->
     fax(FromFormat, ToFormat, Content, []).
 
@@ -37,7 +41,7 @@ fax(FromFormat, ToFormat, Content) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec fax(kz_term:api_binary(), kz_term:api_binary(), binary()|{'file', filename:name()}, kz_term:proplist()) ->
-                 gen_kz_converter:converted().
+          gen_kz_converter:converted().
 fax('undefined', _ToFormat, <<>>, _Options) ->
     {'error', <<"undefined from format">>};
 fax(_FromFormat, 'undefined', <<>>, _Options) ->

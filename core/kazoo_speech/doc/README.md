@@ -14,3 +14,34 @@ Kazoo currently supports as an ASR engine:
 
 1. [iSpeech](http://www.ispeech.org/api/#automated-speech-recognition)
 2. [Google Cloud Speech API](https://cloud.google.com/speech/)
+
+### Service Plan Definitions
+1. The ASR block defines usage rates for the providers
+2. The transcription block defines rates for having transcribe enabled on a vmbox
+```
+"asr": {
+       "google": {
+           "rate": 1,
+           "name": "Google ASR"
+       },
+       "ispeech": {
+           "rate": 1,
+           "name": "ispeech ASR"
+       }
+   },
+   "plan": {
+   ....
+       "voicemails": {
+           "mailbox": {
+               "name": "Voicemail Box",
+               "rate": 1.99,
+               "cascade": true
+           },
+           "transcription": {
+               "cascade": true,
+               "rate": 1,
+               "name": "VMBox Transcription MRC"
+           }
+       },
+....
+```

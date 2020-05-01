@@ -1,7 +1,11 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc
 %%% @author Peter Defebvre
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_ledger).
@@ -127,7 +131,7 @@
 %%------------------------------------------------------------------------------
 -spec set_account(ledger(), kz_term:ne_binary()) -> ledger().
 set_account(Ledger, Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kzs_util:format_account_id(Account),
     Setters = [{fun set_account_id/2, AccountId}
               ,{fun set_account_name/2, kzd_accounts:fetch_name(AccountId)}
               ],
@@ -586,30 +590,29 @@ to_json(#ledger{private_fields=PrivateFields}=Ledger) ->
               ,{fun kzd_ledgers:set_ledger_type/2, ledger_type(Ledger)}
               ],
     LedgerJObj = kz_json:merge(PrivateFields, kz_doc:setters(Setters)),
-    Props = [{<<"pvt_type">>, kzd_ledgers:type()}
-            ,{<<"pvt_created">>, get_created_timestamp(LedgerJObj)}
-            ,{<<"pvt_modified">>, kz_time:now_s()}
-            ,{<<"pvt_account_id">>, account_id(Ledger)}
+    Props = [{kz_doc:path_type(), kzd_ledgers:type()}
+            ,{kz_doc:path_created(), get_created_timestamp(LedgerJObj)}
+            ,{kz_doc:path_modified(), kz_time:now_s()}
+            ,{kz_doc:path_account_id(), account_id(Ledger)}
              | maybe_add_id(LedgerJObj)
             ],
     kz_json:set_values(Props, LedgerJObj).
 
--spec get_created_timestamp(kzd_ledgers:doc()) -> kz_term:integer().
+-spec get_created_timestamp(kzd_ledgers:doc()) -> integer().
 get_created_timestamp(LedgerJObj) ->
-    kz_json:get_integer_value(<<"pvt_created">>, LedgerJObj, kz_time:now_s()).
+    kz_doc:created(LedgerJObj, kz_time:now_s()).
 
 -spec maybe_add_id(kzd_ledgers:doc()) -> kz_term:proplist().
 maybe_add_id(LedgerJObj) ->
     case kz_doc:id(LedgerJObj) of
         'undefined' ->
             {Year, Month, _} = erlang:date(),
-            [{<<"_id">>, list_to_binary([kz_term:to_binary(Year)
-                                        ,kz_date:pad_month(Month)
-                                        ,"-"
-                                        ,create_hash(LedgerJObj)
-                                        ])
+            [{kz_doc:path_id(), list_to_binary([kz_term:to_binary(Year)
+                                               ,kz_date:pad_month(Month)
+                                               ,"-"
+                                               ,create_hash(LedgerJObj)
+                                               ])
              }
-            ,{<<"pvt_created">>, kz_time:now_s()}
             ];
         _ -> []
     end.

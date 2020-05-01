@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc Data: {
 %%%   "id":"queue id"
 %%% }
@@ -7,6 +7,11 @@
 %%%
 %%% @author James Aimonetti
 %%% @author Sponsored by GTNetwork LLC, Implemented by SIPLABS LLC
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cf_acdc_member).
@@ -96,14 +101,14 @@ maybe_enter_queue(#member_call{call=Call
 
 -spec wait_for_bridge(member_call(), max_wait()) -> 'ok'.
 wait_for_bridge(MC, Timeout) ->
-    wait_for_bridge(MC, Timeout, os:timestamp()).
+    wait_for_bridge(MC, Timeout, kz_time:start_time()).
 
--spec wait_for_bridge(member_call(), max_wait(), kz_time:now()) -> 'ok'.
+-spec wait_for_bridge(member_call(), max_wait(), kz_time:start_time()) -> 'ok'.
 wait_for_bridge(#member_call{call=Call}, Timeout, _Start) when Timeout < 0 ->
     lager:debug("timeout is less than 0: ~p", [Timeout]),
     end_member_call(Call);
 wait_for_bridge(#member_call{call=Call}=MC, Timeout, Start) ->
-    Wait = os:timestamp(),
+    Wait = kz_time:start_time(),
     TimeoutMs = case Timeout of
                     'infinity' -> 'infinity';
                     _ -> Timeout * ?MILLISECONDS_IN_SECOND
@@ -121,8 +126,8 @@ end_member_call(Call) ->
     stop_hold_music(Call),
     cf_exe:continue(Call).
 
--spec process_message(member_call(), max_wait(), kz_time:now()
-                     ,kz_time:now(), kz_json:object()
+-spec process_message(member_call(), max_wait(), kz_time:start_time()
+                     ,kz_time:start_time(), kz_json:object()
                      ,{kz_term:ne_binary(), kz_term:ne_binary()}
                      ) -> 'ok'.
 process_message(#member_call{call=Call}, _, Start, _Wait, _JObj, {<<"call_event">>,<<"CHANNEL_BRIDGE">>}) ->

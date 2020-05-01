@@ -1,11 +1,16 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc data:
 %%%   target_type: "user" or "device"
 %%%   target_id: Device-ID or User-ID where Call-ID will be bridged (intercepted)
 %%%
 %%% @author Peter Defebvre
 %%% @author Sergey Korobkov
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(konami_intercept).
@@ -15,8 +20,8 @@
 -include("konami.hrl").
 
 -spec handle(kz_json:object(), kapps_call:call()) ->
-                    {'continue', kapps_call:call()} |
-                    {'stop', kapps_call:call()}.
+          {'continue', kapps_call:call()} |
+          {'stop', kapps_call:call()}.
 handle(Data, Call) ->
     case send_originate_req(get_originate_req(Data, Call), Call) of
         {'ok', Result} ->
@@ -30,7 +35,7 @@ handle(Data, Call) ->
     end.
 
 -spec maybe_update_metaflow(kz_json:object(), kapps_call:call(), kz_json:objects()) ->
-                                   {'stop', kapps_call:call()}.
+          {'stop', kapps_call:call()}.
 maybe_update_metaflow(Data, Call, Results) ->
     case [Result || Result <- Results, is_resp(Result)] of
         [] ->
@@ -42,7 +47,7 @@ maybe_update_metaflow(Data, Call, Results) ->
     end.
 
 -spec maybe_update_metaflow(kz_json:object(), kapps_call:call(), kz_json:objects(), kz_term:api_binary()) ->
-                                   {'stop', kapps_call:call()}.
+          {'stop', kapps_call:call()}.
 maybe_update_metaflow(Data, Call, Results, CallId) ->
     case [Result || Result <- Results, is_originate_uuid(Result, CallId)] of
         [] ->
@@ -55,7 +60,7 @@ maybe_update_metaflow(Data, Call, Results, CallId) ->
     end.
 
 -spec maybe_update_metaflow_control(kz_json:object(), kapps_call:call(), kz_term:ne_binary(), kz_term:ne_binary(), 'a' | 'b') ->
-                                           {'stop', kapps_call:call()}.
+          {'stop', kapps_call:call()}.
 maybe_update_metaflow_control(_Data, Call, CallId, ControlQueue, 'a') ->
     lager:debug("update ~s to ~s with ctl ~s", [kapps_call:call_id(Call), CallId, ControlQueue]),
 
@@ -152,9 +157,9 @@ build_originate(Endpoints, CallId, UnbridgedOnly, Call) ->
      ).
 
 -spec send_originate_req(kz_term:proplist(), kapps_call:call()) ->
-                                {'ok', kz_json:objects()} |
-                                {'timeout', kz_json:objects()} |
-                                {'error', any()}.
+          {'ok', kz_json:objects()} |
+          {'timeout', kz_json:objects()} |
+          {'error', any()}.
 send_originate_req([], _Call) ->
     lager:debug("no origination proprs, skipping"),
     {'error', 'no_endpoints'};

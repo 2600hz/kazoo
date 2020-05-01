@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
 %%% @author OnNet (Kirill Sysoev github.com/onnet)
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cccp_handlers).
@@ -39,7 +44,7 @@ park_call(JObj, Props, Call) ->
                                   ]),
     ServerId = kz_json:get_value(<<"Server-ID">>, JObj),
     Publisher = fun(P) -> kapi_route:publish_resp(ServerId, P) end,
-    kz_amqp_worker:cast(Resp, Publisher),
+    _ = kz_amqp_worker:cast(Resp, Publisher),
     kapps_call:cache(Call, ?APP_NAME).
 
 -spec handle_route_win(kz_json:object(), kz_term:proplist()) -> 'ok'.
@@ -72,20 +77,22 @@ handle_cccp_call(Call) ->
     CC_Number = ?CC_NUMBER,
     case knm_converters:normalize(kapps_call:request_user(Call)) of
         CB_Number -> handle_callback(Call);
-        CC_Number -> cccp_platform_sup:new(Call)
+        CC_Number ->
+            _ = cccp_platform_sup:new(Call),
+            'ok'
     end.
 
--spec handle_callback(kapps_call:call()) -> any().
+-spec handle_callback(kapps_call:call()) -> 'ok'.
 handle_callback(Call) ->
     CallerNumber = knm_converters:normalize(kapps_call:caller_id_number(Call)),
     case cccp_util:authorize(CallerNumber, <<"cccps/cid_listing">>) of
         {'ok', AuthJObj} ->
             maybe_call_back(AuthJObj, Call);
-        E ->
+        {'error', E} ->
             lager:info("no caller information found for ~p. Won't call it back. (~p)", [CallerNumber, E])
     end.
 
--spec maybe_call_back(kz_json:object(), kapps_call:call()) -> any().
+-spec maybe_call_back(kz_json:object(), kapps_call:call()) -> 'ok'.
 maybe_call_back(JObj, Call) ->
     AccountId = kz_json:get_value(<<"account_id">>, JObj),
     UserId = kz_json:get_value(<<"user_id">>, JObj),
@@ -93,11 +100,13 @@ maybe_call_back(JObj, Call) ->
     case (cccp_util:count_user_legs(UserId, AccountId) >= MaxConcurentCallsPerUser * 2) of
         'true' ->
             Media = kapps_call:get_prompt(Call, <<"cf-move-too_many_channels">>),
-            kapps_call_command:response(<<"486">>, <<"User busy">>, Media, Call);
+            _ = kapps_call_command:response(<<"486">>, <<"User busy">>, Media, Call),
+            'ok';
         'false' ->
             kapps_call_command:hangup(Call),
             Values = [{<<"a_leg_name">>, kapps_call:caller_id_name(Call)}
                      ,{<<"a_leg_number">>, knm_converters:normalize(kapps_call:caller_id_number(Call))}
                      ],
-            cccp_callback_sup:new(kz_json:set_values(Values, JObj))
+            _ = cccp_callback_sup:new(kz_json:set_values(Values, JObj)),
+            'ok'
     end.

@@ -12,7 +12,14 @@ Validator for the group_pickup_feature callflow data object
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`type` | The type of collection to pickup | `string('group' | 'user' | 'device' | 'extension')` |   | `false` |  
+`approved_device_id` | Restrict calling device to Device | `string()` |   | `false` |  
+`approved_group_id` | Restrict calling device to Group | `string()` |   | `false` |  
+`approved_user_id` | Restrict calling device to User | `string()` |   | `false` |  
+`device_id` | Device to pickup | `string()` |   | `false` |  
+`group_id` | Group in which to find a call to pickup | `string()` |   | `false` |  
+`skip_module` | When set to true this callflow action is skipped, advancing to the wildcard branch (if any) | `boolean()` |   | `false` |  
+`type` | The type of collection to pickup | `string('group' | 'user' | 'device' | 'extension')` | `extension` | `true` |  
+`user_id` | User in which to find a call to pickup | `string()` |   | `false` |  
 
 
 
@@ -21,7 +28,7 @@ Key | Description | Type | Default | Required | Support Level
 
 ### Usage
 
-Currently the feature code for group pickup will lookup a device by SIP username or an extension that has a first child in the `flow` of `user`, `device`, `ring_group`, or `page_group`.
+The feature code for group pickup will lookup a device by SIP username or an extension. The callflow for that extension is searched in a depth-first order until a target-able module is found (one of `user`, `device`, `ring_group`, or `page_group`). Once a suitable module is found, if there is an unanswered call ringing a targeted device it will be picked up.
 
 #### Extension callflow
 

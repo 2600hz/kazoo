@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
 %%% @author SIPLABS, LLC (Ilya Ashchepkov)
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(ananke_listener).
@@ -70,7 +75,7 @@ init([]) ->
     %% we should wait about 7-10 seconds before gen_leader syncronization
     %% and leader election
     %% after gen_leader syncronization this task will be scheduled only once
-    _ = kz_util:spawn(fun load_schedules/0),
+    _ = kz_process:spawn(fun load_schedules/0),
     {'ok', #state{}}.
 
 %%------------------------------------------------------------------------------
@@ -251,8 +256,8 @@ unknown_type(Type) ->
 -spec load_schedules() -> normal.
 load_schedules() ->
     timer:sleep(60 * ?MILLISECONDS_IN_SECOND),
-    amqp_cron:schedule_task('load_schedules'
-                           ,{'oneshot', 60000}
-                           ,{'gen_listener', 'cast', [?MODULE, 'load_schedules']}
-                           ),
+    _ = amqp_cron:schedule_task('load_schedules'
+                               ,{'oneshot', 60000}
+                               ,{'gen_listener', 'cast', [?MODULE, 'load_schedules']}
+                               ),
     'normal'.

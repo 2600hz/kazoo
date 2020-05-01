@@ -12,8 +12,7 @@
         "crossbar_listing": {
             "map": [
                 "function(doc) {",
-                "  if (doc.pvt_type != 'list' || doc.pvt_deleted)",
-                "    return;",
+                "  if (doc.pvt_type != 'list' || doc.pvt_deleted) return;",
                 "  emit(doc._id, {",
                 "    'id': doc._id,",
                 "    'name': doc.name,",
@@ -26,8 +25,7 @@
         "entries": {
             "map": [
                 "function(doc) {",
-                "  if (doc.pvt_deleted)",
-                "    return;",
+                "  if (doc.pvt_deleted) return;",
                 "  if (doc.pvt_type === 'list_entry') {",
                 "    emit(doc.list_id, {",
                 "      capture_group_key: doc.capture_group_key,",
@@ -41,8 +39,7 @@
                 "    })",
                 "  } else if (doc.pvt_type === 'list' && doc.entries) {",
                 "    for (var key in doc.entries) {",
-                "      if (!doc.entries.hasOwnProperty(key))",
-                "        continue;",
+                "      if (!doc.entries.hasOwnProperty(key)) continue;",
                 "      emit(doc._id, {",
                 "        capture_group_key: key,",
                 "        capture_group_length: doc.length,",
@@ -63,8 +60,7 @@
         "match_prefix": {
             "map": [
                 "function(doc) {",
-                "  if (doc.pvt_type != 'list_entry' || doc.pvt_deleted || !(doc.number || doc.prefix))",
-                "    return;",
+                "  if (doc.pvt_type != 'list_entry' || doc.pvt_deleted || !(doc.number || doc.prefix)) return;",
                 "  emit(doc.number ? doc.number : doc.prefix, null);",
                 "}"
             ]
@@ -72,8 +68,7 @@
         "match_prefix_in_list": {
             "map": [
                 "function(doc) {",
-                "  if (doc.pvt_type != 'list_entry' || doc.pvt_deleted || !(doc.number || doc.prefix))",
-                "    return;",
+                "  if (doc.pvt_type != 'list_entry' || doc.pvt_deleted || !(doc.number || doc.prefix)) return;",
                 "  emit([doc.list_id, doc.number ? doc.number : doc.prefix], null);",
                 "}"
             ]
@@ -81,8 +76,7 @@
         "regexps_in_list": {
             "map": [
                 "function(doc) {",
-                "  if (doc.pvt_type != 'list_entry' || doc.pvt_deleted || !(doc.regexp || doc.pattern))",
-                "    return;",
+                "  if (doc.pvt_type != 'list_entry' || doc.pvt_deleted || !(doc.regexp || doc.pattern)) return;",
                 "  emit(doc.list_id, doc.regexp ? doc.regexp : doc.pattern);",
                 "}"
             ]

@@ -1,4 +1,5 @@
 ROOT = ..
+ERLANG_MK_FILENAME = $(ROOT)/erlang.mk
 
 DEPS_DIR = $(CURDIR)
 ERLC_OPTS += +debug_info -DWITH_JIFFY=1
@@ -9,6 +10,9 @@ clean::
 	$(if $(wildcard ./*/), rm -rf ./*/)
 	$(if $(wildcard .erlang.mk), rm -rf .erlang.mk)
 
+ifneq (,$(wildcard $(DEPS_MK)))
+include $(DEPS_MK)
+endif
 
 include $(ROOT)/make/deps.mk
-include $(ROOT)/erlang.mk
+include $(ERLANG_MK_FILENAME)

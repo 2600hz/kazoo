@@ -22,6 +22,26 @@
             "description": "trunkstore honor diversions by cid validation",
             "type": "boolean"
         },
+        "pool_overflow": {
+            "default": 100,
+            "description": "trunkstore pool_overflow",
+            "type": "integer"
+        },
+        "pool_server_confirms": {
+            "default": false,
+            "description": "trunkstore pool_server_confirms",
+            "type": "boolean"
+        },
+        "pool_size": {
+            "default": 150,
+            "description": "trunkstore pool_size",
+            "type": "integer"
+        },
+        "pool_threshold": {
+            "default": 5,
+            "description": "trunkstore pool_threshold",
+            "type": "integer"
+        },
         "ring_ready_offnet": {
             "default": true,
             "description": "trunkstore ring ready offnet",

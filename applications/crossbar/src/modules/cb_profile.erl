@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
-%%% @doc Listing of all expected v1 callbacks
+%%% @copyright (C) 2011-2020, 2600Hz
+%%% @doc Crossbar API for profile.
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cb_profile).
@@ -34,12 +39,12 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.finish_request.*.*">>, ?MODULE, 'req_finish').
 
 -spec req_init({cb_context:context(), cowboy_req:req()}) ->
-                      {cb_context:context(), cowboy_req:req()}.
+          {cb_context:context(), cowboy_req:req()}.
 req_init({Context, _} = InitArgs) ->
     req_init(cb_context:profile_id(Context), InitArgs).
 
 -spec req_init(kz_term:api_binary(), {cb_context:context(), cowboy_req:req()}) ->
-                      {cb_context:context(), cowboy_req:req()}.
+          {cb_context:context(), cowboy_req:req()}.
 req_init('undefined', InitArgs) ->
     InitArgs;
 req_init(ProfileId, InitArgs) ->

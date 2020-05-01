@@ -126,6 +126,10 @@
             },
             "type": "array"
         },
+        "request_memory_limit": {
+            "description": "Limit the amount of memory an API request can consume (in bytes)",
+            "type": "integer"
+        },
         "request_timeout_ms": {
             "default": 10000,
             "description": "crossbar request timeout in milliseconds",

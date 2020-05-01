@@ -1,0 +1,37 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "system_config.kazoo_web",
+    "description": "Schema for kazoo_web system_config",
+    "properties": {
+        "client": {
+            "properties": {
+                "blacklist": {
+                    "properties": {
+                        "cidrs": {
+                            "default": [
+                                "127.0.0.1/32",
+                                "0.0.0.0/32"
+                            ],
+                            "description": "kazoo_web client blacklist cidrs",
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        "hosts": {
+                            "default": [
+                                "localhost"
+                            ],
+                            "description": "kazoo_web client blacklist hosts",
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "type": "object"
+}

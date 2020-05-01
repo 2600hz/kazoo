@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2019, 2600Hz
+%%% @copyright (C) 2013-2020, 2600Hz
 %%% @doc Sends request to start the call to recipient when they available.
 %%%
 %%% <h4>Data options:</h4>
@@ -30,6 +30,11 @@
 %%%
 %%%
 %%% @author SIPLABS LLC (Maksim Krzhemenevskiy)
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cf_camping_feature).
@@ -122,7 +127,8 @@ check_self(State, Call) ->
         _ -> just(State)
     end.
 
--spec send_request(state(), kapps_call:call()) -> maybe_m('ok').
+-spec send_request(state(), kapps_call:call()) -> maybe_m('accepted') |
+          maybe_m('connected').
 send_request(#state{channels = Channels} = S, Call) ->
     lager:debug("sending request"),
     case Channels of
@@ -160,7 +166,7 @@ handle(Data, Call) ->
     end.
 
 -spec get_sip_usernames_for_target(kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) ->
-                                          kz_term:ne_binaries().
+          kz_term:ne_binaries().
 get_sip_usernames_for_target(TargetId, TargetType, Call) ->
     Targets = case TargetType of
                   <<"user">> -> kz_attributes:owned_by(TargetId, <<"device">>, Call);
@@ -182,7 +188,7 @@ get_device_sip_username(AccountDb, DeviceId) ->
     kzd_devices:sip_username(JObj).
 
 -spec no_channels(state(), kapps_call:call()) -> maybe_m('accepted') |
-                                                 maybe_m('connected').
+          maybe_m('connected').
 no_channels(#state{id = TargetId
                   ,type = TargetType
                   ,is_no_match = 'false'

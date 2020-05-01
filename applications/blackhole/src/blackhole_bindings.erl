@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Store routing keys/pid bindings. When a binding is fired,
 %%% pass the payload to the pid for evaluation, accumulating
 %%% the results for the response to the running process.
@@ -18,13 +18,18 @@
 %%% @author James Aimonetti
 %%% @author Karl Anderson
 %%% @author Ben Wann
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(blackhole_bindings).
 
 %% API
--export([bind/3,bind/4
-        ,unbind/3,unbind/4
+-export([bind/3, bind/4
+        ,unbind/3, unbind/4
         ,map/2, map/3
         ,pmap/2, pmap/3
         ,fold/2
@@ -115,39 +120,50 @@ filter_out_failed({'halt', _}) -> 'true';
 filter_out_failed({'false', _}) -> 'false';
 filter_out_failed('false') -> 'false';
 filter_out_failed({'EXIT', _}) -> 'false';
-filter_out_failed(#bh_context{}=Ctx) ->
-    not bh_context:success(Ctx);
-filter_out_failed([#bh_context{}=Ctx]) ->
-    not bh_context:success(Ctx);
-filter_out_failed(Term) -> not kz_term:is_empty(Term).
+filter_out_failed([Result]) ->
+    case bh_context:is_context(Result) of
+        'true' -> not bh_context:success(Result);
+        'false' -> not kz_term:is_empty(Result)
+    end;
+filter_out_failed(Result) ->
+    case bh_context:is_context(Result) of
+        'true' -> not bh_context:success(Result);
+        'false' -> not kz_term:is_empty(Result)
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec filter_out_succeeded({boolean() | 'halt', any()} | boolean() | any()) -> boolean().
+-spec filter_out_succeeded({boolean() | 'halt', any()} | boolean() | bh_context:context() | [bh_context:context()]) ->
+          boolean().
 filter_out_succeeded({'true', _}) -> 'false';
 filter_out_succeeded('true') -> 'false';
 filter_out_succeeded({'halt', _}) -> 'true';
 filter_out_succeeded({'false', _}) -> 'true';
 filter_out_succeeded('false') -> 'true';
 filter_out_succeeded({'EXIT', _}) -> 'true';
-filter_out_succeeded(#bh_context{}=Ctx) ->
-    bh_context:success(Ctx);
-filter_out_succeeded([#bh_context{}=Ctx]) ->
-    bh_context:success(Ctx);
-filter_out_succeeded(Term) -> kz_term:is_empty(Term).
+filter_out_succeeded([Result]) ->
+    case bh_context:is_context(Result) of
+        'true' -> bh_context:success(Result);
+        'false' -> kz_term:is_empty(Result)
+    end;
+filter_out_succeeded(Result) ->
+    case bh_context:is_context(Result) of
+        'true' -> bh_context:success(Result);
+        'false' -> kz_term:is_empty(Result)
+    end.
 
 -type bind_result() :: 'ok' |
                        {'error', 'exists'}.
 -type bind_results() :: [bind_result()].
 -spec bind(kz_term:ne_binary() | kz_term:ne_binaries(), atom(), atom()) ->
-                  bind_result() | bind_results().
+          bind_result() | bind_results().
 bind(Bindings, Module, Fun) ->
     bind(Bindings, Module, Fun, 'undefined').
 
 -spec bind(kz_term:ne_binary() | kz_term:ne_binaries(), atom(), atom(), any()) ->
-                  bind_result() | bind_results().
+          bind_result() | bind_results().
 bind([_|_]=Bindings, Module, Fun, Payload) ->
     [bind(Binding, Module, Fun, Payload) || Binding <- Bindings];
 bind(Binding, Module, Fun, Payload) when is_binary(Binding) ->
@@ -198,30 +214,33 @@ is_bh_module(Mod) -> is_bh_module(kz_term:to_binary(Mod)).
 -spec init() -> 'ok'.
 init() ->
     lager:debug("initializing blackhole bindings"),
-    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
+    kz_log:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     Mods = lists:usort(blackhole_config:autoload_modules() ++ ?COMMAND_MODULES),
     lists:foreach(fun init_mod/1, Mods).
 
 -spec init_mod(kz_term:ne_binary() | atom()) ->
-                      'ok' |
-                      {'error', 'undefined' | 'unknown'}.
+          'ok' |
+          {'error', 'undefined' | 'unknown'}.
 init_mod(ModuleName) ->
     lager:debug("initializing module: ~p", [ModuleName]),
     maybe_init_mod(ModuleName).
 
 -spec maybe_init_mod(kz_term:ne_binary() | atom()) ->
-                            'ok' |
-                            {'error', 'undefined' | 'unknown'}.
+          'ok' |
+          {'error', 'undefined' | 'unknown'}.
 maybe_init_mod(ModuleName) ->
-    lager:debug("trying to init module: ~p", [ModuleName]),
-    try (kz_term:to_atom(ModuleName, 'true')):init() of
-        _ -> 'ok'
+    Module = kz_term:to_atom(ModuleName, 'true'),
+    maybe_init_mod(Module, kz_module:is_exported(Module, 'init', 0)).
+
+maybe_init_mod(Module, 'false') ->
+    lager:warning("failed to initalize module ~s", [Module]),
+    {'error', 'undefined'};
+maybe_init_mod(Module, 'true') ->
+    try Module:init() of
+        _ -> lager:debug("initialized ~s", [Module])
     catch
-        'error':'undef' ->
-            lager:warning("failed to find module ~s", [ModuleName]),
-            {'error', 'undefined'};
         _E:_R ->
-            lager:warning("failed to initialize ~s: ~p, ~p.", [ModuleName, _E, _R]),
+            lager:warning("failed to initialize ~s: ~p, ~p.", [Module, _E, _R]),
             {'error', 'unknown'}
     end.
 

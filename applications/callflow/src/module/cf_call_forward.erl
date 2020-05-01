@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Callflow action to control call forwarding feature.
 %%%
 %%% <h4>Data options:</h4>
@@ -9,6 +9,11 @@
 %%% </dl>
 %%%
 %%% @author Karl Anderson
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cf_call_forward).
@@ -216,8 +221,8 @@ cf_update_number(CF, CaptureGroup, _) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec update_callfwd(callfwd(), kapps_call:call()) ->
-                            {'ok', kz_term:api_object()} |
-                            {'error', atom()}.
+          {'ok', kz_term:api_object()} |
+          {'error', atom()}.
 update_callfwd('undefined', _Call) -> {'ok', 'undefined'};
 update_callfwd(#callfwd{doc_id=Id
                        ,enabled=Enabled
@@ -251,8 +256,8 @@ update_callfwd(#callfwd{doc_id=Id
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_call_forward(kapps_call:call()) ->
-                              callfwd() |
-                              {'error', callfwd()}.
+          callfwd() |
+          {'error', callfwd()}.
 get_call_forward(Call) ->
     AuthorizingId = kapps_call:authorizing_id(Call),
 
@@ -264,8 +269,8 @@ get_call_forward(Call) ->
     maybe_get_call_forward(Call, OwnerId).
 
 -spec maybe_get_call_forward(kapps_call:call(), kz_term:api_binary()) ->
-                                    callfwd() |
-                                    {'error', callfwd()}.
+          callfwd() |
+          {'error', callfwd()}.
 maybe_get_call_forward(_Call, 'undefined') ->
     lager:debug("cannot get call forwarding from undefined"),
     {'error', #callfwd{}};

@@ -1,7 +1,11 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2016-2019, 2600Hz
+%%% @copyright (C) 2016-2020, 2600Hz
 %%% @doc Task document
 %%% @author Pierre Fenoll
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kzd_task).
@@ -35,11 +39,11 @@
 %% @end
 %%------------------------------------------------------------------------------
 -spec fetch(kz_term:ne_binary(), kz_tasks:id()) ->
-                   {ok, kz_json:object()} |
-                   {error, any()}.
+          {ok, kz_json:object()} |
+          {error, any()}.
 fetch(Account, TaskId) ->
     View = ?KZ_TASKS_BY_ACCOUNT,
-    ViewOptions = [{'key', [kz_util:format_account_id(Account), TaskId]}],
+    ViewOptions = [{'key', [kzs_util:format_account_id(Account), TaskId]}],
     case kz_datamgr:get_single_result(?KZ_TASKS_DB, View, ViewOptions) of
         {'error', _}=E -> E;
         {'ok', JObj} -> kz_json:get_value(<<"value">>, JObj)

@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc
 %%% @author Peter Defebvre
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cb_websockets).
@@ -20,10 +25,11 @@
 
 -define(CB_LIST, <<"websockets/crossbar_listing">>).
 
--define(TO_JSON(Binding, Event),
-        kz_json:from_list([{<<"binding">>, Binding}
+-define(TO_JSON(Binding, Event)
+       ,kz_json:from_list([{<<"binding">>, Binding}
                           ,{<<"event">>, Event}
-                          ])).
+                          ])
+       ).
 
 -define(AVAILABLE
        ,kapps_config:get_json(<<"blackhole">>, <<"bindings">>)
@@ -39,8 +45,8 @@
 %%------------------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
-    _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
+    _ = crossbar_bindings:bind(<<"*.authenticate.websockets">>, ?MODULE, 'authenticate'),
+    _ = crossbar_bindings:bind(<<"*.authorize.websockets">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.websockets">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.websockets">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.validate.websockets">>, ?MODULE, 'validate').
@@ -174,7 +180,7 @@ summary_available(Context) ->
 %%------------------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    websockets_req(Context, [{<<"Account-ID">>, cb_context:account_id(Context)}]).
+    websockets_req(Context, [{<<"Auth-Account-ID">>, cb_context:auth_account_id(Context)}]).
 
 %%------------------------------------------------------------------------------
 %% @doc Load an instance from the database
@@ -182,7 +188,16 @@ summary(Context) ->
 %%------------------------------------------------------------------------------
 -spec read(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
-    websockets_req(Context, [{<<"Socket-ID">>, Id}]).
+    ReadContext = websockets_req(Context, [{<<"Socket-ID">>, Id}]),
+    read_resp(ReadContext, cb_context:resp_status(ReadContext)).
+
+read_resp(Context, 'success') ->
+    read_success_resp(Context, cb_context:resp_data(Context));
+read_resp(Context, _Error) -> Context.
+
+read_success_resp(Context, RespData) when is_list(RespData) ->
+    cb_context:set_resp_data(Context, kz_json:merge(RespData));
+read_success_resp(Context, _RespData) -> Context.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -191,6 +206,7 @@ read(Id, Context) ->
 -spec websockets_req(cb_context:context(), kz_term:proplist()) -> cb_context:context().
 websockets_req(Context, Props) ->
     Req = [{<<"Msg-ID">>, cb_context:req_id(Context)}
+          ,{<<"Account-ID">>, cb_context:account_id(Context)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case kz_amqp_worker:call_collect(Req ++ Props
@@ -203,7 +219,6 @@ websockets_req(Context, Props) ->
             crossbar_util:response('error', <<"could not reach websockets tracking">>, Context);
         {_OK, JObjs} ->
             websockets_resp(Context, JObjs)
-
     end.
 
 %%------------------------------------------------------------------------------

@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2018 2600Hz
+%%% @copyright (C) 2011-2019 2600Hz
 %%% @doc Dialplan API definitions.
 %%% @author James Aimonetti
 %%% @author Karl Anderson
@@ -15,6 +15,7 @@
                               ,<<"npan">>, <<"1npan">>
                               ,<<"route">>, <<"loopback">>
                               ,<<"contact">>
+                              ,<<"endpoint">>, <<"forward">>
                               ]
                              }).
 
@@ -81,6 +82,11 @@
         ,<<"Export-Variables">>
         ,<<"Export-Bridge-Variables">>
         ,<<"Bridge-Actions">>
+        ,<<"Privacy-Method">>
+        ,<<"Privacy-Hide-Name">>
+        ,<<"Privacy-Hide-Number">>
+        ,<<"Continue-After">>
+        ,<<"Call-Context">>
         ]).
 -define(BRIDGE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                            ,{<<"Event-Name">>, <<"command">>}
@@ -92,7 +98,8 @@
                            ,?INSERT_AT_TUPLE
                            ]).
 -define(BRIDGE_REQ_TYPES, [{<<"B-Leg-Events">>, fun b_leg_events_v/1}
-                          ,{<<"Continue-On-Fail">>, fun kz_term:is_boolean/1}
+                          ,{<<"Continue-On-Fail">>, fun continue_on_fail_v/1}
+                          ,{<<"Continue-After">>, fun kz_term:is_boolean/1}
                           ,{<<"Custom-Application-Vars">>, fun kz_json:is_json_object/1}
                           ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
                           ,{<<"Custom-SIP-Headers">>, fun kz_json:is_json_object/1}
@@ -137,6 +144,9 @@
         ,<<"Outbound-Callee-ID-Number">>
         ,<<"Outbound-Caller-ID-Name">>
         ,<<"Outbound-Caller-ID-Number">>
+        ,<<"Privacy-Method">>
+        ,<<"Privacy-Hide-Name">>
+        ,<<"Privacy-Hide-Number">>
         ,<<"Presence-ID">>
         ,<<"Proxy-IP">>
         ,<<"Proxy-Zone">>
@@ -153,6 +163,10 @@
         ,<<"Simplify-Loopback">>
         ,<<"Loopback-Bowout">>
         ,<<"Endpoint-Actions">>
+        ,<<"Endpoint-ID">>
+        ,<<"Account-ID">>
+        ,<<"Endpoint-URI">>
+        ,<<"Call-Context">>
         ]).
 -define(BRIDGE_REQ_ENDPOINT_VALUES, [?INVITE_FORMAT_TUPLE
                                     ,{<<"Endpoint-Type">>, [<<"sip">>, <<"freetdm">>, <<"skype">>]}
@@ -340,7 +354,7 @@
 -define(PRIVACY_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                             ,{<<"Event-Name">>, <<"command">>}
                             ,{<<"Application-Name">>, <<"privacy">>}
-                            ,{<<"Privacy-Mode">>, [<<"full">>, <<"name">>, <<"number">>]}
+                            ,{<<"Privacy-Mode">>, [<<"full">>, <<"name">>, <<"number">>, <<"none">>]}
                             ,?INSERT_AT_TUPLE
                             ]).
 -define(PRIVACY_REQ_TYPES, []).
@@ -589,6 +603,16 @@
                               ]).
 -define(PLAY_STOP_REQ_TYPES, []).
 
+%% PlaySeek Request
+-define(PLAY_SEEK_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Duration">>, <<"Direction">>]).
+-define(OPTIONAL_PLAY_SEEK_REQ_HEADERS, [<<"Insert-At">>]).
+-define(PLAY_SEEK_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
+                              ,{<<"Event-Name">>, <<"command">>}
+                              ,{<<"Application-Name">>, <<"playseek">>}
+                              ,{<<"Insert-At">>, <<"now">>}
+                              ]).
+-define(PLAY_SEEK_REQ_TYPES, [{<<"Duration">>, fun is_integer/1}]).
+
 %% Record Request
 -define(RECORD_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Media-Name">>]).
 -define(OPTIONAL_RECORD_REQ_HEADERS, [<<"Insert-At">>
@@ -625,6 +649,7 @@
                                           ,<<"Media-Recording-ID">>
                                           ,<<"Media-Recording-Endpoint-ID">>
                                           ,<<"Media-Recording-Origin">>
+                                          ,<<"Recording-Variables">>
                                           ]).
 -define(RECORD_CALL_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                                 ,{<<"Event-Name">>, <<"command">>}
@@ -854,6 +879,7 @@
                                    ,<<"Caller-ID-Name">>
                                    ,<<"Caller-ID-Number">>
                                    ,<<"Custom-Channel-Vars">>
+                                   ,<<"Attended-Transfer-Keys">>
                                    ]).
 -define(TRANSFER_VALUES, [{<<"Event-Category">>, <<"call">>}
                          ,{<<"Event-Name">>, <<"command">>}
@@ -916,6 +942,29 @@
                           ,{<<"Sending-Leg">>, fun is_boolean/1}
                           ]).
 
+%% Event-Actions
+-define(EVENT_ACTIONS_HEADERS, [<<"Application-Name">>
+                               ,<<"Call-ID">>
+                               ,<<"Event-Actions">>
+                               ]).
+-define(OPTIONAL_EVENT_ACTIONS_HEADERS, [<<"Insert-At">>]).
+-define(EVENT_ACTIONS_VALUES, [{<<"Event-Category">>, <<"call">>}
+                              ,{<<"Event-Name">>, <<"command">>}
+                              ,{<<"Application-Name">>, <<"event_actions">>}
+                              ,{<<"Insert-At">>, <<"now">>}
+                              ]).
+-define(EVENT_ACTIONS_TYPES, [{<<"Event-Actions">>, fun kz_json:is_json_object/1}
+                             ]).
+
+-define(DP_ERROR_RESP_HEADERS, [<<"Dialplan-Error">>
+                               ,<<"Channel-State">>
+                               ,<<"Channel-Call-State">>
+                                    | ?ERROR_RESP_HEADERS
+                               ]).
+
+-define(OPTIONAL_DP_ERROR_RESP_HEADERS, [<<"Custom-Channel-Vars">>
+                                             | ?OPTIONAL_ERROR_RESP_HEADERS
+                                        ]).
 
 -define(KAPI_DIALPLAN_HRL, 'true').
 -endif.

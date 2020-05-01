@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc Allow caller to use the account resource to call out.
 %%%
 %%% <h4>Data options:</h4>
@@ -18,12 +18,16 @@
 %%% </dl>
 %%%
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cf_disa).
 
-%% some recursion causes loops in cf_data_usage
-%% -behaviour(gen_cf_action).
+-behaviour(gen_cf_action).
 
 -include("callflow.hrl").
 
@@ -106,7 +110,7 @@ allow_dial(Data, Call, Retries, Interdigit) ->
 
 maybe_route_to_callflow(Data, Call, Retries, Interdigit, Number) ->
     case cf_flow:lookup(Number, kapps_call:account_id(Call)) of
-        {'ok', Flow, NoMatch} ->
+        {'ok', Flow, _NoMatch} ->
             lager:info("callflow ~s satisfies request", [kz_doc:id(Flow)]),
             Updates = [{fun kapps_call:set_request/2
                        ,list_to_binary([Number, "@", kapps_call:request_realm(Call)])

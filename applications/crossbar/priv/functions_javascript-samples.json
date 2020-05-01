@@ -1,0 +1,7 @@
+[
+    {
+        "eanbled": true,
+        "function_js": "if (cfDoc) {var obj = JSON.parse(cfDoc);if(obj.CallerNumber&&obj.CallerNumber===\"1000\") {return {\"module\":\"voicemail\",\"children\": {},\"data\": {\"action\": \"compose\",\"callerid_match_login\": false,\"id\": \"afee84a507643901833f839fc494307d\",\"interdigit_timeout\": 2000,\"max_message_length\": 500,\"single_mailbox_login\": false}};} else {return {\"module\": \"do_not_disturb\",\"data\": {\"action\": \"activate\"},\"children\":{\"_\": {\"module\":\"hangup\",\"data\":{}}}};}",
+        "name": "Test Function"
+    }
+]

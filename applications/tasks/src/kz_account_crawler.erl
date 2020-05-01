@@ -1,8 +1,13 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2019, 2600Hz
+%%% @copyright (C) 2013-2020, 2600Hz
 %%% @doc
 %%% @author Hesaam Farhang
 %%% @author Pierre Fenoll
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_account_crawler).
@@ -43,16 +48,16 @@
 %%------------------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->
-    gen_server:start_link(?SERVER, [], []).
+    gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
 
--spec stop() -> ok.
+-spec stop() -> 'ok'.
 stop() ->
-    gen_server:cast(?SERVER, stop).
+    gen_server:cast(?SERVER, 'stop').
 
 -spec check(kz_term:ne_binary()) -> 'ok'.
 check(Account)
   when is_binary(Account) ->
-    AccountId = kz_util:format_account_id(Account),
+    AccountId = kzs_util:format_account_id(Account),
     case kz_datamgr:open_doc(?KZ_ACCOUNTS_DB, AccountId) of
         {'ok', AccountJObj} ->
             process_account(AccountId, AccountJObj);
@@ -70,10 +75,10 @@ check(Account) ->
 %% @doc Initializes the server.
 %% @end
 %%------------------------------------------------------------------------------
--spec init([]) -> {ok, state()}.
+-spec init([]) -> {'ok', state()}.
 init([]) ->
-    kz_util:put_callid(?SERVER),
-    lager:debug("started ~s", [?SERVER]),
+    kz_log:put_callid(?MODULE),
+    lager:debug("started ~s", [?MODULE]),
     {'ok', #state{}}.
 
 %%------------------------------------------------------------------------------
@@ -89,9 +94,9 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
-handle_cast(stop, State) ->
+handle_cast('stop', State) ->
     lager:debug("crawler has been stopped"),
-    {stop, normal, State};
+    {'stop', 'normal', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
@@ -101,9 +106,9 @@ handle_cast(_Msg, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
-handle_info({timeout, Ref, _Msg}, #state{cleanup_ref = Ref
-                                        ,account_ids = []
-                                        }=State) ->
+handle_info({'timeout', Ref, _Msg}, #state{cleanup_ref = Ref
+                                          ,account_ids = []
+                                          }=State) ->
     NewState =
         case kz_datamgr:all_docs(?KZ_ACCOUNTS_DB) of
             {'ok', JObjs} ->
@@ -118,24 +123,24 @@ handle_info({timeout, Ref, _Msg}, #state{cleanup_ref = Ref
                 lager:warning("unable to list all docs in ~s: ~p", [?KZ_ACCOUNTS_DB, _R]),
                 State#state{cleanup_ref = cleanup_cycle_timer()}
         end,
-    {noreply, NewState};
+    {'noreply', NewState};
 
-handle_info({timeout, Ref, _Msg}, #state{cleanup_ref = Ref
-                                        ,account_ids = [AccountId]
-                                        }=State) ->
+handle_info({'timeout', Ref, _Msg}, #state{cleanup_ref = Ref
+                                          ,account_ids = [AccountId]
+                                          }=State) ->
     _ = crawl_account(AccountId),
     lager:info("account crawler completed a full crawl"),
-    {noreply, State#state{cleanup_ref = cleanup_cycle_timer()
-                         ,account_ids = []
-                         }};
+    {'noreply', State#state{cleanup_ref = cleanup_cycle_timer()
+                           ,account_ids = []
+                           }};
 
-handle_info({timeout, Ref, _Msg}, #state{cleanup_ref = Ref
-                                        ,account_ids = [AccountId | AccountIds]
-                                        }=State) ->
+handle_info({'timeout', Ref, _Msg}, #state{cleanup_ref = Ref
+                                          ,account_ids = [AccountId | AccountIds]
+                                          }=State) ->
     _ = crawl_account(AccountId),
-    {noreply, State#state{cleanup_ref = cleanup_timer()
-                         ,account_ids = AccountIds
-                         }};
+    {'noreply', State#state{cleanup_ref = cleanup_timer()
+                           ,account_ids = AccountIds
+                           }};
 
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
@@ -150,7 +155,7 @@ handle_info(_Info, State) ->
 %%------------------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
-    lager:debug("~s terminating: ~p", [?SERVER, _Reason]).
+    lager:debug("~s terminating: ~p", [?MODULE, _Reason]).
 
 %%------------------------------------------------------------------------------
 %% @doc Convert process state when code is changed.

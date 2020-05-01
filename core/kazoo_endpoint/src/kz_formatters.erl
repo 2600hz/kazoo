@@ -1,7 +1,11 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2014-2019, 2600Hz
+%%% @copyright (C) 2014-2020, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_formatters).
@@ -13,7 +17,7 @@
 -type direction() :: 'inbound' | 'outbound' | 'both'.
 
 -spec apply(kz_json:object(), kz_json:object(), direction()) ->
-                   kz_json:object().
+          kz_json:object().
 apply(JObj, MetaFormatters, Direction) ->
     Fs = [fun format_request/3
          ,fun maybe_format_sip_headers/3
@@ -25,7 +29,7 @@ apply(JObj, MetaFormatters, Direction) ->
                ).
 
 -spec maybe_format_sip_headers(kz_json:object(), kz_json:object(), direction()) ->
-                                      kz_json:object().
+          kz_json:object().
 maybe_format_sip_headers(JObj, MetaFormatters, Direction) ->
     maybe_format_sub_object(JObj
                            ,MetaFormatters
@@ -34,7 +38,7 @@ maybe_format_sip_headers(JObj, MetaFormatters, Direction) ->
                            ).
 
 -spec maybe_format_sub_object(kz_json:object(), kz_json:object(), direction(), kz_term:ne_binary()) ->
-                                     kz_json:object().
+          kz_json:object().
 maybe_format_sub_object(JObj, MetaFormatters, Direction, SubKey) ->
     case kz_json:get_json_value(SubKey, JObj) of
         'undefined' -> JObj;
@@ -51,7 +55,7 @@ maybe_set_invite_format(JObj, SubJObj) ->
     end.
 
 -spec format_request(kz_json:object(), kz_json:object(), direction()) ->
-                            kz_json:object().
+          kz_json:object().
 format_request(JObj, MetaFormatters, Direction) ->
     JObjKeys = request_keys(JObj),
     kz_json:foldl(fun(MetaKey, Formatters, AccJObj) ->
@@ -90,7 +94,7 @@ is_formatter_applicable(Formatter, Direction) ->
     end.
 
 -spec maybe_apply_formatters_fold(kz_json:object(), kz_json:path(), kz_term:ne_binary(), kz_json:objects()) ->
-                                         kz_json:object().
+          kz_json:object().
 maybe_apply_formatters_fold(JObj, _JObjKeys, _MetaKey, []) -> JObj;
 maybe_apply_formatters_fold(JObj, JObjKeys, MetaKey, [_|_]=Formatters) ->
     case props:get_value(kz_term:to_lower_binary(MetaKey), JObjKeys) of
@@ -99,7 +103,7 @@ maybe_apply_formatters_fold(JObj, JObjKeys, MetaKey, [_|_]=Formatters) ->
     end.
 
 -spec maybe_apply_formatters(kz_json:object(), kz_term:ne_binary(), kz_json:objects()) ->
-                                    kz_json:object().
+          kz_json:object().
 maybe_apply_formatters(JObj, <<"Request">> = RequestKey, Formatters) ->
     [RequestUser, RequestRealm] = binary:split(kz_json:get_value(<<"Request">>, JObj), <<"@">>),
     maybe_apply_formatters(JObj, RequestKey, RequestUser, RequestRealm, Formatters);
@@ -113,7 +117,7 @@ maybe_apply_formatters(JObj, <<_/binary>> = Key, Formatters) ->
     maybe_apply_formatters(JObj, Key, kz_json:get_value(Key, JObj), Formatters).
 
 -spec maybe_apply_formatters(kz_json:object(), kz_term:ne_binary(), kz_json:json_term(), kz_json:objects()) ->
-                                    kz_json:object().
+          kz_json:object().
 maybe_apply_formatters(JObj, _Key, _Value, []) -> JObj;
 maybe_apply_formatters(JObj, Key, Value, [_|_]=Formatters) ->
     Funs = [fun maybe_strip/4
@@ -128,7 +132,7 @@ maybe_apply_formatters(JObj, Key, Value, [_|_]=Formatters) ->
 -type formatter_funs_4() :: [formatter_fun_4()].
 
 -spec apply_formatter_funs(kz_json:object(), kz_term:ne_binary(), kz_json:json_term(), kz_json:objects(), formatter_funs_4()) ->
-                                  kz_json:object().
+          kz_json:object().
 apply_formatter_funs(JObj, Key, Value, [_|Formatters], []) ->
     maybe_apply_formatters(JObj, Key, Value, Formatters);
 apply_formatter_funs(JObj, Key, Value, [Formatter|_]=Formatters, [F|Fs]) ->
@@ -138,7 +142,7 @@ apply_formatter_funs(JObj, Key, Value, [Formatter|_]=Formatters, [F|Fs]) ->
     end.
 
 -spec maybe_strip(kz_json:object(), kz_term:ne_binary(), kz_json:json_term(), kz_json:object()) ->
-                         ffun_return().
+          ffun_return().
 maybe_strip(JObj, Key, _Value, Formatter) ->
     case should_strip_key(Formatter) of
         'false' -> 'false';
@@ -148,7 +152,7 @@ maybe_strip(JObj, Key, _Value, Formatter) ->
     end.
 
 -spec maybe_replace(kz_json:object(), kz_term:ne_binary(), kz_json:json_term(), kz_json:object()) ->
-                           ffun_return().
+          ffun_return().
 maybe_replace(JObj, Key, _Value, Formatter) ->
     case kz_json:get_value(<<"value">>, Formatter) of
         'undefined' -> 'false';
@@ -156,9 +160,9 @@ maybe_replace(JObj, Key, _Value, Formatter) ->
     end.
 
 -spec maybe_match_invite_format(kz_json:object(), kz_term:ne_binary(), kz_json:json_term(), kz_json:object()) ->
-                                       ffun_return().
+          ffun_return().
 maybe_match_invite_format(JObj, Key, Value, Formatter) ->
-    case maybe_match_invite_format(JObj, Formatter) of
+    case should_match_invite_format(JObj, Formatter) of
         'false' -> 'false';
         'true' ->
             lager:debug("matching ~s value (~p) to invite format", [Key, Value]),
@@ -166,7 +170,7 @@ maybe_match_invite_format(JObj, Key, Value, Formatter) ->
     end.
 
 -spec match_invite_format(kz_json:object(), kz_term:ne_binary(), kz_json:json_term()) ->
-                                 kz_json:object().
+          kz_json:object().
 match_invite_format(JObj, <<"Diversions">> = Key, [<<_/binary>> = Value|_]) ->
     match_invite_format(JObj, Key, kzsip_diversion:from_binary(Value));
 match_invite_format(JObj, <<"Diversions">> = Key, Value) ->
@@ -185,7 +189,7 @@ should_strip_key(Formatter) ->
     kz_json:is_true(<<"strip">>, Formatter, 'false').
 
 -spec maybe_match(kz_json:object(), kz_term:ne_binary(), kz_json:json_term(), kz_json:object()) ->
-                         ffun_return().
+          ffun_return().
 maybe_match(JObj, <<"Diversions">> = Key, [<<_/binary>> = Value|_], Formatter) ->
     maybe_match(JObj, Key, kzsip_diversion:from_binary(Value), Formatter);
 maybe_match(JObj, <<"Diversions">> = Key, Value, Formatter) ->
@@ -197,7 +201,8 @@ maybe_match(JObj, <<"Diversions">> = Key, Value, Formatter) ->
             kz_json:set_value(Key, kzsip_diversion:set_user(Value, User), JObj);
         'nomatch' ->
             lager:debug("diversion ~s didn't match ~s"
-                       ,[kzsip_diversion:user(Value), kz_json:get_value(<<"regex">>, Formatter)]),
+                       ,[kzsip_diversion:user(Value), kz_json:get_value(<<"regex">>, Formatter)]
+                       ),
             'false'
     end;
 maybe_match(JObj, Key, Value, Formatter) ->
@@ -207,7 +212,7 @@ maybe_match(JObj, Key, Value, Formatter) ->
     end.
 
 -spec maybe_apply_formatters(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:objects()) ->
-                                    kz_json:object().
+          kz_json:object().
 maybe_apply_formatters(JObj, _Key, _User, _Realm, []) -> JObj;
 maybe_apply_formatters(JObj, Key, User, Realm, Formatters) ->
     Funs = [fun maybe_strip/5
@@ -221,7 +226,7 @@ maybe_apply_formatters(JObj, Key, User, Realm, Formatters) ->
 -type formatter_funs_5() :: [formatter_fun_5()].
 
 -spec apply_formatter_funs(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:objects(), formatter_funs_5()) ->
-                                  kz_json:object().
+          kz_json:object().
 apply_formatter_funs(JObj, Key, User, Realm, [_|Formatters], []) ->
     maybe_apply_formatters(JObj, Key, User, Realm, Formatters);
 apply_formatter_funs(JObj, Key, User, Realm, [Formatter|_]=Formatters, [F|Fs]) ->
@@ -231,7 +236,7 @@ apply_formatter_funs(JObj, Key, User, Realm, [Formatter|_]=Formatters, [F|Fs]) -
     end.
 
 -spec maybe_strip(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
-                         ffun_return().
+          ffun_return().
 maybe_strip(JObj, Key, _User, _Realm, Formatter) ->
     case should_strip_key(Formatter) of
         'false' -> 'false';
@@ -241,41 +246,36 @@ maybe_strip(JObj, Key, _User, _Realm, Formatter) ->
     end.
 
 -spec maybe_replace(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
-                           ffun_return().
+          ffun_return().
 maybe_replace(JObj, Key, _User, Realm, Formatter) ->
     case kz_json:get_value(<<"value">>, Formatter) of
         'undefined' -> 'false';
-        Replace -> kz_json:set_value(Key, <<Replace/binary, "@", Realm/binary>>, JObj)
+        Replace ->
+            lager:debug("replacing ~s in ~s with ~s", [_User, Key, Replace]),
+            kz_json:set_value(Key, <<Replace/binary, "@", Realm/binary>>, JObj)
     end.
 
 -spec maybe_match_invite_format(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
-                                       ffun_return().
+          ffun_return().
 maybe_match_invite_format(JObj, Key, User, Realm, Formatter) ->
-    case maybe_match_invite_format(JObj, Formatter) of
+    case should_match_invite_format(JObj, Formatter) of
         'false' -> 'false';
         'true' ->
             lager:debug("matching ~s value (~s) to invite format", [Key, User]),
             match_invite_format(JObj, Key, User, Realm)
     end.
 
--spec maybe_match_invite_format(kz_json:object(), kz_json:object()) ->
-                                       boolean().
-maybe_match_invite_format(JObj, Formatter) ->
-    case kz_json:is_true(<<"match_invite_format">>, Formatter, 'false')
-        andalso kz_json:get_ne_binary_value(<<"Invite-Format">>, JObj)
-    of
-        'false' -> 'false';
-        'undefined' -> 'false';
-        <<"loopback">> -> 'false';
-        <<"route">> -> 'false';
-        <<"username">> -> 'false';
-        <<"e164">> -> 'true';
-        <<"npan">> -> 'true';
-        <<"1npan">> -> 'true'
-    end.
+-spec should_match_invite_format(kz_json:object(), boolean() | kz_json:object()) ->
+          boolean().
+should_match_invite_format(_JObj, 'false') -> 'false';
+should_match_invite_format(JObj, 'true') ->
+    InviteFormat = kz_json:get_ne_binary_value(<<"Invite-Format">>, JObj),
+    lists:member(InviteFormat, [<<"e164">>, <<"npan">>, <<"1npan">>]);
+should_match_invite_format(JObj, Formatter) ->
+    should_match_invite_format(JObj, kz_json:is_true(<<"match_invite_format">>, Formatter, 'false')).
 
 -spec match_invite_format(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                 kz_json:object().
+          kz_json:object().
 match_invite_format(JObj, Key, User, Realm) ->
     FormatFun = invite_format_fun(JObj),
     kz_json:set_value(Key
@@ -284,7 +284,7 @@ match_invite_format(JObj, Key, User, Realm) ->
                      ).
 
 -spec invite_format_fun(kz_json:object()) ->
-                               fun((kz_term:ne_binary()) -> kz_term:ne_binary()).
+          fun((kz_term:ne_binary()) -> kz_term:ne_binary()).
 invite_format_fun(JObj) ->
     case kz_json:get_ne_binary_value(<<"Invite-Format">>, JObj) of
         <<"e164">> -> fun knm_converters:normalize/1;
@@ -293,7 +293,7 @@ invite_format_fun(JObj) ->
     end.
 
 -spec maybe_match(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
-                         ffun_return().
+          ffun_return().
 maybe_match(JObj, Key, User, Realm, Formatter) ->
     case maybe_match(kz_json:get_ne_binary_value(<<"regex">>, Formatter), User) of
         {'match', Captured} -> apply_formatter(JObj, Key, Captured, Realm, Formatter);
@@ -301,8 +301,8 @@ maybe_match(JObj, Key, User, Realm, Formatter) ->
     end.
 
 -spec maybe_match(kz_term:api_binary(), kz_term:ne_binary()) ->
-                         {'match', binary()} |
-                         'nomatch'.
+          {'match', binary()} |
+          'nomatch'.
 maybe_match('undefined', _Value) -> 'nomatch';
 maybe_match(Regex, Value) ->
     case re:run(Value, Regex, [{'capture', 'all', 'binary'}]) of
@@ -323,14 +323,14 @@ apply_formatter(Captured, Formatter) ->
                    ]).
 
 -spec apply_formatter(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
-                             kz_json:object().
+          kz_json:object().
 apply_formatter(JObj, Key, Captured, Formatter) ->
     Value = apply_formatter(Captured, Formatter),
     lager:debug("updating ~s to '~s'", [Key, Value]),
     kz_json:set_value(Key, Value, JObj).
 
 -spec apply_formatter(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
-                             kz_json:object().
+          kz_json:object().
 apply_formatter(JObj, Key, Captured, Realm, Formatter) ->
     User = apply_formatter(Captured, Formatter),
     lager:debug("updating ~s user to '~s'@~s", [Key, User, Realm]),

@@ -1,7 +1,7 @@
 {application,hangups,
              [{applications,[folsom,kazoo,kazoo_amqp,kazoo_apps,
                              kazoo_documents,kazoo_endpoint,
-                             kazoo_number_manager,kazoo_stdlib,kernel,lager,
+                             kazoo_numbers,kazoo_stdlib,kernel,lager,
                              stdlib]},
               {description,"Listen for abnormal hangups and store them in Couch"},
               {env,[{is_kazoo_app,true}]},

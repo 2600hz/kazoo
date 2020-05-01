@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2018, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kapps_account_config_tests).
@@ -27,25 +31,25 @@ kapps_accuont_config_test_() ->
 test_get_ne_binary(_) ->
     [{"Testing get_ne_binary account config"
      ,[{"get a key with binary value"
-       ,?_assertEqual(true, is_ne_binary(kapps_account_config:get_ne_binary(?FIXTURE_CHILD_ACCOUNT_ID, ?TEST_CAT, [<<"root_obj_key">>, <<"b_key">>])))
+       ,?_assertEqual('true', is_ne_binary(kapps_account_config:get_ne_binary(?FIXTURE_CHILD_ACCOUNT_ID, ?TEST_CAT, [<<"root_obj_key">>, <<"b_key">>])))
        }
       ,{"get a non cast-able to binary value should crash"
-       ,?_assertError(badarg, kapps_account_config:get_ne_binary(?FIXTURE_CHILD_ACCOUNT_ID, ?TEST_CAT, [<<"root_obj_key">>, <<"list_of_json">>]))
+       ,?_assertError('badarg', kapps_account_config:get_ne_binary(?FIXTURE_CHILD_ACCOUNT_ID, ?TEST_CAT, [<<"root_obj_key">>, <<"list_of_json">>]))
        }
       ,{"get a non-empty value which is cast-able to binary should return it as a non-empty binary"
-       ,?_assertEqual(true, is_ne_binary(kapps_account_config:get_ne_binary(?FIXTURE_CHILD_ACCOUNT_ID, ?TEST_CAT, [<<"root_obj_key">>, <<"i_key">>])))
+       ,?_assertEqual('true', is_ne_binary(kapps_account_config:get_ne_binary(?FIXTURE_CHILD_ACCOUNT_ID, ?TEST_CAT, [<<"root_obj_key">>, <<"i_key">>])))
        }
       ,{"get an empty value should return default"
-       ,?_assertEqual(undefined, kapps_account_config:get_ne_binary(?FIXTURE_CHILD_ACCOUNT_ID, ?TEST_CAT, <<"not_exists">>))
+       ,?_assertEqual('undefined', kapps_account_config:get_ne_binary(?FIXTURE_CHILD_ACCOUNT_ID, ?TEST_CAT, <<"not_exists">>))
        }
       ,{"get a list of binary value should return list of binary"
-       ,?_assertEqual(true, is_ne_binaries(kapps_account_config:get_ne_binaries(?FIXTURE_CHILD_ACCOUNT_ID, ?TEST_CAT, [<<"root_obj_key">>, <<"b_keys">>])))
+       ,?_assertEqual('true', is_ne_binaries(kapps_account_config:get_ne_binaries(?FIXTURE_CHILD_ACCOUNT_ID, ?TEST_CAT, [<<"root_obj_key">>, <<"b_keys">>])))
        }
       ,{"get not a list of binary value should return Default"
-       ,?_assertEqual(undefined, kapps_account_config:get_ne_binaries(?FIXTURE_CHILD_ACCOUNT_ID, ?TEST_CAT, [<<"root_obj_key">>, <<"b_key">>]))
+       ,?_assertEqual('undefined', kapps_account_config:get_ne_binaries(?FIXTURE_CHILD_ACCOUNT_ID, ?TEST_CAT, [<<"root_obj_key">>, <<"b_key">>]))
        }
       ,{"get an empty list of binary value should return Default"
-       ,?_assertEqual(undefined, kapps_account_config:get_ne_binaries(?FIXTURE_CHILD_ACCOUNT_ID, ?TEST_CAT, [<<"root_obj_key">>, <<"b_key">>]))
+       ,?_assertEqual('undefined', kapps_account_config:get_ne_binaries(?FIXTURE_CHILD_ACCOUNT_ID, ?TEST_CAT, [<<"root_obj_key">>, <<"b_key">>]))
        }
       ]
      }
@@ -79,7 +83,7 @@ test_get_global(#{sub_config := SubAccountConfig
        ,?_assertEqual(SubAccountConfig, kapps_account_config:get_global(?FIXTURE_CHILD_ACCOUNT_ID, ?TEST_CAT))
        }
       ,{"undefined account_id on get_global/2 should result in system_config config doc"
-       ,?_assertEqual(SystemConfig, kapps_account_config:get_global(undefined, ?TEST_CAT))
+       ,?_assertEqual(SystemConfig, kapps_account_config:get_global('undefined', ?TEST_CAT))
        }
       ,{"not exists sub-account config doc and exists config doc for reseller on get_global/2 should result in reseller config doc"
        ,?_assertEqual(ResellerOnly, kapps_account_config:get_global(?FIXTURE_CHILD_ACCOUNT_ID, ?RESELLER_ONLY))
@@ -101,7 +105,7 @@ test_get_global(#{sub_config := SubAccountConfig
 common_tests_for_get_global(Fun) ->
     [{"Common get global account config"
      ,[{"undefined account id should result in system_config value"
-       ,?_assertEqual(<<"system_only">>, Fun(undefined, ?TEST_CAT, [<<"root_obj_key">>, <<"system_key">>]))
+       ,?_assertEqual(<<"system_only">>, Fun('undefined', ?TEST_CAT, [<<"root_obj_key">>, <<"system_key">>]))
        }
       ,{"not exists config doc for sub-account and reseller should result in system_config value"
        ,?_assertEqual(<<"system_only">>, Fun(?FIXTURE_CHILD_ACCOUNT_ID, ?SYSTEM_ONLY, <<"key">>))
@@ -139,7 +143,7 @@ test_get_from_reseller(_) ->
 common_tests_for_get_from_reseller(FunToTest) ->
     [{"Common get config from reseller tests"
      ,[{"undefined account id should result in system_config value"
-       ,?_assertEqual(<<"from_system">>, FunToTest([undefined, ?RESELLER_SYSTEM, [<<"root_obj_key">>, <<"reseller_system_only">>]]))
+       ,?_assertEqual(<<"from_system">>, FunToTest(['undefined', ?RESELLER_SYSTEM, [<<"root_obj_key">>, <<"reseller_system_only">>]]))
        }
       ,{"not exists reseller config doc should result in system_config value"
        ,?_assertEqual(<<"system_only">>, FunToTest([?FIXTURE_PARENT_ACCOUNT_ID, ?SYSTEM_ONLY, <<"key">>]))
@@ -175,12 +179,12 @@ test_get_with_strategy(_) ->
     ].
 
 get_with_strategy_general() ->
-    Db = kz_util:format_account_db(?FIXTURE_PARENT_ACCOUNT_ID),
+    Db = kzs_util:format_account_db(?FIXTURE_PARENT_ACCOUNT_ID),
 
     [{"Testing strategy with no account id"
      ,[{"undefined account id should result in system_config value"
        ,?_assertEqual(<<"system_only">>
-                     ,kapps_account_config:get_with_strategy(<<"global">>, undefined, ?TEST_CAT, [<<"root_obj_key">>, <<"system_key">>])
+                     ,kapps_account_config:get_with_strategy(<<"global">>, 'undefined', ?TEST_CAT, [<<"root_obj_key">>, <<"system_key">>])
                      )
        }
       ,{"empty call object (no account id) should result in system_config value"

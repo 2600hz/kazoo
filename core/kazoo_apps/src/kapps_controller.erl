@@ -1,8 +1,13 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
 %%% @author Karl Anderson
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kapps_controller).
@@ -68,7 +73,7 @@
 %%------------------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->
-    _ = kz_util:spawn(fun initialize_kapps/0),
+    _ = kz_process:spawn(fun initialize_kapps/0),
     'ignore'.
 
 -spec ready() -> boolean().
@@ -80,24 +85,29 @@ ready(Verbose) ->
     Configured = [kz_term:to_binary(App) || App <- start_which_kapps(Verbose)],
     Running = [kz_term:to_binary(App) || App <- running_apps(), is_atom(App)],
 
-    0 =:= sets:size(
-            sets:subtract(sets:from_list(Configured)
-                         ,sets:from_list(Running)
-                         )
-           ).
+    Diff = sets:subtract(sets:from_list(Configured)
+                        ,sets:from_list(Running)
+                        ),
+    case sets:size(Diff) of
+        0 -> 'true';
+        _Size when Verbose ->
+            lager:info("still waiting on ~p", [sets:to_list(Diff)]),
+            'false';
+        _Size -> 'false'
+    end.
 
 -spec start_default_apps() -> [{atom(), 'ok' | {'error', any()}}].
 start_default_apps() ->
     [{App, start_app(App)} || App <- ?DEFAULT_KAPPS].
 
 -spec start_app(atom() | nonempty_string() | kz_term:ne_binary()) ->
-                       {'ok', kz_term:atoms()} |
-                       {'error', any()}.
+          {'ok', kz_term:atoms()} |
+          {'error', any()}.
 start_app(App) when is_atom(App) ->
-    NowMs = kz_time:now(),
+    StartTime = kz_time:start_time(),
     case application:ensure_all_started(App) of
         {'ok', Started}=OK ->
-            lager:info("started ~s in ~pms", [App, kz_time:elapsed_ms(NowMs)]),
+            lager:info("started ~s in ~pms", [App, kz_time:elapsed_ms(StartTime)]),
             _ = [kz_nodes_bindings:bind(A) || A <- [App | Started], is_kapp(A)],
             OK;
         {'error', {App, {"no such file or directory", DotApp}}} ->
@@ -111,7 +121,7 @@ start_app(App) ->
     start_app(kz_term:to_atom(App, 'true')).
 
 -spec maybe_load_external_app(atom()) -> {'ok', kz_term:atoms()} |
-                                         {'error', any()}.
+          {'error', any()}.
 maybe_load_external_app(App) ->
     case lists:any(fun kz_term:is_true/1, kazoo_bindings:map(<<"app.fetch">>, App)) of
         'true' -> start_app(App);
@@ -182,7 +192,7 @@ running_apps_list() ->
 
 -spec initialize_kapps() -> 'ok'.
 initialize_kapps() ->
-    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
+    kz_log:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     _ = kapps_maintenance:init_system(),
     kapps_config:migrate(),
     ToStart = lists:sort(fun sysconf_first/2

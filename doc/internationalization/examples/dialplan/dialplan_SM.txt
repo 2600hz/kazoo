@@ -1,0 +1,15 @@
+	"dial_plan": {
+		   "^00(\\d{5,})$": {
+			   "description": "international",
+			   "prefix": "+"
+		   },
+		   "^(0549\\d{6})$": {
+			   "description": "SM national",
+			   "prefix": "+378"
+		   },
+		   "^(\\d{6})$": {
+			   "description": "SM local",
+			   "prefix": "+3780549"
+		   }
+
+}

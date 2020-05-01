@@ -1,0 +1,36 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.route.route_win",
+    "description": "AMQP API for route.route_win",
+    "properties": {
+        "Call-ID": {
+            "type": "string"
+        },
+        "Control-Queue": {
+            "type": "string"
+        },
+        "Custom-Channel-Vars": {
+            "type": "object"
+        },
+        "Event-Category": {
+            "enum": [
+                "dialplan"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "route_win"
+            ],
+            "type": "string"
+        },
+        "Switch-Hostname": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Call-ID",
+        "Control-Queue"
+    ],
+    "type": "object"
+}

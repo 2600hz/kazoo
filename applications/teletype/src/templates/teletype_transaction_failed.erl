@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2014-2019, 2600Hz
+%%% @copyright (C) 2014-2020, 2600Hz
 %%% @doc
 %%% @author Pierre Fenoll
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(teletype_transaction_failed).
@@ -39,7 +44,7 @@
 
 -spec init() -> 'ok'.
 init() ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
                                           ,{'subject', ?TEMPLATE_SUBJECT}
                                           ,{'category', ?TEMPLATE_CATEGORY}
@@ -64,7 +69,7 @@ handle_req(JObj, 'true') ->
     lager:debug("valid data for ~s, processing...", [?TEMPLATE_ID]),
 
     'true' = kapi_notifications:transaction_v(JObj),
-    kz_util:put_callid(JObj),
+    kz_log:put_callid(JObj),
 
     %% Gather data for template
     DataJObj = kz_json:normalize(JObj),
@@ -72,9 +77,15 @@ handle_req(JObj, 'true') ->
 
     ReqData =
         kz_json:set_value(<<"user">>, teletype_util:find_account_admin(AccountId), DataJObj),
-    case kz_json:is_false(<<"success">>, DataJObj) %% check if it's for transaction failed template
-        andalso teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID)
-    of
+    case processability(kz_json:is_false(<<"success">>, DataJObj), JObj) of
+        'ignore' -> teletype_util:notification_ignored(?TEMPLATE_ID);
         'false' -> teletype_util:notification_disabled(DataJObj, ?TEMPLATE_ID);
         'true' -> teletype_transaction:process_req(kz_json:merge_jobjs(DataJObj, ReqData), ?TEMPLATE_ID)
     end.
+
+-spec processability(boolean(), kz_json:object()) -> 'ignore' | boolean().
+processability('true', JObj) ->
+    %% it's for transaction failed template
+    teletype_util:is_notice_enabled(kz_json:get_value(<<"Account-ID">>, JObj), JObj, ?TEMPLATE_ID);
+processability('false', _) ->
+    'ignore'.

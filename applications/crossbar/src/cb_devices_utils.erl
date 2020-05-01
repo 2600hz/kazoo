@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
 %%% @author Peter Defebvre
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cb_devices_utils).
@@ -70,7 +75,7 @@ extract_all_ips(JObj) ->
     kz_json:foldl(fun extract_ip/3, [], JObj).
 
 -spec extract_ip(kz_json:path(), kz_json:object(), kz_json:objects()) ->
-                        kz_json:objects().
+          kz_json:objects().
 extract_ip(_Key, Value, Acc) ->
     case kz_json:get_value(<<"cidr">>, Value) of
         'undefined' -> Acc;

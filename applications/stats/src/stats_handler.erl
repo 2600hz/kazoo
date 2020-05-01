@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
 %%% @author Stephen Gibberd <stephen.gibberd@2600hz.com>
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(stats_handler).
@@ -18,9 +23,9 @@
 -include("stats.hrl").
 
 -spec handle_req(kz_json:object(), kz_term:proplist()) -> 'no_node_name' |
-                                                          'no_tables' |
-                                                          'no_items' |
-                                                          'ok'.
+          'no_tables' |
+          'no_items' |
+          'ok'.
 handle_req(JObj, _Props) ->
     Items = kz_json:recursive_to_proplist(JObj),
     Nodename = props:get_value(<<"nodename">>, Items),

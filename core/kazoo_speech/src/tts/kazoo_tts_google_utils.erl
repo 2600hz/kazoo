@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2018-2019, 2600Hz
+%%% @copyright (C) 2018-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kazoo_tts_google_utils).
@@ -10,7 +14,7 @@
 -include("kazoo_tts_google.hrl").
 
 -spec getJson(synthesisInput() | voiceSelectionParams() | audioConfig()) -> {'ok', kz_json:object()} |
-                                                                            {'error', kz_term:ne_binary()}.
+          {'error', kz_term:ne_binary()}.
 getJson(#synthesisInput{}=SysthesisInput) ->
     synthesis_input_to_json(SysthesisInput, validate_synthesis_input(SysthesisInput));
 getJson(#voiceSelectionParams{}=VoiceSelection) ->

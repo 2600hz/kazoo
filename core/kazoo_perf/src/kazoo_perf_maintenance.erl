@@ -1,10 +1,14 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2017-2019, 2600Hz
+%%% @copyright (C) 2017-2020, 2600Hz
 %%% @doc Simple (and mostly naive) script that connects to a remote Erlang node,
 %%% fetches memory and process statistics and prints them in a Sensu compatible way
 %%% for metrics gathering (great for Graphite)
 %%%
 %%% @author Pierre Fenoll
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kazoo_perf_maintenance).
@@ -65,7 +69,7 @@ collect() ->
 scheme(Account, Cluster, Zone) ->
     [Service, Hostname0] = binary:split(kz_term:to_binary(node()), <<$@>>),
     Hostname = binary:replace(Hostname0, <<$.>>, <<"::">>, [global]),
-    kz_util:iolist_join($., [Account, Cluster, Zone, Hostname, Service]).
+    kz_term:iolist_join($., [Account, Cluster, Zone, Hostname, Service]).
 
 print_metric(Scheme, Key, Value) ->
     io:format("~s.~s ~B ~B\n", [Scheme, Key, Value, get(timestamp)]).

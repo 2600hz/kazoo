@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kazoo_auth_sup).
@@ -25,7 +29,6 @@
 -define(CHILDREN, [?CACHE_ARGS(?PK_CACHE, ?CACHE_PROPS)
                   ,?CACHE_ARGS(?TOKENS_CACHE, ?CACHE_PROPS)
                   ,?CACHE_ARGS(?PROFILE_CACHE, ?CACHE_PROPS)
-                  ,?WORKER('kz_auth_rsa')
                   ,?WORKER('kz_auth_init')
                   ]).
 

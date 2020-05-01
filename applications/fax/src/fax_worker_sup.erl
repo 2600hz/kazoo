@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
 %%% @author Luis Azedo
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(fax_worker_sup).
@@ -12,16 +17,16 @@
 
 -define(SERVER, ?MODULE).
 
--export([start_fax_job/1]).
+-export([start_fax_job/2]).
 
 -export([start_link/0]).
 -export([init/1]).
 
 -define(CHILDREN, [?WORKER_TYPE('fax_worker', 'transient')]).
 
--spec start_fax_job(fax_job()) -> any().
-start_fax_job(FaxJob) ->
-    supervisor:start_child(?MODULE, [FaxJob]).
+-spec start_fax_job(kz_term:ne_binary(), kz_term:ne_binary()) -> any().
+start_fax_job(AccountId, JobId) ->
+    supervisor:start_child(?MODULE, [AccountId, JobId]).
 
 %%------------------------------------------------------------------------------
 %% @doc Starts the supervisor.

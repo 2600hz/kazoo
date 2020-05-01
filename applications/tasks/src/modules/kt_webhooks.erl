@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2019, 2600Hz
+%%% @copyright (C) 2013-2020, 2600Hz
 %%% @doc
 %%% @author Pierre Fenoll
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kt_webhooks).
@@ -68,7 +73,7 @@ cleanup_orphaned_hooks(Accounts) ->
            || Account <- Accounts,
               begin
                   AccountId = kz_json:get_value(<<"key">>, Account),
-                  not kz_datamgr:db_exists(kz_util:format_account_id(AccountId, 'encoded'))
+                  not kz_datamgr:db_exists(kzs_util:format_account_db(AccountId))
               end
           ],
     _Rm =/= []

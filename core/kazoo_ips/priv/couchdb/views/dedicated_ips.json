@@ -10,21 +10,66 @@
     "language": "javascript",
     "views": {
         "assigned_to_listing": {
-            "map": "function(doc) { if (doc.pvt_type != 'dedicated_ip' || doc.pvt_deleted || doc.pvt_status != 'assigned') return; emit(doc.pvt_assigned_to, {'ip': doc._id, 'zone': doc.pvt_zone}); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'dedicated_ip' || doc.pvt_deleted || doc.pvt_status != 'assigned') return;",
+                "  emit(doc.pvt_assigned_to, {",
+                "    'ip': doc._id,",
+                "    'zone': doc.pvt_zone",
+                "  });",
+                "}"
+            ]
         },
         "available_listing": {
-            "map": "function(doc) { if (doc.pvt_type != 'dedicated_ip' || doc.pvt_deleted || doc.pvt_status != 'available') return; emit(doc.pvt_zone, {'ip': doc._id, 'zone': doc.pvt_zone}); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'dedicated_ip' || doc.pvt_deleted || doc.pvt_status != 'available') return;",
+                "  emit(doc.pvt_zone, {",
+                "    'ip': doc._id,",
+                "    'zone': doc.pvt_zone",
+                "  });",
+                "}"
+            ]
         },
         "host_listing": {
-            "map": "function(doc) { if (doc.pvt_type != 'dedicated_ip' || doc.pvt_deleted) return; emit(doc.pvt_host, null); }",
-            "reduce": "function(keys, values) { return true; }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'dedicated_ip' || doc.pvt_deleted) return;",
+                "  emit(doc.pvt_host, null);",
+                "}"
+            ],
+            "reduce": [
+                "function(keys, values) {",
+                "  return true;",
+                "}"
+            ]
         },
         "summary_listing": {
-            "map": "function(doc) { if (doc.pvt_type != 'dedicated_ip' || doc.pvt_deleted) return; emit(doc.pvt_host, {'ip': doc._id, 'zone': doc.pvt_zone, 'host': doc.pvt_host, 'status': doc.pvt_status, 'assigned_to': doc.pvt_assigned_to || '' }); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'dedicated_ip' || doc.pvt_deleted) return;",
+                "  emit(doc.pvt_host, {",
+                "    'ip': doc._id,",
+                "    'zone': doc.pvt_zone,",
+                "    'host': doc.pvt_host,",
+                "    'status': doc.pvt_status,",
+                "    'assigned_to': doc.pvt_assigned_to || ''",
+                "  });",
+                "}"
+            ]
         },
         "zone_listing": {
-            "map": "function(doc) { if (doc.pvt_type != 'dedicated_ip' || doc.pvt_deleted) return; emit(doc.pvt_zone, null); }",
-            "reduce": "function(keys, values) { return true; }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'dedicated_ip' || doc.pvt_deleted) return;",
+                "  emit(doc.pvt_zone, null);",
+                "}"
+            ],
+            "reduce": [
+                "function(keys, values) {",
+                "  return true;",
+                "}"
+            ]
         }
     }
 }

@@ -1,0 +1,4 @@
+<definition name="destination-number">
+	<field name="Destination-Number" type="first-of"
+		value="variable_sip_h_X-FS-Destination-Number|Hunt-Destination-Number|Caller-Destination-Number" />
+</definition>

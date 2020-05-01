@@ -15,7 +15,7 @@ Key | Description | Type | Default | Required | Support Level
 `call_forward.failover` | Enable the call-forwarding parameters if the device is offline | `boolean()` | `false` | `false` | `supported`
 `call_forward.ignore_early_media` | The option to determine if early media from the call forwarded number should ignored | `boolean()` | `true` | `false` |  
 `call_forward.keep_caller_id` | Determines if the caller id is kept when the call is forwarded, if not the devices caller id is used | `boolean()` | `true` | `false` | `supported`
-`call_forward.number` | The number to forward calls to | `string(0..15)` |   | `false` | `supported`
+`call_forward.number` | The number to forward calls to | `string(0..35)` |   | `false` | `supported`
 `call_forward.require_keypress` | Determines if the callee is prompted to press 1 to accept the call | `boolean()` | `true` | `false` | `supported`
 `call_forward.substitute` | Determines if the call forwarding replaces the device | `boolean()` | `true` | `false` | `supported`
 `call_forward` | The device call forward parameters | `object()` |   | `false` |  
@@ -33,7 +33,11 @@ Key | Description | Type | Default | Required | Support Level
 `do_not_disturb` | DND Parameters | `object()` |   | `false` |  
 `enabled` | Determines if the device is currently enabled | `boolean()` | `true` | `false` | `supported`
 `exclude_from_queues` | Do not ring this device when calling user/agent in queue | `boolean()` | `false` | `false` |  
+`flags.[]` |   | `string()` |   | `false` | `supported`
+`flags` | Flags set by external applications | `array(string())` |   | `false` | `supported`
 `formatters` | Schema for request formatters | [#/definitions/formatters](#formatters) |   | `false` |  
+`hotdesk.users./^[a-zA-Z0-9]{32}$/` | user-specific hotdesk settings | `object()` |   | `false` |  
+`hotdesk.users` | The user(s) currently hotdesked into the device | `object()` |   | `false` |  
 `hotdesk` | The hotdesk status of this device | `object()` |   | `false` |  
 `language` | The language for the device | `string()` |   | `false` | `supported`
 `mac_address` | The MAC Address of the device (if applicable) | `string()` |   | `false` | `supported`
@@ -63,16 +67,21 @@ Key | Description | Type | Default | Required | Support Level
 `sip.custom_sip_headers.out` | Custom SIP Headers to be applied to calls outbound from Kazoo to the endpoint | [#/definitions/custom_sip_headers](#custom_sip_headers) |   | `false` |  
 `sip.custom_sip_headers.^[a-zA-z0-9_\-]+$` | The SIP header to add | `string()` |   | `false` |  
 `sip.custom_sip_headers` | A property list of SIP headers | `object()` |   | `false` |  
+`sip.custom_sip_interface` | If the bridge string should target a different SIP interface | `string()` |   | `false` |  
 `sip.expire_seconds` | The time, in seconds, sent to the provisioner for the registration period that the device should be configured with. | `integer()` | `300` | `false` | `supported`
+`sip.forward` | Forward IP to use | `string()` |   | `false` |  
 `sip.ignore_completed_elsewhere` | When set to false the phone should not consider ring group calls answered elsewhere as missed | `boolean()` |   | `false` |  
 `sip.invite_format` | The SIP request URI invite format | `string('username' | 'npan' | '1npan' | 'e164' | 'route' | 'contact')` | `contact` | `false` | `supported`
 `sip.ip` | IP address for this device | `string()` |   | `false` | `supported`
 `sip.method` | Method of authentication | `string('password' | 'ip')` | `password` | `false` | `supported`
 `sip.number` | The number used if the invite format is 1npan, npan, or e164 (if not set the dialed number is used) | `string()` |   | `false` |  
 `sip.password` | SIP authentication password | `string(5..32)` |   | `false` | `supported`
+`sip.proxy` | Proxy IP address to use | `string()` |   | `false` |  
 `sip.realm` | The realm this device should use, overriding the account realm. Should rarely be necessary. | `string(4..253)` |   | `false` |  
 `sip.route` | The SIP URL used if the invite format is 'route' | `string()` |   | `false` | `supported`
+`sip.static_invite` | SIP To user | `string()` |   | `false` |  
 `sip.static_route` | Sends all inbound calls to this string (instead of dialed number or username) | `string()` |   | `false` |  
+`sip.transport` | SIP Transport to use | `string()` |   | `false` |  
 `sip.username` | SIP authentication username | `string(2..32)` |   | `false` | `supported`
 `sip` | SIP Parameters | `object()` | `{}` | `false` |  
 `suppress_unregister_notifications` | When true disables deregister notifications | `boolean()` | `false` | `false` |  

@@ -71,6 +71,9 @@
         },
         "To": {
             "type": "string"
+        },
+        "Version": {
+            "type": "string"
         }
     },
     "required": [

@@ -7,7 +7,16 @@
             "description": "List of IP addresses",
             "items": {
                 "description": "IP address",
-                "type": "string"
+                "oneOf": [
+                    {
+                        "format": "ipv4",
+                        "type": "string"
+                    },
+                    {
+                        "format": "ipv6",
+                        "type": "string"
+                    }
+                ]
             },
             "minItems": 1,
             "type": "array"

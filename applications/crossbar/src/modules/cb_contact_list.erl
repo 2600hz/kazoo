@@ -1,8 +1,13 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
-%%% @doc Listing of all expected v1 callbacks
+%%% @copyright (C) 2011-2020, 2600Hz
+%%% @doc Crossbar API for contact list.
 %%% @author Karl Anderson
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cb_contact_list).
@@ -64,7 +69,7 @@ validate(Context) ->
 
 -spec validate(cb_context:context(), http_method()) -> cb_context:context().
 validate(Context, ?HTTP_GET) ->
-    ContactList = provisioner_contact_list:build(cb_context:account_db(Context)),
+    ContactList = provisioner_contact_list:build(cb_context:account_id(Context)),
     cb_context:setters(Context, [{fun cb_context:set_resp_data/2, ContactList}
                                 ,{fun cb_context:set_resp_status/2, 'success'}
                                 ]).

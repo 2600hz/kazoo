@@ -21,8 +21,6 @@
 %%% {@link amqp_cron_sup} to your own supervision tree where you
 %%% can more reasonably control the node list.
 %%%
-%%% @see amqp_cron
-%%% @see amqp_cron_sup
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(amqp_cron_app).

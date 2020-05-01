@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2016-2019, 2600Hz
+%%% @copyright (C) 2016-2020, 2600Hz
 %%% @doc
 %%% @author Sergey Korobkov
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kt_resource_selectors).
@@ -96,7 +101,7 @@ account_id(_) -> 'false'.
 %%% Appliers
 
 -spec import(kz_tasks:extra_args(), kz_tasks:iterator() | state(), kz_tasks:args()) ->
-                    {kz_tasks:return(), state()} | 'stop'.
+          {kz_tasks:return(), state()} | 'stop'.
 import(#{auth_account_id := AuthBy}=ExtraArgs, 'init', Args) ->
     kz_datamgr:suppress_change_notice(),
     State = #state{db = get_selectors_db(ExtraArgs)
@@ -131,7 +136,7 @@ import(_ExtraArgs, State, _Args) ->
     'stop'.
 
 -spec delete(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) ->
-                    {kz_tasks:return(), state()} | 'stop'.
+          {kz_tasks:return(), state()} | 'stop'.
 delete(ExtraArgs, 'init', Args) ->
     kz_datamgr:suppress_change_notice(),
     State = #state{db = get_selectors_db(ExtraArgs)},
@@ -228,7 +233,7 @@ get_selectors_db(#{account_id := AccountId
                   ,auth_account_id := AuthAccountId
                   }) ->
     true =  kzd_accounts:is_in_account_hierarchy(AuthAccountId, AccountId, true),
-    kz_util:format_resource_selectors_db(AccountId).
+    kzs_util:format_resource_selectors_db(AccountId).
 
 -spec split_keys(kz_term:ne_binaries(), non_neg_integer()) -> [kz_term:ne_binaries()].
 split_keys(Keys, BlockSize) -> split_keys(Keys, [], BlockSize).
@@ -249,7 +254,7 @@ refresh_selectors_index(Db) ->
 -spec generate_selector_doc(kz_term:ne_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()
                            ,kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()
                            ) ->
-                                   kz_json:object().
+          kz_json:object().
 generate_selector_doc(AuthAccountId, Resource, Name, Selector, Value, Start, Stop) ->
     kz_json:from_list(
       [{<<"pvt_type">>, <<"resource_selector">>}
@@ -266,5 +271,5 @@ generate_selector_doc(AuthAccountId, Resource, Name, Selector, Value, Start, Sto
 -spec init_db(kz_term:ne_binary()) -> 'ok'.
 init_db(Db) when is_binary(Db) ->
     _ = kz_datamgr:db_create(Db),
-    kapps_maintenance:refresh(Db),
+    _ = kapps_maintenance:refresh(Db),
     'ok'.

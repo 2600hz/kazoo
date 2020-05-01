@@ -1,8 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Various utilities - a veritable cornucopia.
 %%% @author James Aimonetti
 %%% @author Karl Anderson
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_network_utils).
@@ -16,7 +20,7 @@
         ,is_ipv6/1
         ,is_ip/1
         ,is_protocol_family_supported/1
-        ,is_cidr/1
+        ,is_cidr/1, is_cidr/2
         ]).
 -export([to_cidr/1
         ,to_cidr/2
@@ -69,7 +73,7 @@
 -type srvtuple() :: {integer(), integer(), integer(), string()}.
 -type naptrtuple() :: {integer(), integer(), string(), string(), string(), string()}.
 -type mxtuple() :: {integer(), string()}.
--type options() :: [inet_res:req_option()].
+-type options() :: [inet_res:res_option()]. % not currently exported from inet_res
 
 -type cidr_block() :: {inet:ip_address(), inet:ip_address(), pos_integer()}.
 
@@ -118,7 +122,11 @@ is_ip(Address) ->
 
 -spec is_cidr(kz_term:text()) -> boolean().
 is_cidr(Address) ->
-    try inet_cidr:parse(Address) of
+    is_cidr(Address, false).
+
+-spec is_cidr(kz_term:text(), boolean()) -> boolean().
+is_cidr(Address, Adjust) ->
+    try inet_cidr:parse(Address, Adjust) of
         {_Start, _End, _Len} -> 'true'
     catch
         'error':{'badmatch', _} -> 'false';
@@ -168,7 +176,7 @@ get_supported_binding_ip(IP) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_supported_binding_ip(kz_term:text() | 'undefined', kz_term:text() | 'undefined') ->
-                                      inet:ip_address().
+          inet:ip_address().
 get_supported_binding_ip('undefined', 'undefined') ->
     get_supported_binding_ip();
 get_supported_binding_ip('undefined', DefaultIP) ->
@@ -258,8 +266,8 @@ is_protocol_family_supported(Family) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec detect_ip_is_bindable('inet' | 'inet6' | kz_term:text() | {'inet' | 'inet6', inet:ip_address()} | {'error', 'einval'}) ->
-                                   {'ok', 'inet' | 'inet6', inet:ip_address()} |
-                                   {'error', 'inet' | 'inet6'| 'einval', string()}.
+          {'ok', 'inet' | 'inet6', inet:ip_address()} |
+          {'error', 'inet' | 'inet6'| 'einval', string()}.
 detect_ip_is_bindable(IP) when is_binary(IP) ->
     detect_ip_is_bindable(detect_ip_family(IP));
 detect_ip_is_bindable(IP) when is_list(IP) ->
@@ -449,7 +457,7 @@ resolve_a_record_fold(IPTuple, I) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec iptuple_to_binary(inet:ip4_address() | inet:ipv6_address()) -> kz_term:ne_binary().
+-spec iptuple_to_binary(inet:ip4_address() | inet:ip6_address()) -> kz_term:ne_binary().
 iptuple_to_binary({A,B,C,D}) ->
     <<(kz_term:to_binary(A))/binary, "."
      ,(kz_term:to_binary(B))/binary, "."
@@ -514,13 +522,13 @@ pretty_print_bytes(Bytes) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec lookup_dns(kz_term:ne_binary(), atom()) ->
-                        {'ok', [inet_res:dns_data()]}.
+          {'ok', [inet_res:dns_data()]}.
 %% See kernel/src/inet_dns.hrl, the S_* macros for values for Type
 lookup_dns(Hostname, Type) ->
     lookup_dns(Hostname, Type, default_options()).
 
 -spec lookup_dns(kz_term:ne_binary(), atom(), options()) ->
-                        {'ok', [inet_res:dns_data()]}.
+          {'ok', [inet_res:dns_data()]}.
 lookup_dns(Hostname, Type, Options) ->
     {'ok', inet_res:lookup(kz_term:to_list(Hostname), 'in', Type, Options)}.
 
@@ -573,7 +581,7 @@ set_option_usevc(Options, Value) ->
     props:set_value('usevc', Value, Options).
 
 -spec maybe_resolve_nameservers([nameserver() | string()], [nameserver()]) ->
-                                       [nameserver()].
+          [nameserver()].
 maybe_resolve_nameservers([], Nameservers) -> Nameservers;
 maybe_resolve_nameservers([{_, _}=Nameserver|Values], Nameservers) ->
     maybe_resolve_nameservers(Values, [Nameserver|Nameservers]);

@@ -1,5 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
+%%%
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
 %%%
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -27,12 +32,15 @@ init() ->
 
 -spec bindings_and_responders() -> {gen_listener:bindings(), gen_listener:responders()}.
 bindings_and_responders() ->
-    {[{'call', [{'restrict_to', ['CHANNEL_DESTROY']}
-               ]
-      }
-     ]
-    ,[{{'webhooks_channel_util', 'handle_event'}
-      ,[{<<"call_event">>, <<"CHANNEL_DESTROY">>}]
-      }
-     ]
-    }.
+    {bindings(), responders()}.
+
+-spec bindings() -> gen_listener:bindings().
+bindings() ->
+    [{'call', [{'restrict_to', ['CHANNEL_DESTROY']}]}].
+
+-spec responders() -> gen_listener:responders().
+responders() ->
+    [{{'webhooks_channel_util', 'handle_event'}
+     ,[{<<"call_event">>, <<"CHANNEL_DESTROY">>}]
+     }
+    ].

@@ -1,0 +1,41 @@
+paths:
+  /accounts/{ACCOUNT_ID}/allotments:
+    get:
+      operationId: GetAccountsAccountIdAllotments
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get all allotments
+      tags:
+        - allotments
+    post:
+      operationId: PostAccountsAccountIdAllotments
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/allotments'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of allotments
+      tags:
+        - allotments
+  /accounts/{ACCOUNT_ID}/allotments/consumed:
+    get:
+      operationId: GetAccountsAccountIdAllotmentsConsumed
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get consumed of allotments
+      tags:
+        - allotments

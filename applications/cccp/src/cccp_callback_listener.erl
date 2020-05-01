@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
 %%% @author OnNet (Kirill Sysoev github.com/onnet)
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cccp_callback_listener).
@@ -274,7 +279,7 @@ call(Props) ->
 
 -spec maybe_handle_doc_id(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 maybe_handle_doc_id(DocId, Props) ->
-    AccountDb = kz_util:format_account_id(props:get_value('account_id', Props), 'encoded'),
+    AccountDb = kzs_util:format_account_db(props:get_value('account_id', Props)),
     case kz_datamgr:open_cache_doc(AccountDb, DocId) of
         {'error', _} -> kapps_call_command:hangup(call(Props));
         {'ok', JObj} -> maybe_handle_doc(JObj, Props)

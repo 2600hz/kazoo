@@ -1,0 +1,12 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "system_config.webrtc",
+    "description": "Schema for webrtc system_config",
+    "properties": {
+        "url": {
+            "description": "The advertised URL of the webrtc socket",
+            "type": "string"
+        }
+    },
+    "type": "object"
+}

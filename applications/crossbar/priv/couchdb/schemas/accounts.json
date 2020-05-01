@@ -80,6 +80,14 @@
             "support_level": "supported",
             "type": "boolean"
         },
+        "flags": {
+            "description": "Flags set by external applications",
+            "items": {
+                "type": "string"
+            },
+            "support_level": "supported",
+            "type": "array"
+        },
         "formatters": {
             "$ref": "formatters"
         },
@@ -226,13 +234,7 @@
             "type": "object"
         },
         "zones": {
-            "description": "The zone(s) of an account",
-            "properties": {
-                "home": {
-                    "description": "Which zone is considered the account's home zone",
-                    "type": "string"
-                }
-            },
+            "description": "A priority ordered mapping of zones for the account",
             "type": "object"
         }
     },

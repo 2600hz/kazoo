@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kazoo_ledgers_maintenance).
@@ -35,7 +39,7 @@ current_rollovers() ->
 current_rollovers([]) -> 'ok';
 current_rollovers([Account|Accounts]) ->
     {Year, Month, _} = erlang:date(),
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kzs_util:format_account_id(Account),
     Remaining = length(Accounts),
     _ = case kz_ledgers:get_monthly_rollover(Account, Year, Month) of
             {'ok', Ledger} ->
@@ -113,7 +117,7 @@ verify_all_rollovers([MODb|MODbs], Options) ->
 
 -spec verify_rollovers(kz_term:ne_binary(), kz_time:year(), kz_time:month()) -> 'ok'.
 verify_rollovers(AccountDb, Year, Month) ->
-    AccountId = kz_util:format_account_id(AccountDb, 'raw'),
+    AccountId = kzs_util:format_account_id(AccountDb),
     case kz_ledgers:get_monthly_rollover(AccountDb, Year, Month) of
         {'ok', Ledger} ->
             verify_monthly_rollover(AccountDb, Year, Month, Ledger);
@@ -130,7 +134,7 @@ verify_monthly_rollover(AccountDb, Year, Month, Ledger) ->
     {PreviousYear, PreviousMonth} = kazoo_modb_util:prev_year_month(Year, Month),
     case kz_currency:past_available_units(AccountDb, PreviousYear, PreviousMonth) of
         {'error', _Reason} ->
-            AccountId = kz_util:format_account_id(AccountDb, 'raw'),
+            AccountId = kzs_util:format_account_id(AccountDb),
             io:format("    account ~s ~p-~p : error getting balance for ~p-~p: ~p~n"
                      ,[AccountId, Year, Month, PreviousYear, PreviousMonth, _Reason]
                      );
@@ -140,7 +144,7 @@ verify_monthly_rollover(AccountDb, Year, Month, Ledger) ->
 
 -spec verify_rollovers(kz_term:ne_binary(), kz_time:year(), kz_time:month(), kz_ledger:ledger(), kz_currency:units()) -> 'ok'.
 verify_rollovers(AccountDb, Year, Month, Ledger, AvailableUnits) ->
-    AccountId = kz_util:format_account_id(AccountDb, 'raw'),
+    AccountId = kzs_util:format_account_id(AccountDb),
     case kz_ledger:amount(Ledger) of
         AvailableUnits ->
             io:format("    account ~s ~p-~p rollover confirmed~n", [AccountId, Year, Month]);
@@ -176,7 +180,7 @@ fix_rollover(Account, Year, Month) when not is_integer(Year) ->
 fix_rollover(Account, Year, Month) when not is_integer(Month) ->
     fix_rollover(Account, Year, kz_term:to_integer(Month));
 fix_rollover(Account, Year, Month) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kzs_util:format_account_id(Account),
     {PreviousYear, PreviousMonth} = kazoo_modb_util:prev_year_month(Year, Month),
     case kz_currency:past_available_units(AccountId, PreviousYear, PreviousMonth) of
         {'error', _R} ->
@@ -189,8 +193,8 @@ fix_rollover(Account, Year, Month) ->
     end.
 
 -spec maybe_replace_rollover(kz_term:ne_binary(), kz_time:year(), kz_time:month(), kz_currency:units()) ->
-                                    {'ok', kz_ledger:ledger()} |
-                                    {'error', any()}.
+          {'ok', kz_ledger:ledger()} |
+          {'error', any()}.
 maybe_replace_rollover(Account, Year, Month, AvailableUnits) ->
     case kz_ledgers:get_monthly_rollover(Account, Year, Month) of
         {'error', _} ->
@@ -224,7 +228,7 @@ rollover_accounts() ->
     'ok'.
 
 -spec rollover_account_fold(kz_term:ne_binary(), {pos_integer(), pos_integer()}) ->
-                                   {pos_integer(), pos_integer()}.
+          {pos_integer(), pos_integer()}.
 rollover_account_fold(Account, {Current, Total}) ->
     io:format("rollover accounts (~p/~p) '~s'~n", [Current, Total, Account]),
     _ = rollover_account(Account),
@@ -236,6 +240,6 @@ rollover_account_fold(Account, {Current, Total}) ->
 %%------------------------------------------------------------------------------
 -spec rollover_account(kz_term:ne_binary()) -> 'ok'.
 rollover_account(Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kzs_util:format_account_id(Account),
     {'ok', _} = kz_ledgers:rollover(AccountId),
     io:format("account ~s rolled up~n", [AccountId]).

@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc Allows to control presence feature by calling this Callflow.
 %%%
 %%% <h4>Data options:</h4>
@@ -12,6 +12,11 @@
 %%% </dl>
 %%%
 %%% @author Karl Anderson
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cf_manual_presence).
@@ -47,9 +52,9 @@ update_presence(<<"busy">>, PresenceId, Call) ->
     kapps_call_command:presence(<<"confirmed">>, PresenceId, kz_term:to_hex_binary(crypto:hash('md5', PresenceId))).
 
 -spec update_doc(kapps_call:call(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                        {'ok', kz_json:object()} |
-                        kz_datamgr:data_error().
+          {'ok', kz_json:object()} |
+          kz_datamgr:data_error().
 update_doc(Call, PresenceId, State) ->
-    Update = [{PresenceId, State}],
+    Update = [{[PresenceId], State}],
     UpdateOptions = [{'update', Update}],
     kz_datamgr:update_doc(kapps_call:account_db(Call), ?MANUAL_PRESENCE_DOC, UpdateOptions).

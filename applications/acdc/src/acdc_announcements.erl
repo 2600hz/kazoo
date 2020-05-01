@@ -2,6 +2,11 @@
 %%% @copyright (C) 2017, Voxter Communications
 %%% @doc
 %%% @author Daniel Finke
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(acdc_announcements).
@@ -28,7 +33,7 @@
 %%------------------------------------------------------------------------------
 -spec start_link(pid(), kapps_call:call(), kz_term:proplist()) -> kz_types:startlink_ret().
 start_link(Manager, Call, Props) ->
-    {'ok', kz_util:spawn_link(fun ?MODULE:init/3, [Manager, Call, Props])}.
+    {'ok', kz_process:spawn_link(fun ?MODULE:init/3, [Manager, Call, Props])}.
 
 %%------------------------------------------------------------------------------
 %% @doc Initializes the announcements process
@@ -146,7 +151,7 @@ maybe_announce_wait_time(PromptAcc, #{call := Call
 play_announcements(Prompts, #{call := Call
                              ,config := Config
                              }=State) ->
-    kapps_call_command:audio_macro(Prompts, Call),
+    _ = kapps_call_command:audio_macro(Prompts, Call),
 
     AnnouncementsInterval = announcements_interval(Config),
     timer:sleep(AnnouncementsInterval * ?MILLISECONDS_IN_SECOND),

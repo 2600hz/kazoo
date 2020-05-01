@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2015-2019, 2600Hz
+%%% @copyright (C) 2015-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(amqp_leader_proc).
@@ -172,7 +176,7 @@ s(Name) ->
 %%------------------------------------------------------------------------------
 -spec init(list()) -> {'ok', state()}.
 init([Name, _CandidateNodes, _OptArgs, Mod, Arg, _Options]) ->
-    kz_util:put_callid(kapi_leader:queue()),
+    kz_log:put_callid(kapi_leader:queue()),
     gen_server:cast(self(), {'init', Arg}),
     State = #state{name = Name
                   ,callback_module = Mod

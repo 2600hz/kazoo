@@ -1,7 +1,11 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2018-2019, 2600Hz
+%%% @copyright (C) 2018-2020, 2600Hz
 %%% @doc Message Wait Indicator utilities.
 %%% @author Luis Azedo
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kvm_mwi).
@@ -40,8 +44,8 @@ notify_endpoint(Account, EndpointId) ->
 
 -spec send_mwi_update(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 send_mwi_update(Account, BoxId) ->
-    AccountId = kz_util:format_account_id(Account),
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountId = kzs_util:format_account_id(Account),
+    AccountDb = kzs_util:format_account_db(AccountId),
     Realm = kzd_accounts:fetch_realm(AccountId),
     {'ok', BoxJObj} = kz_datamgr:open_cache_doc(AccountDb, BoxId),
     OwnerId = kzd_voicemail_box:owner_id(BoxJObj),
@@ -68,15 +72,15 @@ extended_presence_id(AccountId, BoxJObj) ->
     end.
 
 -spec unsolicited_owner_mwi_update(kz_term:api_binary(), kz_term:api_binary()) ->
-                                          'ok' |
-                                          kz_datamgr:data_error().
+          'ok' |
+          kz_datamgr:data_error().
 unsolicited_owner_mwi_update('undefined', _) ->
     lager:warning("unsolicited owner mwi update for undefined Account");
 unsolicited_owner_mwi_update(_, 'undefined') ->
     lager:warning("unsolicited owner mwi update for undefined owner_id");
 unsolicited_owner_mwi_update(Account, OwnerId) ->
-    AccountId = kz_util:format_account_id(Account),
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountId = kzs_util:format_account_id(Account),
+    AccountDb = kzs_util:format_account_db(AccountId),
     MWIUpdate = is_unsolicited_mwi_enabled(AccountId),
     unsolicited_owner_mwi_update(AccountDb, OwnerId, MWIUpdate).
 
@@ -90,7 +94,7 @@ unsolicited_owner_mwi_update(AccountDb, OwnerId, 'true') ->
     case kz_datamgr:get_results(AccountDb, <<"attributes/owned">>, ViewOptions) of
         {'ok', JObjs} ->
             {New, Saved} = vm_count_by_owner(AccountDb, OwnerId),
-            AccountId = kz_util:format_account_id(AccountDb, 'raw'),
+            AccountId = kzs_util:format_account_id(AccountDb),
             lists:foreach(fun(JObj) -> maybe_send_unsolicited_mwi_update(JObj, AccountId, New, Saved) end
                          ,JObjs
                          ),
@@ -121,8 +125,8 @@ unsolicited_endpoint_mwi_update('undefined', _) ->
 unsolicited_endpoint_mwi_update(_, 'undefined') ->
     lager:warning("unsolicited endpoint mwi update for undefined EndpointId");
 unsolicited_endpoint_mwi_update(Account, EndpointId) ->
-    AccountId = kz_util:format_account_id(Account),
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountId = kzs_util:format_account_id(Account),
+    AccountDb = kzs_util:format_account_db(AccountId),
     MWIUpdate = is_unsolicited_mwi_enabled(AccountId),
     unsolicited_endpoint_mwi_update(AccountDb, EndpointId, MWIUpdate).
 
@@ -143,7 +147,7 @@ maybe_send_endpoint_mwi_update(AccountDb, JObj) ->
 maybe_send_endpoint_mwi_update(_AccountDb, _JObj, 'false') ->
     lager:debug("unsolicited mwi updates disabled for ~s/~s", [_AccountDb, kz_doc:id(_JObj)]);
 maybe_send_endpoint_mwi_update(AccountDb, JObj, 'true') ->
-    AccountId = kz_util:format_account_id(AccountDb, 'raw'),
+    AccountId = kzs_util:format_account_id(AccountDb),
     Username = kzd_devices:sip_username(JObj),
     Realm = kz_endpoint:get_sip_realm(JObj, AccountId),
     OwnerId = get_endpoint_owner(JObj),

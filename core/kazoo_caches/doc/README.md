@@ -11,7 +11,7 @@ This is heavily used to cache document lookups from CouchDB but is generally use
 When stored with `{'expires', timeout()}` where `timeout()` is in seconds or `'infinity'`, the cache entry will stay in the cache until after `timeout()` seconds have elapsed.
 
 !!! note
-The cache will check for expired entries, by default, based on the `EXPIRE_PERIOD_MS` macro in [the header](../src/kz_caches.hrl). Caches can be started with alternate expiration timeouts. Lower timeouts mean more work being done to expire caches but entries are evicted closer to the expected timeout; higher timeouts mean less work but an expired cache entry may exist after expiration.
+    The cache will check for expired entries, by default, based on the `EXPIRE_PERIOD_MS` macro in [the header](https://github.com/2600hz/kazoo/blob/master/core/kazoo_caches/src/kz_caches.hrl). Caches can be started with alternate expiration timeouts. Lower timeouts mean more work being done to expire caches but entries are evicted closer to the expected timeout; higher timeouts mean less work but an expired cache entry may exist after expiration.
 
 ### Self-flushing
 
@@ -84,6 +84,10 @@ AMQP listener for document changes, if configured
 ### `kz_cache_callbacks`
 
 Callbacks processor module
+
+### `kz_cache_processes`
+
+If a cache entry is stored with `{'monitor', 'true'}` or `{'monitor', [pid()]}`, `kz_cache_process` will monitor the PID(s) and remove cache entries if the PID(s) die.
 
 ## ETS architecture
 

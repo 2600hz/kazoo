@@ -1,8 +1,13 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc
 %%% @author Peter Defebvre
 %%% @author Pierre Fenoll
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cf_move).
@@ -69,8 +74,8 @@ clean_channels_fold(JObj, Dict) ->
                ).
 
 -spec filter_channels(dict:dict(), kapps_call:call()) ->
-                             {'ok', kz_json:object()} |
-                             {'error', no_channel | too_many_channels}.
+          {'ok', kz_json:object()} |
+          {'error', no_channel | too_many_channels}.
 filter_channels(Channels, Call) ->
     CallId = kapps_call:call_id(Call),
     case dict:to_list(dict:erase(CallId, Channels)) of

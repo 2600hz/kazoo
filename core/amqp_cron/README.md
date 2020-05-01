@@ -1,21 +1,23 @@
-This is port of [https://github.com/jeraymond/leader_cron](leader cron) to use `amqp_leader` instead of `gen_leader`.
+This is port of [leader cron](https://github.com/jeraymond/leader_cron) to use `amqp_leader` instead of `gen_leader`.
 
 # amqp_cron
 
 amqp_cron provides a distributed task scheduler for executing task
 periodically in an Erlang cluster
 
-Participating members of the cluster elect a leader node. The leader node
-schedules and executes given tasks as per their schedules. Should the leader
-node become unavailable a new leader is elected who resumes task execution
-responsibilities.
+Participating members of the cluster elect a leader node. The leader
+node schedules and executes given tasks as per their schedules. Should
+the leader node become unavailable a new leader is elected who resumes
+task execution responsibilities.
 
-Tasks are defined by specifying a function in a particular module with given
-arguments to run according to a schedule. The schedule types are:
+Tasks are defined by specifying a function in a particular module with
+given arguments to run according to a schedule. The schedule types
+are:
 
-* sleeper - sleep a specified number of milliseconds between task executions
-* one shot - execute task once at a given date and time or after a number of
-milliseconds
+* sleeper - sleep a specified number of milliseconds between task
+  executions
+* one shot - execute task once at a given date and time or after a
+number of milliseconds
 * cron - define a schedule very similar to Unix cron
 
 ## Usage

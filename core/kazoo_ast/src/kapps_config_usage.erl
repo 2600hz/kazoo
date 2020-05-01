@@ -1,7 +1,11 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2015-2019, 2600Hz
+%%% @copyright (C) 2015-2020, 2600Hz
 %%% @doc Generate schema for Account and System configurations.
 %%% @author James Aimonetti
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kapps_config_usage).
@@ -36,7 +40,9 @@
 to_schema_docs() ->
     kz_json:foreach(fun update_schema/1, process_project()).
 
--spec to_schema_docs(atom()) -> 'ok'.
+-spec to_schema_docs(atom() | [atom()]) -> 'ok'.
+to_schema_docs(Modules) when is_list(Modules) ->
+    kz_json:foreach(fun update_schema/1, process_modules(Modules));
 to_schema_docs(App) ->
     kz_json:foreach(fun update_schema/1, process_app(App)).
 
@@ -146,6 +152,19 @@ process_app(App) ->
     #{'project_schemas' := Usage} = kazoo_ast:walk_app(App, Options),
     Usage.
 
+-spec process_modules([atom()]) -> kz_json:object().
+process_modules(Modules) when is_list(Modules) ->
+    io:format("processing kapps_config/kapps_account_config usage: "),
+    Options = [{'expression', fun expression_to_schema/2}
+              ,{'module', fun print_dot/2}
+              ,{'accumulator', new_acc()}
+              ,{'application', fun add_app_config/2}
+              ,{'after_application', fun add_schemas_to_bucket/2}
+              ],
+    #{'project_schemas' := Usage} = kazoo_ast:walk_modules(Modules, Options),
+    io:format(" done~n"),
+    Usage.
+
 print_dot('pqc_cb_system_configs', Acc) ->
     {'skip', Acc};
 print_dot(_Module, Acc) ->
@@ -180,7 +199,7 @@ add_schemas_to_bucket(_App, #{schema_dir := PrivDir
                              }=Acc) ->
     ProjectSchema = kz_json:get_json_value(PrivDir, ProjectSchemas, kz_json:new()),
 
-    ?DEBUG("merging dir ~s / app ~p into proj ~p~n", [PrivDir, AppSchemas, ProjectSchema]),
+    ?DEBUG("merging dir ~s~napp: ~p~nproj: ~p~n", [PrivDir, AppSchemas, ProjectSchema]),
 
     UpdatedSchema = kz_json:merge(ProjectSchema, AppSchemas),
     ?DEBUG("merged: ~p~n", [UpdatedSchema]),
@@ -267,7 +286,7 @@ config_key_to_schema(Source, F, Document, Key, Default, #{app_schemas := Schemas
     Properties = guess_properties(Document, Source, Key, guess_type(F, Default), Default),
     Path = [Document, ?FIELD_PROPERTIES | Key],
 
-    ?DEBUG("setting ~s from source ~s~n", [Path, Source]),
+    ?DEBUG("setting '~s' from source ~s~n", [kz_binary:join(Path), Source]),
     Acc#{app_schemas => kz_json:set_value(Path, Properties, Schemas)}.
 
 category_to_document(?VAR(_)) -> 'undefined';
@@ -305,7 +324,8 @@ key_to_key_path(?LIST(Head, Tail)) ->
 key_to_key_path(?BINARY_MATCH(K)) ->
     try [kz_ast_util:binary_match_to_binary(K)]
     catch 'error':'function_clause' -> 'undefined'
-    end.
+    end;
+key_to_key_path(_) -> undefined.
 
 guess_type('get_list', Default) -> guess_type_by_default(Default);
 guess_type('is_true', _) -> <<"boolean">>;
@@ -333,8 +353,12 @@ guess_type('get_hierarchy', Default) -> guess_type_by_default(Default);
 guess_type('get_with_strategy', Default) -> guess_type_by_default(Default);
 guess_type('set_default', _) -> 'undefined';
 guess_type('set', Default) -> guess_type_by_default(Default);
-guess_type('set_string', _) -> <<"string">>;
+guess_type('set_boolean', _) -> <<"boolean">>;
+guess_type('set_float', _) -> <<"float">>;
+guess_type('set_integer', _) -> <<"integer">>;
+guess_type('set_json', _) -> <<"object">>;
 guess_type('set_node', Default) -> guess_type_by_default(Default);
+guess_type('set_string', _) -> <<"string">>;
 guess_type('update_default', Default) -> guess_type_by_default(Default).
 
 guess_type_by_default('undefined') -> 'undefined';

@@ -10,7 +10,24 @@
     "language": "javascript",
     "views": {
         "available": {
-            "map": "function(doc) {if (doc.pvt_type != 'alert' || doc.pvt_deleted) return;doc.to.forEach(function(to) {emit([to.type, to.value], {id: doc._id,title: doc.title,message: doc.message,category: doc.category,level: doc.level,metadata: doc.metadata,from: doc.from,expiration_date: doc.expiration_date,created: doc.pvt_created});});}"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'alert' || doc.pvt_deleted) return;",
+                "  doc.to.forEach(function(to) {",
+                "    emit([to.type, to.value], {",
+                "      id: doc._id,",
+                "      title: doc.title,",
+                "      message: doc.message,",
+                "      category: doc.category,",
+                "      level: doc.level,",
+                "      metadata: doc.metadata,",
+                "      from: doc.from,",
+                "      expiration_date: doc.expiration_date,",
+                "      created: doc.pvt_created",
+                "    });",
+                "  });",
+                "}"
+            ]
         }
     }
 }

@@ -1,8 +1,13 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Handle client requests for local resource documents
 %%% @author Karl Anderson
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cb_resource_templates).
@@ -83,7 +88,11 @@ validate(Context) ->
 
 -spec validate_resource_templates(http_method(), cb_context:context()) -> cb_context:context().
 validate_resource_templates(?HTTP_GET, Context) ->
-    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2);
+    %% setting db here to make note that the db could be different account id
+    Options = [{'databases', [cb_context:db_name(Context)]}
+              ,{'mapper', crossbar_view:get_value_fun()}
+              ],
+    crossbar_view:load(Context, ?CB_LIST, Options);
 validate_resource_templates(?HTTP_PUT, Context) ->
     case is_allowed_to_update(Context) of
         'true' -> validate_request('undefined', Context);
@@ -147,8 +156,8 @@ reseller_template_database(Context) ->
     case kz_services_reseller:get_id(cb_context:account_id(Context)) of
         'undefined' -> Context;
         ResellerId ->
-            ResellerDb = kz_util:format_account_id(ResellerId, 'encoded'),
-            cb_context:set_account_db(Context, ResellerDb)
+            ResellerDb = kzs_util:format_account_db(ResellerId),
+            cb_context:set_db_name(Context, ResellerDb)
     end.
 
 -spec local_template_database(cb_context:context()) -> cb_context:context().
@@ -157,8 +166,8 @@ local_template_database(Context) ->
     case kz_services_reseller:is_reseller(AccountId) of
         'false' -> reseller_template_database(Context);
         'true' ->
-            AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
-            cb_context:set_account_db(Context, AccountDb)
+            AccountDb = kzs_util:format_account_db(AccountId),
+            cb_context:set_db_name(Context, AccountDb)
     end.
 
 %%------------------------------------------------------------------------------
@@ -168,8 +177,8 @@ local_template_database(Context) ->
 -spec is_allowed_to_update(cb_context:context()) -> boolean().
 is_allowed_to_update(Context) ->
     AccountId = cb_context:auth_account_id(Context),
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
-    cb_context:account_db(Context) =:= AccountDb.
+    AccountDb = kzs_util:format_account_db(AccountId),
+    cb_context:db_name(Context) =:= AccountDb.
 
 -spec forbidden(cb_context:context()) -> cb_context:context().
 forbidden(Context) ->
@@ -227,11 +236,3 @@ merge(Context) ->
     ReqData = kz_doc:public_fields(cb_context:req_data(Context)),
     Doc = kz_doc:private_fields(cb_context:doc(Context)),
     cb_context:set_doc(Context, kz_json:merge_jobjs(Doc, ReqData)).
-
-%%------------------------------------------------------------------------------
-%% @doc Normalizes the results of a view.
-%% @end
-%%------------------------------------------------------------------------------
--spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
-normalize_view_results(JObj, Acc) ->
-    [kz_json:get_value(<<"value">>, JObj)|Acc].

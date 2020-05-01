@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc Handlers for various AMQP payloads
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(spyvsspy_handlers).
@@ -26,8 +31,8 @@ handle_eavesdrop_req(JObj, _Props) ->
     end.
 
 -spec get_endpoints(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                           {'ok', kz_json:objects()} |
-                           {'error', any()}.
+          {'ok', kz_json:objects()} |
+          {'error', any()}.
 get_endpoints(AccountId, EndpointId) ->
     kz_endpoint:build(EndpointId, new_call(AccountId)).
 
@@ -36,7 +41,7 @@ new_call(AccountId) ->
     kapps_call:from_json(
       kz_json:from_list(
         [{<<"Account-ID">>, AccountId}
-        ,{<<"Account-DB">>, kz_util:format_account_id(AccountId, 'encoded')}
+        ,{<<"Account-DB">>, kzs_util:format_account_db(AccountId)}
         ,{<<"Resource-Type">>, ?RESOURCE_TYPE_AUDIO}
         ]
        )
@@ -140,14 +145,14 @@ send_originate_execute(JObj, Q) ->
     kapi_dialplan:publish_originate_execute(kz_json:get_value(<<"Server-ID">>, JObj), Prop).
 
 -spec find_caller_id(kz_json:object()) ->
-                            {kz_term:ne_binary(), kz_term:api_binary()}.
+          {kz_term:ne_binary(), kz_term:api_binary()}.
 find_caller_id(JObj) ->
     find_caller_id(JObj, [{<<"Outbound-Caller-ID-Name">>, <<"Outbound-Caller-ID-Number">>}
                          ,{<<"Caller-ID-Name">>, <<"Caller-ID-Number">>}
                          ]).
 
 -spec find_caller_id(kz_json:object(), kz_term:proplist()) ->
-                            {kz_term:ne_binary(), kz_term:api_binary()}.
+          {kz_term:ne_binary(), kz_term:api_binary()}.
 find_caller_id(_JObj, []) -> {<<"SpyVsSpy">>, <<"01010101">>};
 find_caller_id(JObj, [{KName, KNum}|Ks]) ->
     case kz_json:get_value(KName, JObj) of

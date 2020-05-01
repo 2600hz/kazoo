@@ -23,17 +23,17 @@
 
 ####Add PIN
 
-      curl -X PUT -H X-Auth-Token:{AUTH_TOKEN} https://{SERVER}:8443/v1/accounts/{ACCOUNT_ID}/cccps -d '{"data":{"pin":"150674729083", "user_id":"e6da57c768533ebf0d349845394ccf26", "active":true, "cid_retain": false}}'
+      curl -X PUT -H X-Auth-Token:{AUTH_TOKEN} https://{SERVER}:8443/v2/accounts/{ACCOUNT_ID}/cccps -d '{"data":{"pin":"150674729083", "user_id":"e6da57c768533ebf0d349845394ccf26", "active":true, "cid_retain": false}}'
 
 ####Add CID
 
-      curl -X PUT -H X-Auth-Token:{AUTH_TOKEN} https://{SERVER}:8443/v1/accounts/{ACCOUNT_ID}/cccps -d '{"data":{"cid":"78121234567", "user_id":"e6da57c768533ebf0d349845394ccf26", "active":true, "cid_retain": true}}'
+      curl -X PUT -H X-Auth-Token:{AUTH_TOKEN} https://{SERVER}:8443/v2/accounts/{ACCOUNT_ID}/cccps -d '{"data":{"cid":"78121234567", "user_id":"e6da57c768533ebf0d349845394ccf26", "active":true, "cid_retain": true}}'
 
 ####Delete CID/PIN
 
-      curl -X DELETE -H X-Auth-Token:{AUTH_TOKEN} https://{SERVER}:8443/v1/accounts/{ACCOUNT_ID}/cccps/{DOC_ID} 
+      curl -X DELETE -H X-Auth-Token:{AUTH_TOKEN} https://{SERVER}:8443/v2/accounts/{ACCOUNT_ID}/cccps/{DOC_ID} 
 
 ####Call initiation over API:
 
-      curl -X PUT -H X-Auth-Token:{AUTH_TOKEN} https://{SERVER}:8443/v1/accounts/{ACCOUNT_ID}/cccps/autodial -d '{"data": { "a_leg_number": "1234567", "b_leg_number": "5579", "callback_delay": 10, "cid_retain": true, "media_id": "74c3e22b5dd9ff473de4ba2aea4e4183"}}'
-      curl -X PUT -H X-Auth-Token:{AUTH_TOKEN} https://{SERVER}:8443/v1/accounts/{ACCOUNT_ID}/cccps/autodial -d '{"data": { "a_leg_number": "1234567", "b_leg_number": "{CONFERENCE_ID}", "media_id": "74c3e22b5dd9ff473de4ba2aea4e4183"}}'
+      curl -X PUT -H X-Auth-Token:{AUTH_TOKEN} https://{SERVER}:8443/v2/accounts/{ACCOUNT_ID}/cccps/autodial -d '{"data": { "a_leg_number": "1234567", "b_leg_number": "5579", "callback_delay": 10, "cid_retain": true, "media_id": "74c3e22b5dd9ff473de4ba2aea4e4183"}}'
+      curl -X PUT -H X-Auth-Token:{AUTH_TOKEN} https://{SERVER}:8443/v2/accounts/{ACCOUNT_ID}/cccps/autodial -d '{"data": { "a_leg_number": "1234567", "b_leg_number": "{CONFERENCE_ID}", "media_id": "74c3e22b5dd9ff473de4ba2aea4e4183"}}'

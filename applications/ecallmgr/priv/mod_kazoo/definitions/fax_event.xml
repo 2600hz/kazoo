@@ -1,0 +1,12 @@
+<definition name="fax_event">
+	<field name="call_event_headers" type="reference" />
+	<field name="Event-Name" type="static" value="CHANNEL_FAX_STATUS" />
+	<field name="Application-Data" type="static" serialize-as="object">
+		<fields verbose="false">
+			<field name="fax_data" type="reference" />
+		</fields>
+	</field>
+	<field name="user-agent" as="reference" />
+	<field name="Custom-Channel-Vars" type="reference" />
+	<field name="Custom-Application-Vars" type="reference" />
+</definition>

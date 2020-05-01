@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2017-2019, 2600Hz
+%%% @copyright (C) 2017-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kapps_notify_publisher).
@@ -19,11 +23,12 @@
 -define(DEFAULT_TIMEOUT, 30 * ?MILLISECONDS_IN_SECOND).
 -define(TIMEOUT, kapps_config:get_pos_integer(?NOTIFY_CAT, <<"notify_publisher_timeout_ms">>, ?DEFAULT_TIMEOUT)).
 
--define(DEFAULT_PUBLISHER_ENABLED,
-        kapps_config:get_is_true(?NOTIFY_CAT, <<"notify_persist_enabled">>, true)
+-define(DEFAULT_PUBLISHER_ENABLED
+       ,kapps_config:get_is_true(?NOTIFY_CAT, <<"notify_persist_enabled">>, 'true')
        ).
--define(ACCOUNT_SHOULD_PERSIST(AccountId),
-        kapps_account_config:get_global(AccountId, ?NOTIFY_CAT, <<"should_persist_for_retry">>, true)
+
+-define(ACCOUNT_SHOULD_PERSIST(AccountId)
+       ,kapps_account_config:get_global(AccountId, ?NOTIFY_CAT, <<"should_persist_for_retry">>, 'true')
        ).
 
 -define(DEFAULT_TYPE_EXCEPTION, [<<"system_alert">>
@@ -31,15 +36,17 @@
                                 ,<<"register">>
                                 ,<<"webhook">>
                                 ]).
--define(GLOBAL_FORCE_NOTIFY_TYPE_EXCEPTION,
-        kapps_config:get_ne_binaries(?NOTIFY_CAT, <<"notify_persist_temporary_force_exceptions">>, [])
-       ).
--define(NOTIFY_TYPE_EXCEPTION(AccountId),
-        kapps_account_config:get_global(AccountId, ?NOTIFY_CAT, <<"notify_persist_exceptions">>, ?DEFAULT_TYPE_EXCEPTION)
+-define(GLOBAL_FORCE_NOTIFY_TYPE_EXCEPTION
+       ,kapps_config:get_ne_binaries(?NOTIFY_CAT, <<"notify_persist_temporary_force_exceptions">>, [])
        ).
 
--define(DEFAULT_RETRY_PERIOD,
-        kapps_config:get_integer(<<"tasks.notify_resend">>, <<"retry_after_fudge_s">>, 10 * ?SECONDS_IN_MINUTE)).
+-define(NOTIFY_TYPE_EXCEPTION(AccountId)
+       ,kapps_account_config:get_global(AccountId, ?NOTIFY_CAT, <<"notify_persist_exceptions">>, ?DEFAULT_TYPE_EXCEPTION)
+       ).
+
+-define(DEFAULT_RETRY_PERIOD
+       ,kapps_config:get_integer(<<"tasks.notify_resend">>, <<"retry_after_fudge_s">>, 10 * ?SECONDS_IN_MINUTE)
+       ).
 
 -type failure_reason() :: {kz_term:ne_binary(), kz_term:api_object()}.
 
@@ -63,11 +70,11 @@ call_collect(Req, PublishFun) ->
 %%------------------------------------------------------------------------------
 -spec cast(kz_term:api_terms(), kz_amqp_worker:publish_fun()) -> 'ok'.
 cast(Req, PublishFun) ->
-    CallId = kz_util:get_callid(),
+    CallId = kz_log:get_callid(),
     Fun = fun() ->
                   _ = case kz_term:is_ne_binary(CallId) of
-                          'true' -> kz_util:put_callid(CallId);
-                          'false' -> kz_util:put_callid(Req)
+                          'true' -> kz_log:put_callid(CallId);
+                          'false' -> kz_log:put_callid(Req)
                       end,
                   call_collect(Req, PublishFun)
           end,
@@ -134,7 +141,7 @@ maybe_handle_error(NotifyType, Req, Reason) ->
 %%------------------------------------------------------------------------------
 -spec handle_error(kz_term:ne_binary(), kz_term:api_terms(), failure_reason()) -> 'ok'.
 handle_error(NotifyType, Req, {Reason, Metadata}) ->
-    lager:warning("failed to publish notification ~s: ~p  , saving the payload...", [NotifyType, Reason]),
+    lager:warning("failed to publish notification '~s': ~p, saving the payload...", [NotifyType, Reason]),
     Props = props:filter_undefined(
               [{<<"description">>, <<"failed to publish notification">>}
               ,{<<"failure_reason">>, Reason}
@@ -315,12 +322,12 @@ cast_to_binary(Error) ->
 -spec notify_type(kz_amqp_worker:publish_fun() | kz_term:ne_binary()) -> kz_term:api_ne_binary().
 notify_type(<<"publish_", NotifyType/binary>>) ->
     NotifyType;
-notify_type(NotifyType) when is_binary(NotifyType) ->
+notify_type(<<NotifyType/binary>>) ->
     lager:error("unknown notification publish function ~s", [NotifyType]),
     'undefined';
 notify_type(PublishFun) ->
     case catch erlang:fun_info_mfa(PublishFun) of
-        {kapi_notifications, Fun, 1} -> notify_type(cast_to_binary(Fun));
+        {'kapi_notifications', Fun, 1} -> notify_type(cast_to_binary(Fun));
         _Other ->
             lager:error("unknown notification publish function: ~p", [_Other]),
             'undefined'

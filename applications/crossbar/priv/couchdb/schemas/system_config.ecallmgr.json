@@ -18,6 +18,11 @@
             "description": "ecallmgr acls",
             "type": "object"
         },
+        "allow_endless_recording": {
+            "default": false,
+            "description": "ecallmgr allow_endless_recording",
+            "type": "boolean"
+        },
         "authz_default_action": {
             "default": "deny",
             "description": "ecallmgr authz default action",
@@ -56,6 +61,40 @@
         "balance_crawler_interaccount_delay_ms": {
             "default": 10,
             "description": "ecallmgr balance crawler interaccount delay in milliseconds",
+            "type": "integer"
+        },
+        "call_control": {
+            "properties": {
+                "pool_overflow": {
+                    "default": 100,
+                    "description": "ecallmgr call_control pool_overflow",
+                    "type": "integer"
+                },
+                "pool_server_confirms": {
+                    "default": false,
+                    "description": "ecallmgr call_control pool_server_confirms",
+                    "type": "boolean"
+                },
+                "pool_size": {
+                    "default": 150,
+                    "description": "ecallmgr call_control pool_size",
+                    "type": "integer"
+                },
+                "pool_threshold": {
+                    "default": 5,
+                    "description": "ecallmgr call_control pool_threshold",
+                    "type": "integer"
+                },
+                "use_pool": {
+                    "default": false,
+                    "description": "ecallmgr call_control use_pool",
+                    "type": "boolean"
+                }
+            }
+        },
+        "call_control_listeners": {
+            "default": 5,
+            "description": "ecallmgr call_control_listeners",
             "type": "integer"
         },
         "call_routing_bindings": {
@@ -367,6 +406,11 @@
             "description": "ecallmgr redirect via proxy",
             "type": "boolean"
         },
+        "restrict_channel_event_publisher": {
+            "default": true,
+            "description": "ecallmgr restrict_channel_event_publisher",
+            "type": "boolean"
+        },
         "restrict_channel_state_publisher": {
             "default": false,
             "description": "ecallmgr restrict channel state publisher",
@@ -383,6 +427,7 @@
             "type": "boolean"
         },
         "sofia_conf": {
+            "default": false,
             "description": "ecallmgr sofia conf",
             "type": "boolean"
         },

@@ -3,10 +3,6 @@
     "_id": "system_config.provisioner",
     "description": "Schema for provisioner system_config",
     "properties": {
-        "cluster_id": {
-            "description": "provisioner cluster id",
-            "type": "string"
-        },
         "combo_keys": {
             "default": {
                 "cisco": {

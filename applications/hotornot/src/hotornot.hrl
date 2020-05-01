@@ -13,7 +13,10 @@
 
 -type trunking_options() :: kz_term:ne_binaries().
 -type prefix() :: string().
--type match_return() :: {'error', any()} |
+-type match_error() :: {'rebuilding', pid()} |
+                       'not_found' |
+                       'no_trie'.
+-type match_return() :: {'error', match_error()} |
                         {'ok', {prefix(), kz_term:ne_binaries()}}.
 
 -define(HOTORNOT_HRL, 'true').

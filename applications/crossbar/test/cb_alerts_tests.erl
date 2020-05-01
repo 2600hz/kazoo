@@ -1,8 +1,19 @@
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2020, 2600Hz
+%%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
+%%% @end
+%%%-----------------------------------------------------------------------------
 -module(cb_alerts_tests).
 
 -include_lib("eunit/include/eunit.hrl").
--include_lib("kazoo_number_manager/include/knm_port_request.hrl"). %% PORT_SUSPENDED
--include_lib("kazoo_stdlib/include/kz_types.hrl"). %% SECONDS_IN_DAY
+%% PORT_SUSPENDED_STATES, PORT_SUSPENDED, PORT_REJECTED
+-include_lib("kazoo_numbers/include/knm_port_request.hrl").
+%% SECONDS_IN_DAY
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
 
 %%%=======================================================================================
 %%% Tests generator
@@ -14,9 +25,11 @@
 %%--------------------------------------------------------------------
 -spec cb_alerts_test_() -> [{string(), boolean()}].
 cb_alerts_test_() ->
-    check_port_requests()
-        ++ check_low_balance()
-        ++ check_payment_token().
+    [{"Check port requests", do_check_port_requests()}
+    ,{"Check no plans financials", check_no_plans_financials()}
+    ,{"Check low balance", check_low_balance()}
+    ,{"Check payment token", check_payment_token()}
+    ].
 
 %%%=======================================================================================
 %%% Tests
@@ -26,44 +39,33 @@ cb_alerts_test_() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec check_port_requests() -> [{string(), boolean()}].
-check_port_requests() ->
-    Mod = 'knm_port_request',
-    ToMeck = ['kz_services_reseller', Mod],
-    _ = lists:foreach(fun(M) -> meck:new(M, [passthrough]) end, ToMeck),
-    meck:expect('kz_services_reseller', 'is_reseller', fun(_) -> 'false' end),
-
+-spec do_check_port_requests() -> [{string(), boolean()}].
+do_check_port_requests() ->
     Context = cb_context:set_resp_data(cb_context:new(), []),
-    {'ok', ActivePorts} = AccountActivePorts = account_active_ports(),
+    {'ok', ActivePorts} = account_active_and_unconfirmed_ports(),
 
     %% 1 submitted, 1 unconfirmed, and 1 rejected.
-    meck:expect(Mod, 'account_active_ports', fun(_) -> AccountActivePorts end),
-    Context1 = cb_alerts:check_port_requests(Context),
-    [Alert1, Alert2] = cb_context:resp_data(Context1),
+    Context1 = cb_alerts:do_check_port_requests(ActivePorts, Context),
+    Resp = cb_context:resp_data(Context1),
+    [Alert1, Alert2] = Resp,
 
     %% All ports (3) have last comment with `action_required=true' within the last comment
     %% and also there is 1 rejected and 1 unconfirmed.
     PortsWithComments = [add_comments(Port) || Port <- ActivePorts],
-    meck:expect(Mod, 'account_active_ports', fun(_) -> {'ok', PortsWithComments} end),
-    Context2 = cb_alerts:check_port_requests(Context),
+    Context2 = cb_alerts:do_check_port_requests(PortsWithComments, Context),
 
     %% Only 1 port with `action_required=true' within the last comment
     Port = add_comments(example_port_request()),
     %% Same as Port but last comment doesn't have `action_required=true'
     Port1 = swap_comments(Port),
-    meck:expect(Mod, 'account_active_ports', fun(_) -> {'ok', [Port, Port1]} end),
-    Context3 = cb_alerts:check_port_requests(Context),
+    Context3 = cb_alerts:do_check_port_requests([Port, Port1], Context),
     [Alert3] = cb_context:resp_data(Context3),
 
     %% Not active ports found.
-    meck:expect(Mod, 'account_active_ports', fun(_) -> {'error', 'not_found'} end),
-    Context4 = cb_alerts:check_port_requests(Context),
+    Context4 = cb_alerts:do_check_port_requests([], Context),
 
     %% Ports with state /= (unconfirmed|rejected) and no comments.
-    meck:expect(Mod, 'account_active_ports', fun(_) -> {'ok', [example_port_request()]} end),
-    Context5 = cb_alerts:check_port_requests(Context),
-
-    _ = lists:foreach(fun(M) -> meck:unload(M) end, ToMeck),
+    Context5 = cb_alerts:do_check_port_requests([example_port_request()], Context),
 
     [{"Only return ports with `last_comment`.action_required=true or state=(rejected|unconfirmed)"
      ,?_assertEqual({'true', <<"port_suspended">>},
@@ -98,6 +100,32 @@ check_port_requests() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec check_no_plans_financials() -> [{string(), boolean()}].
+check_no_plans_financials() ->
+    ToMeck = ['kz_services', 'kz_services_plans', 'kapps_util'],
+    [{'setup'
+     ,fun() -> [meck:new(M, ['passthrough']) || M <- ToMeck] end
+     ,fun(_) -> [meck:unload(Mecked) || Mecked <- ToMeck] end
+     ,fun(_) ->
+              Context = cb_context:set_resp_data(cb_context:new(), []),
+
+              %% simulate account has no plans
+              meck:expect('kapps_util', 'get_master_account_id', fun() -> kz_binary:rand_hex(16) end),
+              meck:expect('kz_services', 'fetch', fun(_) -> kz_services:empty() end),
+              meck:expect('kz_services', 'plans', fun(_) -> kz_services_plans:empty() end),
+
+              ContextNoPlans = cb_alerts:maybe_check_financials(Context),
+
+              [{"No service plans, no financial alerts"
+               ,?_assertEqual(ContextNoPlans, Context)
+               }
+              ,{"Validate mecked modules"
+               ,?_assert(lists:all(fun(Mecked) -> meck:validate(Mecked) end, ToMeck))
+               }
+              ]
+      end
+     }].
+
 -spec check_low_balance() -> [{string(), boolean()}].
 check_low_balance() ->
     Context = cb_context:set_resp_data(cb_context:new(), []),
@@ -106,10 +134,11 @@ check_low_balance() ->
     ThresholdNotConfigured = 0,
     PostPayAmountUnits = 20, %% expressed in units
     PostPayAmountUSD = kz_currency:units_to_dollars(PostPayAmountUnits),
+
     Mod = 'kz_currency',
     ToMeck = [Mod, 'kzd_accounts', 'kz_services_limits'],
-
     lists:foreach(fun(M) -> meck:new(M, ['passthrough']) end, ToMeck),
+
     meck:expect(Mod, 'available_dollars', fun(_) -> {'error', 'reason'} end),
     %% Limits with postpay disabled.
     meck:expect('kz_services_limits', 'fetch', fun(_) -> limits() end),
@@ -176,7 +205,7 @@ check_low_balance() ->
     meck:expect(Mod, 'available_dollars', fun(_) -> {'ok', ThresholdUSD + 1.0} end),
     Context11 = cb_alerts:check_low_balance(Context),
 
-    %% Unload mecked modules
+    MeckValidate = lists:all(fun(Mecked) -> meck:validate(Mecked) end, ToMeck),
     lists:foreach(fun(M) -> meck:unload(M) end, ToMeck),
 
     [{"If getting account's current balance fails the context should not change"
@@ -232,6 +261,9 @@ check_low_balance() ->
     ,{"If threshold configured and current balance > threshold the context should not change"
      ,?_assertEqual(Context11, Context)
      }
+    ,{"Validate mecked modules"
+     ,?_assert(MeckValidate)
+     }
     ].
 
 %%--------------------------------------------------------------------
@@ -242,27 +274,12 @@ check_low_balance() ->
 check_payment_token() ->
     Context = cb_context:set_resp_data(cb_context:new(), []),
     Mod = 'kz_services_payment_tokens',
-    ToMeck = ['kz_services', 'kz_services_plans', Mod],
+    ToMeck = [Mod, 'kz_services', 'kapps_util'],
     lists:foreach(fun(M) -> meck:new(M, ['passthrough']) end, ToMeck),
-    %%lists:foreach(fun(M) -> meck:new(M) end, ToMeck),
 
-    %% Test doesn't need these results, it is defined just to avoid these functions to
-    %% lookup for real data and make the test fail.
-    meck:expect('kz_services', 'fetch', fun(_) -> 'anything' end),
-    meck:expect('kz_services', 'plans', fun(_) -> 'anything' end),
-
-    %% Account does not have service plans assigned.
-    meck:expect('kz_services_plans', 'is_empty', fun(_) -> 'true' end),
-    Context1 = cb_alerts:check_payment_token(Context),
-
-    %% Account doesn't have service plans assigned and also it has 2 default payment
-    %% tokens not expired nor about to expire.
-    Defaults = [payment_token(), payment_token()],
-    meck:expect(Mod, 'defaults', fun(_) -> default_payment_tokens(Defaults) end),
-    Context2 = cb_alerts:check_payment_token(Context),
-
-    %% Account has service plans assigned.
-    meck:expect('kz_services_plans', 'is_empty', fun(_) -> 'false' end),
+    %% simulate account has no plans
+    meck:expect('kapps_util', 'get_master_account_id', fun() -> kz_binary:rand_hex(16) end),
+    meck:expect('kz_services', 'fetch', fun(_) -> kz_services:empty() end),
 
     %% Account has service plans assigned and doesn't have any default payment token.
     meck:expect(Mod, 'defaults', fun(_) -> default_payment_tokens([]) end),
@@ -296,16 +313,10 @@ check_payment_token() ->
     Context7 = cb_alerts:check_payment_token(Context),
     [Alert3, Alert4] = cb_context:resp_data(Context7),
 
-    %% Unload mecked modules
+    MeckValidate = lists:all(fun(Mecked) -> meck:validate(Mecked) end, ToMeck),
     lists:foreach(fun(M) -> meck:unload(M) end, ToMeck),
 
-    [{"If account does not have service plans assigned the context should not change"
-     ,?_assertEqual(Context1, Context)
-     }
-    ,{"If account doesn't have service plans assigned the context should not change"
-     ,?_assertEqual(Context2, Context)
-     }
-    ,{"If account has service plans assigned and doesn't have any default payment tokens raise an alert"
+    [{"If account has service plans assigned and doesn't have any default payment tokens raise an alert"
      ,?_assertEqual(<<"no_payment_token">>, category_from_alert(Alert))
      }
     ,{"If account has service plans assigned and default payment tokens are not "
@@ -325,6 +336,9 @@ check_payment_token() ->
      ,?_assertEqual({<<"expired_payment_token">>, <<"expired_payment_token">>},
                     {category_from_alert(Alert3), category_from_alert(Alert4)})
      }
+    ,{"Validate mecked modules"
+     ,?_assert(MeckValidate)
+     }
     ].
 
 %%%=======================================================================================
@@ -335,17 +349,27 @@ check_payment_token() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec account_active_and_unconfirmed_ports() -> {'ok', [kzd_port_requests:doc()]}.
+account_active_and_unconfirmed_ports() ->
+    {'ok', Active} = account_active_ports(),
+    {'ok', Unconfirmed} = account_unconfirmed_ports(),
+    {'ok', lists:flatten([Active, Unconfirmed])}.
+
 -spec account_active_ports() -> {'ok', [kzd_port_requests:doc()]}.
 account_active_ports() ->
-    {'ok', [example_port_request(), unconfirmed_port_request(), rejected_port_request()]}.
+    {'ok', [example_port_request(), rejected_port_request()]}.
+
+-spec account_unconfirmed_ports() -> {'ok', [kzd_port_requests:doc()]}.
+account_unconfirmed_ports() ->
+    {'ok', [unconfirmed_port_request()]}.
 
 -spec unconfirmed_port_request() -> kzd_port_requests:doc().
 unconfirmed_port_request() ->
-    kzd_port_requests:set_port_state(example_port_request(), <<"unconfirmed">>).
+    example_port_request(?PORT_UNCONFIRMED).
 
 -spec rejected_port_request() -> kzd_port_requests:doc().
 rejected_port_request() ->
-    kzd_port_requests:set_port_state(example_port_request(), <<"rejected">>).
+    example_port_request(?PORT_REJECTED).
 
 -spec swap_comments(kzd_port_requests:doc()) -> kzd_port_requests:doc().
 swap_comments(Port) ->
@@ -449,6 +473,10 @@ limits() ->
 
 -spec example_port_request() -> kzd_port_requests:doc().
 example_port_request() ->
+    example_port_request(?PORT_SUBMITTED).
+
+-spec example_port_request(binary()) -> kzd_port_requests:doc().
+example_port_request(<<_/binary>> = State) ->
     PortRequest =
         #{<<"_attachments">> =>
               #{<<"bill.pdf">> =>
@@ -475,7 +503,7 @@ example_port_request() ->
           <<"notifications">> =>
               #{<<"email">> => #{<<"send_to">> => <<"email@example.com">>}},
           <<"numbers">> => #{<<"+12345678901">> => #{<<"used_by">> => <<"callflow">>}},
-          <<"port_state">> => <<"submitted">>,
+          <<"port_state">> => State,
           <<"pvt_account_db">> => <<"port_requests">>,
           <<"pvt_account_id">> => <<"8a089c2a7e6c77be2e2e68c5c366f460">>,
           <<"pvt_alphanum_name">> => <<"testcbalerts">>,
@@ -484,7 +512,7 @@ example_port_request() ->
           <<"pvt_created">> => 63689901514,
           <<"pvt_is_authenticated">> => true,
           <<"pvt_modified">> => 63709957339,
-          <<"pvt_port_state">> => <<"submitted">>,
+          <<"pvt_port_state">> => State,
           <<"pvt_request_id">> => <<"f68d2c3658a26018e43729b214bc84c9">>,
           <<"pvt_transitions">> =>
               [#{<<"authorization">> =>
@@ -497,8 +525,8 @@ example_port_request() ->
                              <<"last_name">> => <<"Admin">>}},
                  <<"timestamp">> => 63689901515,
                  <<"transition">> =>
-                     #{<<"new">> => <<"submitted">>,
-                       <<"previous">> => <<"unconfirmed">>},
+                     #{<<"new">> => State,
+                       <<"previous">> => ?PORT_UNCONFIRMED},
                  <<"type">> => <<"transition">>},
                #{<<"authorization">> =>
                      #{<<"account">> =>
@@ -509,7 +537,7 @@ example_port_request() ->
                              <<"id">> => <<"e8701ad48ba05a91604e480dd60899a3">>,
                              <<"last_name">> => <<"Admin">>}},
                  <<"timestamp">> => 63689901514,
-                 <<"transition">> => #{<<"new">> => <<"unconfirmed">>},
+                 <<"transition">> => #{<<"new">> => ?PORT_UNCONFIRMED},
                  <<"type">> => <<"transition">>}],
           <<"pvt_tree">> => <<>>,
           <<"pvt_type">> => <<"port_request">>,

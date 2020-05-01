@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2017-2019, 2600Hz
+%%% @copyright (C) 2017-2020, 2600Hz
 %%% @doc Simple URL Storage for attachments.
 %%% @author Luis Azedo
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_att_ftp).
@@ -79,7 +84,7 @@ fetch_attachment(HandlerProps, DbName, DocId, AName) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec send_request(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                          'ok' | {'error', binary(), binary() | atom() | term()}.
+          'ok' | {'error', binary(), binary() | atom() | term()}.
 send_request(Url, Contents) ->
     case http_uri:parse(kz_term:to_list(Url)) of
         {'ok',{'ftp', UserPass, Host, Port, FullPath,_Query}} ->
@@ -88,7 +93,7 @@ send_request(Url, Contents) ->
     end.
 
 -spec send_request(string(), integer(), string(), string(), binary()) ->
-                          'ok' | {'error', binary() | atom() | term()}.
+          'ok' | {'error', binary() | atom() | term()}.
 send_request(Host, Port, UserPass, FullPath, Contents) ->
     {User, Pass} = case string:tokens(UserPass, ":") of
                        [U, P] -> {U, P};
@@ -140,7 +145,7 @@ url_fields(DocUrlField, Url) ->
     ].
 
 -spec fetch_attachment(kz_term:ne_binary()) -> {'ok', binary()} |
-                                               {'error', binary() | atom() | term()}.
+          {'error', binary() | atom() | term()}.
 fetch_attachment(Url) ->
     {_, Host, File, _, _} = kz_http_util:urlsplit(Url),
     try ftp:open(kz_term:to_list(Host)) of

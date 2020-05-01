@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(pqc_cb_search).
@@ -20,7 +25,12 @@ search_account_by_name(API, Name) ->
                     ,{<<"v">>, Name}
                     ]
                    ),
-    pqc_cb_api:make_request([200], fun kz_http:get/2, URL ++ [$? | Querystring], RequestHeaders).
+    Expectations = [#expectation{response_codes = [200]}],
+    pqc_cb_api:make_request(Expectations
+                           ,fun kz_http:get/2
+                           ,URL ++ [$? | Querystring]
+                           ,RequestHeaders
+                           ).
 
 -spec search_url(pqc_cb_api:state()) -> string().
 search_url(API) ->

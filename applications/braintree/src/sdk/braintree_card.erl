@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc
 %%% @author Karl Anderson
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(braintree_card).
@@ -123,7 +128,11 @@ update(#bt_card{token=Token}=Card) ->
 %%------------------------------------------------------------------------------
 
 -spec delete(bt_card() | binary() | string()) -> bt_card().
-delete(#bt_card{token=Token}) -> delete(Token);
+delete(#bt_card{token='undefined'}) ->
+    braintree_util:error_not_found(<<>>);
+delete(#bt_card{token=Token}=Card) ->
+    _ = delete(Token),
+    Card;
 delete(Token) ->
     _ = braintree_request:delete(url(Token)),
     #bt_card{}.
@@ -265,6 +274,14 @@ record_to_xml(#bt_card{}=Card, ToString) ->
                          Options1 = [{'verify-card', 'true'} | Options],
                          [{'options', Options1} | props:delete('options', P)]
                  end;
+            (#bt_card{verify='false'}, P) ->
+                 case props:get_value('options', P) of
+                     'undefined' ->
+                         [{'options', [{'verify-card', 'false'}]} | P];
+                     Options ->
+                         Options1 = [{'verify-card', 'false'} | Options],
+                         [{'options', Options1} | props:delete('options', P)]
+                 end;
             (_, P) -> P
          end
         ,fun(#bt_card{make_default='true'}, P) ->
@@ -297,7 +314,7 @@ json_to_record(JObj) ->
             ,billing_address_id = kz_json:get_binary_value(<<"billing_address_id">>, JObj)
             ,billing_address = braintree_address:json_to_record(kz_json:get_value(<<"billing_address">>, JObj))
             ,update_existing = kz_json:get_binary_value(<<"update_existing">>, JObj)
-            ,verify = kz_json:is_true(<<"verify">>, JObj, 'true')
+            ,verify = kz_json:is_true(<<"verify">>, JObj, 'false')
             ,make_default = kz_json:is_true(<<"make_default">>, JObj, 'true')
             ,payment_method_nonce = kz_json:get_binary_value(<<"payment_method_nonce">>, JObj)
             }.
@@ -326,6 +343,7 @@ record_to_json(#bt_card{}=Card) ->
       ,{<<"customer_id">>, Card#bt_card.customer_id}
       ,{<<"billing_address">>, braintree_address:record_to_json(Card#bt_card.billing_address)}
       ,{<<"billing_address_id">>, Card#bt_card.billing_address_id}
+      ,{<<"verify">>, Card#bt_card.verify}
       ]).
 
 -spec record_to_payment_token(bt_card()) -> kz_json:object().

@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2016-2019, 2600Hz
+%%% @copyright (C) 2016-2020, 2600Hz
 %%% @doc
 %%% @author Roman Galeev
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kapps_config_doc).
@@ -46,7 +51,7 @@ get_node(Config, Node) ->
     kzd_system_configs:node(Config, Node, kz_json:new()).
 
 -spec apply_default_values(kzd_system_configs:doc(), kz_term:ne_binary(), kzd_system_configs:doc()) ->
-                                  kzd_system_configs:doc().
+          kzd_system_configs:doc().
 apply_default_values(Config, Node, Defaults) ->
     NodeSection = get_node(Config, Node),
     DefaultSection = get_node(Config, ?DEFAULT),
@@ -66,7 +71,7 @@ apply_default_node(Config) ->
                ).
 
 -spec apply_schema_defaults(kz_term:ne_binary(), kzd_system_configs:doc()) ->
-                                   kzd_system_configs:doc().
+          kzd_system_configs:doc().
 apply_schema_defaults(Id, Config) ->
     SchemaDefaults = schema_defaults(Id),
 
@@ -78,7 +83,7 @@ apply_schema_defaults(Id, Config) ->
                ).
 
 -spec apply_schema_defaults_to_default(kz_term:ne_binary(), kzd_system_configs:doc()) ->
-                                              kzd_system_configs:doc().
+          kzd_system_configs:doc().
 apply_schema_defaults_to_default(Id, Config) ->
     SchemaDefaults = schema_defaults(Id),
     apply_default_values(Config, ?DEFAULT, SchemaDefaults).

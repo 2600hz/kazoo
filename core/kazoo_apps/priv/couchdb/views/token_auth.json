@@ -10,10 +10,18 @@
     "language": "javascript",
     "views": {
         "listing_by_ctime": {
-            "map": "function(doc) { emit(doc.created || doc.pvt_created, doc._rev); }"
+            "map": [
+                "function(doc) {",
+                "  emit(doc.created || doc.pvt_created, doc._rev);",
+                "}"
+            ]
         },
         "listing_by_mtime": {
-            "map": "function(doc) { emit(doc.modified || doc.pvt_modified, doc._rev); }"
+            "map": [
+                "function(doc) {",
+                "  emit(doc.modified || doc.pvt_modified, doc._rev);",
+                "}"
+            ]
         }
     }
 }

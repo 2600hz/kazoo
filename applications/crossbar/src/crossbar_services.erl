@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
 %%% @author Peter Defebvre
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(crossbar_services).
@@ -14,6 +19,10 @@
         ]).
 -export([reconcile/1]).
 -export([audit_log/1]).
+-export([audit_log_auth/1
+        ,audit_log_agent/1
+        ,audit_log_request/1
+        ]).
 -export([transaction_to_error/2]).
 
 -include("crossbar.hrl").
@@ -25,20 +34,27 @@
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec maybe_dry_run(cb_context:context(), billables()) -> cb_context:context().
+-spec maybe_dry_run(cb_context:context(), billables()) ->
+          {'allowed' | 'denied', cb_context:context()}.
 maybe_dry_run(Context, ProposedJObj) ->
     CurrentJObj = cb_context:fetch(Context, 'db_doc'),
     maybe_dry_run(Context, CurrentJObj, ProposedJObj).
 
--spec maybe_dry_run(cb_context:context(), billables(), billables()) -> cb_context:context().
+-spec maybe_dry_run(cb_context:context(), billables(), billables()) ->
+          {'allowed' | 'denied', cb_context:context()}.
 maybe_dry_run(Context, CurrentJObj, ProposedJObj) ->
     AccountId = cb_context:account_id(Context),
     AuthAccountId = cb_context:auth_account_id(Context),
+
+    lager:debug("verifying billing services requirements for account ~s (auth'd by ~s)"
+               ,[AccountId, AuthAccountId]
+               ),
+
     Services = kz_services:fetch(AuthAccountId),
     Updated = kz_services:set_updates(Services
                                      ,AccountId
-                                     ,CurrentJObj
-                                     ,ProposedJObj
+                                     ,kz_services:to_billables(CurrentJObj)
+                                     ,kz_services:to_billables(ProposedJObj)
                                      ),
     Quotes = kz_services_invoices:create(Updated),
     HasAdditions = kz_services_invoices:has_billable_additions(Quotes),
@@ -48,23 +64,26 @@ maybe_dry_run(Context, CurrentJObj, ProposedJObj) ->
     end.
 
 -spec dry_run(cb_context:context(), kz_services_invoices:invoices(), boolean()) ->
-                     cb_context:context().
+          {'allowed' | 'denied', cb_context:context()}.
 dry_run(Context, _Quotes, 'false') ->
-    Context;
+    lager:debug("request has no billable additions, allowing"),
+    {'allowed', Context};
 dry_run(Context, Quotes, 'true') ->
+    lager:debug("request has not accepted notice of billable additions, rejecting"),
     JObj = kz_services_invoices:public_json(Quotes),
-    crossbar_util:response_402(JObj, Context).
+    {'denied', crossbar_util:response_402(JObj, Context)}.
 
 -spec should_dry_run(cb_context:context()) -> boolean().
 should_dry_run(Context) ->
-    cb_context:accepting_charges(Context) =/= 'true'
-        andalso cb_context:api_version(Context) =/= ?VERSION_1.
+    cb_context:accepting_charges(Context) =/= 'true'.
 
 -spec check_creditably(cb_context:context(), kz_services:services(), kz_services_invoices:invoices(), boolean() | number()) ->
-                              cb_context:context().
+          {'allowed' | 'denied', cb_context:context()}.
 check_creditably(Context, _Services, _Quotes, 'false') ->
-    Context;
+    lager:debug("request has no billable additions, skipping standing check"),
+    {'allowed', Context};
 check_creditably(Context, Services, Quotes, 'true') ->
+    lager:debug("request has billable additions, verifying account standing"),
     Key = [<<"difference">>, <<"billable">>],
     Additions = [begin
                      Changes = kz_services_item:changes(Item),
@@ -76,42 +95,60 @@ check_creditably(Context, Services, Quotes, 'true') ->
                     Item <- kz_services_invoice:items(Invoice),
                     kz_services_item:has_billable_additions(Item)
                 ],
-    check_creditably(Context, Services, Quotes, lists:sum(Additions));
+    Activations = [kz_services_activation_items:calculate_total(
+                     kz_services_invoice:activation_charges(Invoice)
+                    )
+                   || Invoice <- kz_services_invoices:billable_additions(Quotes)
+                  ],
+    check_creditably(Context, Services, Quotes, lists:sum(Additions ++ Activations));
 check_creditably(Context, _Services, _Quotes, Amount) when Amount =< 0 ->
-    Context;
-check_creditably(Context, Services, _Quotes, Amount) ->
-    Options = #{amount => kz_currency:dollars_to_units(Amount)},
-    case kz_services:is_good_standing(Services, Options) of
-        {'true', _} -> Context;
+    {'allowed', Context};
+check_creditably(Context, Services, Quotes, Amount) ->
+    Options = #{amount => kz_currency:dollars_to_units(Amount)
+               ,quotes => Quotes
+               },
+    case kz_services_standing:acceptable(Services, Options) of
+        {'true', _} -> {'allowed', Context};
         {'false', Reason} ->
-            Msg = io_lib:format("account ~s does not have enough credit to perform the operation"
-                               ,[kz_services:account_id(Services)]
-                               ),
-            ErrorJObj = kz_json:from_list([{<<"message">>, kz_term:to_binary(Msg)}
-                                          ,{<<"reason">>, Reason}
-                                          ]),
-            cb_context:add_system_error(402, 'no_credit', ErrorJObj, Context)
+            ErrorJObj = kz_json:from_map(Reason),
+            lager:debug("request denied for billing reasons: ~p", [ErrorJObj]),
+            {'denied', cb_context:add_system_error(402, 'billing_issue', ErrorJObj, Context)}
     end.
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec update_subscriptions(cb_context:context(), kz_services_invoices:jobjs()) -> 'ok'.
+-spec update_subscriptions(cb_context:context()
+                          ,kz_services_quantities:billables() | kz_services_quantities:billable()
+                          ) -> 'ok'.
 update_subscriptions(Context, ProposedJObj) ->
     CurrentJObj = cb_context:fetch(Context, 'db_doc'),
     update_subscriptions(Context, CurrentJObj, ProposedJObj).
 
--spec update_subscriptions(cb_context:context(), kz_services_invoices:jobjs(), kz_services_invoices:jobjs()) -> 'ok'.
+-spec update_subscriptions(cb_context:context()
+                          ,kz_services_quantities:billables() | kz_services_quantities:billable()
+                          ,kz_services_quantities:billables() | kz_services_quantities:billable()
+                          ) -> 'ok'.
 update_subscriptions(Context, CurrentJObj, ProposedJObj) ->
     update_subscriptions(Context, CurrentJObj, ProposedJObj, cb_context:account_id(Context)).
 
+-spec update_subscriptions(cb_context:context()
+                          ,kz_services_quantities:billables() | kz_services_quantities:billable()
+                          ,kz_services_quantities:billables() | kz_services_quantities:billable()
+                          ,kz_term:api_ne_binary()
+                          ) -> 'ok'.
 update_subscriptions(_Context, _CurrentJObj, _ProposedJObj, 'undefined') ->
     lager:debug("not updating subscriptions on non-account-related change");
 update_subscriptions(Context, CurrentJObj, ProposedJObj, AccountId) ->
     AuditLog = audit_log(Context),
     lager:info("committing updates to ~s", [AccountId]),
-    kz_services:commit_updates(AccountId, CurrentJObj, ProposedJObj, AuditLog).
+    _ = kz_services:commit_updates(AccountId
+                                  ,CurrentJObj
+                                  ,ProposedJObj
+                                  ,AuditLog
+                                  ),
+    'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -147,16 +184,16 @@ audit_log_request(Context) ->
     ,{<<"path">>, cb_context:raw_path(Context)}
     ].
 
--spec audit_log_agent(cb_context:context()) -> kz_term:proplist().
+-spec audit_log_agent(cb_context:context()) -> kz_term:api_proplist().
 audit_log_agent(Context) ->
     case cb_context:auth_user_id(Context) of
         'undefined' -> 'undefined';
         UserId -> audit_log_user(Context, UserId)
     end.
 
--spec audit_log_user(cb_context:context(), kz_term:ne_binary()) -> kz_term:proplist().
+-spec audit_log_user(cb_context:context(), kz_term:ne_binary()) -> kz_term:api_proplist().
 audit_log_user(Context, UserId) ->
-    AccountDb = kz_util:format_account_db(
+    AccountDb = kzs_util:format_account_db(
                   cb_context:auth_account_id(Context)
                  ),
     case kz_datamgr:open_cache_doc(AccountDb, UserId) of
@@ -167,6 +204,7 @@ audit_log_user(Context, UserId) ->
             ,{<<"account_id">>, cb_context:auth_account_id(Context)}
             ,{<<"first_name">>, kzd_users:first_name(JObj)}
             ,{<<"last_name">>, kzd_users:last_name(JObj)}
+            ,{<<"full_name">>, kzd_users:full_name(JObj, kzd_users:username(JObj, kzd_users:email(JObj)))}
             ]
     end.
 

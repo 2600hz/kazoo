@@ -1,125 +1,240 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Media requests, responses, and errors.
 %%% @author James Aimonetti
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kapi_media).
 
 -compile({no_auto_import, [error/1]}).
 
--export([req/1, req_v/1]).
--export([resp/1, resp_v/1]).
--export([error/1, error_v/1]).
+-export([api_definitions/0, api_definition/1]).
+
+-export([req/1
+        ,req_v/1
+        ,publish_req/1
+        ,publish_req/2
+        ]).
+-export([resp/1
+        ,resp_v/1
+        ,publish_resp/2
+        ,publish_resp/3
+        ]).
+-export([error/1
+        ,error_v/1
+        ,publish_error/2
+        ,publish_error/3
+        ]).
 
 -export([bind_q/2, unbind_q/2]).
 -export([declare_exchanges/0]).
 
--export([publish_req/1, publish_req/2]).
--export([publish_resp/2, publish_resp/3]).
--export([publish_error/2, publish_error/3]).
-
 -include_lib("kz_amqp_util.hrl").
 
-%% Media Request - when streaming is needed
 -define(MEDIA_REQ_ROUTING_KEY, <<"media_req">>).
--define(MEDIA_REQ_HEADERS, [<<"Media-Name">>]).
--define(OPTIONAL_MEDIA_REQ_HEADERS, [<<"Stream-Type">>, <<"Call-ID">>
-                                         %% TTS-related flags
-                                    ,<<"Text">>, <<"Voice">>, <<"Language">>, <<"Format">>
-                                    ,<<"Account-ID">>, <<"Protocol">>, <<"Engine">>
-                                    ]).
--define(MEDIA_REQ_VALUES, [{<<"Event-Category">>, <<"media">>}
-                          ,{<<"Event-Name">>, <<"media_req">>}
-                          ,{<<"Stream-Type">>, [<<"new">>, <<"extant">>]}
-                          ,{<<"Voice">>, [<<"male">>, <<"female">>]}
-                          ,{<<"Format">>, [<<"mp3">>, <<"wav">>]}
-                          ,{<<"Protocol">>, [<<"http">>, <<"https">>, <<"shout">>, <<"vlc">>]}
-                          ]).
--define(MEDIA_REQ_TYPES, []).
 
-%% Media Response
--define(MEDIA_RESP_HEADERS, [<<"Media-Name">>, <<"Stream-URL">>]).
--define(OPTIONAL_MEDIA_RESP_HEADERS, []).
--define(MEDIA_RESP_VALUES, [{<<"Event-Category">>, <<"media">>}
-                           ,{<<"Event-Name">>, <<"media_resp">>}
-                           ]).
--define(MEDIA_RESP_TYPES, [{<<"Stream-URL">>, fun(<<"shout://", _/binary>>) -> 'true';
-                                                 (<<"http://", _/binary>>) -> 'true';
-                                                 (<<"vlc://", _/binary>>) -> 'true';
-                                                 (_) -> 'false'
-                                              end}
-                          ]).
+%%------------------------------------------------------------------------------
+%% @doc Get all API definitions of this module.
+%% @end
+%%------------------------------------------------------------------------------
+-spec api_definitions() -> kapi_definition:apis().
+api_definitions() ->
+    [req_definition()
+    ,resp_definition()
+    ,error_definition()
+    ].
 
-%% Media Error
--define(MEDIA_ERROR_HEADERS, [<<"Media-Name">>, <<"Error-Code">>]).
--define(OPTIONAL_MEDIA_ERROR_HEADERS, [<<"Error-Msg">>]).
--define(MEDIA_ERROR_VALUES, [{<<"Event-Category">>, <<"media">>}
-                            ,{<<"Event-Name">>, <<"media_error">>}
-                            ,{<<"Error-Code">>, [<<"not_found">>, <<"no_data">>, <<"other">>]}
-                            ]).
--define(MEDIA_ERROR_TYPES, []).
+%%------------------------------------------------------------------------------
+%% @doc Get API definition of the given `Name'.
+%% @see api_definitions/0
+%% @end
+%%------------------------------------------------------------------------------
+-spec api_definition(kz_term:text()) -> kapi_definition:api().
+api_definition(Name) when not is_binary(Name) ->
+    api_definition(kz_term:to_binary(Name));
+api_definition(<<"req">>) ->
+    req_definition();
+api_definition(<<"resp">>) ->
+    resp_definition();
+api_definition(<<"error">>) ->
+    error_definition().
+
+-spec req_definition() -> kapi_definition:api().
+req_definition() ->
+    EventName = <<"media_req">>,
+    Category = <<"media">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Media Request">>}
+              ,{fun kapi_definition:set_description/2, <<"Media Request - when streaming is needed">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun req/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun req_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_req/1}
+              ,{fun kapi_definition:set_binding/2, ?MEDIA_REQ_ROUTING_KEY}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Media-Name">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Stream-Type">>
+                                                            ,<<"Call-ID">>
+                                                                 %% TTS-related flags
+                                                            ,<<"Text">>
+                                                            ,<<"Voice">>
+                                                            ,<<"Language">>
+                                                            ,<<"Format">>
+                                                            ,<<"Account-ID">>
+                                                            ,<<"Protocol">>
+                                                            ,<<"Engine">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Event-Category">>, Category}
+                ,{<<"Event-Name">>, EventName}
+                ,{<<"Stream-Type">>, [<<"new">>, <<"extant">>]}
+                ,{<<"Voice">>, [<<"male">>, <<"female">>]}
+                ,{<<"Format">>, [<<"mp3">>, <<"wav">>]}
+                ,{<<"Protocol">>, [<<"http">>, <<"https">>, <<"shout">>, <<"vlc">>]}
+                ]
+               }
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
+
+-spec resp_definition() -> kapi_definition:api().
+resp_definition() ->
+    EventName = <<"media_resp">>,
+    Category = <<"media">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Media Response">>}
+              ,{fun kapi_definition:set_description/2, <<"Media Response">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun resp/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun resp_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_resp/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Media-Name">>
+                                                            ,<<"Stream-URL">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, []}
+              ,{fun kapi_definition:set_values/2
+               ,kapi_definition:event_type_headers(Category, EventName)
+               }
+              ,{fun kapi_definition:set_types/2
+               ,[{<<"Stream-URL">>, fun(<<"shout://", _/binary>>) -> 'true';
+                                       (<<"http://", _/binary>>) -> 'true';
+                                       (<<"vlc://", _/binary>>) -> 'true';
+                                       (_) -> 'false'
+                                    end}
+                ]
+               }
+              ],
+    kapi_definition:setters(Setters).
+
+-spec error_definition() -> kapi_definition:api().
+error_definition() ->
+    EventName = <<"media_error">>,
+    Category = <<"media">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Media Error">>}
+              ,{fun kapi_definition:set_description/2, <<"Media Error">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun error/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun error_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_error/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Media-Name">>
+                                                            ,<<"Error-Code">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Error-Msg">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Event-Category">>, Category}
+                ,{<<"Event-Name">>, EventName}
+                ,{<<"Error-Code">>, [<<"not_found">>, <<"no_data">>, <<"other">>]}
+                ]
+               }
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
 
 %%------------------------------------------------------------------------------
 %% @doc Request media.
 %% Takes proplist, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec req(kz_term:api_terms()) ->
-                 {'ok', iolist()} |
-                 {'error', string()}.
-req(Prop) when is_list(Prop) ->
-    case req_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?MEDIA_REQ_HEADERS, ?OPTIONAL_MEDIA_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for media_req"}
-    end;
-req(JObj) -> req(kz_json:to_proplist(JObj)).
+-spec req(kz_term:api_terms()) -> kz_api:api_formatter_return().
+req(Req) ->
+    kapi_definition:build_message(Req, req_definition()).
 
 -spec req_v(kz_term:api_terms()) -> boolean().
-req_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?MEDIA_REQ_HEADERS, ?MEDIA_REQ_VALUES, ?MEDIA_REQ_TYPES);
-req_v(JObj) -> req_v(kz_json:to_proplist(JObj)).
+req_v(Req) ->
+    kapi_definition:validate(Req, req_definition()).
+
+-spec publish_req(kz_term:api_terms()) -> 'ok'.
+publish_req(JObj) ->
+    publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
+publish_req(Req, ContentType) ->
+    Definition = req_definition(),
+    {'ok', Payload} = kz_api:prepare_api_payload(Req
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:kapps_publish(kapi_definition:binding(Definition), Payload, ContentType).
 
 %%------------------------------------------------------------------------------
 %% @doc Response with media.
 %% Takes proplist, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec resp(kz_json:object() | kz_term:proplist()) ->
-                  {'ok', iolist()} |
-                  {'error', string()}.
-resp(Prop) when is_list(Prop) ->
-    case resp_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?MEDIA_RESP_HEADERS, ?OPTIONAL_MEDIA_RESP_HEADERS);
-        'false' -> {'error', "Proplist failed validation for media_resp"}
-    end;
-resp(JObj) -> resp(kz_json:to_proplist(JObj)).
+-spec resp(kz_json:object() | kz_term:proplist()) -> kz_api:api_formatter_return().
+resp(Req) ->
+    kapi_definition:build_message(Req, resp_definition()).
 
 -spec resp_v(kz_term:proplist() | kz_json:object()) -> boolean().
-resp_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?MEDIA_RESP_HEADERS, ?MEDIA_RESP_VALUES, ?MEDIA_RESP_TYPES);
-resp_v(JObj) -> resp_v(kz_json:to_proplist(JObj)).
+resp_v(Req) ->
+    kapi_definition:validate(Req, resp_definition()).
+
+-spec publish_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
+publish_resp(Queue, JObj) ->
+    publish_resp(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
+publish_resp(Queue, Resp, ContentType) ->
+    Definition = resp_definition(),
+    {'ok', Payload} = kz_api:prepare_api_payload(Resp
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:targeted_publish(Queue, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
 %% @doc Media error.
 %% Takes proplist, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec error(kz_term:proplist() | kz_json:object()) ->
-                   {'ok', iolist()} |
-                   {'error', string()}.
-error(Prop) when is_list(Prop) ->
-    case error_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?MEDIA_ERROR_HEADERS, ?OPTIONAL_MEDIA_ERROR_HEADERS);
-        'false' -> {'error', "Proplist failed validation for media_error"}
-    end;
-error(JObj) -> error(kz_json:to_proplist(JObj)).
+-spec error(kz_term:proplist() | kz_json:object()) -> kz_api:api_formatter_return().
+error(Req) ->
+    kapi_definition:build_message(Req, error_definition()).
 
 -spec error_v(kz_term:proplist() | kz_json:object()) -> boolean().
-error_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?MEDIA_ERROR_HEADERS, ?MEDIA_ERROR_VALUES, ?MEDIA_ERROR_TYPES);
-error_v(JObj) -> error_v(kz_json:to_proplist(JObj)).
+error_v(Req) ->
+    kapi_definition:validate(Req, error_definition()).
 
+-spec publish_error(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
+publish_error(Queue, JObj) ->
+    publish_error(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_error(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
+publish_error(Queue, Error, ContentType) ->
+    Definition = error_definition(),
+    {'ok', Payload} = kz_api:prepare_api_payload(Error
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:targeted_publish(Queue, Payload, ContentType).
+
+%% Bind and UnBind queue
 -spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q(Queue, _Props) ->
     kz_amqp_util:bind_q_to_kapps(Queue, ?MEDIA_REQ_ROUTING_KEY).
@@ -135,30 +250,3 @@ unbind_q(Queue, _Props) ->
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
     kz_amqp_util:kapps_exchange().
-
--spec publish_req(kz_term:api_terms()) -> 'ok'.
-publish_req(JObj) ->
-    publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
-
--spec publish_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
-publish_req(Req, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?MEDIA_REQ_VALUES, fun req/1),
-    kz_amqp_util:kapps_publish(?MEDIA_REQ_ROUTING_KEY, Payload, ContentType).
-
--spec publish_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
-publish_resp(Queue, JObj) ->
-    publish_resp(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
-
--spec publish_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
-publish_resp(Queue, Resp, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?MEDIA_RESP_VALUES, fun resp/1),
-    kz_amqp_util:targeted_publish(Queue, Payload, ContentType).
-
--spec publish_error(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
-publish_error(Queue, JObj) ->
-    publish_error(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
-
--spec publish_error(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
-publish_error(Queue, Error, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Error, ?MEDIA_ERROR_VALUES, fun error/1),
-    kz_amqp_util:targeted_publish(Queue, Payload, ContentType).

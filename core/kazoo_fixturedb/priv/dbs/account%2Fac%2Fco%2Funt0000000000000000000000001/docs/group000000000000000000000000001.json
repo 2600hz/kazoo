@@ -1,0 +1,24 @@
+{
+    "_id": "group000000000000000000000000001",
+    "_rev": "1-179e7b5746d43a428713fc0f3cac5a73",
+    "endpoints": {
+        "user0000000000000000000000000001": {
+            "type": "user",
+            "weight": 1
+        }
+    },
+    "music_on_hold": {},
+    "name": "Group 0001",
+    "pvt_account_db": "account%2Fac%2Fco%2Funt0000000000000000000000001",
+    "pvt_account_id": "account0000000000000000000000001",
+    "pvt_alphanum_name": "group0001",
+    "pvt_auth_account_id": "account0000000000000000000000001",
+    "pvt_auth_user_id": "user0000000000000000000000000001",
+    "pvt_created": 63735970576,
+    "pvt_document_hash": "97eae64a509531a0aa5be8f4d46f4aa5",
+    "pvt_is_authenticated": true,
+    "pvt_modified": 63737099700,
+    "pvt_request_id": "request0000000000000000000000001",
+    "pvt_type": "group",
+    "pvt_vsn": "1"
+}

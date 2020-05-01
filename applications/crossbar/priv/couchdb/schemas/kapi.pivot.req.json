@@ -33,6 +33,9 @@
         "Request-Format": {
             "type": "string"
         },
+        "Request-Timeout": {
+            "type": "integer"
+        },
         "Voice-URI": {
             "type": "string"
         }

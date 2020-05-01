@@ -1,0 +1,23 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "system_config.crossbar.users",
+    "description": "Schema for crossbar.users system_config",
+    "properties": {
+        "generate_password_if_empty": {
+            "default": false,
+            "description": "crossbar users generate_password_if_empty",
+            "type": "boolean"
+        },
+        "generate_username_if_empty": {
+            "default": true,
+            "description": "crossbar users generate_username_if_empty",
+            "type": "boolean"
+        },
+        "reset_identity_secret_on_rehash": {
+            "default": true,
+            "description": "crossbar users reset_identity_secret_on_rehash",
+            "type": "boolean"
+        }
+    },
+    "type": "object"
+}

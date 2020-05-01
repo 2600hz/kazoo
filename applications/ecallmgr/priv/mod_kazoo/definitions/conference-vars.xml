@@ -1,0 +1,9 @@
+<definition name="conference-vars">
+	<field name="Conference-Vars" type="static" serialize-as="object">
+		<fields verbose="false">
+			<field name="Conference-" type="prefix" exclude-prefix="true" />
+			<field name="Account-ID" type="first-of"
+				value="Account-ID|Conference-Account-ID|variable_ecallmgr_Account-ID" />
+		</fields>
+	</field>
+</definition>

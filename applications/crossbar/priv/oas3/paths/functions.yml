@@ -1,0 +1,100 @@
+paths:
+  /accounts/{ACCOUNT_ID}/functions:
+    get:
+      operationId: GetAccountsAccountIdFunctions
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get all functions
+      tags:
+        - functions
+    put:
+      operationId: PutAccountsAccountIdFunctions
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/functions'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of functions
+      tags:
+        - functions
+  /accounts/{ACCOUNT_ID}/functions/samples:
+    get:
+      operationId: GetAccountsAccountIdFunctionsSamples
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get samples of functions
+      tags:
+        - functions
+  /accounts/{ACCOUNT_ID}/functions/{FUNCTION_ID}:
+    delete:
+      operationId: DeleteAccountsAccountIdFunctionsFunctionId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/FUNCTION_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of functions
+      tags:
+        - functions
+    get:
+      operationId: GetAccountsAccountIdFunctionsFunctionId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/FUNCTION_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a functions by ID
+      tags:
+        - functions
+    patch:
+      operationId: PatchAccountsAccountIdFunctionsFunctionId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/FUNCTION_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/functions'
+      responses:
+        200:
+          description: Successful operation
+      summary: Patch specific fields of functions
+      tags:
+        - functions
+    post:
+      operationId: PostAccountsAccountIdFunctionsFunctionId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/FUNCTION_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/functions'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of functions
+      tags:
+        - functions

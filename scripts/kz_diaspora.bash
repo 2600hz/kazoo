@@ -10,7 +10,7 @@ replace() {
     local F0=$2
     local M1=$3
     local F1=$4
-    for FILE in $(grep -Irl $M0:$F0 "$ROOT"/{core,applications}); do
+    for FILE in $(grep -Irl $M0:$F0 "$ROOT"/{core,applications,scripts}); do
         sed -i "s%$M0:$F0%$M1:$F1%g" "$FILE"
     done
 }
@@ -34,7 +34,7 @@ search_and_replace() {
     SUFFIX="$4"
 
     for FUN in "${FUNS[@]}"; do
-        for FILE in $(grep -Irl $FROM:$FUN "$ROOT"/{core,applications}); do
+        for FILE in $(grep -Irl $FROM:$FUN "$ROOT"/{core,applications,scripts}); do
             replace_call $FROM $TO "$FUN" "$SUFFIX" "$FILE"
         done
     done
@@ -47,7 +47,7 @@ search_and_replace_exact() {
     TOFUN=$4
 
     for FUN in "${FUNS[@]}"; do
-        for FILE in `grep -rl "$FROM:$FUN" $ROOT/{core,applications}`; do
+        for FILE in `grep -rl "$FROM:$FUN" $ROOT/{core,applications,scripts}`; do
             replace $FROM $TO "$FUN" "$TOFUN" $FILE
         done
     done
@@ -71,7 +71,7 @@ search_and_replace_prefix() {
     PREFIX="$4"
 
     for FUN in "${FUNS[@]}"; do
-        for FILE in $(grep -Irl $FROM:$FUN "$ROOT"/{core,applications}); do
+        for FILE in $(grep -Irl $FROM:$FUN "$ROOT"/{core,applications,scripts}); do
             replace_call_prefix $FROM $TO "$FUN" "$PREFIX" "$FILE"
         done
     done
@@ -95,7 +95,7 @@ search_and_replace_with_prefix() {
     PREFIX="$4"
 
     for FUN in "${FUNS[@]}"; do
-        for FILE in $(grep -Irl $FROM:$FUN "$ROOT"/{core,applications}); do
+        for FILE in $(grep -Irl $FROM:$FUN "$ROOT"/{core,applications,scripts}); do
             replace_call_with_prefix $FROM $TO "$FUN" "$PREFIX" "$FILE"
         done
     done
@@ -139,6 +139,7 @@ kz_util_to_term() {
               a1hash
               floor
               ceiling
+              iolist_join
              )
     search_and_replace fs[@] kz_util kz_term ''
 }
@@ -214,6 +215,17 @@ kz_util_to_module() {
     replace "$FROM" "$OLD_FUN" "$TO" "$NEW_FUN"
 }
 
+kz_util_to_log() {
+    local fs=(log_stacktrace
+              put_callid
+              get_callid
+              find_callid
+              kz_log_md_clear
+              kz_log_md_put
+             )
+    search_and_replace fs[@] kz_util kz_log ''
+}
+
 kz_time_to_date() {
     local fs=(iso8601_date)
     local fs2=(pad_date
@@ -256,7 +268,7 @@ kapps_speech_to_kazoo_speech() {
 kz_media_recording_to_kzc_recording() {
     FROM=kz_media_recording
     TO=kzc_recording
-    for FILE in $(grep -Irl $FROM: "$ROOT"/{core,applications}); do
+    for FILE in $(grep -Irl $FROM: "$ROOT"/{core,applications,scripts}); do
             replace_call $FROM $TO '' '' "$FILE"
     done
 }
@@ -268,12 +280,14 @@ kzd_accessors() {
     kz_account_to_kzd_accounts
     echo "  * kz_util->kzd_accounts"
     kz_util_to_kzd_accounts
+    echo "  * kzd_webhook->kzd_webhooks"
+    kzd_webhook_to_webhooks
 }
 
 kz_device_to_kzd_devices() {
     FROM=kz_device
     TO=kzd_devices
-    for FILE in $(grep -Irl $FROM: "$ROOT"/{core,applications}); do
+    for FILE in $(grep -Irl $FROM: "$ROOT"/{core,applications,scripts}); do
         replace_call $FROM $TO '' '' "$FILE"
     done
 }
@@ -281,7 +295,7 @@ kz_device_to_kzd_devices() {
 kz_account_to_kzd_accounts() {
     FROM=kz_account
     TO=kzd_accounts
-    for FILE in $(grep -Irl $FROM: "$ROOT"/{core,applications}); do
+    for FILE in $(grep -Irl $FROM: "$ROOT"/{core,applications,scripts}); do
         replace_call $FROM $TO '' '' "$FILE"
     done
 }
@@ -299,10 +313,18 @@ kz_util_to_kzd_accounts() {
     replace $FROM_MOD "normalize_account_name" $TO_MOD "normalize_name"
 }
 
+kzd_webhook_to_webhooks() {
+    FROM='kzd_webhook:'
+    TO='kzd_webhooks:'
+    for FILE in $(grep -Irl $FROM: "$ROOT"/{core,applications,scripts}); do
+        replace_call $FROM $TO '' '' "$FILE"
+    done
+}
+
 amqp_util_to_kz_amqp_util() {
     FROM="amqp_util"
     TO="kz_amqp_util"
-    for FILE in $(grep -Irl $FROM: "$ROOT"/{core,applications}); do
+    for FILE in $(grep -Irl $FROM: "$ROOT"/{core,applications,scripts}); do
         sed -i -e "s%\b$FROM%$TO%g" "$FILE"
     done
 }
@@ -315,7 +337,7 @@ kz_includes() {
     FROM=kazoo/include
     TO=kazoo_stdlib/include
 
-    for FILE in $(grep -Irl $FROM/ "$ROOT"/{core,applications}); do
+    for FILE in $(grep -Irl $FROM/ "$ROOT"/{core,applications,scripts}); do
         for INCLUDE in "${INCLUDES[@]}"; do
             sed -i "s%$FROM/$INCLUDE%$TO/$INCLUDE%g" "$FILE"
         done
@@ -510,6 +532,56 @@ kapps_util_amqp() {
     replace "kapps_util" "amqp_pool_request" "kz_amqp_worker" "call"
 }
 
+kz_util_props() {
+    replace 'kz_util' 'uniq' 'props' 'unique'
+}
+
+kz_util_uri() {
+    replace 'kz_util' 'uri_' 'kz_http_util' 'url'
+    replace 'kz_util' 'uri' 'kz_http_util' 'uri'
+    replace 'kz_util' 'resolve_uri' 'kz_http_util' 'resolve_uri'
+}
+
+kz_util_processes() {
+    replace 'kz_util' 'runs_in' 'kz_process' 'runs_in'
+    replace 'kz_util' 'spawn' 'kz_process' 'spawn'
+    replace 'kz_util' 'spawn_link' 'kz_process' 'spawn_link'
+    replace 'kz_util' 'spawn_monitor' 'kz_process' 'spawn_monitor'
+}
+
+kz_util_format_ids() {
+    replace 'kz_util' 'format_account_id' 'kzs_util' 'format_account_id'
+    replace 'kz_util' 'format_account_mod_id' 'kzs_util' 'format_account_mod_id'
+    replace 'kz_util' 'format_account_db' 'kzs_util' 'format_account_db'
+    replace 'kz_util' 'format_account_modb' 'kzs_util' 'format_account_modb'
+    replace 'kz_util' 'format_resource_selectors_id' 'kzs_util' 'format_resource_selectors_id'
+    replace 'kz_util' 'format_resource_selectors_db' 'kzs_util' 'format_resource_selectors_db'
+
+    for FILE in $(grep -rPl "kzs_util:format_account_id(.*, \'encoded\')" "$ROOT"/{core,applications}); do
+        sed -ri "s#kzs_util:format_account_id[(](.+), 'encoded'[)]#kzs_util:format_account_db(\1)#g" "$FILE"
+    done
+
+    for FILE in $(grep -rPl "kzs_util:format_account_id(.*, \'raw\')" "$ROOT"/{core,applications}); do
+        sed -ri "s#kzs_util:format_account_id[(](.+), 'raw'[)]#kzs_util:format_account_id(\1)#g" "$FILE"
+    done
+}
+
+rename_knm_to_knums() {
+    for FILE in $(grep -Irl --exclude-dir='.git' kazoo_number_manager "$ROOT"/{core,applications}); do
+        sed -i "s/kazoo_number_manager/kazoo_numbers/g" "$FILE"
+    done
+}
+
+cb_context_rename() {
+    for FILE in $(grep -Irl --exclude-dir='.git' "cb_context:account_db" "$ROOT"/{core,applications}); do
+        sed -i 's/cb_context:account_db(/cb_context:db_name(/g' "$FILE"
+    done
+}
+
+kz_services_reseller_id() {
+    replace "kzd_accounts" "reseller_id" "kz_services_reseller" "get_id"
+}
+
 echo "ensuring kz_term is used"
 kz_util_to_term
 echo "ensuring kz_binary is used"
@@ -522,9 +594,9 @@ echo "ensuring kz_time -> kz_date migration is performed"
 kz_time_to_date
 echo "ensuring kz_json:public/private are moved to kz_doc"
 kz_json_to_kz_doc
-echo "ensuring kz_json:to_querystring is moved to kz_http_util"
+echo "ensuring kz_json to_querystring is moved to kz_http_util"
 kz_json_to_kz_http
-echo "ensuring props:to_querystring is moved to kz_http_util"
+echo "ensuring props to_querystring is moved to kz_http_util"
 props_to_kz_http
 echo "ensuring kapps_speech to kazoo_speech"
 kapps_speech_to_kazoo_speech
@@ -542,5 +614,21 @@ echo "updating amqp_util to kz_amqp_util"
 amqp_util_to_kz_amqp_util
 echo "updating kapps_util amqp to kz_amqp_worker"
 kapps_util_amqp
+echo "updating uniq usage to props module"
+kz_util_props
+echo "updating URI-related functions to kz_http_util"
+kz_util_uri
+echo "ensuring kz_log is used"
+kz_util_to_log
+echo "ensuring spawning is in kz_process"
+kz_util_processes
+echo "ensuring kazoo_number_manager is renamed to kazoo_numbers"
+rename_knm_to_knums
+echo "formatting account/resource ids to dbs moved to kzs_util"
+kz_util_format_ids
+echo "cb_context account_db to db_name"
+cb_context_rename
+echo "use kz_services_reseller to find reseller_id"
+kz_services_reseller_id
 
 popd >/dev/null

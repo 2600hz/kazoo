@@ -1,9 +1,13 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Builds PDF from an HTML template using
 %%% <a href="http://www.msweet.org/projects.php?Z1">HTMLDoc</a>.
 %%% @author Peter Defebvre
 %%% @author James Aimonetti
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_pdf).
@@ -44,7 +48,7 @@ find_template(AccountId, Props) ->
 
 -spec find_template(kz_term:ne_binary(), kz_term:ne_binary() | kz_term:proplist(), kz_term:ne_binary()) -> ret().
 find_template(AccountId, DocType, AttachmentId) when is_binary(DocType) ->
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kzs_util:format_account_db(AccountId),
     case kz_datamgr:fetch_attachment(AccountDb, ?TEMPLATE_DOC_ID(DocType), AttachmentId) of
         {'ok', _}=OK -> OK;
         {'error', _R} ->
@@ -70,7 +74,7 @@ generate(AccountId, Props) ->
 
 -spec generate(kz_term:ne_binary(), kz_term:proplist(), kz_term:ne_binary()) -> ret().
 generate(Account, Props, Template) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kzs_util:format_account_id(Account),
     DocType = props:get_first_defined([<<"type">>, <<"pvt_type">>], Props),
 
     Rand = kz_binary:rand_hex(5),

@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
 %%% @author SIPLABS LLC (Maksim Krzhemenevskiy)
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(camper_onnet_handler).
@@ -102,7 +107,7 @@ handle_call(_Request, _From, State) ->
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'add_request', JObj}, GlobalState) ->
     AccountDb = kz_json:get_value(<<"Account-DB">>, JObj),
-    AccountId = kz_util:format_account_id(AccountDb, 'raw'),
+    AccountId = kzs_util:format_account_id(AccountDb),
     Dev = {kz_json:get_value(<<"Authorizing-ID">>, JObj)
           ,kz_json:get_value(<<"Authorizing-Type">>, JObj)
           },
@@ -191,7 +196,7 @@ handle_request(SIPName, Requestor, Local) ->
 -spec originate_call({kz_term:ne_binary(), kz_term:ne_binary()}, kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 originate_call({Id, Type}, Exten, AccountDb) ->
     Routines = [fun(C) -> kapps_call:set_account_db(AccountDb, C) end
-               ,fun(C) -> kapps_call:set_account_id(kz_util:format_account_id(AccountDb, 'raw'), C) end
+               ,fun(C) -> kapps_call:set_account_id(kzs_util:format_account_id(AccountDb), C) end
                ,fun(C) -> kapps_call:set_authorizing_id(Id, C) end
                ,fun(C) -> kapps_call:set_authorizing_type(Type, C) end
                ],

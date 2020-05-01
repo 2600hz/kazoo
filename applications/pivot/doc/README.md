@@ -1,4 +1,4 @@
-# Pivot Intro
+# Pivot
 
 ## Overview
 
@@ -22,6 +22,35 @@ The most basic callflow for Pivot:
 }
 ```
 
+### Allowed Hosts
+
+It is advisable to restrict the hostname in the `voice_url` by setting up some blacklists. These will be consulted when validating the URL provided by the client.
+
+By default RFC1918 IPs and `localhost` blocked.
+
+#### Blacklist CIDR
+
+Blacklist network ranges using CIDR notation:
+
+    sup kazoo_web_maintenance blacklist_client_ip aaa.bbb.ccc.ddd/32
+
+The default list is `127.0.0.1/32` and `0.0.0.0/32`. Consider adding RFC1918 addresses, `10.0.0.0/8`, `172.16.0.0/12`, and `192.168.0.0/16`, as well as your cluster's subnets.
+
+#### Blacklist Hostname
+
+Blacklist a hostname:
+
+    sup kazoo_web_maintenance blacklist_client_host {HOSTNAME}
+
+`{HOSTNAME}` will just match the `HOST` portion of a URL. In the following examples, the `HOST` portion will be `client.host`:
+
+    http://client.host
+    https://client.host:9876
+    http://user@pass:client.host
+    https://user@pass:client.host:4356
+
+Currently, there is no attempt to resolve the hostname to an IP address for CIDR checking.
+
 ## Response Formats
 
 * [Kazoo JSON](./kazoo/README.md)
@@ -29,95 +58,4 @@ The most basic callflow for Pivot:
 
 ## Debugging
 
-You can set the `debug` flag to "true" to log the requests and responses Pivot receives from your Pivot Callflows.
-
-### Summary
-
-Get a list of recent Pivot attempts:
-
-```shell
-$ curl -H "X-Auth-Token: {AUTH_TOKEN} \
-     -H "Content-Type: application/json" \
-     'http://your.crossbar.server/v2/accounts/{ACCOUNT_ID}/pivot/debug'
-```
-
-Response:
-
-```json
-{"data":["{CALL_ID}"],"revision":"undefined","request_id":"{REQUEST_ID}","status":"success","auth_token":"{AUTH_TOKEN}"}
-```
-
-## Specific Call
-
-Get details of a specific Pivot attempt:
-
-```shell
-$curl -H "X-Auth-Token: {AUTH_TOKEN} \
-    -H "Content-Type: application/json" \
-    'http://your.crossbar.server/v2/accounts/{ACCOUNT_ID}/pivot/debug/{CALL_ID}'
-```
-
-Response:
-
-```json
-{
-    "auth_token": "{AUTH_TOKEN}",
-        "data": [
-        {
-            "call_id": "{CALL_ID}",
-            "id": "{DEBUG_ID}",
-            "method": "get",
-            "req_body": "",
-            "req_headers": {},
-            "uri": "http://your.pivot.server/script.php?Caller-ID-Number=XXXXXXXXXX&Caller-ID-Name=JoeFromIT&Direction=inbound&ApiVersion=2013-05-01&ToRealm=your.pivot.server&To=3004&FromRealm=your.pivot.server&From=user_sov2kt&Account-ID={ACCOUNT_ID}&Call-ID={CALL_ID}"
-        },
-        {
-            "call_id": "{CALL_ID}",
-            "id": "{DEBUG_ID}",
-            "resp_body": "\n    {\"module\":\"say\"\n     ,\"data\":{\"text\":\"Please leave your message after the beep\"}\n     ,\"children\":{\n         \"_\":{\n           \"module\":\"record_caller\"\n           ,\"data\":{\n               \"format\":\"mp3\"\n               ,\"url\":\"http://your.pivot.server/recordings\"\n               ,\"time_limit\":360\n           }\n         }\n        }\n    }\n"
-        },
-        {
-        "call_id": "{CALL_ID}",
-        "id": "{DEBUG_ID}",
-        "resp_headers": {
-            "content-length": "342",
-            "content-type": "application/json",
-            "date": "wed, 01 oct 2014 23:30:24 gmt",
-            "server": "apache/2.4.7 (ubuntu)",
-            "x-powered-by": "php/5.5.9-1ubuntu4.4"
-        },
-        "resp_status_code": "200"
-    }
-    ],
-    "request_id": "{REQUEST_ID}",
-    "revision": "{REVISION}",
-    "status": "success"
-    }
-```
-
-Remember to URL-encode the `{CALL_ID}` before sending the request.
-
-## Failback
-
-You can add a children to your pivot callflow in case your server is unreachable or send back an error.
-
-```json
-"flow": {
-    "data": {
-        "method": "GET",
-        "req_timeout": "5",
-        "req_format": "kazoo",
-        "voice_url": "{SERVER_URL}"
-    },
-    "module": "pivot",
-    "children": {
-        "_": {
-            "module": "play",
-            "data": {
-                "id": "{MEDIA_ID}"
-            },
-            "children": {}
-        }
-    }
-}
-```
+You can set the `debug` flag to `true` to log the requests and responses Pivot receives from your Pivot Callflows. Those logs are then available via the [Pivot API](../../crossbar/doc/pivot/#debugging-pivot-attempts)

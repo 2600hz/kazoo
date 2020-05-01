@@ -1,0 +1,49 @@
+paths:
+  /accounts/{ACCOUNT_ID}/registrations:
+    delete:
+      operationId: DeleteAccountsAccountIdRegistrations
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of registrations
+      tags:
+        - registrations
+    get:
+      operationId: GetAccountsAccountIdRegistrations
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get all registrations
+      tags:
+        - registrations
+  /accounts/{ACCOUNT_ID}/registrations/count:
+    get:
+      operationId: GetAccountsAccountIdRegistrationsCount
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get count of registrations
+      tags:
+        - registrations
+  /accounts/{ACCOUNT_ID}/registrations/{USERNAME}:
+    delete:
+      operationId: DeleteAccountsAccountIdRegistrationsUsername
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/USERNAME'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of registrations
+      tags:
+        - registrations

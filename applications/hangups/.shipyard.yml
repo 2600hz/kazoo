@@ -1,0 +1,22 @@
+---
+name: kazoo-application-hangups
+base_branch: origin/master
+metapackage:
+  - name: meta-kazoo-applications
+    type: required
+    branch: master
+    package: kazoo-application-hangups
+base_core: kazoo
+template: kazoo-application.spec.tmpl
+package:
+  centos7:
+    name: kazoo-application-hangups
+    summary: Kazoo core application
+    description: |
+      Tracks hangup causes and provides alerting capabilities if specified
+      hangup causes exceed a threshold
+    app_name: hangups
+    license: MPL 2.0
+    group: Productivity/Telephony
+    url: https://2600hz.org/
+    vendor: 2600Hz

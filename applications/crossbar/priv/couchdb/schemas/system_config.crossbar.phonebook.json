@@ -3,10 +3,6 @@
     "_id": "system_config.crossbar.phonebook",
     "description": "Schema for crossbar.phonebook system_config",
     "properties": {
-        "cluster_id": {
-            "description": "the kazoo cluster_id",
-            "type": "string"
-        },
         "enabled": {
             "default": false,
             "description": "phonebook integration enabled",

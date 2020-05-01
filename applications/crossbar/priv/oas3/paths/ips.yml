@@ -1,0 +1,134 @@
+paths:
+  /accounts/{ACCOUNT_ID}/ips:
+    delete:
+      operationId: DeleteAccountsAccountIdIps
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of ips
+      tags:
+        - ips
+    get:
+      operationId: GetAccountsAccountIdIps
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get all ips
+      tags:
+        - ips
+    post:
+      operationId: PostAccountsAccountIdIps
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/ips'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of ips
+      tags:
+        - ips
+    put:
+      operationId: PutAccountsAccountIdIps
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/ips'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of ips
+      tags:
+        - ips
+  /accounts/{ACCOUNT_ID}/ips/assigned:
+    get:
+      operationId: GetAccountsAccountIdIpsAssigned
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get assigned of ips
+      tags:
+        - ips
+  /accounts/{ACCOUNT_ID}/ips/hosts:
+    get:
+      operationId: GetAccountsAccountIdIpsHosts
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get hosts of ips
+      tags:
+        - ips
+  /accounts/{ACCOUNT_ID}/ips/zones:
+    get:
+      operationId: GetAccountsAccountIdIpsZones
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get zones of ips
+      tags:
+        - ips
+  /accounts/{ACCOUNT_ID}/ips/{IP_ADDRESS}:
+    delete:
+      operationId: DeleteAccountsAccountIdIpsIpAddress
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/IP_ADDRESS'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of ips
+      tags:
+        - ips
+    get:
+      operationId: GetAccountsAccountIdIpsIpAddress
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/IP_ADDRESS'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a ips by ID
+      tags:
+        - ips
+    post:
+      operationId: PostAccountsAccountIdIpsIpAddress
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/IP_ADDRESS'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/ips'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of ips
+      tags:
+        - ips

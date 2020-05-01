@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_auth_profile).
@@ -71,11 +75,11 @@ token_fold(Token, [Fun | Routines]) ->
     try Fun(Token) of
         NewToken -> token_fold(NewToken, Routines)
     catch
-        _E:_R ->
-            lager:debug("exception executing ~p : ~p , ~p", [Fun, _E, _R]),
-            kz_util:log_stacktrace(),
-            token_fold(Token, Routines)
-    end.
+        ?STACKTRACE(_E, _R, ST)
+        lager:debug("exception executing ~p : ~p , ~p", [Fun, _E, _R]),
+        kz_log:log_stacktrace(ST),
+        token_fold(Token, Routines)
+        end.
 
 -spec profile_access_verb(map()) -> 'get' | 'post'.
 profile_access_verb(Provider) ->
@@ -122,6 +126,15 @@ maybe_load_profile(#{auth_provider := #{profile_url := _ProfileURL}
                     ,original := Original
                     }=Token) ->
     maybe_load_profile(Token#{access_token => Original});
+maybe_load_profile(#{auth_provider := #{profile_discovery_field := ProfileField} = AuthProvider
+                    ,discovery := Discovery
+                    }=Token) ->
+    maybe_load_profile(Token#{auth_provider => AuthProvider#{profile_url => kz_json:get_ne_binary_value(ProfileField, Discovery)}});
+maybe_load_profile(#{auth_provider := AuthProvider
+                    ,discovery := Discovery
+                    }=Token) ->
+    ProfileField = <<"userinfo_endpoint">>,
+    maybe_load_profile(Token#{auth_provider => AuthProvider#{profile_url => kz_json:get_ne_binary_value(ProfileField, Discovery)}});
 maybe_load_profile(#{} = Token) -> Token#{profile => kz_json:new()}.
 
 -spec profile_authorization(map(), kz_term:ne_binary()) -> binary().
@@ -214,9 +227,10 @@ maybe_add_user_identity(#{auth_provider := #{profile_identity_fields := Fields}
             lager:debug("found user identity ~p", [Identity]),
             Token#{user_identity => Identity}
     end;
-maybe_add_user_identity(#{auth_provider := #{name := Prov}}=Token) ->
-    lager:debug("provider '~s' doesn't support identity profile info", [Prov]),
-    Token.
+maybe_add_user_identity(#{auth_provider := #{name := <<"kazoo">>}}=Token) ->
+    Token;
+maybe_add_user_identity(#{auth_provider := Provider} = Token) ->
+    maybe_add_user_identity(Token#{auth_provider => Provider#{profile_identity_field => <<"sub">>}}).
 
 -spec maybe_add_display_name(map()) -> map().
 maybe_add_display_name(#{display_name := _DisplayName} = Token) -> Token;
@@ -232,9 +246,10 @@ maybe_add_display_name(#{auth_provider := #{profile_displayName_field := Field}
             lager:debug("found user displayName ~p", [DisplayName]),
             Token#{display_name => DisplayName}
     end;
-maybe_add_display_name(#{auth_provider := #{name := Prov}}=Token) ->
-    lager:debug("provider '~s' doesn't support displayName profile info", [Prov]),
-    Token.
+maybe_add_display_name(#{auth_provider := #{name := <<"kazoo">>}}=Token) ->
+    Token;
+maybe_add_display_name(#{auth_provider := Provider} = Token) ->
+    maybe_add_display_name(Token#{auth_provider => Provider#{profile_displayName_field => <<"name">>}}).
 
 -spec maybe_add_photo_url(map()) -> map().
 maybe_add_photo_url(#{photo_url := _PhotoUrl} = Token) -> Token;
@@ -250,7 +265,10 @@ maybe_add_photo_url(#{auth_provider := #{profile_photo_url_field := Field}
             lager:debug("found user photoUrl ~p", [PhotoUrl]),
             Token#{photo_url => PhotoUrl}
     end;
-maybe_add_photo_url(Token) -> Token.
+maybe_add_photo_url(#{auth_provider := #{name := <<"kazoo">>}}=Token) ->
+    Token;
+maybe_add_photo_url(#{auth_provider := Provider} = Token) ->
+    maybe_add_photo_url(Token#{auth_provider => Provider#{profile_photo_url_field => <<"picture">>}}).
 
 -spec maybe_add_user_email(map()) -> map().
 maybe_add_user_email(#{user_email := _UserEmail} = Token) -> Token;

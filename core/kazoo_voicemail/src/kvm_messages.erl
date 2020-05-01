@@ -1,7 +1,11 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc General operation on a list of voicemail messages.
 %%% @author Hesaam Farhang
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kvm_messages).
@@ -116,7 +120,7 @@ count_non_deleted(AccountId, BoxId) ->
                                                        OwnerId :: kz_term:ne_binary(),
                                                        Count :: non_deleted_tuple().
 count_by_owner(?MATCH_ACCOUNT_ENCODED(_)=AccountDb, OwnerId) ->
-    AccountId = kz_util:format_account_id(AccountDb),
+    AccountId = kzs_util:format_account_id(AccountDb),
     count_by_owner(AccountId, OwnerId);
 count_by_owner(AccountId, OwnerId) ->
     ViewOptions = [{'key', [OwnerId, <<"vmbox">>]}],
@@ -209,9 +213,9 @@ count_per_folder(AccountId, Keys, View, Folder, ResultMap) ->
 
 %% @equiv update(AccountId, BoxId, Msgs, [])
 -spec update(AccountId, BoxId, Msgs) ->
-                    kz_json:object() when AccountId :: kz_term:ne_binary(),
-                                          BoxId :: kz_term:ne_binary(),
-                                          Msgs :: messages().
+          kz_json:object() when AccountId :: kz_term:ne_binary(),
+                                BoxId :: kz_term:ne_binary(),
+                                Msgs :: messages().
 update(AccountId, BoxId, Msgs) ->
     update(AccountId, BoxId, Msgs, []).
 
@@ -236,10 +240,10 @@ update(AccountId, BoxId, Msgs) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec update(AccountId, BoxId, Msgs, Functions) ->
-                    kz_json:object() when AccountId :: kz_term:ne_binary(),
-                                          BoxId :: kz_term:ne_binary(),
-                                          Msgs :: messages(),
-                                          Functions :: update_funs().
+          kz_json:object() when AccountId :: kz_term:ne_binary(),
+                                BoxId :: kz_term:ne_binary(),
+                                Msgs :: messages(),
+                                Functions :: update_funs().
 update(AccountId, BoxId, [?NE_BINARY = _Msg | _] = MsgIds, Funs) ->
     RetenTimestamp = kz_time:now_s() - kvm_util:retention_seconds(AccountId),
     FetchMap = fetch(AccountId, MsgIds, BoxId, RetenTimestamp),
@@ -286,8 +290,8 @@ update_fun(Db, JObjs, #{failed := Failed}=ResultMap) ->
 
 %% @equiv fetch(AccountId, MsgIds, 'undefined')
 -spec fetch(AccountId, MsgIds) ->
-                   kz_json:object() when AccountId :: kz_term:ne_binary(),
-                                         MsgIds :: kz_term:ne_binaries().
+          kz_json:object() when AccountId :: kz_term:ne_binary(),
+                                MsgIds :: kz_term:ne_binaries().
 fetch(AccountId, MsgIds) ->
     fetch(AccountId, MsgIds, 'undefined').
 
@@ -297,9 +301,9 @@ fetch(AccountId, MsgIds) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec fetch(AccountId, MsgIds, BoxId) ->
-                   kz_json:object() when AccountId :: kz_term:ne_binary(),
-                                         MsgIds :: kz_term:ne_binaries(),
-                                         BoxId :: kz_term:api_ne_binary().
+          kz_json:object() when AccountId :: kz_term:ne_binary(),
+                                MsgIds :: kz_term:ne_binaries(),
+                                BoxId :: kz_term:api_ne_binary().
 fetch(AccountId, MsgIds, BoxId) ->
     RetenTimestamp = kz_time:now_s() - kvm_util:retention_seconds(AccountId),
     bulk_result(fetch(AccountId, MsgIds, BoxId, RetenTimestamp)).
@@ -333,10 +337,10 @@ fetch_faild_with_reason(Reason, Db, Ids, #{failed := Failed}=ResultMap) ->
 
 %% @equiv change_folder(Folder, Msgs, AccountId, BoxId, [])
 -spec change_folder(Folder, Msgs, AccountId, BoxId) ->
-                           kz_json:object() when Folder :: kvm_message:vm_folder(),
-                                                 Msgs :: messages(),
-                                                 AccountId :: kz_term:ne_binary(),
-                                                 BoxId :: kz_term:ne_binary().
+          kz_json:object() when Folder :: kvm_message:vm_folder(),
+                                Msgs :: messages(),
+                                AccountId :: kz_term:ne_binary(),
+                                BoxId :: kz_term:ne_binary().
 change_folder(Folder, Msgs, AccountId, BoxId) ->
     change_folder(Folder, Msgs, AccountId, BoxId, []).
 
@@ -351,23 +355,25 @@ change_folder(Folder, Msgs, AccountId, BoxId) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec change_folder(Folder, Msgs, AccountId, BoxId, Functions) ->
-                           kz_json:object() when Folder :: kvm_message:vm_folder(),
-                                                 Msgs :: messages(),
-                                                 AccountId :: kz_term:ne_binary(),
-                                                 BoxId :: kz_term:ne_binary(),
-                                                 Functions :: update_funs().
+          kz_json:object() when Folder :: kvm_message:vm_folder(),
+                                Msgs :: messages(),
+                                AccountId :: kz_term:ne_binary(),
+                                BoxId :: kz_term:ne_binary(),
+                                Functions :: update_funs().
 change_folder(Folder, Msgs, AccountId, BoxId, Funs) ->
-    Fun = [fun(JObj) -> kzd_box_message:apply_folder(Folder, JObj) end
+    Fun = [fun(JObj) ->
+                   kzd_box_message:apply_folder(Folder, JObj)
+           end
            | Funs
           ],
     update(AccountId, BoxId, Msgs, Fun).
 
 %% @equiv move_to_vmbox(AccountId, MsgThings, OldBoxId, NewBoxId, [])
 -spec move_to_vmbox(AccountId, MsgIds, OldBoxId, NewBoxId) ->
-                           kz_json:object() when AccountId :: kz_term:ne_binary(),
-                                                 MsgIds :: messages(),
-                                                 OldBoxId :: kz_term:ne_binary(),
-                                                 NewBoxId :: kz_term:ne_binary().
+          kz_json:object() when AccountId :: kz_term:ne_binary(),
+                                MsgIds :: messages(),
+                                OldBoxId :: kz_term:ne_binary(),
+                                NewBoxId :: kz_term:ne_binary().
 move_to_vmbox(AccountId, MsgThings, OldBoxId, NewBoxId) ->
     move_to_vmbox(AccountId, MsgThings, OldBoxId, NewBoxId, []).
 
@@ -379,11 +385,11 @@ move_to_vmbox(AccountId, MsgThings, OldBoxId, NewBoxId) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec move_to_vmbox(AccountId, MsgIds, OldBoxId, NewBoxId, Functions) ->
-                           kz_json:object() when AccountId :: kz_term:ne_binary(),
-                                                 MsgIds :: messages(),
-                                                 OldBoxId :: kz_term:ne_binary(),
-                                                 NewBoxId :: kz_term:ne_binary(),
-                                                 Functions :: update_funs().
+          kz_json:object() when AccountId :: kz_term:ne_binary(),
+                                MsgIds :: messages(),
+                                OldBoxId :: kz_term:ne_binary(),
+                                NewBoxId :: kz_term:ne_binary(),
+                                Functions :: update_funs().
 move_to_vmbox(AccountId, [?NE_BINARY = _Msg | _] = MsgIds, OldBoxId, NewBoxId, Funs) ->
     AccountDb = kvm_util:get_db(AccountId),
     {'ok', NBoxJ} = kz_datamgr:open_cache_doc(AccountDb, NewBoxId),
@@ -409,10 +415,10 @@ do_move(AccountId, [FromId | FromIds], OldboxId, NewBoxId, NBoxJ, ResultMap, Fun
 
 %% @equiv copy_to_vmboxes(AccountId, Ids, OldBoxId, NewBoxIds, [])
 -spec copy_to_vmboxes(AccountId, Ids, OldBoxId, NewBoxIds) ->
-                             kz_json:object() when AccountId :: kz_term:ne_binary(),
-                                                   Ids :: kz_term:ne_binaries(),
-                                                   OldBoxId :: kz_term:ne_binary(),
-                                                   NewBoxIds :: kz_term:ne_binary() | kz_term:ne_binaries().
+          kz_json:object() when AccountId :: kz_term:ne_binary(),
+                                Ids :: kz_term:ne_binaries(),
+                                OldBoxId :: kz_term:ne_binary(),
+                                NewBoxIds :: kz_term:ne_binary() | kz_term:ne_binaries().
 copy_to_vmboxes(AccountId, Ids, OldBoxId, NewBoxIds) ->
     copy_to_vmboxes(AccountId, Ids, OldBoxId, NewBoxIds, []).
 
@@ -424,11 +430,11 @@ copy_to_vmboxes(AccountId, Ids, OldBoxId, NewBoxIds) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec copy_to_vmboxes(AccountId, Ids, OldBoxId, NewBoxIds, Functions) ->
-                             kz_json:object() when AccountId :: kz_term:ne_binary(),
-                                                   Ids :: kz_term:ne_binaries(),
-                                                   OldBoxId :: kz_term:ne_binary(),
-                                                   NewBoxIds :: kz_term:ne_binary() | kz_term:ne_binaries(),
-                                                   Functions :: update_funs().
+          kz_json:object() when AccountId :: kz_term:ne_binary(),
+                                Ids :: kz_term:ne_binaries(),
+                                OldBoxId :: kz_term:ne_binary(),
+                                NewBoxIds :: kz_term:ne_binary() | kz_term:ne_binaries(),
+                                Functions :: update_funs().
 copy_to_vmboxes(AccountId, Ids, OldBoxId, ?NE_BINARY = NewBoxId, Funs) ->
     copy_to_vmboxes(AccountId, Ids, OldBoxId, [NewBoxId], Funs);
 copy_to_vmboxes(AccountId, Ids, OldBoxId, NewBoxIds, Funs) ->

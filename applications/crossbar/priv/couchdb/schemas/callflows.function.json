@@ -1,0 +1,16 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "callflows.function",
+    "description": "Validator for the function callflow data object",
+    "properties": {
+        "id": {
+            "description": "The Function's doc ID",
+            "type": "string"
+        },
+        "skip_module": {
+            "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+            "type": "boolean"
+        }
+    },
+    "type": "object"
+}

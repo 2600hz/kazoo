@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_media_tts_cache).
@@ -77,7 +82,7 @@ stop(Srv) ->
 %%------------------------------------------------------------------------------
 -spec init(list()) -> {'ok', state()}.
 init([Id, JObj]) ->
-    kz_util:put_callid(Id),
+    kz_log:put_callid(Id),
 
     Voice = list_to_binary([kz_json:get_value(<<"Voice">>, JObj, kazoo_tts:default_voice()), "/"
                            ,get_language(kz_json:get_value(<<"Language">>, JObj, kazoo_tts:default_language()))
@@ -309,8 +314,9 @@ stop_timer(Ref) when is_reference(Ref) ->
 
 -spec publish_doc_update(kz_term:ne_binary()) -> 'ok'.
 publish_doc_update(Id) ->
+    DbId = kz_binary:md5(Id),
     API =
-        [{<<"ID">>, Id}
+        [{<<"ID">>, DbId}
         ,{<<"Type">>, Type = <<"media">>}
         ,{<<"Database">>, Db = <<"tts">>}
         ,{<<"Rev">>, <<"0">>}

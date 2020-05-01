@@ -1,16 +1,26 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc Handlers for various AMQP payloads
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(j5_util).
 
--export([send_system_alert/1]).
+-export([maybe_send_system_alert/1]).
 
 -include("jonny5.hrl").
 
--spec send_system_alert(j5_request:request()) -> any().
-send_system_alert(Request) ->
+-spec maybe_send_system_alert(j5_request:request()) -> 'ok'.
+maybe_send_system_alert(Request) ->
+    maybe_send_system_alert(j5_request:is_authorized(Request), Request).
+
+-spec maybe_send_system_alert(boolean(), j5_request:request()) -> 'ok'.
+maybe_send_system_alert('false', _Request) -> 'ok';
+maybe_send_system_alert('true', Request) ->
     AccountId = j5_request:account_id(Request),
     ResellerId = j5_request:reseller_id(Request),
     Routines = [fun(P) ->
@@ -25,7 +35,7 @@ send_system_alert(Request) ->
                         ,{<<"Account-Billing">>, j5_request:account_billing(Request)}
                         ,{<<"Reseller-ID">>, ResellerId}
                         ,{<<"Reseller-Billing">>, j5_request:reseller_billing(Request)}
-                        ,{<<"Soft-Limit">>, kz_term:to_binary(j5_request:soft_limit(Request))}
+                        ,{<<"Soft-Limit">>, j5_request:soft_limit(Request)}
                          | P
                         ]
                 end
@@ -39,12 +49,13 @@ send_system_alert(Request) ->
                              ,get_account_name(ResellerId)
                              ]
                             ,lists:foldr(fun(F, P) -> F(P) end, [], Routines)
-                            ).
+                            ),
+    'ok'.
 
 -spec add_limit_details(kz_term:api_ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> kz_term:proplist().
 add_limit_details('undefined', _, Props) -> Props;
 add_limit_details(Account, Prefix, Props) ->
-    AccountId = kz_util:format_account_id(Account),
+    AccountId = kzs_util:format_account_id(Account),
     Limits = j5_limits:get(AccountId),
     [{<<Prefix/binary, "-Enforce-Limits">>, kz_term:to_binary(j5_limits:enabled(Limits))}
     ,{<<Prefix/binary, "-Calls">>, kz_term:to_binary(calls(AccountId, Limits))}
@@ -84,7 +95,7 @@ max_postpay(Limits) ->
 get_account_name('undefined') -> <<"unknown">>;
 get_account_name(Account) ->
     case kzd_accounts:fetch_name(Account) of
-        undefined -> kz_util:format_account_id(Account);
+        undefined -> kzs_util:format_account_id(Account);
         Name -> Name
     end.
 

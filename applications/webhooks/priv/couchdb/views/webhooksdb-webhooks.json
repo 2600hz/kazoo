@@ -10,17 +10,51 @@
     "language": "javascript",
     "views": {
         "accounts_listing": {
-            "map": "function(doc) { if (doc.pvt_type != 'webhook' || doc.pvt_deleted) return; emit(doc.pvt_account_id, null); }",
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'webhook' || doc.pvt_deleted) return;",
+                "  emit(doc.pvt_account_id, null);",
+                "}"
+            ],
             "reduce": "_count"
         },
         "crossbar_listing": {
-            "map": "function(doc) { if (doc.pvt_type != 'webhook' || doc.pvt_deleted) return; var enabled = (typeof doc.enabled === 'undefined') ? true : doc.enabled; emit([doc.pvt_account_id, doc._id], {'id': doc._id, 'hook': doc.hook, 'name':doc.name, 'uri': doc.uri, 'group': doc.group, 'enabled':enabled, 'disable_reason':doc.pvt_disabled_message}); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'webhook' || doc.pvt_deleted) return;",
+                "  var enabled = (typeof doc.enabled === 'undefined') ? true : doc.enabled;",
+                "  emit([doc.pvt_account_id, doc._id], {",
+                "    'id': doc._id,",
+                "    'hook': doc.hook,",
+                "    'name': doc.name,",
+                "    'uri': doc.uri,",
+                "    'group': doc.group,",
+                "    'enabled': enabled,",
+                "    'disable_reason': doc.pvt_disabled_message",
+                "  });",
+                "}"
+            ]
         },
         "hook_listing": {
-            "map": "function(doc) { if (doc.pvt_type != 'webhook' || doc.pvt_deleted) return; emit(doc.hook, doc.pvt_account_id); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'webhook' || doc.pvt_deleted) return;",
+                "  emit(doc.hook, doc.pvt_account_id);",
+                "}"
+            ]
         },
         "webhooks_listing": {
-            "map": "function(doc) { if (doc.pvt_type != 'webhook' || doc.pvt_deleted || doc.enabled === false) return; emit([doc.pvt_account_id, doc._id], {'id': doc._id, 'hook': doc.hook, 'name':doc.name, 'uri': doc.uri}); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'webhook' || doc.pvt_deleted || doc.enabled === false) return;",
+                "  emit([doc.pvt_account_id, doc._id], {",
+                "    'id': doc._id,",
+                "    'hook': doc.hook,",
+                "    'name': doc.name,",
+                "    'uri': doc.uri",
+                "  });",
+                "}"
+            ]
         }
     }
 }

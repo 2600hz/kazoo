@@ -1,0 +1,13 @@
+{
+    "_id": "+14252151009",
+    "_rev": "1-adddead523e81a4e3c2689140ed3abeef",
+    "pvt_assigned_to": "account0000000000000000000000002",
+    "pvt_created": 63565935000,
+    "pvt_db_name": "numbers%2F%2B1425",
+    "pvt_modified": 63565935527,
+    "pvt_module_name": "knm_bandwidth2",
+    "pvt_reserve_history": [
+        "account0000000000000000000000002"
+    ],
+    "pvt_state": "port_in"
+}

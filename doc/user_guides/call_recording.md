@@ -23,6 +23,76 @@ Configuring recording at the user level starts recording for any calls to/from a
 
 Configuring recording at the device level starts recording for any calls to/from the device.
 
+#### Precedence of settings
+
+Precedence of settings is: Device > User
+
+If a user turns on call recording but a device has explicitly disabled it, the device will not be recorded when the user makes a call with it. If the device's settings are left undefined, the user's settings will be applied.
+
+The account's settings are considered independently of the endpoint's. So a user who has disabled recording, within an account that has enabled recording, will still have calls recorded according to the account's settings.
+
+#### Recording settings matrix
+
+##### Account Settings
+
+When an onnet device makes an internal call:
+
+| Setting                       | Source | Destination | Recording Started                          |
+| -------                       | ------ | ----------- | -----------------                          |
+| Account -> Inbound  -> Onnet  | onnet  | onnet       | yes                                        |
+| Account -> Inbound  -> Offnet | onnet  | onnet       | no                                         |
+| Account -> Outbound -> Onnet  | onnet  | onnet       | yes (if inbound -> onnet isn't configured) |
+| Account -> Outbound -> Offnet | onnet  | onnet       | no                                         |
+
+When an onnet device makes an external call:
+
+| Setting                       | Source | Destination | Recording Started                          |
+| -------                       | ------ | ----------- | -----------------                          |
+| Account -> Inbound  -> Onnet  | onnet  | offnet      | yes                                        |
+| Account -> Inbound  -> Offnet | onnet  | offnet      | no                                         |
+| Account -> Outbound -> Onnet  | onnet  | offnet      | no                                         |
+| Account -> Outbound -> Offnet | onnet  | offnet      | yes (if inbound -> onnet isn't configured) |
+
+When an offnet device makes an internal call:
+
+| Setting                       | Source | Destination | Recording Started                        |
+| -------                       | ------ | ----------- | -----------------                        |
+| Account -> Inbound  -> Onnet  | offnet | onnet       | no                                       |
+| Account -> Inbound  -> Offnet | offnet | onnet       | yes                                      |
+| Account -> Outbound -> Onnet  | offnet | onnet       | yes (if inbound-offnet isn't configured) |
+| Account -> Outbound -> Offnet | offnet | onnet       | no                                       |
+
+##### Endpoint Settings
+
+When an onnet device makes an internal call:
+
+| Setting                        | Source | Destination | Recording Started |
+| -------                        | ------ | ----------- | ----------------- |
+| Endpoint -> Inbound  -> Onnet  | onnet  | onnet       | yes¹              |
+| Endpoint -> Inbound  -> Offnet | onnet  | onnet       | no                |
+| Endpoint -> Outbound -> Onnet  | onnet  | onnet       | yes               |
+| Endpoint -> Outbound -> Offnet | onnet  | onnet       | no                |
+
+When an onnet device makes an external call:
+
+| Setting                        | Source | Destination | Recording Started |
+| -------                        | ------ | ----------- | ----------------- |
+| Endpoint -> Inbound  -> Onnet  | onnet  | offnet      | no                |
+| Endpoint -> Inbound  -> Offnet | onnet  | offnet      | no                |
+| Endpoint -> Outbound -> Onnet  | onnet  | offnet      | no                |
+| Endpoint -> Outbound -> Offnet | onnet  | offnet      | yes               |
+
+When an offnet endpoint makes a call to an onnet device:
+
+| Setting                        | Source | Destination | Recording Started |
+| -------                        | ------ | ----------- | ----------------- |
+| Endpoint -> Inbound  -> Onnet  | offnet | onnet       | no                |
+| Endpoint -> Inbound  -> Offnet | offnet | onnet       | yes               |
+| Endpoint -> Outbound -> Onnet  | offnet | onnet       | no                |
+| Endpoint -> Outbound -> Offnet | offnet | onnet       | no                |
+
+#### Enabling recording
+
 To enable call recording, add `"call_recording":{...}` to the document of choice. For example, if you have a user with user ID of `{USER_ID}`, you can patch the user's document using Crossbar:
 
 ```shell
@@ -34,25 +104,6 @@ curl -v -X PATCH \
     }}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}
 ```
-
-### Call Recording Payload
-
-The `call_recording` payload defines properties to be applied on `inbound` to, `outbound` from, or `any` calls involving the endpoint.
-
-Each of those properties can then define what to do when the call comes from the `offnet`, `onnet`, or `any` network.
-
-Effectively this gives you a matrix on the endpoint to control how call recording is initiated:
-
- | `offnet` | `onnet`
-`inbound` | [1] | [2]
-`outbound` | [3] | [4]
-
-1. `inbound` + `offnet`: Calls originating from offnet (upstream carriers typically) to the endpoint
-2. `inbound` + `onnet`: Calls originating from onnet (typically another endpoint in the account) to the endpoint
-3. `outbound` + `offnet`: Calls originating from the endpoint destined for the upstream carriers
-4. `outbound` + `onnet`: Calls originating from the endpoint destined for another endpoint on the account
-
-Using `any` for either setting will invoke recording for both options of that setting.
 
 #### Concrete example
 
@@ -115,3 +166,35 @@ Key | Description | Type | Default | Required | Support Level
 `method` | What HTTP method to use when sending the recording | `string('put' | 'post')` | `put` | `false` |
 `time_limit` | Time limit, in seconds, for the recording | `integer()` | `3600` | `false` |
 `url` | The URL to use when sending the recording for storage | `string()` |   | `false` |
+
+### Interpreting call recordings and call direction
+
+Call direction is a field found in CDRs that indicates, from KAZOO's perspective, from whence the call was started. `inbound` indicates that the phone/carrier has sent the INVITE to Kazoo (inbound to KAZOO). `outbound` indicates that KAZOO is sending the INVITE to the phone/carrier (outbound from KAZOO).
+
+```
+inbound: PHONE ==INVITE==> KAZOO
+outbound: PHONE <==INVITE== KAZOO
+```
+
+Now a lot of calls will involve two phones:
+
+```
+PHONE_A ==INVITE==> KAZOO ==INVITE==> PHONE_B
+```
+
+The INVITE from `PHONE_A` is the `inbound` call leg while the INVITE from KAZOO to `PHONE_B` is the `outbound` leg.
+
+However, these directions are often not intuitive to end users. Most folks would say a call coming in from the PSTN is an `inbound` call while the call they place *to* the PSTN is an `outbound` call. UI clients, therefore, can't rely on just displaying the `call_direction` field of a call to indicate the direction of the call from the end user's perspective.
+
+When call recording is configured, the leg being recorded will include the recording information in its CDR. Additionally, if a leg is coming in from or going out to the PSTN, it will include a `resource_type` field in the CDR's `custom_channel_vars`. Fetching all legs involved (using the interaction_id), it should be possible to determine the direction of a call from the end user's perspective for the simple case:
+
+End User's Direction | Call Direction (A leg) | Resource Type (A leg) | Call Direction (B leg) | Resource Type (B leg) | Description
+-------------------- | ---------------------- | --------------------- | ---------------------- | --------------------- | -----------
+`inbound`            | inbound from PSTN      | `offnet-origination`  | outbound to the device | `undefined`           | A call in from the PSTN to a registered device
+`outbound`           | inbound from a device  | `undefined`           | outbound to the PSTN   | `offnet-termination`  | A call from a registered device to the PSTN
+
+Those are the simple cases, of course. Where it gets tricky is when a call comes in from the PSTN and is subsequently sent to a call-forwarded device (via PSTN). Both legs will have `resource_type` set. Or when a device calls another device, no `resource_type` will exist on either leg. Or when a call is transferred or parked/picked up (sometimes multiple times).
+
+The leg where call recording is started will have `media_recording_id` set (among others) in the leg's CDR under the `custom_channel_vars` object.
+
+Hopefully this section can serve as a jumping off point for UI clients to determine how to communicate to end users the direction of calls so that labeling recordings can be done in a way that makes sense for the end user.

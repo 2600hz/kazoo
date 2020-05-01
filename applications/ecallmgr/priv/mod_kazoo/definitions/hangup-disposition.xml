@@ -1,0 +1,4 @@
+<definition name="hangup-disposition">
+	<field name="Disposition" type="first-of"
+		value="variable_originate_disposition|variable_endpoint_disposition" />
+</definition>

@@ -1,0 +1,34 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "functions",
+    "description": "Functions that javascript function to process a callflow document.",
+    "properties": {
+        "enabled": {
+            "default": true,
+            "description": "Is the function enabled and running",
+            "support_level": "supported",
+            "type": "boolean"
+        },
+        "function_js": {
+            "description": "Serverless function in Javascript",
+            "support_level": "supported",
+            "type": "string"
+        },
+        "language_pack": {
+            "default": "javascript",
+            "description": "The language and version are required for the function runtime.",
+            "support_level": "supported",
+            "type": "string"
+        },
+        "name": {
+            "description": "A descriptive name for the function.",
+            "support_level": "supported",
+            "type": "string"
+        }
+    },
+    "required": [
+        "name",
+        "function_js"
+    ],
+    "type": "object"
+}

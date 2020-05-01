@@ -20,9 +20,6 @@
 # Hearbeat disbled by default
 ##-heart
 
-# GC more often
--env ERL_FULLSWEEP_AFTER 10
-
 # Increase number of concurrent ports / sockets
 ##-env ERL_MAX_PORTS 4096
 

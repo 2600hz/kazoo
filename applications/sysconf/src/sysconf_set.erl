@@ -1,9 +1,14 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Handle AMQP requests to write system configuration data.
 %%% Support nested keys like key#subkey#subsubkey
 %%%
 %%% @author Edouard Swiac
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(sysconf_set).
@@ -20,7 +25,7 @@ init() -> 'ok'.
 -spec handle_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_req(ApiJObj, _Props) ->
     'true' = kapi_sysconf:set_req_v(ApiJObj),
-    kz_util:put_callid(ApiJObj),
+    kz_log:put_callid(ApiJObj),
 
     Category = kz_json:get_value(<<"Category">>, ApiJObj),
     Key = kz_json:get_value(<<"Key">>, ApiJObj),

@@ -12,14 +12,13 @@
         "search_by_id": {
             "map": [
                 "function(doc) {",
-                "  if (doc.pvt_deleted)",
-                "    return;",
+                "  if (doc.pvt_deleted) return;",
                 "  for (i in doc.pvt_tree) {",
                 "    emit([doc.pvt_tree[i], doc.pvt_type, doc._id], {",
                 "      'id': doc._id,",
                 "      'descendants_count': doc.descendants_count || 0,",
                 "      'name': doc.name,",
-                "      'realm' : doc.realm",
+                "      'realm': doc.realm",
                 "    });",
                 "  }",
                 "}"
@@ -28,13 +27,13 @@
         "search_by_name": {
             "map": [
                 "function(doc) {",
-                "  if (doc.pvt_deleted)",
-                "    return;",
+                "  if (doc.pvt_deleted) return;",
                 "  for (i in doc.pvt_tree) {",
                 "    var name = '';",
                 "    if (doc.pvt_alphanum_name) {",
                 "      name = doc.pvt_alphanum_name;",
-                "    } if (doc.name) {",
+                "    }",
+                "    if (doc.name) {",
                 "      name = doc.name.toLowerCase().replace(/[^a-z0-9]/g, '');",
                 "    } else {",
                 "      return",
@@ -43,7 +42,7 @@
                 "      'id': doc._id,",
                 "      'descendants_count': doc.descendants_count || 0,",
                 "      'name': doc.name,",
-                "      'realm' : doc.realm",
+                "      'realm': doc.realm",
                 "    });",
                 "  }",
                 "}"
@@ -52,14 +51,13 @@
         "search_by_realm": {
             "map": [
                 "function(doc) {",
-                "  if (doc.pvt_deleted)",
-                "    return;",
+                "  if (doc.pvt_deleted) return;",
                 "  for (i in doc.pvt_tree) {",
                 "    emit([doc.pvt_tree[i], doc.pvt_type, doc.realm.toLowerCase().replace(/[^a-z0-9]/g, '')], {",
                 "      'id': doc._id,",
                 "      'descendants_count': doc.descendants_count || 0,",
                 "      'name': doc.name,",
-                "      'realm' : doc.realm",
+                "      'realm': doc.realm",
                 "    });",
                 "  }",
                 "}"

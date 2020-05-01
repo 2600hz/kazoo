@@ -1,12 +1,17 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kzd_menus).
 
 -export([new/0]).
 -export([allow_record_from_offnet/1, allow_record_from_offnet/2, set_allow_record_from_offnet/2]).
+-export([flags/1, flags/2, set_flags/2]).
 -export([hunt/1, hunt/2, set_hunt/2]).
 -export([hunt_allow/1, hunt_allow/2, set_hunt_allow/2]).
 -export([hunt_deny/1, hunt_deny/2, set_hunt_deny/2]).
@@ -22,6 +27,9 @@
 -export([retries/1, retries/2, set_retries/2]).
 -export([timeout/1, timeout/2, set_timeout/2]).
 
+-export([schema_name/0
+        ,type/0
+        ]).
 
 -include("kz_documents.hrl").
 
@@ -29,10 +37,11 @@
 -export_type([doc/0]).
 
 -define(SCHEMA, <<"menus">>).
+-define(TYPE, <<"menu">>).
 
 -spec new() -> doc().
 new() ->
-    kz_json_schema:default_object(?SCHEMA).
+    kz_doc:set_type(kz_json_schema:default_object(?SCHEMA), type()).
 
 -spec allow_record_from_offnet(doc()) -> boolean().
 allow_record_from_offnet(Doc) ->
@@ -45,6 +54,18 @@ allow_record_from_offnet(Doc, Default) ->
 -spec set_allow_record_from_offnet(doc(), boolean()) -> doc().
 set_allow_record_from_offnet(Doc, AllowRecordFromOffnet) ->
     kz_json:set_value([<<"allow_record_from_offnet">>], AllowRecordFromOffnet, Doc).
+
+-spec flags(doc()) -> kz_term:api_ne_binaries().
+flags(Doc) ->
+    flags(Doc, 'undefined').
+
+-spec flags(doc(), Default) -> kz_term:ne_binaries() | Default.
+flags(Doc, Default) ->
+    kz_json:get_list_value([<<"flags">>], Doc, Default).
+
+-spec set_flags(doc(), kz_term:ne_binaries()) -> doc().
+set_flags(Doc, Flags) ->
+    kz_json:set_value([<<"flags">>], Flags, Doc).
 
 -spec hunt(doc()) -> boolean().
 hunt(Doc) ->
@@ -213,3 +234,9 @@ timeout(Doc, Default) ->
 -spec set_timeout(doc(), integer()) -> doc().
 set_timeout(Doc, Timeout) ->
     kz_json:set_value([<<"timeout">>], Timeout, Doc).
+
+-spec schema_name() -> kz_term:ne_binary().
+schema_name() -> ?SCHEMA.
+
+-spec type() -> kz_term:ne_binary().
+type() -> ?TYPE.

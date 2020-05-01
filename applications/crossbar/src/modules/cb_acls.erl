@@ -1,8 +1,13 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc ACLs from 7 to 77
 %%% @author James Aimonetti
 %%% @author Edouard Swiac
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cb_acls).
@@ -14,8 +19,6 @@
         ]).
 
 -include("crossbar.hrl").
--define(ECALLMGR, <<"ecallmgr">>).
--define(ECALLMGR_ACLS, <<"acls">>).
 
 %%%=============================================================================
 %%% API
@@ -75,26 +78,7 @@ validate_summary(Context, ?HTTP_GET) ->
 %%------------------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    Req = [{<<"Category">>, ?ECALLMGR}
-          ,{<<"Key">>, ?ECALLMGR_ACLS}
-          ,{<<"Default">>, kz_json:new()}
-          ,{<<"Node">>, kz_term:to_binary(node())}
-          ,{<<"Msg-ID">>, kz_binary:rand_hex(16)}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ],
-    lager:debug("looking up acls from sysconf", []),
-    ReqResp = kz_amqp_worker:call(Req
-                                 ,fun kapi_sysconf:publish_get_req/1
-                                 ,fun kapi_sysconf:get_resp_v/1
-                                 ,2 * ?MILLISECONDS_IN_SECOND
-                                 ),
-    case ReqResp of
-        {'error', _R} ->
-            lager:debug("unable to get acls from sysconf: ~p", [_R]),
-            cb_context:add_system_error('datastore_fault', Context);
-        {'ok', JObj} ->
-            ACLs = kz_json:get_value(<<"Value">>, JObj, kz_json:new()),
-            cb_context:setters(Context, [{fun cb_context:set_resp_data/2, ACLs}
-                                        ,{fun cb_context:set_resp_status/2, 'success'}
-                                        ])
-    end.
+    ACLs = kapps_config:fetch_current(<<"ecallmgr">>, <<"acls">>),
+    cb_context:setters(Context, [{fun cb_context:set_resp_data/2, ACLs}
+                                ,{fun cb_context:set_resp_status/2, 'success'}
+                                ]).

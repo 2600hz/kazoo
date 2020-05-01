@@ -24,6 +24,11 @@
                     "default": 5,
                     "description": "media storage retry times",
                     "type": "integer"
+                },
+                "workers": {
+                    "default": 1,
+                    "description": "media call_recording workers",
+                    "type": "integer"
                 }
             }
         },
@@ -41,7 +46,7 @@
             "type": "boolean"
         },
         "max_recording_time_limit": {
-            "default": 3600,
+            "default": 10800,
             "description": "media maximum recording time limit",
             "type": "integer"
         },

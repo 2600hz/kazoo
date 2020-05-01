@@ -21,6 +21,8 @@ Key | Description | Type | Default | Required | Support Level
 `conference_numbers` | Defines conference numbers that can be used by members or moderators | `array(string())` | `[]` | `false` |  
 `controls` | controls | `object()` |   | `false` |  
 `domain` | domain | `string()` |   | `false` |  
+`flags.[]` |   | `string()` |   | `false` | `supported`
+`flags` | Flags set by external applications | `array(string())` |   | `false` | `supported`
 `focus` | This is a read-only property indicating the media server hosting the conference | `string()` |   | `false` |  
 `language` | Prompt language to play in the conference | `string()` |   | `false` |  
 `max_members_media` | Media to play when the conference is full | `string()` |   | `false` |  
@@ -100,6 +102,41 @@ curl -v -X PUT \
  `unlock` | Unlock the conference; new participants may join
  `dial` | Dial an endpoint (user/device/DID)
  `play` | Play media to the conference (all participants)
+ `record` | Start/stop the recording of the conference
+
+### Lock / unlock
+
+Lock and unlock take no additional data.
+
+```shell
+curl -v -X PUT \
+    -d '{"action": "lock", "data": {}}' \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
+```
+
+### Play media into a conference
+
+The `play` action takes the media ID to play into the conference.
+
+```shell
+curl -v -X PUT \
+    -d '{"action": "play", "data": {"media_id":"{MEDIA_TO_PLAY}"}}' \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
+```
+
+### Start/Stop recording the conference
+
+The `record` action takes a toggle of "start" or "stop":
+
+```shell
+curl -v -X PUT \
+    -d '{"action": "record", "data": {"action":"start"}}' \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
+```
+
 
 ### Dialing an endpoint
 
@@ -120,6 +157,8 @@ Key | Description | Type | Default | Required | Support Level
 `conference_numbers` | Defines conference numbers that can be used by members or moderators | `array(string())` | `[]` | `false` |  
 `controls` | controls | `object()` |   | `false` |  
 `domain` | domain | `string()` |   | `false` |  
+`flags.[]` |   | `string()` |   | `false` | `supported`
+`flags` | Flags set by external applications | `array(string())` |   | `false` | `supported`
 `focus` | This is a read-only property indicating the media server hosting the conference | `string()` |   | `false` |  
 `language` | Prompt language to play in the conference | `string()` |   | `false` |  
 `max_members_media` | Media to play when the conference is full | `string()` |   | `false` |  
@@ -203,7 +242,7 @@ Note: Phone numbers will involve some internal legs being generated (loopback le
 }
 ```
 
-As when making [QuickCalls](./quickcall.md), you can include `custom_application_vars`:
+As when making [QuickCalls](quickcall.md), you can include `custom_application_vars`:
 
 ```json
 {
@@ -347,7 +386,7 @@ curl -v -X PUT \
 
 ### Relate participants
 
- The `relate` action takes a `data` object:
+The `relate` action takes a `data` object:
 
 ```
 {
@@ -362,11 +401,23 @@ curl -v -X PUT \
 }
 ```
 
-Key | Description | Type | Default | Required
---- | ----------- | ---- | ------- | --------
-`other_participant` | The other participant ID to relate | `string() | integer()` |   | `true`
-`participant_id` | The participant ID to relate | `string() | integer()` |   | `true`
-`relationship` | The relationship to establish between the two participants | `string('deaf' | 'clear' | 'mute')` | `clear` | `false`
+
+#### Schema
+
+Relate two participants to each other in a conference
+
+
+
+Key | Description | Type | Default | Required | Support Level
+--- | ----------- | ---- | ------- | -------- | -------------
+`conference_id` | The ID of the conference | `string()` |   | `true` |
+`other_participant` | The other participant ID to relate | `string() | integer()` |   | `true` |
+`participant_id` | The participant ID to relate | `string() | integer()` |   | `true` |
+`relationship` | The relationship to establish between the two participants | `string('deaf' | 'clear' | 'mute')` | `clear` | `false` |
+
+
+
+#### API example
 
 ```shell
 curl -v -X PUT \
@@ -528,33 +579,6 @@ The last field, `play_entry_tone`, is at the root of the document: meaning this 
     * `true` means play the default tone when someone joins (or leaves) the conference
     * `false` disables the tone from being played
     * A string like a *tone string* or a *URI to a media file* can be inputted.
-
-#### Actions
-
-Actions are JSON objects in format:
-
-```json
-{
-    "action": "{ACTION}"
-}
-```
-
-#### Conference actions
-
-    lock: lock conference (prevent participants to join)
-    unlock: unlock conference (allow everybody to join)
-
-#### Participants actions
-
-    mute/unmute: mute/unmute all participants except moderators
-    deaf/undeaf: deaf/undeaf all participants except moderators
-    kick: kick every participant out
-
-#### Participant actions
-
-    mute/unmute: mute/unmute participant
-    deaf/undeaf: deaf/undeaf participant
-    kick: kick participant
 
 ### Web-socket events
 

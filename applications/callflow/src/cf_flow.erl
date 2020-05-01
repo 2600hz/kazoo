@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc
 %%% @author Luis Azedo
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cf_flow).
@@ -49,8 +54,7 @@ return_callflow_doc(FlowId, AccountId) ->
 
 -spec return_callflow_doc(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> lookup_ret().
 return_callflow_doc(FlowId, AccountId, Props) ->
-    Db = kz_util:format_account_db(AccountId),
-    case kz_datamgr:open_cache_doc(Db, FlowId) of
+    case kz_datamgr:open_cache_doc(AccountId, FlowId) of
         {'ok', Doc} ->
             {'ok', kz_json:set_values(Props, Doc), contains_no_match(Doc)};
         Error -> Error
@@ -58,34 +62,34 @@ return_callflow_doc(FlowId, AccountId, Props) ->
 
 -spec contains_no_match(kzd_callflows:doc()) -> boolean().
 contains_no_match(Doc) ->
-    lists:any(fun(Number) when Number =:= ?NO_MATCH_CF ->
-                      'true';
-                 (_) ->
-                      'false'
-              end, kzd_callflows:numbers(Doc)).
+    lists:any(fun is_no_match_number/1
+             ,kzd_callflows:numbers(Doc)
+             ).
+
+-spec is_no_match_number(kz_term:ne_binary()) -> boolean().
+is_no_match_number(Number) -> Number =:= ?NO_MATCH_CF.
 
 -spec do_lookup(kz_term:ne_binary(), kz_term:ne_binary()) -> lookup_ret().
 do_lookup(Number, AccountId) ->
-    Db = kz_util:format_account_db(AccountId),
-    lager:info("searching for callflow in ~s to satisfy '~s'", [Db, Number]),
+    lager:info("searching for callflow in ~s to satisfy '~s'", [AccountId, Number]),
     Options = [{'key', Number}, 'include_docs'],
-    case kz_datamgr:get_results(Db, ?LIST_BY_NUMBER, Options) of
+    case kz_datamgr:get_results(AccountId, ?LIST_BY_NUMBER, Options) of
         {'error', _}=E -> E;
         {'ok', []} when Number =/= ?NO_MATCH_CF ->
             lookup_patterns(Number, AccountId);
         {'ok', []} -> {'error', 'not_found'};
         {'ok', [JObj]} ->
-            Flow = kz_json:get_value(<<"doc">>, JObj),
+            Flow = kz_json:get_json_value(<<"doc">>, JObj),
             cache_callflow_number(Number, AccountId, Flow);
         {'ok', [JObj | _Rest]} ->
             lager:info("lookup resulted in more than one result, using the first"),
-            Flow = kz_json:get_value(<<"doc">>, JObj),
+            Flow = kz_json:get_json_value(<<"doc">>, JObj),
             cache_callflow_number(Number, AccountId, Flow)
     end.
 
 -spec cache_callflow_number(kz_term:ne_binary(), kz_term:ne_binary(), kzd_callflows:doc()) -> lookup_ret().
 cache_callflow_number(Number, AccountId, Flow) ->
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kzs_util:format_account_db(AccountId),
     CacheOptions = [{'origin', [{'db', AccountDb, <<"callflow">>}]}
                    ,{'expires', ?MILLISECONDS_IN_HOUR}
                    ],
@@ -117,7 +121,7 @@ fetch_patterns(AccountId)->
 
 -spec load_patterns(kz_term:ne_binary()) -> {'ok', patterns()} | {'error', 'not_found'}.
 load_patterns(AccountId) ->
-    Db = kz_util:format_account_db(AccountId),
+    Db = kzs_util:format_account_db(AccountId),
     case kz_datamgr:get_results(Db, ?LIST_BY_PATTERN, ['include_docs']) of
         {'ok', []} -> {'error', 'not_found'};
         {'ok', JObjs} -> compile_patterns(AccountId, JObjs);
@@ -150,14 +154,14 @@ compile_patterns(AccountId, [JObj | JObjs], Acc) ->
 
 -spec cache_patterns(kz_term:ne_binary(), patterns()) -> {'ok', patterns()}.
 cache_patterns(AccountId, Patterns) ->
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kzs_util:format_account_db(AccountId),
     CacheOptions = [{'origin', [{'db', AccountDb, <<"callflow">>}]}],
     kz_cache:store_local(?CACHE_NAME, ?CF_PATTERN_CACHE_KEY(AccountId), Patterns, CacheOptions),
     {'ok', Patterns}.
 
 -spec lookup_patterns(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                             {'ok', {kz_json:object(), kz_term:api_binary()}} |
-                             {'error', any()}.
+          {'ok', {kz_json:object(), kz_term:api_binary()}} |
+          {'error', any()}.
 lookup_patterns(Number, AccountId) ->
     case fetch_patterns(AccountId) of
         {'ok', Patterns} -> lookup_callflow_patterns(Patterns, Number, AccountId);
@@ -195,7 +199,7 @@ test_callflow_patterns(Patterns, Number) ->
     test_callflow_patterns(Patterns, Number, {<<>>, 'undefined'}).
 
 -spec test_callflow_patterns(patterns(), kz_term:ne_binary(), test_pattern_acc()) ->
-                                    'no_match' | test_pattern_acc().
+          'no_match' | test_pattern_acc().
 test_callflow_patterns([], _, {_, 'undefined'}) -> 'no_match';
 test_callflow_patterns([], _, Result) -> Result;
 test_callflow_patterns([#pattern{regex=Regex}=Pattern |T], Number, {Matched, P}=Result) ->

@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(ci_parser_kamailio).
@@ -53,11 +57,11 @@ start_link(Args) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec init({'parser_args', file:filename_all(), kz_term:ne_binary(), pos_integer()}) ->
-                  {'ok', state()} |
-                  {'stop', any()}.
+          {'ok', state()} |
+          {'stop', any()}.
 init({'parser_args', LogFile, LogIP, LogPort} = Args) ->
     ParserId = ci_parsers_util:make_name(Args),
-    _ = kz_util:put_callid(ParserId),
+    _ = kz_log:put_callid(ParserId),
     case ci_parsers_util:open_file_for_read(LogFile) of
         {'ok', IoDevice} ->
             State = #state{parser_id = ParserId
@@ -170,7 +174,7 @@ extract_chunks(ParserId, Dev, LogIP, LogPort, Counter) ->
 -type data() :: [datum()].
 
 -spec make_and_store_chunk(atom(), kz_term:ne_binary(), pos_integer(), kz_term:ne_binary(), pos_integer(), data()) ->
-                                  pos_integer().
+          pos_integer().
 make_and_store_chunk(ParserId, LogIP, LogPort, Callid, Counter, Data0) ->
     {Data, Ts} = cleanse_data_and_get_timestamp(Data0),
     %% Counter is a fallback time ID (for old logfile format)
@@ -199,9 +203,9 @@ make_and_store_chunk(ParserId, LogIP, LogPort, Callid, Counter, Data0) ->
 
 -type buffer() :: {key(), data()}.
 -spec extract_chunk(file:io_device()) ->
-                           buffer() |
-                           [] |
-                           {'buffers', [buffer()]}.
+          buffer() |
+          [] |
+          {'buffers', [buffer()]}.
 extract_chunk(Dev) ->
     case file:read_line(Dev) of
         'eof' ->

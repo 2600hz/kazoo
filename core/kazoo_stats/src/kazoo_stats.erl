@@ -1,11 +1,15 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc This process runs on each node in the Kazoo cluster. It collects information
 %%% on each node, and regularly sends the information the stats application.
 %%% For `ecallmgr' nodes, it also collects `ecallmgr' information, and
 %%% sip events statistics.
 %%%
 %%% @author Stephen Gibberd <stephen.gibberd@2600hz.com>
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kazoo_stats).

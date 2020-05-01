@@ -1,13 +1,17 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2018, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(skel_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 -include_lib("kazoo_fixturedb/include/kz_fixturedb.hrl").
--include_lib("kazoo_stdlib/include/kz_types.hrl").
+-include_lib("kazoo_stdlib/include/kz_log.hrl").
 
 kz_services_test_() ->
     {'setup'

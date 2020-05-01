@@ -1,0 +1,73 @@
+paths:
+  /accounts/{ACCOUNT_ID}/resource_templates:
+    get:
+      operationId: GetAccountsAccountIdResourceTemplates
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get all resource_templates
+      tags:
+        - resource_templates
+    put:
+      operationId: PutAccountsAccountIdResourceTemplates
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of resource_templates
+      tags:
+        - resource_templates
+  /accounts/{ACCOUNT_ID}/resource_templates/{RESOURCE_TEMPLATE_ID}:
+    delete:
+      operationId: DeleteAccountsAccountIdResourceTemplatesResourceTemplateId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/RESOURCE_TEMPLATE_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of resource_templates
+      tags:
+        - resource_templates
+    get:
+      operationId: GetAccountsAccountIdResourceTemplatesResourceTemplateId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/RESOURCE_TEMPLATE_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a resource_templates by ID
+      tags:
+        - resource_templates
+    patch:
+      operationId: PatchAccountsAccountIdResourceTemplatesResourceTemplateId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/RESOURCE_TEMPLATE_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Patch specific fields of resource_templates
+      tags:
+        - resource_templates
+    post:
+      operationId: PostAccountsAccountIdResourceTemplatesResourceTemplateId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/RESOURCE_TEMPLATE_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of resource_templates
+      tags:
+        - resource_templates

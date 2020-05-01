@@ -1,11 +1,17 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kzd_list_entries).
 
 -export([new/0]).
+-export([capture_group_key/1, capture_group_key/2, set_capture_group_key/2]).
+-export([capture_group_length/1, capture_group_length/2, set_capture_group_length/2]).
 -export([displayname/1, displayname/2, set_displayname/2]).
 -export([firstname/1, firstname/2, set_firstname/2]).
 -export([lastname/1, lastname/2, set_lastname/2]).
@@ -26,6 +32,30 @@
 -spec new() -> doc().
 new() ->
     kz_json_schema:default_object(?SCHEMA).
+
+-spec capture_group_key(doc()) -> kz_term:api_binary().
+capture_group_key(Doc) ->
+    capture_group_key(Doc, 'undefined').
+
+-spec capture_group_key(doc(), Default) -> binary() | Default.
+capture_group_key(Doc, Default) ->
+    kz_json:get_binary_value([<<"capture_group_key">>], Doc, Default).
+
+-spec set_capture_group_key(doc(), binary()) -> doc().
+set_capture_group_key(Doc, CaptureGroupKey) ->
+    kz_json:set_value([<<"capture_group_key">>], CaptureGroupKey, Doc).
+
+-spec capture_group_length(doc()) -> kz_term:api_integer().
+capture_group_length(Doc) ->
+    capture_group_length(Doc, 'undefined').
+
+-spec capture_group_length(doc(), Default) -> integer() | Default.
+capture_group_length(Doc, Default) ->
+    kz_json:get_integer_value([<<"capture_group_length">>], Doc, Default).
+
+-spec set_capture_group_length(doc(), integer()) -> doc().
+set_capture_group_length(Doc, CaptureGroupLength) ->
+    kz_json:set_value([<<"capture_group_length">>], CaptureGroupLength, Doc).
 
 -spec displayname(doc()) -> kz_term:api_ne_binary().
 displayname(Doc) ->

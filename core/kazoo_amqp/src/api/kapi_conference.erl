@@ -1,7 +1,11 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
 %%% @author Karl Anderson
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kapi_conference).
@@ -86,7 +90,6 @@
 
 -include_lib("kz_amqp_util.hrl").
 -include("kapi_dialplan.hrl").
--include("kapi_call.hrl").
 
 -type doc() :: kz_json:object().
 -type discovery_req() :: kz_json:object().
@@ -1175,7 +1178,7 @@ bind_to_q(Q, ['command'|T], Props) ->
     'ok' = kz_amqp_util:bind_q_to_conference(Q, 'command'),
     bind_to_q(Q, T, Props);
 bind_to_q(Q, ['event'|T], Props) ->
-    'ok' = kz_amqp_util:bind_q_to_conference(Q, 'event'),
+    'ok' = kz_amqp_util:bind_q_to_conference(Q, 'event', <<"#">>),
     bind_to_q(Q, T, Props);
 bind_to_q(Q, ['config'|T], Props) ->
     Profile = props:get_value('profile', Props, <<"*">>),
@@ -1215,7 +1218,7 @@ unbind_from_q(Q, ['command'|T], Props) ->
     'ok' = kz_amqp_util:unbind_q_from_conference(Q, 'command'),
     unbind_from_q(Q, T, Props);
 unbind_from_q(Q, ['event'|T], Props) ->
-    'ok' = kz_amqp_util:unbind_q_from_conference(Q, 'event'),
+    'ok' = kz_amqp_util:unbind_q_from_conference(Q, 'event', <<"#">>),
     unbind_from_q(Q, T, Props);
 unbind_from_q(Q, ['config'|T], Props) ->
     Profile = props:get_value('profile', Props, <<"*">>),
@@ -1231,8 +1234,8 @@ unbind_from_q(Q, [{'event', ConfIdOrProps}|T], Props) ->
     'ok' = kz_amqp_util:unbind_q_from_conference(Q, 'event', event_binding_key(ConfIdOrProps)),
     unbind_from_q(Q, T, Props);
 unbind_from_q(Q, [{'command', ConfId}|T], Props) ->
-    'ok' = kz_amqp_util:bind_q_to_conference(Q, 'command', ConfId),
-    bind_to_q(Q, T, Props);
+    'ok' = kz_amqp_util:unbind_q_from_conference(Q, 'command', ConfId),
+    unbind_from_q(Q, T, Props);
 unbind_from_q(_Q, [], _) -> 'ok'.
 
 %%------------------------------------------------------------------------------

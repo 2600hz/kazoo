@@ -1,8 +1,13 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc
 %%% @author Karl Anderson
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cb_channels).
@@ -135,7 +140,7 @@ put(Context, UUID) ->
           ,{<<"Flow">>, cb_context:doc(Context)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    kz_amqp_worker:cast(API, fun kapi_metaflow:publish_flow/1),
+    _ = kz_amqp_worker:cast(API, fun kapi_metaflow:publish_flow/1),
     crossbar_util:response_202(<<"metaflow sent">>, Context).
 
 %%------------------------------------------------------------------------------
@@ -288,12 +293,12 @@ maybe_get_user_channels(Context, Endpoints) ->
     end.
 
 -spec user_endpoints(cb_context:context(), kz_term:ne_binary()) ->
-                            endpoints_return().
+          endpoints_return().
 user_endpoints(Context, UserId) ->
     Options = [{'key', [UserId, <<"device">>]}
               ,'include_docs'
               ],
-    Context1 = crossbar_doc:load_view(<<"attributes/owned">>, Options, Context),
+    Context1 = crossbar_view:load(Context, <<"attributes/owned">>, Options),
     {cb_context:doc(Context1), Context1}.
 
 -spec group_summary(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
@@ -316,7 +321,7 @@ group_endpoints(Context, _GroupId) ->
                  ).
 
 -spec group_endpoints_fold(kz_term:ne_binary(), kz_json:object(), endpoints_return()) ->
-                                  endpoints_return().
+          endpoints_return().
 group_endpoints_fold(EndpointId, EndpointData, {Acc, Context}) ->
     case kz_json:get_value(<<"type">>, EndpointData) of
         <<"user">> ->
@@ -466,7 +471,7 @@ transfer(Context, Transferor, _Transferee, Target) ->
           ],
 
     lager:debug("attempting ~s transfer ~s to ~s by ~s", [TransferType, _Transferee, Target, Transferor]),
-    kz_amqp_worker:cast(API, fun kapi_metaflow:publish_action/1),
+    _ = kz_amqp_worker:cast(API, fun kapi_metaflow:publish_action/1),
     crossbar_util:response_202(<<"transfer initiated">>, Context).
 
 -spec maybe_hangup(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
@@ -477,7 +482,7 @@ maybe_hangup(Context, CallId) ->
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("attempting to hangup ~s", [CallId]),
-    kz_amqp_worker:cast(API, fun kapi_metaflow:publish_action/1),
+    _ = kz_amqp_worker:cast(API, fun kapi_metaflow:publish_action/1),
     crossbar_util:response_202(<<"hangup initiated">>, Context).
 
 -spec maybe_break(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
@@ -488,7 +493,7 @@ maybe_break(Context, CallId) ->
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("attempting to break ~s", [CallId]),
-    kz_amqp_worker:cast(API, fun kapi_metaflow:publish_action/1),
+    _ = kz_amqp_worker:cast(API, fun kapi_metaflow:publish_action/1),
     crossbar_util:response_202(<<"break initiated">>, Context).
 
 -spec maybe_callflow(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
@@ -506,7 +511,7 @@ maybe_callflow(Context, CallId) ->
           ],
 
     lager:debug("attempting to running callflow ~s on ~s", [CallflowId, CallId]),
-    kz_amqp_worker:cast(API, fun kapi_metaflow:publish_action/1),
+    _ = kz_amqp_worker:cast(API, fun kapi_metaflow:publish_action/1),
     crossbar_util:response_202(<<"callflow initiated">>, Context).
 
 -spec maybe_intercept(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
@@ -540,7 +545,7 @@ maybe_intercept(Context, CallId, TargetType, TargetId) ->
           ],
 
     lager:debug("attempting to move ~s to ~s(~s)", [CallId, TargetId, TargetType]),
-    kz_amqp_worker:cast(API, fun kapi_metaflow:publish_action/1),
+    _ = kz_amqp_worker:cast(API, fun kapi_metaflow:publish_action/1),
     crossbar_util:response_202(<<"intercept initiated">>, Context).
 
 -spec get_account_id(cb_context:context()) -> kz_term:ne_binary().

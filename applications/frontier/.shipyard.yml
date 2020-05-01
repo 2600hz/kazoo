@@ -1,0 +1,21 @@
+---
+name: kazoo-application-frontier
+base_branch: origin/master
+metapackage:
+  - name: meta-kazoo-applications
+    type: related
+    branch: master
+    package: kazoo-application-frontier
+base_core: kazoo
+template: kazoo-application.spec.tmpl
+package:
+  centos7:
+    name: kazoo-application-frontier
+    summary: Kazoo core application
+    description: |
+      An application that provide acl/ratelimit info to kamailio
+    app_name: frontier
+    license: MPL 2.0
+    group: Productivity/Telephony
+    url: https://github.com/kazoo-community/kazoo-frontier
+    vendor: Kazoo-Community

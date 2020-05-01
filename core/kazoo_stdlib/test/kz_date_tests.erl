@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2018, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
 %%% @author Pierre Fenoll
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_date_tests).
@@ -13,6 +18,14 @@
 -endif.
 
 -include_lib("eunit/include/eunit.hrl").
+
+prev_date_test_() ->
+    [?_assertEqual({2020,02,02}, kz_date:previous_day({2020,02,03}))
+    ,?_assertEqual({2020,01,31}, kz_date:previous_day({2020,02,01}))
+    ,?_assertEqual({2019,12,31}, kz_date:previous_day({2020,01,01}))
+    ,?_assertEqual({2020,02,29}, kz_date:previous_day({2020,03,01}))
+    ,?_assertEqual({2019,02,28}, kz_date:previous_day({2019,03,01}))
+    ].
 
 pad_month_test_() ->
     [?_assertEqual(<<"10">>, kz_date:pad_month(10))

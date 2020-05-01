@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2014-2019, 2600Hz
+%%% @copyright (C) 2014-2020, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(teletype_template_skel).
@@ -33,7 +38,7 @@
 
 -spec init() -> 'ok'.
 init() ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
                                           ,{'subject', ?TEMPLATE_SUBJECT}
                                           ,{'category', ?TEMPLATE_CATEGORY}
@@ -98,7 +103,7 @@ build_macro_data(DataJObj) ->
                  ).
 
 -spec maybe_add_macro_key(kz_term:ne_binary(), kz_term:proplist(), kz_json:object()) ->
-                                 kz_term:proplist().
+          kz_term:proplist().
 maybe_add_macro_key(<<"user.", UserKey/binary>>, Acc, DataJObj) ->
     maybe_add_user_data(UserKey, Acc, DataJObj);
 maybe_add_macro_key(_Key, Acc, _DataJObj) ->
@@ -106,7 +111,7 @@ maybe_add_macro_key(_Key, Acc, _DataJObj) ->
     Acc.
 
 -spec maybe_add_user_data(kz_term:ne_binary(), kz_term:proplist(), kz_json:object()) ->
-                                 kz_term:proplist().
+          kz_term:proplist().
 maybe_add_user_data(Key, Acc, DataJObj) ->
     User = get_user(DataJObj),
 
@@ -122,7 +127,7 @@ maybe_add_user_data(Key, Acc, DataJObj) ->
 -spec get_user(kz_json:object()) -> kz_json:object().
 get_user(DataJObj) ->
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kzs_util:format_account_db(AccountId),
     UserId = kz_json:get_value(<<"user_id">>, DataJObj),
 
     case kz_datamgr:open_cache_doc(AccountDb, UserId) of

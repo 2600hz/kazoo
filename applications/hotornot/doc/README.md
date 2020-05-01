@@ -88,7 +88,7 @@ If `caller_id_numbers` filter defined in `filter_list` then "From-DID" from rate
 
 ### ratedeck_name
 
-If `ratedeck_name` filter defined in `filter_list` then ratedeck assigned to account compared with `ratedeck_name` value of rates. Ratedeck name assigned to account via service plan. More info [here](../../../core/kazoo_services/doc/ratedeck.md). If rate request doesn't have "Account-ID" or account doesn't have ratedeck name in their service plan, then it match rates with undefined `ratedeck_name` value.
+If `ratedeck_name` filter defined in `filter_list` then ratedeck assigned to account compared with `ratedeck_name` value of rates. Ratedeck name assigned to account via service plan. If rate request doesn't have "Account-ID" or account doesn't have ratedeck name in their service plan, then it match rates with undefined `ratedeck_name` value.
 
 ### reseller
 

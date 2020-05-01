@@ -1,0 +1,33 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "system_config.number_manager.voxbone",
+    "description": "Schema for number_manager.voxbone system_config",
+    "properties": {
+        "api_password": {
+            "default": "",
+            "description": "number_manager voxbone api_password",
+            "type": "string"
+        },
+        "api_username": {
+            "default": "",
+            "description": "number_manager voxbone api_username",
+            "type": "string"
+        },
+        "environment": {
+            "default": "sandbox",
+            "description": "number_manager voxbone environment",
+            "enum": [
+                "sandbox",
+                "production",
+                "beta"
+            ],
+            "type": "string"
+        },
+        "max_page_size": {
+            "default": 20,
+            "description": "number_manager voxbone max_page_size",
+            "type": "integer"
+        }
+    },
+    "type": "object"
+}

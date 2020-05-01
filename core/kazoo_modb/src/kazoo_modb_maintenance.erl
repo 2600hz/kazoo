@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kazoo_modb_maintenance).
@@ -71,7 +75,7 @@ should_delete(AccountModb, Months) ->
 
 -spec delete_modb(kz_term:ne_binary(), boolean()) -> 'ok'.
 delete_modb(?MATCH_MODB_SUFFIX_UNENCODED(_,_,_) = AccountModb, ShouldArchive) ->
-    delete_modb(kz_util:format_account_db(AccountModb), ShouldArchive);
+    delete_modb(kzs_util:format_account_db(AccountModb), ShouldArchive);
 delete_modb(?MATCH_MODB_SUFFIX_ENCODED(_,_,_) = AccountModb, ShouldArchive) ->
     'ok' = case ShouldArchive of
                'true' -> kz_datamgr:db_archive(AccountModb);
@@ -99,7 +103,7 @@ archive_modbs(AccountId) ->
 
 -spec do_archive_modbs(kz_term:ne_binaries(), kz_term:api_binary()) -> 'no_return'.
 do_archive_modbs(MODbs, AccountId) ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     lists:foreach(fun kazoo_modb:maybe_archive_modb/1, MODbs),
     Keep = kapps_config:get_integer(?CONFIG_CAT, <<"active_modbs">>, 6),
     From = case AccountId =:= 'undefined' of 'true' -> <<"all">>; 'false' -> AccountId end,

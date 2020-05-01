@@ -31,7 +31,6 @@
 %%% <code>amqp_cron</code> with the new node list. Rolling updates
 %%% currently are not supported.
 %%%
-%%% @see amqp_cron_task
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(amqp_cron).
@@ -133,7 +132,7 @@ schedule_task(Schedule, Exec) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec schedule_task(ident(), Schedule, Exec) ->
-                           {'ok', pid()} | {'error', any()} when
+          {'ok', pid()} | {'error', any()} when
       Schedule :: amqp_cron_task:schedule(),
       Exec :: amqp_cron_task:execargs().
 schedule_task(Name, Schedule, Exec) when
@@ -380,7 +379,7 @@ remove_task_if_done(Task, Acc) ->
     end.
 
 -spec pid_for_name(binary() | atom(), tasks()) -> pid() |
-                                                  {error, no_such_name}.
+          {error, no_such_name}.
 pid_for_name(Name, Tasks) ->
     case lists:keyfind(Name, 1, Tasks) of
         'false' ->

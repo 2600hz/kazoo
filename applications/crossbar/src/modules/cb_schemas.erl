@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cb_schemas).
@@ -9,8 +14,8 @@
 -export([init/0
         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
         ,resource_exists/0, resource_exists/1, resource_exists/2
-        ,authorize/1
-        ,authenticate/1
+        ,authorize/1, authorize/2
+        ,authenticate/1, authenticate/2
         ,validate/1, validate/2, validate/3
         ]).
 
@@ -30,29 +35,31 @@
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.schemas">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.schemas">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
-    _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
+    _ = crossbar_bindings:bind(<<"*.authorize.schemas">>, ?MODULE, 'authorize'),
+    _ = crossbar_bindings:bind(<<"*.authenticate.schemas">>, ?MODULE, 'authenticate'),
     _ = crossbar_bindings:bind(<<"*.validate.schemas">>, ?MODULE, 'validate'),
     ok.
 
 -spec authorize(cb_context:context()) -> boolean().
 authorize(Context) ->
-    authorize_nouns(cb_context:req_nouns(Context)).
+    auth_nouns(Context, cb_context:req_nouns(Context)).
 
--spec authorize_nouns(req_nouns()) -> boolean().
-authorize_nouns([{<<"schemas">>,_}]) ->
-    lager:debug("authorizing request to fetch schema(s)"),
-    'true';
-authorize_nouns(_) -> 'false'.
+-spec authorize(cb_context:context(), path_token()) -> boolean().
+authorize(Context, _Schema) ->
+    auth_nouns(Context, cb_context:req_nouns(Context)).
 
 -spec authenticate(cb_context:context()) -> boolean().
 authenticate(Context) ->
-    authenticate_nouns(cb_context:req_nouns(Context)).
+    auth_nouns(Context, cb_context:req_nouns(Context)).
 
-authenticate_nouns([{<<"schemas">>,_}]) ->
+-spec authenticate(cb_context:context(), path_token()) -> boolean().
+authenticate(Context, _Schema) ->
+    auth_nouns(Context, cb_context:req_nouns(Context)).
+
+-spec auth_nouns(cb_context:context(), req_nouns()) -> boolean().
+auth_nouns(Context, [{<<"schemas">>,_}]) ->
     lager:debug("authenticating request to fetch schema(s)"),
-    'true';
-authenticate_nouns(_) -> 'false'.
+    cb_context:req_verb(Context) =:= ?HTTP_GET.
 
 %%------------------------------------------------------------------------------
 %% @doc This function determines the verbs that are appropriate for the
@@ -100,11 +107,11 @@ resource_exists(_SchemaName, ?VALIDATION_PATH_TOKEN) -> 'true'.
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
     lager:debug("load summary of schemas from ~s", [?KZ_SCHEMA_DB]),
-    summary(cb_context:set_account_db(Context, ?KZ_SCHEMA_DB)).
+    summary(cb_context:set_db_name(Context, ?KZ_SCHEMA_DB)).
 
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, Id) ->
-    read(Id, cb_context:set_account_db(Context, ?KZ_SCHEMA_DB)).
+    read(Id, cb_context:set_db_name(Context, ?KZ_SCHEMA_DB)).
 
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context, Id, ?VALIDATION_PATH_TOKEN) ->

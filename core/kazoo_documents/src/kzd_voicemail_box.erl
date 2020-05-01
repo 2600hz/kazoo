@@ -1,12 +1,17 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2014-2019, 2600Hz
+%%% @copyright (C) 2014-2020, 2600Hz
 %%% @doc Device document manipulation
 %%% @author James Aimonetti
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kzd_voicemail_box).
 
 -export([new/0
+        ,announcement_only/1, announcement_only/2, set_announcement_only/2
         ,type/0
         ,notification_emails/1, notification_emails/2
         ,owner_id/1, owner_id/2
@@ -39,10 +44,13 @@
 -define(KEY_PIN, <<"pin">>).
 -define(KEY_MAILBOX_NUMBER, <<"mailbox">>).
 -define(KEY_PIN_REQUIRED, <<"require_pin">>).
+-define(KEY_IS_FF_RW_ENABLED, <<"is_voicemail_ff_rw_enabled">>).
+-define(KEY_SEEK_DURATION, <<"seek_duration_ms">>).
 -define(KEY_CHECK_IF_OWNER, <<"check_if_owner">>).
 -define(KEY_IS_SETUP, <<"is_setup">>).
 
 -define(PVT_TYPE, <<"vmbox">>).
+-define(DEFAULT_SEEK_DURATION, 10000).
 
 -define(ACCOUNT_VM_EXTENSION(AccountId),
         kapps_account_config:get_global(AccountId
@@ -58,6 +66,18 @@ new() ->
 
 -spec type() -> kz_term:ne_binary().
 type() -> ?PVT_TYPE.
+
+-spec announcement_only(doc()) -> boolean().
+announcement_only(Doc) ->
+    announcement_only(Doc, 'false').
+
+-spec announcement_only(doc(), boolean()) -> boolean().
+announcement_only(Doc, Default) ->
+    kz_json:get_boolean_value(<<"announcement_only">>, Doc, Default).
+
+-spec set_announcement_only(doc(), boolean()) -> doc().
+set_announcement_only(Doc, AnnoucementOnly) ->
+    kz_json:set_value(<<"announcement_only">>, AnnoucementOnly, Doc).
 
 -spec notification_emails(doc()) -> kz_term:ne_binaries().
 notification_emails(Box) ->

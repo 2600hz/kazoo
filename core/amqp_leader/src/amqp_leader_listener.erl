@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2015-2019, 2600Hz
+%%% @copyright (C) 2015-2020, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(amqp_leader_listener).
@@ -79,7 +83,7 @@ start_link(Name) ->
 %%------------------------------------------------------------------------------
 -spec init([atom()]) -> {'ok', state()}.
 init([Name]) ->
-    kz_util:put_callid(kapi_leader:queue(Name, node())),
+    kz_log:put_callid(kapi_leader:queue(Name, node())),
     kz_nodes:notify_expire(),
     {'ok', #state{self = self(), name = Name}}.
 
@@ -133,7 +137,7 @@ handle_info(_Info, State) ->
 %%------------------------------------------------------------------------------
 -spec handle_event(kz_json:object(), state()) -> {'reply', []}.
 handle_event(JObj, #state{name = Name}) ->
-    kz_util:put_callid(kapi_leader:queue(Name, node())),
+    kz_log:put_callid(kapi_leader:queue(Name, node())),
     NodeBin = kz_term:to_binary(node()),
     case kz_json:get_value(<<"Node">>, JObj) of
         NodeBin -> 'ok';

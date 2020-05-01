@@ -12,13 +12,14 @@ Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
 `app_name` | The Kazoo application that issued the CDR | `string()` |   | `false` |  
 `app_version` | The internal Kazoo version number of the application that issued the CDR | `string()` |   | `false` |  
-`billing_seconds` | The number of seconds the call leg can be billed for (typically from when the call leg is answered | `string()` |   | `false` |  
+`billing_seconds` | The number of seconds the call leg can be billed for (typically from when the call leg is answered | `integer()` |   | `false` |  
 `call_direction` | Direction of the call, relative to the media switch | `string('inbound' | 'outbound')` |   | `false` |  
 `call_id` | Unique identifier of the call leg | `string()` |   | `true` |  
 `callee_id_name` | The indicated name of the callee | `string()` |   | `false` |  
 `callee_id_number` | The indicated number of the callee | `string()` |   | `false` |  
 `caller_id_name` | The indicated name of the caller | `string()` |   | `false` |  
 `caller_id_number` | The indicated number of the caller | `string()` |   | `false` |  
+`custom_application_vars` | Any custom-set values | `object()` |   | `false` |  
 `custom_channel_vars` | Kazoo-specific key/value pairs set on the channel | `object()` |   | `false` |  
 `custom_sip_headers.in` | Custom SIP Headers to be applied to calls inbound to Kazoo from the endpoint | [#/definitions/custom_sip_headers](#custom_sip_headers) |   | `false` |  
 `custom_sip_headers.out` | Custom SIP Headers to be applied to calls outbound from Kazoo to the endpoint | [#/definitions/custom_sip_headers](#custom_sip_headers) |   | `false` |  
@@ -26,7 +27,7 @@ Key | Description | Type | Default | Required | Support Level
 `custom_sip_headers` | A property list of SIP headers | `object()` |   | `false` |  
 `digits_dialed` | All the DTMF tones detected on this leg of the call | `string()` |   | `false` |  
 `disposition` | Who sent the SIP BYE message | `string()` |   | `false` |  
-`duration_seconds` | The duration of the call leg, in seconds | `string()` |   | `false` |  
+`duration_seconds` | The duration of the call leg, in seconds | `integer()` |   | `false` |  
 `fax_bad_rows` |   | `string()` |   | `false` |  
 `fax_ecm_used` |   | `string()` |   | `false` |  
 `fax_result_code` |   | `string()` |   | `false` |  
@@ -36,9 +37,11 @@ Key | Description | Type | Default | Required | Support Level
 `fax_transfer_rate` |   | `string()` |   | `false` |  
 `fax_transferred_pages` |   | `string()` |   | `false` |  
 `from` | Built by Kazoo, depending on direction, to represent the From user | `string()` |   | `false` |  
+`from_tag` | SIP From TAG | `string()` |   | `false` |  
 `from_uri` | The From SIP URI | `string()` |   | `false` |  
 `hangup_cause` | The reason for the call leg's termination | `string()` |   | `false` |  
 `hangup_code` | The SIP hangup code, if available | `string()` |   | `false` |  
+`interaction_id` | correlating ID among related call legs | `string()` |   | `false` |  
 `local_sdp` | The SDP negotiated by the local agent | `string()` |   | `false` |  
 `media_server` | The hostname of the media server that processed the call | `string()` |   | `false` |  
 `node` | The ecallmgr which issued the CDR | `string()` |   | `false` |  
@@ -50,9 +53,10 @@ Key | Description | Type | Default | Required | Support Level
 `presence_id` | ID used in NOTIFY SIP messages | `string()` |   | `false` |  
 `remote_sdp` | The SDP negotiated by the remote agent | `string()` |   | `false` |  
 `request` | Built by Kazoo this is the processed request URI | `string()` |   | `false` |  
-`ringing_seconds` | How many seconds the leg was ringing (pre-answer) | `string()` |   | `false` |  
-`timestamp` | UTC timestamp, in Gregorian seconds, of when the CDR was generated | `string()` |   | `false` |  
+`ringing_seconds` | How many seconds the leg was ringing (pre-answer) | `integer()` |   | `false` |  
+`timestamp` | UTC timestamp, in Gregorian seconds, of when the CDR was generated | `integer()` |   | `false` |  
 `to` | Built by Kazoo, depending on direction, to represent the To user | `string()` |   | `false` |  
+`to_tag` | SIP TO Tag | `string()` |   | `false` |  
 `to_uri` | The To SIP URI | `string()` |   | `false` |  
 `user_agent` | User agent header from SIP packet | `string()` |   | `false` |  
 
@@ -69,6 +73,22 @@ Key | Description | Type | Default | Required | Support Level
 
 ## Fetch
 
+### Prerequisites
+
+By default requests are [paginated](basics.md#pagination). The default page size is 50 records though it can vary based on the system's configuration. It is recommended to fetch CDRs by page to not overload the system on particularly busy accounts.
+
+Clients should use the `next_start_key` to move to the next page on subsequent requests.
+
+### Filtering results.
+
+KAZOO provides [filters](filters.md) to filter out rows from the results. This can be helpful if you're looking for rows related to each other (like the same `presence_id`, for instance).
+
+### Timestamps
+
+KAZOO timestamps, unless otherwise noted, are in [Gregorian seconds](basics.md#timestamps). Alternative timestamp formats are generally noted by the field name (e.g. `unix_timestamp`, `rfc1036`, or `iso8601`).
+
+### Fetch request
+
 > GET /v2/accounts/{ACCOUNT_ID}/cdrs
 
 ```shell
@@ -77,7 +97,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cdrs
 ```
 
-Get a time range of CDRs (using Gregorian seconds for timestamps):
+#### Fetch CDRs within a time range
 
 ```shell
 curl -v -X GET \
@@ -85,7 +105,9 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cdrs?created_from={FROM_TIMESTAMP}&created_to={TO_TIMESTAMP}
 ```
 
-Get CDRs and update datetime field to local time zone (using seconds for timeoffset from UTC time):
+#### Convert timestamps to local timezone (vs UTC)
+
+Get CDRs and update datetime field to local time zone (using seconds for timeoffset from UTC time) - Timestamps must still be in Gregorian time:
 
 ```shell
 curl -v -X GET \
@@ -93,7 +115,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cdrs?created_from={FROM_TIMESTAMP}&created_to={TO_TIMESTAMP}&utc_offset={SECONDS_OFFSET}
 ```
 
-Get CDRs as CSV:
+#### Fetch as CSV instead of JSON
 
 ```shell
 curl -v -X GET \
@@ -102,7 +124,9 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cdrs
 ```
 
-Get CDRs as CSV and define filename:
+#### Fetch as CSV with defined filename
+
+Using request headers:
 
 ```shell
 curl -v -X GET \
@@ -112,7 +136,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cdrs
 ```
 
-or
+Alternatively on the querystring:
 
 ```shell
 curl -v -X GET \

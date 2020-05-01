@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2019, 2600Hz
+%%% @copyright (C) 2013-2020, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(webhooks_listener).
@@ -34,6 +39,11 @@
                             ,{'id', <<"*">>}
                             ,'federate'
                             ]}
+                  ,{'conf', [{'action', ?DOC_DELETED}
+                            ,{'type', <<"account">>}
+                            ,'federate'
+                            ]
+                   }
                   ]).
 
 -define(RESPONDERS, [{{?MODULE, 'handle_config'}
@@ -76,10 +86,9 @@ handle_config(JObj, Srv, ?DOC_EDITED) ->
     case kapi_conf:get_id(JObj) of
         'undefined' -> find_and_update_hook(JObj, Srv);
         HookId ->
-            {'ok', Hook} = kz_datamgr:open_doc(?KZ_WEBHOOKS_DB, HookId),
+            {'ok', Hook} = kz_datamgr:open_cache_doc(?KZ_WEBHOOKS_DB, HookId),
             case (not kapi_conf:get_is_soft_deleted(JObj))
-                andalso kzd_webhook:is_enabled(Hook)
-
+                andalso kzd_webhooks:enabled(Hook)
             of
                 'true' ->
                     gen_listener:cast(Srv, {'update_hook', webhooks_util:jobj_to_rec(Hook)});
@@ -89,6 +98,11 @@ handle_config(JObj, Srv, ?DOC_EDITED) ->
             webhooks_disabler:flush_failures(kapi_conf:get_account_id(JObj), HookId)
     end;
 handle_config(JObj, Srv, ?DOC_DELETED) ->
+    maybe_remove_account_hooks(Srv
+                              ,kapi_conf:get_type(JObj)
+                              ,kapi_conf:get_account_id(JObj)
+                              ),
+
     case kapi_conf:get_doc(JObj) of
         'undefined' -> find_and_remove_hook(JObj, Srv);
         Hook ->
@@ -97,6 +111,12 @@ handle_config(JObj, Srv, ?DOC_DELETED) ->
                                             ,kz_doc:id(JObj)
                                             )
     end.
+
+-spec maybe_remove_account_hooks(pid(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
+maybe_remove_account_hooks(Srv, <<"account">>, <<AccountId/binary>>) ->
+    webhooks_disabler:flush_failures(AccountId),
+    gen_listener:cast(Srv, {'remove_account', AccountId});
+maybe_remove_account_hooks(_Srv, _Type, _AccountId) -> 'ok'.
 
 -spec find_and_add_hook(kz_json:object(), pid()) -> 'ok'.
 find_and_add_hook(JObj, Srv) ->
@@ -119,14 +139,11 @@ find_and_update_hook(JObj, Srv) ->
 -spec find_and_remove_hook(kz_json:object(), pid()) -> 'ok'.
 find_and_remove_hook(JObj, Srv) ->
     gen_listener:cast(Srv, {'remove_hook', webhooks_util:hook_id(JObj)}).
-
 -spec find_hook(kz_json:object()) ->
-                       {'ok', kz_json:object()} |
-                       {'error', any()}.
+          {'ok', kzd_webhooks:doc()} |
+          {'error', any()}.
 find_hook(JObj) ->
-    kz_datamgr:open_cache_doc(?KZ_WEBHOOKS_DB
-                             ,kapi_conf:get_id(JObj)
-                             ).
+    kz_datamgr:open_cache_doc(?KZ_WEBHOOKS_DB, kapi_conf:get_id(JObj)).
 
 %%%=============================================================================
 %%% gen_server callbacks
@@ -138,7 +155,7 @@ find_hook(JObj) ->
 %%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     {'ok', #state{}}.
 
 %%------------------------------------------------------------------------------
@@ -164,9 +181,13 @@ handle_cast({'update_hook', #webhook{id=_Id}=Hook}, State) ->
     {'noreply', State};
 handle_cast({'remove_hook', #webhook{id=Id}}, State) ->
     handle_cast({'remove_hook', Id}, State);
-handle_cast({'remove_hook', <<_/binary>> = Id}, State) ->
+handle_cast({'remove_hook', <<Id/binary>>}, State) ->
     lager:debug("removing hook ~s", [Id]),
     ets:delete(webhooks_util:table_id(), Id),
+    {'noreply', State};
+handle_cast({'remove_account', <<AccountId/binary>>}, State) ->
+    lager:info("remove all hooks for account ~s", [AccountId]),
+    webhooks_util:delete_account_webhooks(AccountId),
     {'noreply', State};
 handle_cast({'gen_listener', {'created_queue', _Q}}, State) ->
     {'noreply', State};
@@ -183,11 +204,11 @@ handle_cast(_Msg, State) ->
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'ETS-TRANSFER', _TblId, _From, _Data}, State) ->
-    lager:info("write access to table '~p' available", [_TblId]),
+    lager:debug("write access to table '~p' available", [_TblId]),
     Self = self(),
-    _ = kz_util:spawn(
+    _ = kz_process:spawn(
           fun() ->
-                  kz_util:put_callid(?MODULE),
+                  kz_log:put_callid(?MODULE),
                   webhooks_util:load_hooks(Self),
                   webhooks_util:init_webhooks()
           end),

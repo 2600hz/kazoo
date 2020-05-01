@@ -17,7 +17,7 @@
             "type": "string"
         },
         "credentials": {
-            "description": "A hash of the uses credentials",
+            "description": "A hash of the user credentials",
             "maxLength": 64,
             "minLength": 1,
             "type": "string"

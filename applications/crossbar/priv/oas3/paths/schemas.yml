@@ -1,0 +1,33 @@
+paths:
+  /schemas:
+    get:
+      operationId: GetSchemas
+      parameters: []
+      responses:
+        200:
+          description: Successful operation
+      summary: Get all schemas
+      tags:
+        - schemas
+  /schemas/{SCHEMA_NAME}:
+    get:
+      operationId: GetSchemasSchemaName
+      parameters:
+        - $ref: '../oas3-parameters.yml#/SCHEMA_NAME'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a schemas by ID
+      tags:
+        - schemas
+  /schemas/{SCHEMA_NAME}/validation:
+    put:
+      operationId: PutSchemasSchemaNameValidation
+      parameters:
+        - $ref: '../oas3-parameters.yml#/SCHEMA_NAME'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of schemas
+      tags:
+        - schemas

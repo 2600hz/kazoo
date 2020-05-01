@@ -1,0 +1,30 @@
+paths:
+  /accounts/{ACCOUNT_ID}/{ENDPOINT_TYPE}/{ENDPOINT_ID}/quickcall/{NUMBER}:
+    get:
+      operationId: GetAccountsAccountIdEndpointTypeEndpointIdQuickcallNumber
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/ENDPOINT_TYPE'
+        - $ref: '../oas3-parameters.yml#/ENDPOINT_ID'
+        - $ref: '../oas3-parameters.yml#/NUMBER'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a quickcall by ID
+      tags:
+        - quickcall
+    post:
+      operationId: PostAccountsAccountIdEndpointTypeEndpointIdQuickcallNumber
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/ENDPOINT_TYPE'
+        - $ref: '../oas3-parameters.yml#/ENDPOINT_ID'
+        - $ref: '../oas3-parameters.yml#/NUMBER'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of quickcall
+      tags:
+        - quickcall

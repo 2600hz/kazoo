@@ -1207,7 +1207,7 @@ curl -v -X GET \
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
-        "account_id": "009afc511c97b2ae693c6cc4920988e8",
+        "account_id": "account0000000000000000000000002",
         "number": "{PHONE_NUMBER}"
     },
     "request_id": "{REQUEST_ID}",

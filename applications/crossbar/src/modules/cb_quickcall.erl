@@ -1,11 +1,16 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Devices module
 %%% Handle client requests for device documents
 %%%
 %%%
 %%% @author Karl Anderson
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cb_quickcall).
@@ -71,7 +76,7 @@ post(Context, _Number) ->
     maybe_originate_quickcall(Context).
 
 -spec maybe_validate_quickcall(cb_context:context()) ->
-                                      cb_context:context().
+          cb_context:context().
 maybe_validate_quickcall(Context) ->
     case kz_buckets:consume_tokens(?APP_NAME
                                   ,cb_modules_util:bucket_name(Context)
@@ -83,7 +88,7 @@ maybe_validate_quickcall(Context) ->
     end.
 
 -spec maybe_validate_quickcall(cb_context:context(), crossbar_status()) ->
-                                      cb_context:context().
+          cb_context:context().
 maybe_validate_quickcall(Context, 'success') ->
     AllowAnon = kz_json:is_true(<<"allow_anonymous_quickcalls">>, cb_context:doc(Context)),
 
@@ -113,7 +118,7 @@ maybe_originate_quickcall(Context) ->
 create_call_from_context(Context) ->
     Routines =
         [{F, V}
-         || {F, V} <- [{fun kapps_call:set_account_db/2, cb_context:account_db(Context)}
+         || {F, V} <- [{fun kapps_call:set_account_db/2, cb_context:db_name(Context)}
                       ,{fun kapps_call:set_account_id/2, cb_context:account_id(Context)}
                       ,{fun kapps_call:set_resource_type/2, <<"audio">>}
                       ,{fun kapps_call:set_owner_id/2, kz_json:get_ne_binary_value(<<"owner_id">>, cb_context:doc(Context))}
@@ -128,7 +133,7 @@ request_specific_extraction_funs(Context) ->
     request_specific_extraction_funs_from_nouns(Context, cb_context:req_nouns(Context)).
 
 -spec request_specific_extraction_funs_from_nouns(cb_context:context(), req_nouns()) ->
-                                                         kapps_call:exec_funs().
+          kapps_call:exec_funs().
 request_specific_extraction_funs_from_nouns(Context, ?DEVICES_QCALL_NOUNS(DeviceId, Number)) ->
     NumberURI = build_number_uri(Context, Number),
     [{fun kapps_call:set_authorizing_id/2, DeviceId}
@@ -212,14 +217,14 @@ aleg_cid(Number, Call) ->
     kapps_call:exec(Routines, Call).
 
 -spec originate_quickcall(kz_json:objects(), kapps_call:call(), cb_context:context()) ->
-                                 cb_context:context().
+          cb_context:context().
 originate_quickcall(Endpoints, Call, Context) ->
     AutoAnswer = kz_json:is_true(<<"auto_answer">>, cb_context:query_string(Context), 'true'),
     CCVs = [{<<"Account-ID">>, cb_context:account_id(Context)}
-           ,{<<"Retain-CID">>, <<"true">>}
            ,{<<"Inherit-Codec">>, <<"false">>}
            ,{<<"Authorizing-Type">>, kapps_call:authorizing_type(Call)}
            ,{<<"Authorizing-ID">>, kapps_call:authorizing_id(Call)}
+            | maybe_retain_cid(Context)
            ],
 
     CAVs = cb_modules_util:cavs_from_context(Context),
@@ -271,7 +276,7 @@ originate_quickcall(Endpoints, Call, Context) ->
     originate(Request, Context, cb_context:req_verb(Context), CallTimeoutS).
 
 originate(Request, Context, ?HTTP_GET, _CallTimeoutS) ->
-    kz_amqp_worker:cast(Request, fun kapi_resource:publish_originate_req/1),
+    _ = kz_amqp_worker:cast(Request, fun kapi_resource:publish_originate_req/1),
     JObj = kz_json:normalize(kz_api:remove_defaults(Request)),
     crossbar_util:response_202(<<"quickcall initiated">>, JObj, cb_context:set_resp_data(Context, Request));
 originate(Request, Context, ?HTTP_POST, CallTimeoutS) ->
@@ -292,7 +297,7 @@ originate(Request, Context, ?HTTP_POST, CallTimeoutS) ->
     end.
 
 -spec handle_originate_resp(kz_json:object(), cb_context:context(), kz_json:objects()) ->
-                                   cb_context:context().
+          cb_context:context().
 handle_originate_resp(Request, Context, JObjs) ->
     case lists:filter(fun kapi_resource:originate_resp_v/1, JObjs) of
         [Resp] -> send_originate_resp(Request, Context, Resp);
@@ -300,7 +305,7 @@ handle_originate_resp(Request, Context, JObjs) ->
     end.
 
 -spec send_originate_resp(kz_json:object(), cb_context:context(), kz_json:object()) ->
-                                 cb_context:context().
+          cb_context:context().
 send_originate_resp(Request, Context, Response) ->
     RequestJObj = kz_json:normalize(kz_api:remove_defaults(Request)),
     ResponseJObj = kz_json:normalize(kz_api:remove_defaults(Response)),
@@ -308,7 +313,7 @@ send_originate_resp(Request, Context, Response) ->
     crossbar_util:response_202(<<"quickcall initiated">>, APIResponse, cb_context:set_resp_data(Context, APIResponse)).
 
 -spec send_error_resp(cb_context:context(), kz_json:objects()) ->
-                             cb_context:context().
+          cb_context:context().
 send_error_resp(Context, []) ->
     crossbar_util:response('error'
                           ,<<"quickcall initiation failed">>
@@ -373,12 +378,19 @@ get_media(Context) ->
 get_cid_name(Context, Default) ->
     case cb_context:req_value(Context, <<"cid-name">>, Default) of
         'undefined' -> 'undefined';
-        CIDName -> kz_util:uri_decode(CIDName)
+        CIDName -> kz_http_util:urldecode(CIDName)
     end.
 
 -spec get_cid_number(cb_context:context(), kz_term:api_binary()) -> kz_term:api_binary().
 get_cid_number(Context, Default) ->
     case cb_context:req_value(Context, <<"cid-number">>, Default) of
         'undefined' -> 'undefined';
-        CIDNumber -> kz_util:uri_decode(CIDNumber)
+        CIDNumber -> kz_http_util:urldecode(CIDNumber)
+    end.
+
+-spec maybe_retain_cid(cb_context:context()) -> kz_term:proplist().
+maybe_retain_cid(Context) ->
+    case cb_context:req_value(Context, <<"cid-number">>) of
+        'undefined' -> [{<<"Retain-CID">>, <<"false">>}];
+        _Found -> [{<<"Retain-CID">>, <<"true">>}]
     end.

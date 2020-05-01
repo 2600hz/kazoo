@@ -105,7 +105,7 @@
                  ,cvv :: kz_term:api_binary()
                  ,customer_id :: kz_term:api_binary()
                  ,make_default = 'true' :: boolean()
-                 ,verify = 'true' :: boolean()
+                 ,verify = 'false' :: boolean()
                  ,payment_method_nonce :: kz_term:api_binary()
                  ,update_existing = 'false' :: boolean() | kz_term:ne_binary()
                  ,billing_address_id :: kz_term:api_binary()

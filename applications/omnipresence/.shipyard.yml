@@ -1,0 +1,22 @@
+---
+name: kazoo-application-omnipresence
+base_branch: origin/master
+metapackage:
+  - name: meta-kazoo-applications
+    type: required
+    branch: master
+    package: kazoo-application-omnipresence
+base_core: kazoo
+template: kazoo-application.spec.tmpl
+package:
+  centos7:
+    name: kazoo-application-omnipresence
+    summary: Kazoo core application
+    description: |
+      Provides presence-related functionality - tracking subscriptions and API
+      services
+    app_name: omnipresence
+    license: MPL 2.0
+    group: Productivity/Telephony
+    url: https://2600hz.org/
+    vendor: 2600Hz

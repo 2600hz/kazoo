@@ -1,4 +1,5 @@
-ROOT = ../..
+CWD = $(shell pwd -P)
+ROOT = $(realpath $(CWD)/../..)
 PROJECT = notify
 
 all: compile

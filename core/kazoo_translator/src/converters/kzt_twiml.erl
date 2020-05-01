@@ -1,7 +1,11 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kzt_twiml).
@@ -14,8 +18,8 @@
         ]).
 
 -spec parse_cmds(binary()) ->
-                        {'ok', kz_types:xml_els()} |
-                        {'error', 'not_parsed'}.
+          {'ok', kz_types:xml_els()} |
+          {'error', 'not_parsed'}.
 parse_cmds(XMLBin) ->
     try xmerl_scan:string(kz_term:to_list(XMLBin)) of
         {#xmlElement{name='Response'}=XML, _} -> {'ok', XML};
@@ -27,9 +31,9 @@ parse_cmds(XMLBin) ->
     end.
 
 -spec exec(kapps_call:call(), kz_types:xml_el() | kz_term:text()) ->
-                  {'error', kapps_call:call()} |
-                  {'request', kapps_call:call()} |
-                  {'stop', kapps_call:call()}.
+          {'error', kapps_call:call()} |
+          {'request', kapps_call:call()} |
+          {'stop', kapps_call:call()}.
 exec(Call, #xmlElement{name='Response', content=Els}) ->
     exec_elements(Call, kz_xml:filter_empty_text(Els));
 exec(Call, Resp) ->
@@ -46,9 +50,9 @@ exec(Call, Resp) ->
     end.
 
 -spec exec_elements(kapps_call:call(), kz_types:xml_els() | kz_types:xml_texts()) ->
-                           {'error', kapps_call:call()} |
-                           {'request', kapps_call:call()} |
-                           {'stop', kapps_call:call()}.
+          {'error', kapps_call:call()} |
+          {'request', kapps_call:call()} |
+          {'stop', kapps_call:call()}.
 exec_elements(Call, []) -> {'ok', Call};
 exec_elements(Call, [#xmlText{}=_El|Els]) ->
     exec_elements(Call, Els);
@@ -62,17 +66,17 @@ exec_elements(Call, [El|Els]) ->
         'throw':{'unknown_element', Name} ->
             lager:error("unknown element in response: ~s", [Name]),
             {'error', kzt_util:add_error(Call, <<"unknown_element">>, Name)};
-        _E:_R ->
-            lager:error("'~s' when execing el ~p: ~p", [_E, El, _R]),
-            kz_util:log_stacktrace(),
-            {'error', Call}
-    end.
+        ?STACKTRACE(_E, _R, ST)
+        lager:error("'~s' when execing el ~p: ~p", [_E, El, _R]),
+        kz_log:log_stacktrace(ST),
+        {'error', Call}
+        end.
 
 -spec exec_element(kapps_call:call(), kz_types:xml_el()) ->
-                          {'ok', kapps_call:call()} |
-                          {'request', kapps_call:call()} |
-                          {'stop', kapps_call:call()} |
-                          {'error', kapps_call:call()}.
+          {'ok', kapps_call:call()} |
+          {'request', kapps_call:call()} |
+          {'stop', kapps_call:call()} |
+          {'error', kapps_call:call()}.
 exec_element(Call, #xmlElement{name='Dial'
                               ,content=Endpoints
                               ,attributes=Attrs
@@ -170,14 +174,14 @@ req_params(Call) ->
 %% Verbs
 %%------------------------------------------------------------------------------
 -spec hangup(kapps_call:call()) ->
-                    {'stop', kapps_call:call()}.
+          {'stop', kapps_call:call()}.
 hangup(Call) ->
     kapps_call_command:answer(Call),
     kapps_call_command:hangup(Call),
     {'stop', kzt_util:update_call_status(?STATUS_COMPLETED, Call)}.
 
 -spec reject(kapps_call:call(), kz_types:xml_attribs()) ->
-                    {'stop', kapps_call:call()}.
+          {'stop', kapps_call:call()}.
 reject(Call, Attrs) ->
     Props = kz_xml:attributes_to_proplist(Attrs),
 
@@ -189,7 +193,7 @@ reject(Call, Attrs) ->
     {'stop', kzt_util:update_call_status(kzt_twiml_util:reject_status(Code), Call)}.
 
 -spec pause(kapps_call:call(), kz_types:xml_attribs()) ->
-                   {'ok', kapps_call:call()}.
+          {'ok', kapps_call:call()}.
 pause(Call, Attrs) ->
     kapps_call_command:answer(Call),
     Props = kz_xml:attributes_to_proplist(Attrs),
@@ -200,7 +204,7 @@ pause(Call, Attrs) ->
     {'ok', Call}.
 
 -spec set_variable(kapps_call:call(), kz_types:xml_attribs()) ->
-                          {'ok', kapps_call:call()}.
+          {'ok', kapps_call:call()}.
 set_variable(Call, Attrs) ->
     kapps_call_command:answer(Call),
     Props = kz_xml:attributes_to_proplist(Attrs),
@@ -225,8 +229,8 @@ set_variables(Call, Els) when is_list(Els) ->
                ).
 
 -spec play(kapps_call:call(), kz_types:xml_els() | kz_types:xml_texts(), kz_types:xml_attribs()) ->
-                  {'ok', kapps_call:call()} |
-                  {'error', _, kapps_call:call()}.
+          {'ok', kapps_call:call()} |
+          {'error', _, kapps_call:call()}.
 play(Call, XmlText, Attrs) ->
     kapps_call_command:answer(Call),
     PlayMe = kz_xml:texts_to_binary(XmlText),
@@ -241,7 +245,7 @@ play(Call, XmlText, Attrs) ->
     end.
 
 -spec redirect(kapps_call:call(), kz_types:xml_els() | kz_types:xml_texts(), kz_types:xml_attribs()) ->
-                      {'request', kapps_call:call()}.
+          {'request', kapps_call:call()}.
 redirect(Call, XmlText, Attrs) ->
     kapps_call_command:answer(Call),
 
@@ -277,15 +281,15 @@ exec_gather_els(Parent, Call, [SubAction|SubActions]) ->
     end.
 
 -spec exec_gather_els(kapps_call:call(), kz_types:xml_els()) ->
-                             {'ok', kapps_call:call()}.
+          {'ok', kapps_call:call()}.
 exec_gather_els(Call, SubActions) ->
     {_Pid, _Ref}=PidRef =
-        kz_util:spawn_monitor(fun exec_gather_els/3, [self(), Call, SubActions]),
+        kz_process:spawn_monitor(fun exec_gather_els/3, [self(), Call, SubActions]),
     lager:debug("started to exec gather els: ~p(~p)", [_Pid, _Ref]),
     {'ok', kzt_util:set_gather_pidref(PidRef, Call)}.
 
 -spec gather(kapps_call:call(), kz_types:xml_els(), kz_types:xml_attribs()) ->
-                    kzt_receiver:collect_dtmfs_return().
+          kzt_receiver:collect_dtmfs_return().
 gather(Call, [], Attrs) -> gather(Call, Attrs);
 gather(Call, SubActions, Attrs) ->
     lager:info("GATHER: exec sub actions"),
@@ -295,7 +299,7 @@ gather(Call, SubActions, Attrs) ->
     gather(C, Attrs).
 
 -spec gather(kapps_call:call(), kz_types:xml_attribs()) ->
-                    kzt_receiver:collect_dtmfs_return().
+          kzt_receiver:collect_dtmfs_return().
 gather(Call, Attrs) ->
     kapps_call_command:answer(Call),
 
@@ -307,10 +311,10 @@ gather(Call, Attrs) ->
     gather(Call, FinishKey, Timeout, Props, kzt_twiml_util:num_digits(Props)).
 
 -spec gather(kapps_call:call(), kz_term:api_binary(), timeout(), kz_term:proplist(), pos_integer()) ->
-                    {'ok', kapps_call:call()} |
-                    {'request', kapps_call:call()} |
-                    {'error', _, kapps_call:call()} |
-                    {'stop', kapps_call:call()}.
+          {'ok', kapps_call:call()} |
+          {'request', kapps_call:call()} |
+          {'error', _, kapps_call:call()} |
+          {'stop', kapps_call:call()}.
 gather(Call, FinishKey, Timeout, Props, N) ->
     case kzt_receiver:collect_dtmfs(Call, FinishKey, Timeout, N, fun on_first_dtmf/1) of
         {'ok', 'timeout', C} -> gather_finished(C, Props);
@@ -330,8 +334,8 @@ on_first_dtmf(Call) ->
     end.
 
 -spec gather_finished(kapps_call:call(), kz_term:proplist()) ->
-                             {'ok', kapps_call:call()} |
-                             {'request', kapps_call:call()}.
+          {'ok', kapps_call:call()} |
+          {'request', kapps_call:call()}.
 gather_finished(Call, Props) ->
     case kzt_util:get_digits_collected(Call) of
         <<>> ->
@@ -373,7 +377,7 @@ record_call(Call, Attrs) ->
     end.
 
 -spec finish_record_call(kapps_call:call(), kz_term:proplist(), kz_term:ne_binary()) ->
-                                {'request', kapps_call:call()}.
+          {'request', kapps_call:call()}.
 finish_record_call(Call, Props, MediaName) ->
     CurrentUri = kzt_util:get_voice_uri(Call),
     NewUri = kzt_util:resolve_uri(CurrentUri, kzt_twiml_util:action_url(Props)),
@@ -388,7 +392,7 @@ finish_record_call(Call, Props, MediaName) ->
     RecordingUrl = props:get_value('recordingUrl', Props, NewUri),
     AccountId = kapps_call:account_id(Call),
     Setters1 =
-        case kzc_recording:should_store_recording(AccountId, RecordingUrl) of
+        case kapps_call_recording:should_store_recording(AccountId, RecordingUrl) of
             'false' ->
                 lager:info("not storing the recording"),
                 Setters;
@@ -432,9 +436,9 @@ media_name(Call) ->
 %% Helpers
 %%------------------------------------------------------------------------------
 -spec media_local_store_url(kapps_call:call(), kz_json:object()) ->
-                                   kz_term:ne_binary().
+          kz_term:ne_binary().
 media_local_store_url(Call, JObj) ->
     AccountDb = kapps_call:account_db(Call),
     MediaId = kz_doc:id(JObj),
     MediaName = kz_json:get_value(<<"name">>, JObj),
-    ?NE_BINARY = kz_datamgr:attachment_url(AccountDb, MediaId, MediaName).
+    <<_/binary>> = kz_datamgr:attachment_url(AccountDb, MediaId, MediaName).

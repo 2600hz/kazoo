@@ -1,9 +1,13 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2019, 2600Hz
+%%% @copyright (C) 2013-2020, 2600Hz
 %%% @doc Log messages in a way to make importing to WebSequenceDiagrams.com
 %%% easier
 %%%
 %%% @author James Aimonetti
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(webseq).
@@ -42,8 +46,8 @@ type_key(A) when is_atom(A) -> {?MODULE, A}.
 -type webseq_srv() :: kz_types:server_ref() | diagram_type() | kz_term:ne_binary().
 
 -spec start(diagram_type()) ->
-                   {'ok', kz_types:server_ref()} |
-                   {'error', 'already_started', kz_types:server_ref()}.
+          {'ok', kz_types:server_ref()} |
+          {'error', 'already_started', kz_types:server_ref()}.
 start(Type) ->
     case get_server_ref(Type) of
         'undefined' -> start_srv(Type);

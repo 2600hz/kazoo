@@ -1,14 +1,19 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
-%%% @doc Listing of all expected v1 callbacks
+%%% @copyright (C) 2011-2020, 2600Hz
+%%% @doc Crossbar API for apps link.
 %%% @author Karl Anderson
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cb_apps_link).
 
 -export([init/0
-        ,authorize/1
+        ,authorize/2
         ,allowed_methods/1
         ,resource_exists/1
         ,validate/2
@@ -29,7 +34,7 @@
 %%------------------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
+    _ = crossbar_bindings:bind(<<"*.authorize.apps_link">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.apps_link">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.apps_link">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.validate.apps_link">>, ?MODULE, 'validate'),
@@ -40,8 +45,8 @@ init() ->
 %% allowed to access the resource, or false if not.
 %% @end
 %%------------------------------------------------------------------------------
--spec authorize(cb_context:context()) -> boolean().
-authorize(Context) ->
+-spec authorize(cb_context:context(), path_token()) -> boolean().
+authorize(Context, _) ->
     authorize_nouns(cb_context:req_nouns(Context)).
 
 -spec authorize_nouns(req_nouns()) -> boolean().

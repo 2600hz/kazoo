@@ -1,0 +1,21 @@
+---
+name: kazoo-application-stats
+base_branch: origin/master
+metapackage:
+  - name: meta-kazoo-applications
+    type: related
+    branch: master
+    package: kazoo-application-stats
+base_core: kazoo
+template: kazoo-application.spec.tmpl
+package:
+  centos7:
+    name: kazoo-application-stats
+    summary: Kazoo core application
+    description: |
+      Provides statistical snapshots of KAZOO and the Erlang VM
+    app_name: stats
+    license: MPL 2.0
+    group: Productivity/Telephony
+    url: https://2600hz.org/
+    vendor: 2600Hz
