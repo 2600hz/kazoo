@@ -302,8 +302,8 @@ load_docs(Context, Filter)
         {'error', Error} -> handle_datamgr_errors(Error, <<"all_docs">>, Context);
         {'ok', JObjs} ->
             Filtered = [JObj
-                        || JObj <- lists:foldl(Fun, [], JObjs)
-                               ,(not kz_term:is_empty(JObj))
+                        || JObj <- lists:foldl(Fun, [], JObjs),
+                           (not kz_term:is_empty(JObj))
                        ],
             handle_datamgr_success(Filtered, Context)
     end.
@@ -319,7 +319,7 @@ load_docs(Context, Filter)
           cb_context:context().
 load_attachment({DocType, DocId}, AName, Options, Context) ->
     load_attachment(DocId, AName, [{'doc_type', DocType} | Options], Context);
-load_attachment(<<_/binary>>=DocId, AName, Options, Context) ->
+load_attachment(<<DocId/binary>>, AName, Options, Context) ->
     case kz_datamgr:fetch_attachment(cb_context:db_name(Context), DocId, AName, Options) of
         {'error', Error} -> handle_datamgr_errors(Error, DocId, Context);
         {'ok', AttachBin} ->
@@ -516,17 +516,25 @@ handle_saved_attachment(Context, DocId) ->
     load(DocId, Context).
 
 -spec maybe_delete_doc(cb_context:context(), kz_term:ne_binary()) ->
-          {'ok', _} |
-          {'error', any()}.
+          {'ok', 'non_empty'} |
+          {'ok', kz_json:object()} |
+          kz_datamgr:data_error().
 maybe_delete_doc(Context, DocId) ->
     AccountDb = cb_context:db_name(Context),
     case kz_datamgr:open_doc(AccountDb, DocId) of
         {'error', _}=Error -> Error;
         {'ok', JObj} ->
-            case kz_doc:attachments(JObj) of
-                'undefined' -> kz_datamgr:del_doc(AccountDb, JObj);
-                _Attachments -> {'ok', 'non_empty'}
-            end
+            delete_if_empty_attachments(AccountDb, JObj)
+    end.
+
+-spec delete_if_empty_attachments(kz_term:ne_binary(), kz_json:object()) ->
+          {'ok', 'non_empty'} |
+          {'ok', kz_json:object()} |
+          kz_datamgr:data_error().
+delete_if_empty_attachments(AccountDb, JObj) ->
+    case kz_doc:attachments(JObj) of
+        'undefined' -> kz_datamgr:del_doc(AccountDb, JObj);
+        _Attachments -> {'ok', 'non_empty'}
     end.
 
 %% @equiv delete(Context, cb_context:should_soft_delete(Context))
