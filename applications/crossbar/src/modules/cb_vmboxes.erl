@@ -401,7 +401,8 @@ put(Context) ->
 
 -spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 put(Context, _BoxId, ?MESSAGES_RESOURCE) ->
-    maybe_save_attachment(crossbar_doc:save(Context)).
+    Context1 = crossbar_doc:save(Context),
+    maybe_save_attachment(Context1).
 
 -spec put(cb_context:context(), path_token(), path_token(), path_token(), path_token()) -> cb_context:context().
 put(Context, _BoxId, ?MESSAGES_RESOURCE, MsgID, ?BIN_DATA) ->
@@ -519,27 +520,37 @@ check_mailbox_for_messages_array(Context, VMBoxMsgs) ->
 
 -spec maybe_save_attachment(cb_context:context()) -> cb_context:context().
 maybe_save_attachment(Context) ->
-    maybe_save_attachment(crossbar_util:maybe_remove_attachments(Context), cb_context:req_files(Context)).
+    maybe_save_attachment(Context, cb_context:resp_status(Context)).
 
--spec maybe_save_attachment(cb_context:context(), req_files()) -> cb_context:context().
-maybe_save_attachment(Context, []) -> Context;
-maybe_save_attachment(Context, [{Filename, FileJObj} | _Others]) ->
+maybe_save_attachment(Context, 'success') ->
+    save_attachment(crossbar_util:maybe_remove_attachments(Context), cb_context:req_files(Context));
+maybe_save_attachment(Context, _Error) ->
+    lager:info("saving message metadata failed"),
+    Context.
+
+-spec save_attachment(cb_context:context(), req_files()) -> cb_context:context().
+save_attachment(Context, []) -> Context;
+save_attachment(Context, [{Filename, FileJObj} | _Others]) ->
     save_attachment(Context, Filename, FileJObj).
 
 -spec save_attachment(cb_context:context(), binary(), kz_json:object()) -> cb_context:context().
 save_attachment(Context, Filename, FileJObj) ->
     JObj = cb_context:doc(Context),
-    BoxId = kz_doc:id(JObj),
+    MessageId = kz_doc:id(JObj),
+
     Contents = kz_json:get_ne_binary_value(<<"contents">>, FileJObj),
+
     CT = kz_json:get_ne_binary_value([<<"headers">>, <<"content_type">>], FileJObj),
+
     Options = [{'content_type', CT}
               ,{'rev', kz_doc:revision(JObj)}
                | ?TYPE_CHECK_OPTION(<<"mailbox_message">>)
               ],
     AttName = cb_modules_util:attachment_name(Filename, CT),
-    C1 = crossbar_doc:save_attachment(BoxId, AttName, Contents, Context, Options),
+    C1 = crossbar_doc:save_attachment(MessageId, AttName, Contents, Context, Options),
     case cb_context:resp_status(C1) of
         'success' ->
+            lager:info("saved attachment to message ~s", [MessageId]),
             C2 = crossbar_util:response(kzd_box_message:metadata(JObj), C1),
             update_mwi(C2, kzd_box_message:source_id(JObj));
         _ -> C1
@@ -986,6 +997,7 @@ create_new_message_document(Context, BoxJObj) ->
     From = kz_json:get_ne_binary_value(<<"from">>, Doc, CallerNumber),
     To = kz_json:get_ne_binary_value(<<"to">>, Doc, BoxNum),
     Length = kz_json:get_integer_value(<<"length">>, Doc, 1),
+    Folder = kz_json:get_ne_binary_value(<<"folder">>, Doc, <<"new">>),
 
     Timestamp = kz_doc:created(JObj),
 
@@ -996,7 +1008,7 @@ create_new_message_document(Context, BoxJObj) ->
                ,{fun kapps_call:set_caller_id_name/2, CallerName}
                ],
     Call = kapps_call:exec(Routines, kapps_call:new()),
-    Metadata = kzd_box_message:build_metadata_object(Length, Call, MsgId, CallerNumber, CallerName, Timestamp),
+    Metadata = kzd_box_message:build_metadata_object(Length, Call, MsgId, CallerNumber, CallerName, Timestamp, Folder),
 
     Message = kzd_box_message:update_media_id(MsgId, kzd_box_message:set_metadata(Metadata, JObj)),
     cb_context:set_doc(cb_context:set_account_db(Context, kz_doc:account_db(Message)), Message).
@@ -1159,10 +1171,7 @@ del_dir(Dir) ->
 -spec del_all_files(string()) -> any().
 del_all_files(Dir) ->
     {'ok', Files} = file:list_dir(Dir),
-    lists:foreach(fun(F) ->
-                          file:delete(Dir ++ F)
-                  end, Files
-                 ).
+    lists:foreach(fun(F) -> file:delete(Dir ++ F) end, Files).
 
 %%------------------------------------------------------------------------------
 %% @doc generate a media name based on CallerID and creation date
@@ -1197,7 +1206,7 @@ check_uniqueness(VMBoxId, Context) ->
             check_uniqueness(VMBoxId, Context, Mailbox)
     catch
         _:_ ->
-            lager:debug("can't convert mailbox number to integer", []),
+            lager:debug("can't convert mailbox number to integer"),
             'false'
     end.
 
