@@ -108,12 +108,17 @@ resp_to_probe(State, User, Realm) ->
     PresenceId = <<User/binary, "@", Realm/binary>>,
     PresenceUpdate = [{<<"Presence-ID">>, PresenceId}
                      ,{<<"From">>, <<"sip:", PresenceId/binary>>}
+                     ,{<<"From-User">>, User}
+                     ,{<<"From-Realm">>, Realm}
                      ,{<<"To">>, <<"sip:", PresenceId/binary>>}
+                     ,{<<"To-User">>, User}
+                     ,{<<"To-Realm">>, Realm}
                      ,{<<"State">>, State}
                      ,{<<"Call-ID">>, kz_term:to_hex_binary(crypto:hash(md5, PresenceId))}
                       | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                      ],
-    kz_amqp_worker:cast(PresenceUpdate, fun kapi_presence:publish_update/1).
+    lager:debug("sending probe reply '~s' for ~s", [State, PresenceId]),
+    kapi_presence:publish_update(PresenceUpdate).
 
 -spec notify_api(kz_json:object(), kz_term:proplist()) -> 'ok'.
 notify_api(JObj, _Props) ->
