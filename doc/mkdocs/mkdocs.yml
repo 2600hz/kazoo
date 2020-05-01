@@ -441,6 +441,7 @@ nav:
       - 'core/kazoo_numbers/doc/knm_voxbone.md'
       - 'core/kazoo_numbers/doc/maintenance.md'
       - 'core/kazoo_numbers/doc/number_states.md'
+      - 'core/kazoo_numbers/doc/knm_converter_migrate_maintenance.md'
     - 'Kazoo CNAM':
       - 'core/kazoo_cnam/doc/cnam_maintenance.md'
     - 'Kazoo AMQP':

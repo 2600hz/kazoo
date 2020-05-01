@@ -64,7 +64,7 @@ Key | Description | Type | Default | Required | Support Level
 `gateways.[].force_port` | Allow request only from this port | `boolean()` | `false` | `false` |  
 `gateways.[].format_from_uri` | When set to true requests to this resource gateway will have a reformatted SIP From Header | `boolean()` |   | `false` |  
 `gateways.[].from_uri_realm` | When formatting SIP From on outbound requests this can be used to override the realm | `string()` |   | `false` |  
-`gateways.[].invite_format` | The format of the DID needed by the underlying hardware/gateway | `string('route' | 'username' | 'e164' | 'npan' | '1npan')` | `route` | `false` |  
+`gateways.[].invite_format` | The format of the DID needed by the underlying hardware/gateway | `string('route' | 'username' | 'e164' | 'npan' | '1npan' | 'strip_plus')` | `route` | `false` |  
 `gateways.[].invite_parameters.dynamic.[]` |   | `string()|string()|string('zone')|object()` |   |   |  
 `gateways.[].invite_parameters.dynamic` | A list of properties that, if found on the inbound call, should be added as an INVITE parameter | `array()` |   | `false` |  
 `gateways.[].invite_parameters.static.[]` |   | `string()` |   | `false` |  

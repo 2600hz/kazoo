@@ -134,6 +134,7 @@ invite_uri(Endpoint, CCVs) ->
         <<"e164">> -> set_invite_uri(fun knm_converters:normalize/1, kzd_devices:sip_number(Endpoint), <<"e164">>, Realm, CCVs);
         <<"1npan">> -> set_invite_uri(fun knm_converters:to_1npan/1, kzd_devices:sip_number(Endpoint), <<"1npan">>, Realm, CCVs);
         <<"npan">> -> set_invite_uri(fun knm_converters:to_npan/1, kzd_devices:sip_number(Endpoint), <<"npan">>, Realm, CCVs);
+        <<"strip_plus">> -> set_invite_uri(fun knm_converters:to_strip_plus/1, kzd_devices:sip_number(Endpoint), <<"strip_plus">>, Realm, CCVs);
         <<"contact">> -> set_invite_uri(kzd_devices:sip_username(Endpoint), Realm, CCVs);
         <<"username">> -> set_invite_uri(kzd_devices:sip_username(Endpoint), Realm, CCVs)
     end.

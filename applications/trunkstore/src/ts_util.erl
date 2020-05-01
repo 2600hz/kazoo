@@ -259,18 +259,11 @@ invite_format(<<"e164">>, To) ->
     [{<<"Invite-Format">>, <<"e164">>}
     ,{<<"To-DID">>, knm_converters:normalize(To)}
     ];
-invite_format(<<"e164_without_plus">>, To) ->
-    case knm_converters:normalize(To) of
-        <<$+, PluslessDID/binary>> ->
-            lager:info("while processing 'e164_without_plus' flag, DID ~s converted to E.164 with truncated '+': ~s",[To, PluslessDID]),
-            [{<<"Invite-Format">>, <<"e164">>}
-            ,{<<"To-DID">>, PluslessDID}
-            ];
-        AsIsDID ->
-            [{<<"Invite-Format">>, <<"e164">>}
-            ,{<<"To-DID">>, AsIsDID}
-            ]
-    end;
+invite_format(<<"e164_without_plus">>=Format, To) ->
+    lager:debug("~p: changing legacy format ~p to strip_plus", [?MODULE, Format]),
+    [{<<"Invite-Format">>, <<"strip_plus">>}
+    ,{<<"To-DID">>, knm_converters:to_strip_plus(To)}
+    ];
 invite_format(<<"1npanxxxxxx">>, To) ->
     [{<<"Invite-Format">>, <<"1npan">>}
     ,{<<"To-DID">>, knm_converters:to_1npan(To)}
@@ -286,6 +279,10 @@ invite_format(<<"npanxxxxxx">>, To) ->
 invite_format(<<"npan">>, To) ->
     [{<<"Invite-Format">>, <<"npan">>}
     ,{<<"To-DID">>, knm_converters:to_npan(To)}
+    ];
+invite_format(<<"strip_plus">>, To) ->
+    [{<<"Invite-Format">>, <<"strip_plus">>}
+    ,{<<"To-DID">>, knm_converters:to_strip_plus(To)}
     ];
 invite_format(_, _) ->
     [{<<"Invite-Format">>, <<"username">>}].

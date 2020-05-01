@@ -56,7 +56,7 @@ Key | Description | Type | Default | Required | Support Level
 `servers.[].options.hunt_account_id` | When using local resources, use this account instead of the account making the call (useful for resellers) | `string()` |   | `false` |  
 `servers.[].options.hunt_non_reconcilable` | Whether to allow routing to continue on a non-reconcilable TO number | `boolean()` | `false` | `false` |  
 `servers.[].options.ignore_early_media` |   | `boolean()` |   | `false` |  
-`servers.[].options.inbound_format` | Determines how the INVITE is sent to the server | `string('e164' | 'npan' | '1npan' | 'username')` | `npan` | `false` |  
+`servers.[].options.inbound_format` | Determines how the INVITE is sent to the server | `string('e164' | 'npan' | '1npan' | 'username' | 'strip_plus')` | `npan` | `false` |  
 `servers.[].options.ip` | IP (sip) address for this device | `string()` |   | `false` |  
 `servers.[].options.media_handling` | Determine whether the switch should be in the media path or not | `string('process' | 'bypass')` | `bypass` | `false` |  
 `servers.[].options.port` | Port to send SIP traffic for the remote device | `integer()` |   | `false` |  

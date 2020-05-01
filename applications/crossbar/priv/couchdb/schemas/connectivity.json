@@ -232,7 +232,8 @@
                                     "e164",
                                     "npan",
                                     "1npan",
-                                    "username"
+                                    "username",
+                                    "strip_plus"
                                 ],
                                 "type": "string"
                             },

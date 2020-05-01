@@ -512,7 +512,7 @@
     "number_manager.bandwidth2.site_id": "number_manager.bandwidth2 site id",
     "number_manager.carrier_modules": "carrier modules to perform number search & ordering from",
     "number_manager.classifiers": "regular expressions & billing names for numbers",
-    "number_manager.converters": "suffix for the KNM module to use for E164, NPAN and 1NPAN normalization of numbers",
+    "number_manager.converters": "suffix for the KNM module to use for E164, NPAN, 1NPAN and strip_plus normalization of numbers",
     "number_manager.dash_e911.auth_password": "number_manager.dash_e911 auth password",
     "number_manager.dash_e911.auth_username": "number_manager.dash_e911 auth username",
     "number_manager.dash_e911.debug": "number_manager.dash_e911 debug",
