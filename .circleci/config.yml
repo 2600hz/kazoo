@@ -29,7 +29,7 @@ workflows:
 
 defaults: &defaults
   docker:
-    - image: offical2600hz/circleci:21.3.8.12
+    - image: offical2600hz/circleci:22.3
   working_directory: ~/2600hz/kazoo
   shell: /bin/bash --login
   environment:
@@ -193,7 +193,7 @@ jobs:
   release:
     <<: *defaults
     docker:
-      - image: offical2600hz/circleci:21.3.8.12
+      - image: offical2600hz/circleci:22.3
       - image: couchdb:3.0
         environment:
           COUCHDB_USER: admin
@@ -235,7 +235,7 @@ jobs:
 
   build_centos7:
     docker:
-      - image: offical2600hz/kazoo-packager-21:1.0-centos-7
+      - image: offical2600hz/kazoo-packager-22:1.0-centos-7
         user: circleci
     shell: /bin/bash --login
     working_directory: /home/circleci/2600hz/kazoo

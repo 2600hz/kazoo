@@ -11,8 +11,8 @@ If your development is on macOS, here are [extra steps](https://github.com/2600h
 Erlang/OTP is required for both run time and build time. Usually the official Erlang package provided by distributions is not up-to-date, please follow this section to install it from source code or using other options.
 
 * Kazoo version 4.3 requires Erlang version 19 specifically 19.3.x
-* Kazoo version 5.x is currently targets Erlang version 21 (specifically 21.3)
-* Kazoo master branch targets Erlang 21+ (specifically 21.3 but consult [`make/erlang_version`](https://github.com/2600hz/kazoo/blob/master/make/erlang_version) to be sure).
+* Kazoo version 5.x is currently targets Erlang version 22 (specifically 22.3)
+* Kazoo master branch targets Erlang 22+ (specifically 22.3 but consult [`make/erlang_version`](https://github.com/2600hz/kazoo/blob/master/make/erlang_version) to be sure).
 
 #### Installing Erlang/OTP from source code
 
