@@ -183,6 +183,7 @@
 -export([collect_digits/2, collect_digits/3
         ,collect_digits/4, collect_digits/5
         ,collect_digits/6, collect_digits/7
+        ,collect_digits/8
         ]).
 -export([send_command/2]).
 
@@ -2538,6 +2539,19 @@ collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, FlushOnDigit
                                          ,terminators=Terminators
                                          ,call=Call
                                          ,flush_on_digit=FlushOnDigit
+                                         }).
+
+-spec collect_digits(integer(), integer(), integer(), kz_term:api_binary(), list(), boolean(), integer(), kapps_call:call()) ->
+          collect_digits_return().
+collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, FlushOnDigit, AfterTimeout, Call) ->
+    do_collect_digits(#wcc_collect_digits{max_digits=kz_term:to_integer(MaxDigits)
+                                         ,timeout=kz_term:to_integer(Timeout)
+                                         ,interdigit=kz_term:to_integer(Interdigit)
+                                         ,noop_id=NoopId
+                                         ,terminators=Terminators
+                                         ,call=Call
+                                         ,flush_on_digit=FlushOnDigit
+                                         ,after_timeout=kz_term:to_integer(AfterTimeout)
                                          }).
 
 -spec do_collect_digits(wcc_collect_digits()) -> collect_digits_return().
