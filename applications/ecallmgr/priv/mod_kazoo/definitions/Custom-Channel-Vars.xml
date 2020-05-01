@@ -18,9 +18,7 @@
 			</field>
 			<field name="variable_sip_h_Referred-By" as="Referred-By" />
 
-			<!--
 			<field name="interaction-id" type="reference" />
-			-->
 
             <field name="variable_presence_id" as="Presence-ID"/>
             <!--

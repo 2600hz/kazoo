@@ -47,7 +47,7 @@
 	</fields>
 	<filters>
 		<filter name="${variable_Call-Control-Node}" type="include" compare="field" value="Target-Node" />
-		<filter name="variable_hangup_cause" type="exclude" compare="value" value="CALL_REJECTED" />
+		<!-- <filter name="variable_hangup_cause" type="exclude" compare="value" value="CALL_REJECTED" /> -->
 		<filter name="variable_hangup_cause" type="exclude" compare="value" value="WRONG_CALL_STATE" />
 	</filters>
 </event>
