@@ -1,7 +1,7 @@
 <definition name="voice_dialplan">
 	<field name="fetch-info" type="reference" />
 	<field name="Timestamp" type="expand"
-		value="${expr(ceil((${Event-Date-Timestamp} / 1000000) + $${UNIX_EPOCH_IN_GREGORIAN}))}"
+		value="${expr(ceil((${Event-Date-Timestamp} / 1000000) + ${UNIX_EPOCH_IN_GREGORIAN}))}"
 		serialize-as="number" />
 	<field name="Unique-ID" as="Call-ID" />
 	<field name="variable_sip_invite_domain" as="Domain-Name" />

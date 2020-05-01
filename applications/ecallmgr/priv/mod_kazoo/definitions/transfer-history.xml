@@ -1,8 +1,3 @@
 <definition name="transfer-history">
-	<filters>
-		<filter name="variable_transfer_history" type="include"
-			compare="exists" />
-	</filters>
-	<field name="Transfer-History" type="expand"
-		value="${kz_json_history(${variable_transfer_history})}" serialize-as="raw" />
+    <field name="_json_transfer_history" as="Transfer-History" serialize-as="raw"/>
 </definition>

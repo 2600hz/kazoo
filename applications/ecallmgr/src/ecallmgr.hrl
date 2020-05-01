@@ -459,6 +459,7 @@
                    ,{'kazoo', ['kazoo::noop', 'kazoo::masquerade']}
                    ,{'transfer', ?FS_SOFIA_TRANSFER_EVENTS}
                    ,{'loopback', ['loopback::bowout', 'loopback::direct']}
+                   ,{'cdr', ['KZ_CDR']}
                    ]).
 
 -define(FS_FETCH_SECTIONS, ['configuration'
@@ -658,6 +659,7 @@
                           ,'ecallmgr_conference_event_publisher'
                           ,'ecallmgr_presence_event_publisher'
                           ,'ecallmgr_fs_recordings'
+                          ,'ecallmgr_cdr_event_publisher'
                           ]).
 
 -define(HTTP_GET_PREFIX, "http_cache://").

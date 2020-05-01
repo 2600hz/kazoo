@@ -46,4 +46,5 @@ stop(_State) ->
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
     _ = kapi_call:declare_exchanges(),
+    _ = kapi_cdr:declare_exchanges(),
     kapi_self:declare_exchanges().

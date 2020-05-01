@@ -34,7 +34,7 @@
              ]).
 
 -record(state, {node :: atom()
-               ,bindings :: bindings() | 'undefined'
+               ,bindings :: binding() | bindings() | 'undefined'
                ,profile_name :: profile_name()
                ,ip :: inet:ip_address() | 'undefined'
                ,port :: inet:port_number() | 'undefined'
@@ -95,6 +95,7 @@ handle_call(_Request, _From, State) ->
 handle_cast('connect', #state{ip=IP, port=Port, packet=Packet, idle_alert=Timeout}=State) ->
     case gen_tcp:connect(IP, Port, [{'mode', 'binary'}
                                    ,{'packet', Packet}
+                                   ,{'keepalive', 'true'}
                                    ])
     of
         {'ok', Socket} ->
@@ -234,22 +235,18 @@ request_event_stream(#state{node=Node}=State) ->
     end.
 
 -spec get_event_bindings(state()) -> kz_term:atoms().
-get_event_bindings(State) ->
-    get_event_bindings(State, []).
+get_event_bindings(#state{bindings=Bindings})
+  when is_list(Bindings) ->
+    [kz_term:to_atom(Binding, 'true') || Binding <- Bindings];
 
--spec get_event_bindings(state(), kz_term:atoms()) -> kz_term:atoms().
-get_event_bindings(#state{bindings='undefined'
-                         ,idle_alert='infinity'
-                         }
-                  ,Acc
-                  ) ->
-    Acc;
-get_event_bindings(#state{bindings='undefined'}, Acc) ->
-    ['HEARTBEAT' | Acc];
-get_event_bindings(#state{bindings=Bindings}=State, Acc) when is_list(Bindings) ->
-    get_event_bindings(State#state{bindings='undefined'}
-                      ,[kz_term:to_atom(Binding, 'true') || Binding <- Bindings] ++ Acc
-                      ).
+get_event_bindings(#state{bindings=Binding})
+  when is_atom(Binding),
+       Binding =/= 'undefined' ->
+    [Binding];
+
+get_event_bindings(#state{bindings=Binding})
+  when is_binary(Binding) ->
+    [kz_term:to_atom(Binding, 'true')].
 
 -spec maybe_bind(atom(), kz_term:atoms()) ->
           {'ok', {kz_term:text(), inet:port_number()}} |
