@@ -534,11 +534,13 @@ refresh([Database|Databases], Pause, Total, Unexpected) ->
                 end,
             Unexpected
         catch
-            ?STACKTRACE(Error, Reason, StackTrace)
-            [io_lib:format("WARNING: Unable to refresh/migrate db ~s! ~s: {~p, ~p}",
-                           [Database, Error, Reason, StackTrace])
-             | Unexpected]
-            end,
+            Error:Reason:StackTrace ->
+                [io_lib:format("WARNING: Unable to refresh/migrate db ~s! ~s: {~p, ~p}"
+                              ,[Database, Error, Reason, StackTrace]
+                              )
+                 | Unexpected
+                ]
+        end,
     refresh(Databases, Pause, Total, NewUnexpected).
 
 -spec get_databases() -> kz_term:ne_binaries().
@@ -804,7 +806,7 @@ cleanup_aggregated_accounts([]) -> 'ok';
 cleanup_aggregated_accounts([JObj|JObjs]) ->
     _ = case kz_doc:id(JObj) of
             <<"_design", _/binary>> -> 'ok';
-            AccountId ->
+            <<AccountId/binary>> ->
                 io:format("    verifying ~s doc ~s~n", [?KZ_ACCOUNTS_DB, AccountId]),
                 cleanup_aggregated_account(AccountId)
         end,

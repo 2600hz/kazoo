@@ -25,5 +25,12 @@
        ).
 -define(TONE, kapps_config:get_json(?CONFIG_CAT, <<"tone">>, ?DEFAULT_TONE)).
 
+-define(DEFAULT_ECHO, kz_json:from_list(
+                        [{<<"caller_id">>,[]}
+                        ,{<<"number">>,[<<"5555555552">>]}
+                        ])
+       ).
+-define(ECHO, kapps_config:get_json(?CONFIG_CAT, <<"echo">>, ?DEFAULT_ECHO)).
+
 -define(MILLIWATT_HRL, 'true').
 -endif.

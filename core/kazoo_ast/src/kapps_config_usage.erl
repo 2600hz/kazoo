@@ -199,7 +199,7 @@ add_schemas_to_bucket(_App, #{schema_dir := PrivDir
                              }=Acc) ->
     ProjectSchema = kz_json:get_json_value(PrivDir, ProjectSchemas, kz_json:new()),
 
-    ?DEBUG("merging dir ~s / app ~p into proj ~p~n", [PrivDir, AppSchemas, ProjectSchema]),
+    ?DEBUG("merging dir ~s~napp: ~p~nproj: ~p~n", [PrivDir, AppSchemas, ProjectSchema]),
 
     UpdatedSchema = kz_json:merge(ProjectSchema, AppSchemas),
     ?DEBUG("merged: ~p~n", [UpdatedSchema]),
@@ -286,7 +286,7 @@ config_key_to_schema(Source, F, Document, Key, Default, #{app_schemas := Schemas
     Properties = guess_properties(Document, Source, Key, guess_type(F, Default), Default),
     Path = [Document, ?FIELD_PROPERTIES | Key],
 
-    ?DEBUG("setting ~s from source ~s~n", [Path, Source]),
+    ?DEBUG("setting '~s' from source ~s~n", [kz_binary:join(Path), Source]),
     Acc#{app_schemas => kz_json:set_value(Path, Properties, Schemas)}.
 
 category_to_document(?VAR(_)) -> 'undefined';

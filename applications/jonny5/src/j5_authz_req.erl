@@ -29,9 +29,9 @@ maybe_account_limited(Request) ->
     case j5_request:is_authorized(R, Limits) of
         'true' -> maybe_reseller_limited(R);
         'false' ->
-            lager:debug("account ~s is not authorized to create this channel"
-                       ,[AccountId]
-                       ),
+            lager:info("account ~s is not authorized to create this channel"
+                      ,[AccountId]
+                      ),
             send_response(R)
     end.
 
@@ -40,7 +40,7 @@ maybe_reseller_limited(Request) ->
     ResellerId = j5_request:reseller_id(Request),
     case j5_request:account_id(Request) =:= ResellerId of
         'true' ->
-            lager:debug("channel belongs to reseller, ignoring reseller billing"),
+            lager:info("channel belongs to reseller, ignoring reseller billing"),
             send_response(
               j5_request:authorize_reseller(<<"limits_disabled">>, Request)
              );
@@ -53,9 +53,9 @@ check_reseller_limits(Request, ResellerId) ->
     Limits = j5_limits:get(ResellerId),
     R = maybe_authorize(Request, Limits),
     (not j5_request:is_authorized(R, Limits))
-        andalso lager:debug("reseller ~s is not authorized to create this channel"
-                           ,[ResellerId]
-                           ),
+        andalso lager:info("reseller ~s is not authorized to create this channel"
+                          ,[ResellerId]
+                          ),
     send_response(R).
 
 -spec maybe_authorize(j5_request:request(), j5_limits:limits()) ->
