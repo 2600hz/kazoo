@@ -18,8 +18,6 @@
         ,migrate_trunkstore/1, migrate_trunkstore/3
         ]).
 
--define(LEGACY_STRIP_PLUS, <<"e164_without_plus">>).
--define(ONE_NPAN, <<"1npan">>).
 -define(NPAN, <<"npan">>).
 -define(STRIP_PLUS, <<"strip_plus">>).
 -define(DEFAULT_FROM, <<"npan">>).
