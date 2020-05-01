@@ -16,7 +16,7 @@
         ,migrate_global_resources/0, migrate_global_resources/2
         ,migrate_local_resources/1, migrate_local_resources/3
         ,migrate_trunkstore/1, migrate_trunkstore/3
-            ]).
+        ]).
 
 -define(LEGACY_STRIP_PLUS, <<"e164_without_plus">>).
 -define(ONE_NPAN, <<"1npan">>).
