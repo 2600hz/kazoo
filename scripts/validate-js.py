@@ -43,7 +43,7 @@ def fmap(F, data):
 
 def couchjs(field_js):
     (field, js) = field_js
-    JS = ''.join(js) + '\n'
+    JS = ''.join(js).replace(/function/, 'function arent_you_funny_couch') + '\n'
     if 'Object.keys' in JS:
         print(field, 'contains "Object.keys" which is not available until ECMA2015')
         exit(1)
