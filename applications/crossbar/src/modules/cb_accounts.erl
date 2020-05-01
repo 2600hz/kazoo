@@ -480,31 +480,23 @@ prepare_context(Context, AccountId, AccountDb) ->
                                 ]).
 
 %%------------------------------------------------------------------------------
-%% @doc
+%% @doc Validate the request JObj passes all validation checks and add / alter
+%% any required fields.
 %% @end
 %%------------------------------------------------------------------------------
 -spec validate_request(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 validate_request(AccountId, Context) ->
     ReqJObj = cb_context:req_data(Context),
-
     ParentId = get_parent_id_from_req(Context),
     case kzd_accounts:validate(ParentId, AccountId, ReqJObj) of
         {'true', AccountJObj} ->
-            update_validated_request(AccountId, Context, AccountJObj);
+            Context1 = cb_context:update_successfully_validated_request(Context, AccountJObj),
+            extra_validation(AccountId, Context1);
         {'validation_errors', ValidationErrors} ->
-            add_validation_errors(Context, ValidationErrors);
+            cb_context:add_doc_validation_errors(Context, ValidationErrors);
         {'system_error', Error} ->
             cb_context:add_system_error(Error, Context)
     end.
-
--spec update_validated_request(kz_term:api_binary(), cb_context:context(), kz_json:object()) -> cb_context:context().
-update_validated_request(AccountId, Context, AccountJObj) ->
-    Updates = [{fun cb_context:set_req_data/2, AccountJObj}
-              ,{fun cb_context:set_doc/2, AccountJObj}
-              ,{fun cb_context:set_resp_status/2, 'success'}
-              ],
-    Context1 = cb_context:setters(Context, Updates),
-    extra_validation(AccountId, Context1).
 
 -spec get_parent_id_from_req(cb_context:context()) -> kz_term:api_ne_binary().
 get_parent_id_from_req(Context) ->
@@ -516,14 +508,6 @@ get_parent_id_from_req(Context) ->
                 AuthDoc -> kz_json:get_ne_binary_value(<<"account_id">>, AuthDoc)
             end
     end.
-
-add_validation_errors(Context, ValidationErrors) ->
-    lists:foldl(fun add_validation_error/2
-               ,Context
-               ,ValidationErrors
-               ).
-add_validation_error({Path, Reason, Msg}, Context) ->
-    cb_context:add_validation_error(Path, Reason, Msg, Context).
 
 -spec extra_validation(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 extra_validation(AccountId, Context) ->
