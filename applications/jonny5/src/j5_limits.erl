@@ -164,7 +164,8 @@ resource_consuming_calls(#limits{resource_consuming_calls=Calls}) -> Calls.
 -spec inbound_trunks(limits()) -> tristate_integer().
 inbound_trunks(#limits{inbound_trunks=-1}) -> -1;
 inbound_trunks(#limits{bundled_inbound_trunks=BundledTrunks
-                      ,inbound_trunks=Trunks}) ->
+                      ,inbound_trunks=Trunks
+                      }) ->
     BundledTrunks + Trunks.
 
 %%------------------------------------------------------------------------------
@@ -174,7 +175,8 @@ inbound_trunks(#limits{bundled_inbound_trunks=BundledTrunks
 -spec outbound_trunks(limits()) -> tristate_integer().
 outbound_trunks(#limits{outbound_trunks=-1}) -> -1;
 outbound_trunks(#limits{bundled_outbound_trunks=BundledTrunks
-                       ,outbound_trunks=Trunks}) ->
+                       ,outbound_trunks=Trunks
+                       }) ->
     BundledTrunks + Trunks.
 
 %%------------------------------------------------------------------------------
@@ -184,7 +186,8 @@ outbound_trunks(#limits{bundled_outbound_trunks=BundledTrunks
 -spec twoway_trunks(limits()) -> tristate_integer().
 twoway_trunks(#limits{twoway_trunks=-1}) -> -1;
 twoway_trunks(#limits{bundled_twoway_trunks=BundledTrunks
-                     ,twoway_trunks=Trunks}) ->
+                     ,twoway_trunks=Trunks
+                     }) ->
     BundledTrunks + Trunks.
 
 %%------------------------------------------------------------------------------

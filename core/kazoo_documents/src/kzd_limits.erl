@@ -484,8 +484,6 @@ pvt_allotments(Doc, Default) ->
 set_pvt_allotments(Doc, Allotments) ->
     kz_json:set_value(<<"pvt_allotments">>, Allotments, Doc).
 
-
-
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
@@ -650,8 +648,7 @@ get_default_limit_boolean(Key, Default) ->
 -spec get_limit_list(kz_term:ne_binary(), kz_json:object(), list()) -> list().
 get_limit_list(Key, JObj, Default) ->
     case kz_json:get_list_value(<<"pvt_", Key/binary>>, JObj) of
-        'undefined' ->
-            get_public_limit_list(Key, JObj, Default);
+        'undefined' -> get_public_limit_list(Key, JObj, Default);
         Value -> Value
     end.
 
@@ -703,15 +700,18 @@ get_bundled_limit(AccountDb, View) ->
         {'ok', JObjs} -> filter_bundled_limit(JObjs);
         {'error', _R} ->
             lager:debug("failed get bundled limit from ~s in ~s: ~p"
-                       ,[View, AccountDb, _R]),
+                       ,[View, AccountDb, _R]
+                       ),
             0
     end.
 
 -spec filter_bundled_limit(kz_json:objects()) -> non_neg_integer().
 filter_bundled_limit(JObjs) ->
-    length([JObj
-            || JObj <- JObjs
-                   ,kz_json:is_true([<<"value">>, <<"enabled">>]
-                                   ,JObj
-                                   ,'true')
-           ]).
+    lists:foldl(fun count_enabled/2, 0, JObjs).
+
+-spec count_enabled(kz_json:object(), non_neg_integer()) -> non_neg_integer().
+count_enabled(JObj, Sum) ->
+    case kz_json:is_true([<<"value">>, <<"enabled">>], JObj, 'true') of
+        'true' -> Sum + 1;
+        'false' -> Sum
+    end.

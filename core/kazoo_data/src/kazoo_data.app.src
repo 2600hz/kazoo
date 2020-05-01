@@ -1,7 +1,7 @@
 {application,kazoo_data,
- [{applications,[kazoo,kazoo_attachments,kazoo_bindings,kazoo_caches,
-                 kazoo_config,kazoo_stdlib,kernel,
-                 lager,stdlib]},
+ [{applications,[kazoo,kazoo_amqp,kazoo_attachments,
+                 kazoo_bindings,kazoo_caches,kazoo_config,
+                 kazoo_stdlib,kernel,lager,stdlib]},
   {description,"Kazoo Data Access abstraction layer"},
   {id,"108013a5-95e7-4e18-5757-344d22bebce8"},
   {vsn,"4.0.0"},
@@ -12,5 +12,4 @@
   {env,[{default_archive_folder,<<"/tmp">>},
         {max_bulk_insert,2000},
         {max_bulk_read,2000},
-        {cache_strategy, none}
-       ]}]}.
+        {cache_strategy,none}]}]}.

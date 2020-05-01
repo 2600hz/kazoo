@@ -197,7 +197,7 @@ start_key(StartKey) -> "start_key=" ++ kz_term:to_list(StartKey).
 
 -spec seq() -> 'ok'.
 seq() ->
-    kapps_config:set_default(<<"crossbar.cdrs">>, <<"should_filter_empty_strings">>, 'true'),
+    _ = kapps_config:set_default(<<"crossbar.cdrs">>, <<"should_filter_empty_strings">>, 'true'),
     _ = straight_seq(),
     _ = paginated_seq(),
     _ = task_seq(),

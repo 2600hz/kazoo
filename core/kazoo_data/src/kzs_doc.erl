@@ -164,9 +164,7 @@ del_doc(#{server := {App, Conn}}=Server, DbName, Doc, Options) ->
 del_docs(Server, DbName, Docs, Options) ->
     do_delete_docs(Server, DbName, prepare_docs_for_deletion(Server, DbName, Docs), Options).
 
-do_delete_docs(_Server, _DbName, [], _Options) ->
-    lager:debug("no docs to delete"),
-    {'ok', []};
+do_delete_docs(_Server, _DbName, [], _Options) -> {'ok', []};
 do_delete_docs(#{server := {App, Conn}}, DbName, DelDocs, Options) ->
     {PreparedDocs, PublishDocs} = lists:unzip([prepare_doc_for_save(DbName, D) || D <- DelDocs]),
     try App:del_docs(Conn, DbName, PreparedDocs, Options) of

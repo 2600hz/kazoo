@@ -18,7 +18,7 @@
         ,put/1, put/2
         ,post/1, post/3
         ,patch/1, patch/3
-        ,delete/1, delete/3
+        ,delete/1, delete/3, delete_account/2
         ]).
 
 -ifdef(TEST).
@@ -65,8 +65,9 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.put.storage">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.storage">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.patch.storage">>, ?MODULE, 'patch'),
-    _ = crossbar_bindings:bind(<<"*.execute.delete.storage">>, ?MODULE, 'delete').
-
+    _ = crossbar_bindings:bind(<<"*.execute.delete.storage">>, ?MODULE, 'delete'),
+    _ = crossbar_bindings:bind(<<"*.execute.delete.accounts">>, ?MODULE, 'delete_account'),
+    'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc Authorizes the incoming request, returning true if the requestor is
@@ -173,7 +174,6 @@ validate(Context, ?PLANS_TOKEN) ->
 validate(Context, ?PLANS_TOKEN, PlanId) ->
     validate_storage_plan(set_scope(Context), PlanId, cb_context:req_verb(Context)).
 
-
 -spec validate_storage(cb_context:context(), http_method()) -> cb_context:context().
 validate_storage(Context, ?HTTP_GET) ->
     read(Context);
@@ -246,6 +246,41 @@ delete(Context) ->
 -spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 delete(Context, ?PLANS_TOKEN, _PlanId) ->
     crossbar_doc:delete(Context, 'false').
+
+-spec delete_account(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
+delete_account(Context, AccountId) ->
+    lager:debug("account ~s deleted, removing any storage plans", [AccountId]),
+    delete_account_storage(AccountId),
+    Context.
+
+-spec delete_account_storage(kz_term:ne_binary()) -> 'ok'.
+delete_account_storage(AccountId) ->
+    case kz_datamgr:get_result_ids(?KZ_DATA_DB
+                                  ,<<"storage/storage_by_account">>
+                                  ,[{'key', AccountId}]
+                                  )
+    of
+        {'ok', []} -> lager:info("no storage to delete");
+        {'ok', StorageIDs} ->
+            lager:info("removing storage plans ~s", [kz_binary:join(StorageIDs)]),
+            delete_storage_plans(StorageIDs);
+        {'error', _E} -> lager:info("error deleting storage plans: ~p", [_E])
+    end,
+    log_deleted(kz_datamgr:del_doc(?KZ_DATA_DB, AccountId)).
+
+-spec log_deleted({'ok', kz_json:object()} | kz_datamgr:data_error()) -> 'ok'.
+log_deleted({'ok', OK}) ->
+    case kz_json:is_true(<<"ok">>, OK) of
+        'true' -> lager:info("deleted account storage plan");
+        'false' -> lager:info("failed to delete account storage plan: ~p", [OK])
+    end;
+log_deleted(_Else) ->
+    lager:info("failed to delete account storage plan: ~p", [_Else]).
+
+-spec delete_storage_plans(kz_term:ne_binaries()) -> 'ok'.
+delete_storage_plans(StorageIDs) ->
+    _Deleted = kz_datamgr:del_docs(?KZ_DATA_DB, StorageIDs),
+    lager:info("deleted storage docs ~p", [_Deleted]).
 
 %%------------------------------------------------------------------------------
 %% @doc Create a new instance with the data provided, if it is valid
