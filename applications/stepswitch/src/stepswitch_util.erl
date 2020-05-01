@@ -20,6 +20,7 @@
 -export([route_by/0]).
 -export([resources_to_endpoints/3]).
 -export([json_to_template_props/1]).
+-export([convert_to_e164_format/2]).
 
 -include("stepswitch.hrl").
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
@@ -55,6 +56,18 @@ get_realm(JObj) ->
 get_inbound_destination(JObj) ->
     {Number, _} = kapps_util:get_destination(JObj, ?APP_NAME, <<"inbound_user_field">>),
     convert_to_e164_format(Number, ?SS_CONFIG_CAT, <<"assume_inbound_e164">>).
+
+%%------------------------------------------------------------------------------
+%% @doc Convert Number to e164 format if the number is reconcilable else return
+%% the value Default
+%% @end
+%%------------------------------------------------------------------------------
+-spec convert_to_e164_format(kz_term:ne_binary(), Default) -> kz_term:ne_binary() | Default.
+convert_to_e164_format(Number, Default) ->
+    case knm_converters:is_reconcilable(Number) of
+        'true' -> knm_converters:normalize(Number);
+        'false' -> Default
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc Convert number to e164 format depending on config values set in system_config db
