@@ -34,7 +34,7 @@
              ]).
 
 -record(state, {node :: atom()
-               ,bindings :: bindings() | 'undefined'
+               ,bindings :: binding() | bindings() | 'undefined'
                ,profile_name :: profile_name()
                ,ip :: inet:ip_address() | 'undefined'
                ,port :: inet:port_number() | 'undefined'
