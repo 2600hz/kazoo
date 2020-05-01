@@ -504,180 +504,35 @@ load_user_summary(Context) ->
 load_user(UserId, Context) -> crossbar_doc:load(UserId, Context, ?TYPE_CHECK_OPTION(kzd_user:type())).
 
 %%------------------------------------------------------------------------------
-%% @doc
+%% @doc Validate an update request.
+%% @end
+%%------------------------------------------------------------------------------
+validate_patch(UserId, Context) ->
+    crossbar_doc:patch_and_validate(UserId, Context, fun validate_request/2).
+
+%%------------------------------------------------------------------------------
+%% @doc Validate the request JObj passes all validation checks and add / alter
+%% any required fields.
 %% @end
 %%------------------------------------------------------------------------------
 -spec validate_request(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 validate_request(UserId, Context) ->
-    prepare_username(UserId, Context).
+    ReqJObj = cb_context:req_data(Context),
+    AccountId = cb_context:account_id(Context),
 
--spec validate_patch(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-validate_patch(UserId, Context) ->
-    crossbar_doc:patch_and_validate(UserId, Context, fun validate_request/2).
-
--spec prepare_username(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-prepare_username(UserId, Context) ->
-    JObj = cb_context:req_data(Context),
-    case kz_json:get_ne_value(<<"username">>, JObj) of
-        'undefined' -> check_user_name(UserId, Context);
-        Username ->
-            JObj1 = kz_json:set_value(<<"username">>, kz_term:to_lower_binary(Username), JObj),
-            check_user_name(UserId, cb_context:set_req_data(Context, JObj1))
-    end.
-
--spec check_user_name(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-check_user_name(UserId, Context) ->
-    JObj = cb_context:req_data(Context),
-    UserName = kz_json:get_ne_value(<<"username">>, JObj),
-    AccountDb = cb_context:account_db(Context),
-    case is_username_unique(AccountDb, UserId, UserName) of
-        'true' ->
-            lager:debug("user name ~s is unique", [UserName]),
-            check_emergency_caller_id(UserId, Context);
-        'false' ->
-            lager:error("user name ~s is already in use", [UserName]),
-            Msg = kz_json:from_list(
-                    [{<<"message">>, <<"User name already in use">>}
-                    ,{<<"cause">>, UserName}
-                    ]),
-            Context1 = cb_context:add_validation_error([<<"username">>], <<"unique">>, Msg, Context),
-            check_emergency_caller_id(UserId, Context1)
-    end.
-
--spec check_emergency_caller_id(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-check_emergency_caller_id(UserId, Context) ->
-    Context1 = crossbar_util:format_emergency_caller_id_number(Context),
-    check_user_schema(UserId, Context1).
-
--spec is_username_unique(kz_term:api_binary(), kz_term:api_binary(), kz_term:ne_binary()) -> boolean().
-is_username_unique(AccountDb, UserId, UserName) ->
-    ViewOptions = [{'key', UserName}],
-    case kz_datamgr:get_results(AccountDb, ?LIST_BY_USERNAME, ViewOptions) of
-        {'ok', []} -> 'true';
-        {'ok', [JObj|_]} -> kz_doc:id(JObj) =:= UserId;
-        _Else ->
-            lager:error("error ~p checking view ~p in ~p", [_Else, ?LIST_BY_USERNAME, AccountDb]),
-            'false'
-    end.
-
--spec check_user_schema(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-check_user_schema(UserId, Context) ->
-    OnSuccess = fun(C) -> on_successful_validation(UserId, C) end,
-    cb_context:validate_request_data(<<"users">>, Context, OnSuccess).
-
--spec on_successful_validation(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-on_successful_validation('undefined', Context) ->
-    Props = [{<<"pvt_type">>, <<"user">>}],
-    maybe_import_credintials('undefined'
-                            ,cb_context:set_doc(Context
-                                               ,kz_json:set_values(Props, cb_context:doc(Context))
-                                               )
-                            );
-on_successful_validation(UserId, Context) ->
-    maybe_import_credintials(UserId, crossbar_doc:load_merge(UserId, Context, ?TYPE_CHECK_OPTION(kzd_user:type()))).
-
--spec maybe_import_credintials(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-maybe_import_credintials(UserId, Context) ->
-    JObj = cb_context:doc(Context),
-    case kz_json:get_ne_value(<<"credentials">>, JObj) of
-        'undefined' -> maybe_validate_username(UserId, Context);
-        Creds ->
-            RemoveKeys = [<<"credentials">>, <<"pvt_sha1_auth">>],
-            C = cb_context:set_doc(Context
-                                  ,kz_json:set_value(<<"pvt_md5_auth">>, Creds
-                                                    ,kz_json:delete_keys(RemoveKeys, JObj)
-                                                    )
-                                  ),
-            maybe_validate_username(UserId, C)
-    end.
-
--spec maybe_validate_username(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-maybe_validate_username(UserId, Context) ->
-    NewUsername = kz_json:get_ne_value(<<"username">>, cb_context:doc(Context)),
-    CurrentUsername = case cb_context:fetch(Context, 'db_doc') of
-                          'undefined' -> NewUsername;
-                          CurrentJObj ->
-                              kz_json:get_ne_value(<<"username">>, CurrentJObj, NewUsername)
-                      end,
-    case kz_term:is_empty(NewUsername)
-        orelse CurrentUsername =:= NewUsername
-        orelse username_doc_id(NewUsername, Context)
-    of
-        %% user name is unchanged
-        'true' -> maybe_rehash_creds(UserId, NewUsername, Context);
-        %% updated user name that doesn't exist
-        'undefined' ->
-            manditory_rehash_creds(UserId, NewUsername, Context);
-        %% updated user name to existing, collect any further errors...
-        _Else ->
-            Msg = kz_json:from_list(
-                    [{<<"message">>, <<"User name is not unique for this account">>}
-                    ,{<<"cause">>, NewUsername}
-                    ]),
-            C = cb_context:add_validation_error(<<"username">>, <<"unique">>, Msg, Context),
-            manditory_rehash_creds(UserId, NewUsername, C)
-    end.
-
--spec maybe_rehash_creds(kz_term:api_binary(), kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-maybe_rehash_creds(UserId, Username, Context) ->
-    case kz_json:get_ne_value(<<"password">>, cb_context:doc(Context)) of
-        %% No user name or hash, no creds for you!
-        'undefined' when Username =:= 'undefined' ->
-            HashKeys = [<<"pvt_md5_auth">>, <<"pvt_sha1_auth">>],
-            cb_context:set_doc(Context, kz_json:delete_keys(HashKeys, cb_context:doc(Context)));
-        %% User name without password, creds status quo
-        'undefined' -> Context;
-        %% Got a password, hope you also have a user name...
-        Password -> rehash_creds(UserId, Username, Password, Context)
-    end.
-
--spec manditory_rehash_creds(kz_term:api_binary(), kz_term:api_binary(), cb_context:context()) ->
-          cb_context:context().
-manditory_rehash_creds(UserId, Username, Context) ->
-    case kz_json:get_ne_value(<<"password">>, cb_context:doc(Context)) of
-        'undefined' ->
-            Msg = kz_json:from_list(
-                    [{<<"message">>, <<"The password must be provided when updating the user name">>}
-                    ]),
-            cb_context:add_validation_error(<<"password">>, <<"required">>, Msg, Context);
-        Password -> rehash_creds(UserId, Username, Password, Context)
-    end.
-
--spec rehash_creds(kz_term:api_binary(), kz_term:api_binary(), kz_term:ne_binary(), cb_context:context()) ->
-          cb_context:context().
-rehash_creds(_UserId, 'undefined', _Password, Context) ->
-    Msg = kz_json:from_list(
-            [{<<"message">>, <<"The user name must be provided when updating the password">>}
-            ]),
-    cb_context:add_validation_error(<<"username">>, <<"required">>, Msg, Context);
-rehash_creds(_UserId, Username, Password, Context) ->
-    lager:debug("password set on doc, updating hashes for ~s", [Username]),
-    {MD5, SHA1} = cb_modules_util:pass_hashes(Username, Password),
-    JObj1 = kz_json:set_values([{<<"pvt_md5_auth">>, MD5}
-                               ,{<<"pvt_sha1_auth">>, SHA1}
-                               ], cb_context:doc(Context)),
-    crossbar_auth:reset_identity_secret(
-      cb_context:set_doc(Context, kz_json:delete_key(<<"password">>, JObj1))
-     ).
-
-%%------------------------------------------------------------------------------
-%% @doc This function will determine if the username in the request is
-%% unique or belongs to the request being made
-%% @end
-%%------------------------------------------------------------------------------
--spec username_doc_id(kz_term:api_binary(), cb_context:context()) -> kz_term:api_binary().
-username_doc_id(Username, Context) ->
-    username_doc_id(Username, Context, cb_context:account_db(Context)).
-username_doc_id(_, _, 'undefined') ->
-    'undefined';
-username_doc_id(Username, Context, _AccountDb) ->
-    Username = kz_term:to_lower_binary(Username),
-    Context1 = crossbar_doc:load_view(?LIST_BY_USERNAME, [{'key', Username}], Context),
-    case cb_context:resp_status(Context1) =:= 'success'
-        andalso cb_context:doc(Context1)
-    of
-        [JObj] -> kz_doc:id(JObj);
-        _ -> 'undefined'
+    case kzd_users:validate(AccountId, UserId, ReqJObj) of
+        {'true', UserJObj} ->
+            lager:debug("successfull validated user object"),
+            cb_context:update_successfully_validated_request(Context, UserJObj);
+        {'validation_errors', ValidationErrors} ->
+            lager:info("validation errors on user"),
+            cb_context:add_doc_validation_errors(Context, ValidationErrors);
+        {'system_error', Error} when is_atom(Error) ->
+            lager:info("system error validating user: ~p", [Error]),
+            cb_context:add_system_error(Error, Context);
+        {'system_error', {Error, Message}} ->
+            lager:info("system error validating user: ~p, ~p", [Error, Message]),
+            cb_context:add_system_error(Error, Message, Context)
     end.
 
 %%------------------------------------------------------------------------------

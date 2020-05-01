@@ -45,10 +45,8 @@ bind(Module, Bindings) ->
 
 -spec pass_hashes(kz_term:ne_binary(), kz_term:ne_binary()) -> {kz_term:ne_binary(), kz_term:ne_binary()}.
 pass_hashes(Username, Password) ->
-    Creds = list_to_binary([Username, ":", Password]),
-    SHA1 = kz_term:to_hex_binary(crypto:hash('sha', Creds)),
-    MD5 = kz_term:to_hex_binary(crypto:hash('md5', Creds)),
-    {MD5, SHA1}.
+    kzd_module_utils:pass_hashes(Username, Password).
+
 
 -spec get_devices_owned_by(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:objects().
 get_devices_owned_by(OwnerID, DB) ->

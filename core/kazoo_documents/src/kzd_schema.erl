@@ -13,6 +13,10 @@
 
 -include("kz_documents.hrl").
 
+-type doc() :: kz_json:object().
+-type docs() :: [doc()].
+-export_type([doc/0, docs/0]).
+
 -define(SCHEMA_KEYWORDS_MAXLENGTH, <<"maxLength">>).
 
 %%% Load schema
