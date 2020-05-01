@@ -276,7 +276,7 @@ write_row(TaskId, Header, MappedRow) ->
 
 -spec write_row(kz_tasks:id(), iodata()) -> 1.
 write_row(TaskId, IOList) ->
-    kz_util:write_file(?OUT(TaskId), [IOList,$\n], ['append']),
+    kz_util:write_file(?OUT(TaskId), IOList, ['append']),
     1.
 
 -spec columns(kz_csv:mapped_row()) -> kz_tasks:columns().
@@ -297,7 +297,7 @@ reason(_) -> <<>>.
 write_output_csv_header(TaskId, {'replace', Header}) ->
     write_output_csv_header(TaskId, Header);
 write_output_csv_header(TaskId, Header) ->
-    Data = [kz_csv:row_to_iolist(Header), $\n],
+    Data = kz_csv:row_to_iolist(Header),
     file:write_file(?OUT(TaskId), Data).
 
 -spec output_csv_header(kz_json:object(), kz_csv:row()) -> kz_tasks:output_header().
