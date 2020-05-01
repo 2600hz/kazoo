@@ -26,6 +26,7 @@
         ,{<<"calling_from">>, fun col_calling_from/3}
         ,{<<"datetime">>, fun col_pretty_print/3}
         ,{<<"unix_timestamp">>, fun col_unix_timestamp/3}
+        ,{<<"unix_timestamp_micro">>, fun col_unix_timestamp_micro/3}
         ,{<<"rfc_1036">>, fun col_rfc1036/3}
         ,{<<"iso_8601">>, fun col_iso8601/3}
         ,{<<"iso_8601_combined">>, fun col_iso8601_combined/3}

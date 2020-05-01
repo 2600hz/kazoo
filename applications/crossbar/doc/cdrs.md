@@ -19,6 +19,7 @@ Key | Description | Type | Default | Required | Support Level
 `callee_id_number` | The indicated number of the callee | `string()` |   | `false` |  
 `caller_id_name` | The indicated name of the caller | `string()` |   | `false` |  
 `caller_id_number` | The indicated number of the caller | `string()` |   | `false` |  
+`channel_created_time` | Unix timestamp in microseconds of channel create | `integer()` |   | `false` |  
 `custom_application_vars` | Any custom-set values | `object()` |   | `false` |  
 `custom_channel_vars` | Kazoo-specific key/value pairs set on the channel | `object()` |   | `false` |  
 `custom_sip_headers.in` | Custom SIP Headers to be applied to calls inbound to Kazoo from the endpoint | [#/definitions/custom_sip_headers](#custom_sip_headers) |   | `false` |  
