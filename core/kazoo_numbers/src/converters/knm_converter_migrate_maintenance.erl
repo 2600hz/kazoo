@@ -16,7 +16,7 @@
         ,migrate_global_resources/0, migrate_global_resources/2
         ,migrate_local_resources/1, migrate_local_resources/3
         ,migrate_trunkstore/1, migrate_trunkstore/3
-        ]).
+            ]).
 
 -define(LEGACY_STRIP_PLUS, <<"e164_without_plus">>).
 -define(ONE_NPAN, <<"1npan">>).
@@ -251,9 +251,8 @@ migrate_trunkstore(Account) ->
 -spec migrate_trunkstore(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 migrate_trunkstore(Account, From, To) ->
     AccountDb = kzs_util:format_account_db(Account),
-    Total = get_view_count(AccountDb, <<"trunkstore/crossbar_listing">>, []),
-    migrate_trunkstore(AccountDb, From, To, Total),
-    'ok'.
+    Total = get_view_count(AccountDb, <<"trunkstore/crossbar_listing">>),
+    migrate_trunkstore(AccountDb, From, To, Total).
 
 -spec migrate_trunkstore(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), non_neg_integer()) -> 'ok'.
 migrate_trunkstore(AccountDb, _From, _To, 0) ->
