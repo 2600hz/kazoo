@@ -432,20 +432,18 @@ code_change(_OldVsn, State, _Extra) ->
 %%------------------------------------------------------------------------------
 -spec stats_to_status_fold(kz_term:ne_binary(), compaction_stats(), [kz_term:proplist()]) ->
           [kz_term:proplist()].
-stats_to_status_fold(_CallId, Stats = #{'queued_dbs' := QueuedDBs}, Acc) ->
+stats_to_status_fold(_CallId, Stats = #{'found_dbs' := FoundDBs}, Acc) ->
     Keys = ['id', 'found_dbs', 'compacted_dbs', 'queued_dbs', 'skipped_dbs', 'current_db',
             'found_shards', 'compacted_shards', 'recovered_disk', 'pid', 'node', 'started'],
-    ToBin = fun(Something) -> kz_term:to_binary(Something) end,
-    StatsProp = [{ToBin(Key), ToBin(maps:get(Key, Stats))} || Key <- Keys],
-    case QueuedDBs =:= 0 of
-        'true' ->
-            %% This happens when it finishes compacting on the first node so now
-            %% `found_dbs = compacted_dbs + skipped_dbs' which means `queued_dbs = 0' and
-            %% also it means it is still compacting on other nodes otherwise this status
-            %% were not being build.
-            MsgProp = [{<<"msg">>, <<"Still compacting on other nodes">>}],
+    StatsProp = [{kz_term:to_binary(Key), kz_term:to_binary(maps:get(Key, Stats))} || Key <- Keys],
+    case FoundDBs of
+        0 ->
+            %% If compaction is running and `found_dbs=0' means it let this module know a new
+            %% compaction job is running but it is missing to report the dbs to be compacted.
+            %% Which means it is still loading dbs (sorting).
+            MsgProp = [{<<"NOTE">>, <<"Still listing/sorting databases.">>}],
             [StatsProp ++ MsgProp | Acc];
-        'false' ->
+        _ ->
             [StatsProp | Acc]
     end.
 
