@@ -145,13 +145,13 @@ system_config_acls(Node) ->
         {'error', Error} ->
             lager:warning("error getting system acls : ~p", [Error]),
             kz_json:new();
-        JObj -> resolve_system_config_acls(JObj)
+        JObj -> resolve(JObj)
     end.
 
-resolve_system_config_acls(JObj) ->
-    kz_json:map(fun resolve_system_config_acls/2, JObj).
+resolve(JObj) ->
+    kz_json:map(fun resolve/2, JObj).
 
-resolve_system_config_acls(K, JObj) ->
+resolve(K, JObj) ->
     CIDR = kz_json:get_value(<<"cidr">>, JObj),
     {K, kz_json:set_value(<<"cidr">>, maybe_resolve_cidr(CIDR), JObj)}.
 
@@ -202,7 +202,7 @@ trusted_acls(Node) ->
         {'error', Error} ->
             lager:warning("error getting system acls : ~p", [Error]),
             kz_json:new();
-        JObj -> kz_json:filtermap(fun trusted_acl/2, JObj)
+        JObj -> resolve(kz_json:filtermap(fun trusted_acl/2, JObj))
     end.
 
 -spec trusted_acl(kz_term:ne_binary(), kz_json:object()) -> boolean() | {'true', kz_json:object()}.
