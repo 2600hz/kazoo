@@ -864,8 +864,8 @@ log_apply(Format, Args, _Silent) ->
     lager:debug(Format, Args).
 
 -spec apply_map_responder(module() | 'undefined', responder_fun(), payload()) -> payload().
-apply_map_responder('undefined', Fun, Payload) ->
-    log_apply("applying fun ~p/1", [Fun]),
+apply_map_responder(_M, Fun, Payload)
+  when is_function(Fun, 1) ->
     Fun(Payload);
 apply_map_responder(M, F, Payload) ->
     log_apply("applying ~s:~p/~p", [M, F, length(Payload)]),
