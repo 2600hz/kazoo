@@ -104,7 +104,7 @@ def multiline_view(data):
             multiLine.append(line)
         return multiLine
     else:
-        print('bad js {}'.format(data))
+        print('cannot make bad json beautiful: {}'.format(data))
         exit(3)
 
 def read_js(file):
@@ -152,7 +152,6 @@ def save_views(views):
         design_doc = read_json(design_file)
         design_doc['views'] = views
         data = json.dumps(design_doc, sort_keys=True, indent=4, separators=(",", ": "))
-        #print(data)
         wrote = open(design_file, 'w').write(data + '\n')
         print('Wrote {} bytes'.format(wrote))
     except Exception as e:
@@ -168,7 +167,7 @@ def couchjs(js):
     ## and it doesn't missed a semicolon `;`
     JS = ''.join(js).replace('function', 'function arent_you_funny_couch') + '\n'
     if 'Object.keys' in JS:
-        print(field, 'contains "Object.keys" which is not available until ECMA2015')
+        print('"Object.keys" which is not available until ECMA2015\n{}'.format(JS))
         exit(1)
 
     if not shutil.which('couchjs'):
