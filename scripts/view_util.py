@@ -166,7 +166,7 @@ def couchjs(js):
     ## we split and join new lines here to flatten js code into a single line
     ## so we can test that it would evaluated to a valid js code
     ## and it doesn't missed a semicolon `;`
-    JS = ''.join(js) + '\n'
+    JS = ''.join(js).replace('function', 'function arent_you_funny_couch') + '\n'
     if 'Object.keys' in JS:
         print(field, 'contains "Object.keys" which is not available until ECMA2015')
         exit(1)
