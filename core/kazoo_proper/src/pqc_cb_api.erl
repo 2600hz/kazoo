@@ -188,7 +188,7 @@ default_request_headers(RequestId) ->
      | default_request_headers()
     ].
 
--spec make_request(expectations() | expectation() | expected_code() | expected_codes(), fun_2(), string(), kz_term:proplist()) ->
+-spec make_request(expectations() | expectation() | expected_code() | expected_codes(), fun_2(), iolist(), kz_term:proplist()) ->
           response().
 make_request(Code, HTTP, URL, RequestHeaders) when is_integer(Code) ->
     make_request([#{'response_codes' => [Code]}], HTTP, URL, RequestHeaders);
@@ -197,11 +197,12 @@ make_request([Code|_]=Codes, HTTP, URL, RequestHeaders) when is_integer(Code) ->
 make_request(#{'response_codes' := _}=Expectation, HTTP, URL, RequestHeaders) ->
     make_request([Expectation], HTTP, URL, RequestHeaders);
 make_request([#{}|_]=Expectations, HTTP, URL, RequestHeaders) ->
-    lager:info("~p(~s, ~p)", [HTTP, URL, RequestHeaders]),
+    lager:info("~p: ~s", [HTTP, URL]),
+    lager:debug("~p", [RequestHeaders]),
 
     handle_response(Expectations, HTTP(URL, RequestHeaders)).
 
--spec make_request(expectations() | expectation() | expected_code() | expected_codes(), fun_3(), string(), kz_term:proplist(), iodata()) ->
+-spec make_request(expectations() | expectation() | expected_code() | expected_codes(), fun_3(), iolist(), kz_term:proplist(), iodata()) ->
           response().
 make_request(Code, HTTP, URL, RequestHeaders, RequestBody) when is_integer(Code) ->
     make_request([#{'response_codes' => [Code]}], HTTP, URL, RequestHeaders, RequestBody);
@@ -211,8 +212,8 @@ make_request(#{'response_codes' := _}=Expectation, HTTP, URL, RequestHeaders, Re
     make_request([Expectation], HTTP, URL, RequestHeaders, RequestBody);
 make_request([#{}|_]=Expectations, HTTP, URL, RequestHeaders, RequestBody) ->
     lager:info("~p: ~s", [HTTP, URL]),
-    ?DEBUG("headers: ~p", [RequestHeaders]),
-    ?DEBUG("body: ~s", [RequestBody]),
+    lager:debug("headers: ~p", [RequestHeaders]),
+    lager:debug("body: ~s", [RequestBody]),
     handle_response(Expectations, HTTP(URL, RequestHeaders, iolist_to_binary(RequestBody))).
 
 -spec create_envelope(kz_json:json_term()) ->
