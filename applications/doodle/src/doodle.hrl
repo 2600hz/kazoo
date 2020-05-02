@@ -34,8 +34,6 @@
 -define(OUTBOUND_POOL, 'doodle_outbound_amqp_pool').
 -define(DOODLE_POOL_NAME_ARGS(Name, Args), ?WORKER_NAME_ARGS('poolboy', Name, Args)).
 
--define(MSG_LIST_BY_NUMBER, <<"message/listing_by_number">>).
--define(MSG_LIST_BY_PATTERN, <<"message/listing_by_pattern">>).
 -define(NO_MATCH_FLOW, <<"no_match">>).
 -define(MSG_FLOW_CACHE_KEY(Number, AccountId), {'msg_flow', Number, AccountId}).
 -define(MSG_PATTERN_CACHE_KEY(AccountId), {'msg_patterns', AccountId}).

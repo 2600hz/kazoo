@@ -71,50 +71,37 @@ contains_no_match(Doc) ->
 -spec do_lookup(kz_term:ne_binary(), kz_term:ne_binary()) -> lookup_ret().
 do_lookup(Number, AccountId) ->
     lager:info("searching for flow in ~s to satisfy '~s'", [AccountId, Number]),
-    Options = [{'lookup_callflows', 'true'}],
-    do_lookup(Number, AccountId, ?MSG_LIST_BY_NUMBER, Options).
-
--spec do_lookup(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> lookup_ret().
-do_lookup(Number, AccountId, ?KZ_VIEW_LIST_UNIFORM, _LookupOptions) ->
     Db = kzs_util:format_account_db(AccountId),
-    Options = [{'key', [kzd_callflows:type(), <<"by_number">>, Number]}
+    Options = [{'keys', [[kzd_callflows:type(), <<"by_number">>, Number]
+                        ,[<<"textflow">>, <<"by_number">>, Number]
+                        ]
+               }
               ,'include_docs'
               ],
     case kz_datamgr:get_results(Db, ?KZ_VIEW_LIST_UNIFORM, Options) of
-        {'error', _}=E -> E;
+        {'error', _}=E ->
+            E;
         {'ok', []} when Number =/= ?NO_MATCH_FLOW ->
             lookup_patterns(Number, AccountId);
         {'ok', []} ->
             {'error', 'not_found'};
-        {'ok', [JObj]} ->
-            Flow = kz_json:get_value(<<"doc">>, JObj),
-            cache_flow_number(Number, AccountId, Flow);
-        {'ok', [JObj | _Rest]} ->
-            lager:info("lookup resulted in more than one result, using the first"),
-            Flow = kz_json:get_value(<<"doc">>, JObj),
-            cache_flow_number(Number, AccountId, Flow)
-    end;
-do_lookup(Number, AccountId, ViewName, LookupOptions) ->
-    Db = kzs_util:format_account_db(AccountId),
-    Options = [{'key', Number}, 'include_docs'],
-    LookupCallflows = props:is_true('lookup_callflows', LookupOptions, 'true'),
-    case kz_datamgr:get_results(Db, ViewName, Options) of
-        {'error', _}=E -> E;
-        {'ok', []} when LookupCallflows =:= 'true' ->
-            do_lookup(Number, AccountId, ?KZ_VIEW_LIST_UNIFORM, LookupOptions);
-        {'ok', []} when Number =/= ?NO_MATCH_FLOW
-                        andalso LookupCallflows =:= 'false' ->
-            lookup_patterns(Number, AccountId);
-        {'ok', []} ->
-            {'error', 'not_found'};
-        {'ok', [JObj]} ->
-            Flow = kz_json:get_value(<<"doc">>, JObj),
-            cache_flow_number(Number, AccountId, Flow);
-        {'ok', [JObj | _Rest]} ->
-            lager:info("lookup resulted in more than one result, using the first"),
+        {'ok', JObjs} ->
+            Jobj = get_first_flow(JObjs),
             Flow = kz_json:get_value(<<"doc">>, JObj),
             cache_flow_number(Number, AccountId, Flow)
     end.
+
+get_first_flow([JObj | _]=JObjs) ->
+    Fun = fun(J) ->
+                  case kz_json:get_value(<<"key">>, J) of
+                      [<<"textflow">>, _, _] -> 'true';
+                      _ -> 'false'
+                  end
+          end,
+     case lists:partition(Fun, JObjs) of
+         {[], [JObj | _]} -> JObj;
+         {[JObj | _], _} -> JObj
+     end.
 
 -spec cache_flow_number(kz_term:ne_binary(), kz_term:ne_binary(), kzd_callflows:doc()) -> lookup_ret().
 cache_flow_number(Number, AccountId, Flow) ->
@@ -150,8 +137,10 @@ fetch_patterns(AccountId)->
 
 -spec load_patterns(kz_term:ne_binary()) -> {'ok', patterns()} | {'error', 'not_found'}.
 load_patterns(AccountId) ->
-    Db = kzs_util:format_account_db(AccountId),
-    case kz_datamgr:get_results(Db, ?MSG_LIST_BY_PATTERN, ['include_docs']) of
+    Options = [{'key', [<<"textflow">>, <<"by_number">>, Number]}
+              ,'include_docs'
+              ],
+    case kz_datamgr:get_results(Db, ?KZ_VIEW_LIST_UNIFORM, Options) of
         {'ok', []} -> {'error', 'not_found'};
         {'ok', JObjs} -> compile_patterns(AccountId, JObjs);
         {'error', _}=_E ->
