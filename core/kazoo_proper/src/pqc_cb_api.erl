@@ -189,13 +189,13 @@ default_request_headers(RequestId) ->
      | default_request_headers()
     ].
 
--spec make_request(expectations(), fun_2(), string(), request_headers()) ->
+-spec make_request(expectations(), fun_2(), iolist(), request_headers()) ->
           response().
 make_request(Expectations, HTTP, URL, RequestHeaders) ->
     ?INFO("~p(~s, ~s)", [HTTP, URL, RequestHeaders]),
     handle_response(Expectations, HTTP(URL, RequestHeaders)).
 
--spec make_request(expectations(), fun_3(), string(), request_headers(), iodata()) ->
+-spec make_request(expectations(), fun_3(), iolist(), request_headers(), iodata()) ->
           response().
 make_request(Expectations, HTTP, URL, RequestHeaders, RequestBody) ->
     ?INFO("~p: ~s", [HTTP, URL]),

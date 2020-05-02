@@ -915,7 +915,7 @@ handle_query_result(#{is_chunked := 'true'
             ,context => Context1
             ,previous_chunk_length => FilteredLength
             };
-handle_query_result(#{page_size := PageSize
+handle_query_result(#{page_size := _PageSize
                      ,last_key := _OldLastKey
                      }=LoadMap
                    ,[_|RestDbs]
@@ -925,7 +925,7 @@ handle_query_result(#{page_size := PageSize
                    ) ->
     case check_page_size_and_length(LoadMap, FilteredLength, FilteredJObjs, NewLastKey) of
         {'exhausted', LoadMap2} -> LoadMap2;
-        {'next_db', LoadMap2} when PageSize =:= 'infinity', NewLastKey =/= 'undefined' ->
+        {'next_db', LoadMap2} when NewLastKey =/= 'undefined' ->
             lager:debug("updating new last key to ~p from ~p", [NewLastKey, _OldLastKey]),
             get_results(LoadMap2#{last_key => NewLastKey});
         {'next_db', LoadMap2} -> get_results(LoadMap2#{databases => RestDbs})

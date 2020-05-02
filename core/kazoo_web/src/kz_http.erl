@@ -286,22 +286,22 @@ handle_response({'ok', {{_, StatusCode, _}, Headers, Body}})
   when is_integer(StatusCode) ->
     {'ok', StatusCode, Headers, Body};
 handle_response({'error', 'timeout'}=Err) ->
-    lager:debug("connection timeout"),
+    lager:info("connection timeout"),
     Err;
 handle_response({'EXIT', {Error,_Trace}}) ->
-    lager:debug("caught EXIT ~p: ~p", [Error, _Trace]),
+    lager:info("caught EXIT ~p: ~p", [Error, _Trace]),
     {'error', Error};
 handle_response({'error', {'failed_connect',[{_, _Address}, {_, _, 'nxdomain'}]}}) ->
-    lager:debug("non existent domain ~p", [_Address]),
+    lager:info("non existent domain ~p", [_Address]),
     {'error', {'failed_connect', 'nxdomain'}};
 handle_response({'error', {'failed_connect',[{_, _Address}, {_, _, 'econnrefused'}]}}) ->
-    lager:debug("connection refused to ~p", [_Address]),
+    lager:info("connection refused to ~p", [_Address]),
     {'error', {'failed_connect', 'econnrefused'}};
 handle_response({'error', {'malformed_url', _, Url}}) ->
-    lager:debug("failed to parse URL ~p", [Url]),
+    lager:info("failed to parse URL ~p", [Url]),
     {'error', {'malformed_url', Url}};
 handle_response({'error', Error}=Err) ->
-    lager:debug("request failed with ~p", [Error]),
+    lager:info("request failed with ~p", [Error]),
     Err.
 
 %%------------------------------------------------------------------------------
@@ -326,7 +326,9 @@ build_request(Method, Url, Headers, _Body) when Method =:= 'options';
                                                 Method =:= 'get';
                                                 Method =:= 'head';
                                                 Method =:= 'trace' ->
-    {kz_term:to_list(Url), ensure_string_headers(Headers)};
+    {lists:flatten(kz_term:to_list(Url))
+    ,ensure_string_headers(Headers)
+    };
 build_request(Method, Url, Headers, Body) when Method =:= 'post';
                                                Method =:= 'put';
                                                Method =:= 'patch';
@@ -341,7 +343,7 @@ build_request(Method, Url, Headers, Body) when Method =:= 'post';
                                          ,Headers
                                          ,""
                                          ),
-    {kz_term:to_list(Url)
+    {lists:flatten(kz_term:to_list(Url))
     ,ensure_string_headers(Headers)
     ,kz_term:to_list(ContentType)
     ,kz_term:to_binary(Body)
