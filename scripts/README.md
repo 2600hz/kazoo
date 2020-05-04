@@ -143,6 +143,13 @@ applications/callflow has no registered modules??
 
 Now you have a listing of registered processes to put in your .app.src
 
+## check-changed.bash
+
+```shell
+./check-changed [directories]
+```
+
+Find git repos and accumulate changed files
 
 ## check-dialyzer.escript
 

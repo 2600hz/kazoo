@@ -13,6 +13,7 @@ ToFilterOut = [rabbitmq_codegen
               ,'.erlang.mk'
               ,'ci.erlang.mk'
               ,'.settings'
+              ,'.git'
               ,skel
               ,parse_trans
               ,meck
@@ -26,8 +27,7 @@ Base = [runtime_tools
 
 BASE = [{default_release, {kazoo, VSN}}
        ,{release, {kazoo, VSN}
-       ,Base ++ Preparer(Core ++ Deps)
-       }],
-       
-CONFIG ++ BASE.
+        ,Base ++ Preparer(Core ++ Deps)
+        }],
 
+CONFIG ++ BASE.

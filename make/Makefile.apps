@@ -1,0 +1,16 @@
+# Executed from the applications/ directory so all paths are relative to that
+
+# Don't autopatch applications' Makefiles
+# https://erlang.mk/guide/deps.html#_autopatch
+NO_AUTOPATCH_ERLANG_MK = 1
+
+ROOT = ..
+ERLANG_MK_FILENAME = $(ROOT)/erlang.mk
+
+DEPS_DIR = $(CURDIR)
+
+.DEFAULT_GOAL := all
+
+include $(ROOT)/make/apps.mk
+-include $(ROOT)/make/more_apps.mk
+include $(ROOT)/erlang.mk

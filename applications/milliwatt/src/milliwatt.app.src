@@ -1,9 +1,0 @@
-{application,milliwatt,
-             [{applications,[kazoo,kazoo_amqp,kazoo_apps,kazoo_call,
-                             kazoo_stdlib,kernel,lager,stdlib]},
-              {description,"milliwatt "},
-              {env,[{is_kazoo_app,true}]},
-              {mod,{milliwatt_app,[]}},
-              {modules,[]},
-              {registered,[milliwatt_sup]},
-              {vsn,"4.0.0"}]}.

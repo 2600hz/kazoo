@@ -1,3 +1,0 @@
-<definition name="originated-legs">
-    <field name="_json_originated_legs" as="Originated-Legs" serialize-as="raw"/>
-</definition>

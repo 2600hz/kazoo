@@ -1,3 +1,0 @@
-<definition name="msg-id">
-    <field name="Event-Date-Timestamp" as="Msg-ID" />
-</definition>

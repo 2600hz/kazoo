@@ -1,3 +1,0 @@
-<definition name="transfer-history">
-    <field name="_json_transfer_history" as="Transfer-History" serialize-as="raw"/>
-</definition>

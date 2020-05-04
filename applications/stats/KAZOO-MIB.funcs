@@ -1,4 +1,0 @@
-{'kazoo-ver',{kazoo_snmp,kazoo_ver,[]}}.
-{'sip-domain',{kazoo_snmp,get_oid,[<<"sip-domain">>]}}.
-{'vm-statistics',{kazoo_snmp,get_oid,[<<"vm">>]}}.
-{'ecallmgr-tab',{kazoo_snmp,get_oid,[<<"ecallmgr">>]}}.

@@ -1,7 +1,0 @@
-<event name="HEARTBEAT">
-	<fields verbose="true">
-		<field name="Core-UUID" />
-		<field name="Event-Category" type="static" value="switch" />
-		<field name="Event-Info" as="FreeSWITCH-Is-Ready" />
-	</fields>
-</event>

@@ -13,6 +13,7 @@ ToFilterOut = [rabbitmq_codegen
               ,'.erlang.mk'
               ,'ci.erlang.mk'
               ,'.settings'
+              ,'.git'
               ,skel
               ,parse_trans
               ,meck
@@ -27,17 +28,16 @@ Base = [tools
 
 BASE = [{default_release, {kazoo, VSN}}
        ,{release, {kazoo, VSN}
-       ,Base ++ Preparer(Apps ++ Core ++ Deps)
-       }],
+        ,Base ++ Preparer(Apps ++ Core ++ Deps)
+        }],
 
 APPS = [begin
-          {ok, [{application, App, Settings}]} = file:consult(list_to_binary(["applications/", atom_to_list(App), "/ebin/", atom_to_list(App), ".app"])),
-          AppDeps = proplists:get_value(applications, Settings, []),
-          {release, {App, VSN}, Base ++ Preparer(AppDeps)}
+            {ok, [{application, App, Settings}]} = file:consult(list_to_binary(["applications/", atom_to_list(App), "/ebin/", atom_to_list(App), ".app"])),
+            AppDeps = proplists:get_value(applications, Settings, []),
+            {release, {App, VSN}, Base ++ Preparer(AppDeps)}
         end
         || App <- Apps,
            not lists:member(App, ToFilterOut)
        ],
 
 CONFIG ++ BASE ++ APPS.
-
