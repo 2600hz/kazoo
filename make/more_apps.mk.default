@@ -1,0 +1,4 @@
+DEPS += kazoo_proper kazoo_ast
+
+dep_kazoo_proper = git https://github.com/2600hz/kazoo-proper.git master
+dep_kazoo_ast = git https://github.com/2600hz/kazoo-ast.git master

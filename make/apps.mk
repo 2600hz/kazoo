@@ -5,7 +5,7 @@ NO_AUTOPATCH_ERLANG_MK = 1
 
 FETCH_AS ?= https://github.com/
 
-DEPS = blackhole \
+DEPS ?= blackhole \
 	braintree \
 	call_inspector \
 	callflow \
@@ -64,6 +64,8 @@ dep_tasks = git $(FETCH_AS)2600hz/kazoo-tasks.git master
 dep_teletype = git $(FETCH_AS)2600hz/kazoo-teletype.git master
 dep_trunkstore = git $(FETCH_AS)2600hz/kazoo-trunkstore.git master
 dep_webhooks = git $(FETCH_AS)2600hz/kazoo-webhooks.git master
+
+dep_kazoo_ast = git $(FETCH_AS)2600hz/kazoo-ast.git master
 
 -include more_apps.mk
 # Add community deps from https://github.com/kazoo-community?utf8=%E2%9C%93&q=kazoo-&type=&language=

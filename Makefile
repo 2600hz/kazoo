@@ -28,6 +28,8 @@ CORE_HASH_FILE := $(ROOT)/make/.core.mk.$(CORE_HASH)
 APPS := $(dir $(wildcard $(APPS_DIR)/*/.git))
 CORE := $(wildcard $(CORE_DIR))
 
+KAST = $(APPS_DIR)/kazoo_ast
+
 ## list files changed for more focused checks
 ifeq ($(strip $(CHANGED)),)
 	CHANGED := $(strip $(shell $(ROOT)/scripts/check-changed.bash $(ROOT) $(CORE) $(APPS)))
@@ -76,8 +78,8 @@ compile: ACTION = all
 compile: deps kazoo
 
 .PHONY: sparkly-clean
-sparkly-clean: clean-apps clean-kazoo clean-release clean-deps
-	@(rm -rf $(APPS_DIR)/* $(CORE_DIR))
+sparkly-clean: clean-apps clean-kazoo clean-release clean-deps clean-tags
+	@(rm -rf $(APPS_DIR) $(CORE_DIR))
 
 .PHONY: clean
 clean: clean-core clean-apps
@@ -242,8 +244,12 @@ fetch-apps: $(APPS_HASH_FILE) $(APPS_DIR)/Makefile
 # Target: apps hash file
 # 1. Make sure elrang.mk is setup
 # Once satisfied, create the applications directory and the apps hash file
-$(APPS_HASH_FILE): .erlang.mk
+$(APPS_HASH_FILE): .erlang.mk make/more_apps.mk
 	@touch $(APPS_HASH_FILE)
+
+# Bootstrap more_apps.mk with kazoo_proper and kazoo_ast
+make/more_apps.mk:
+	@cp make/more_apps.mk.default make/more_apps.mk
 
 $(APPS_DIR)/Makefile:
 	@$(shell mkdir -p $(APPS_DIR))
@@ -261,7 +267,7 @@ kazoo: deps apps $(TAGS)
 tags: $(TAGS)
 
 $(TAGS):
-	ERL_LIBS=$(DEPS_DIR):$(CORE_DIR):$(APPS_DIR) ./scripts/tags.escript $(TAGS)
+	@ERL_LIBS=$(DEPS_DIR):$(CORE_DIR):$(APPS_DIR) ./scripts/tags.escript $(TAGS)
 
 .PHONY: clean-tags
 clean-tags:
@@ -486,9 +492,12 @@ apis: schemas
 	@$(ROOT)/scripts/format-couchdb-views.py $(shell find $(APPS_DIR) $(CORE_DIR) -wholename '*/couchdb/views/*.json')
 
 .PHONY: schemas
-schemas:
+schemas: $(KAST)
 	@ERL_LIBS=$(DEPS_DIR):$(CORE_DIR):$(APPS_DIR) $(ROOT)/scripts/generate-schemas.escript $(CHANGED_ERL)
 	@$(ROOT)/scripts/format-json.py $(shell find $(APPS_DIR) $(CORE_DIR) -wholename '*/schemas/*.json')
+
+$(KAST):
+	@DEPS=kazoo_ast $(MAKE) -f $(ROOT)/make/Makefile.apps -C $(APPS_DIR)
 
 DOCS_ROOT=$(ROOT)/doc/mkdocs
 .PHONY: docs

@@ -7,6 +7,13 @@
 -export([main/1]).
 
 main([TagsFile]) ->
+    main(TagsFile, code:which('kz_ast_util')).
+
+main(_TagsFile, 'non_existing') ->
+    io:format("failed to find applications/kazoo_ast, not generating TAGS~n"
+              "add using:~necho \"DEPS += kazoo_ast~ndep_kazoo_ast = git https://github.com/2600hz/kazoo_ast master\" >> make/more_apps.mk~n"
+             );
+main(TagsFile, _File) ->
     AppDirs = lists:foldl(fun add_app_dirs/2, [], kz_ast_util:project_apps()),
     Paths = [app_path(App) || App <- lists:usort(AppDirs)],
     tags:subdirs(Paths, [{'outfile', TagsFile}]).
