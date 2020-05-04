@@ -162,23 +162,6 @@ nav:
         - ' Netherlands - Rotterdam': 'doc/internationalization/examples/dialplan/NL_Rotterdam.md'
     - 'System Prompts': 'doc/internationalization/prompts.md'
   - 'Applications':
-    - 'ACDc':
-      - 'applications/acdc/doc/troubleshooting.md'
-      - 'applications/acdc/doc/README.md'
-      - 'applications/acdc/doc/architecture.md'
-      - 'applications/acdc/doc/todo.md'
-      - 'applications/acdc/doc/ui.md'
-      - 'Call Stats': 'applications/crossbar/doc/acdc_call_stats.md'
-      - 'Webhooks': 'applications/acdc/doc/notifications.md'
-      - 'Callflows':
-        - 'Agents': 'applications/callflow/doc/acdc_agent.md'
-        - 'Queue Login': 'applications/callflow/doc/acdc_queue.md'
-        - 'Member Entry': 'applications/callflow/doc/acdc_member.md'
-        - 'Average Wait Time': 'applications/callflow/doc/acdc_wait_time.md'
-      - 'applications/acdc/doc/maintenance.md'
-      - 'applications/acdc/doc/acdc_agent_maintenance.md'
-    - 'Ananke':
-      - 'applications/ananke/doc/README.md'
     - 'Braintree':
       - 'applications/braintree/doc/maintenance.md'
     - 'Callflows':
@@ -276,9 +259,6 @@ nav:
     - 'Call Inspector':
       - 'applications/call_inspector/doc/README.md'
       - 'applications/call_inspector/doc/maintenance.md'
-    - 'CCCP':
-      - 'applications/cccp/doc/README.md'
-      - 'applications/cccp/doc/usage.md'
     - 'CDR':
       - 'applications/cdr/doc/README.md'
     - 'Conference':
@@ -303,9 +283,6 @@ nav:
       - 'HAProxy Settings': 'applications/fax/doc/haproxy.md'
       - 'Internet Fax for Office 2010': 'applications/fax/doc/user.md'
       - 'applications/fax/doc/maintenance.md'
-    - 'Frontier':
-      - 'applications/frontier/doc/README.md'
-      - 'applications/frontier/doc/maintenance.md'
     - 'Hangups':
       - 'applications/hangups/doc/README.md'
       - 'applications/hangups/doc/maintenance.md'
@@ -316,32 +293,11 @@ nav:
     - 'Jonny5':
       - 'applications/jonny5/doc/README.md'
       - 'applications/jonny5/doc/maintenance.md'
-    - 'Konami':
-      - 'applications/konami/doc/README.md'
-      - 'applications/konami/doc/audio_level.md'
-      - 'applications/konami/doc/break.md'
-      - 'applications/konami/doc/callflow.md'
-      - 'applications/konami/doc/hangup.md'
-      - 'applications/konami/doc/hold.md'
-      - 'applications/konami/doc/hold_control.md'
-      - 'applications/konami/doc/intercept.md'
-      - 'applications/konami/doc/move.md'
-      - 'applications/konami/doc/play.md'
-      - 'applications/konami/doc/record_call.md'
-      - 'applications/konami/doc/resume.md'
-      - 'applications/konami/doc/say.md'
-      - 'applications/konami/doc/sound_touch.md'
-      - 'applications/konami/doc/transfer.md'
-      - 'applications/konami/doc/tts.md'
-      - 'applications/konami/doc/maintenance.md'
     - 'Media Manager':
       - 'applications/media_mgr/doc/README.md'
       - 'applications/media_mgr/doc/maintenance.md'
     - 'Milliwatt':
       - 'applications/milliwatt/doc/README.md'
-    - 'Notify':
-      - 'applications/notify/doc/README.md'
-      - 'applications/notify/doc/maintenance.md'
     - 'Omnipresences':
       - 'applications/omnipresence/doc/README.md'
       - 'applications/omnipresence/doc/maintenance.md'
@@ -355,8 +311,6 @@ nav:
       - 'applications/reorder/doc/README.md'
     - 'Skeleton':
       - 'applications/skel/doc/README.md'
-    - 'Spy VS Spy':
-      - 'applications/spyvsspy/doc/README.md'
     - 'Stats':
       - 'applications/stats/doc/README.md'
     - 'Stepswitch':
@@ -387,6 +341,54 @@ nav:
     - 'Trunkstore':
       - 'applications/trunkstore/doc/README.md'
       - 'applications/trunkstore/doc/maintenance.md'
+  - 'Community':
+    - 'ACDc':
+      - 'applications/acdc/doc/troubleshooting.md'
+      - 'applications/acdc/doc/README.md'
+      - 'applications/acdc/doc/architecture.md'
+      - 'applications/acdc/doc/todo.md'
+      - 'applications/acdc/doc/ui.md'
+      - 'Call Stats': 'applications/crossbar/doc/acdc_call_stats.md'
+      - 'Webhooks': 'applications/acdc/doc/notifications.md'
+      - 'Callflows':
+        - 'Agents': 'applications/callflow/doc/acdc_agent.md'
+        - 'Queue Login': 'applications/callflow/doc/acdc_queue.md'
+        - 'Member Entry': 'applications/callflow/doc/acdc_member.md'
+        - 'Average Wait Time': 'applications/callflow/doc/acdc_wait_time.md'
+      - 'applications/acdc/doc/maintenance.md'
+      - 'applications/acdc/doc/acdc_agent_maintenance.md'
+    - 'Ananke':
+      - 'applications/ananke/doc/README.md'
+    - 'CCCP':
+      - 'applications/cccp/doc/README.md'
+      - 'applications/cccp/doc/usage.md'
+    - 'Frontier':
+      - 'applications/frontier/doc/README.md'
+      - 'applications/frontier/doc/maintenance.md'
+    - 'Konami':
+      - 'applications/konami/doc/README.md'
+      - 'applications/konami/doc/audio_level.md'
+      - 'applications/konami/doc/break.md'
+      - 'applications/konami/doc/callflow.md'
+      - 'applications/konami/doc/hangup.md'
+      - 'applications/konami/doc/hold.md'
+      - 'applications/konami/doc/hold_control.md'
+      - 'applications/konami/doc/intercept.md'
+      - 'applications/konami/doc/move.md'
+      - 'applications/konami/doc/play.md'
+      - 'applications/konami/doc/record_call.md'
+      - 'applications/konami/doc/resume.md'
+      - 'applications/konami/doc/say.md'
+      - 'applications/konami/doc/sound_touch.md'
+      - 'applications/konami/doc/transfer.md'
+      - 'applications/konami/doc/tts.md'
+      - 'applications/konami/doc/maintenance.md'
+    - 'Notify':
+      - 'applications/notify/doc/README.md'
+      - 'applications/notify/doc/maintenance.md'
+    - 'Spy VS Spy':
+      - 'applications/spyvsspy/doc/README.md'
+
   - 'Core':
     - 'SUP':
       - 'core/sup/doc/README.md'
@@ -510,10 +512,6 @@ nav:
       - 'core/kazoo_services/doc/maintenance.md'
     - 'Kazoo Ledgers':
       - 'core/kazoo_ledgers/doc/maintenance.md'
-    - 'Kazoo PropEr':
-      - 'core/kazoo_proper/doc/README.md'
-      - 'core/kazoo_proper/doc/rates.md'
-      - 'core/kazoo_proper/doc/maintenance.md'
     - 'Kazoo EDR':
       - 'core/kazoo_edr/doc/README.md'
       - 'applications/edr/doc/README.md'
@@ -543,7 +541,7 @@ nav:
     - 'Continuous Integration (CI)': 'doc/engineering/ci.md'
     - 'CouchDB Views': 'doc/engineering/couch_views.md'
     - 'Crossbar CSVs': 'doc/engineering/crossbar-csvs.md'
-    - 'documentation':
+    - 'Documentation':
       - 'How to write docs': 'doc/engineering/documentation.md'
       - 'How to Write Erlang Documentation': 'doc/engineering/erlang-documentation.md'
       - 'Sample API reference doc': 'doc/engineering/things.md'
@@ -553,6 +551,10 @@ nav:
     - 'Install/Build Kazoo': 'doc/installation.md'
     - 'Install/Build Kazoo on MacOS': 'doc/engineering/installing-on-mac.md'
     - 'Kazoo Globals Registry': 'doc/engineering/kz_globals.md'
+    - 'Kazoo PropEr':
+      - 'applications/kazoo_proper/doc/README.md'
+      - 'applications/kazoo_proper/doc/rates.md'
+      - 'applications/kazoo_proper/doc/maintenance.md'
     - 'Kazoo Scripts': 'scripts/README.md'
     - 'Loopback Channels': 'doc/engineering/loopback.md'
     - 'Makefile': 'doc/engineering/make.md'

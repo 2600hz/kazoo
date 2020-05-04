@@ -1,6 +1,0 @@
-<event name="CHANNEL_ANSWER">
-	<fields verbose="false">
-		<field name="call_event" type="reference" />
-		<field name="from-to" type="reference" />
-	</fields>
-</event>

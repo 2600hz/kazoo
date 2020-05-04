@@ -1,7 +1,0 @@
-{application,kazoo_databases,
- [{applications,[]},
-  {description,"Kazoo Databases - Common routines for select databases"},
-  {env,[]},
-  {modules,[]},
-  {registered,[]},
-  {vsn,"4.0.0"}]}.

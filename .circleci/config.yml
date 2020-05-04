@@ -86,8 +86,25 @@ jobs:
           keys:
             - deps-v1-{{ checksum "make/deps.mk" }}-{{ checksum "/usr/local/lib/erlang/releases/RELEASES" }}
       - run:
+          name: Adding KAZOO PropEr and AST
+          command: |
+            echo "DEPS += kazoo_proper kazoo_ast" > make/more_apps.mk
+            echo "dep_kazoo_proper = git https://github.com/2600hz/kazoo-proper.git master" >> make/more_apps.mk
+            echo "dep_kazoo_ast = git https://github.com/2600hz/kazoo-ast.git master" >> make/more_apps.mk
+      - run:
+          name: Adding Community Apps
+          command: |
+            echo "DEPS += acdc ananke cccp frontier konami notify spyvsspy " >> make/more_apps.mk
+            echo "dep_acdc = git https://github.com/kazoo-community/kazoo-acdc.git master" >> make/more_apps.mk
+            echo "dep_ananke = git https://github.com/2600hz/kazoo-ananke.git master" >> make/more_apps.mk
+            echo "dep_cccp = git https://github.com/2600hz/kazoo-cccp.git master" >> make/more_apps.mk
+            echo "dep_frontier = git https://github.com/2600hz/kazoo-frontier.git master" >> make/more_apps.mk
+            echo "dep_konami = git https://github.com/2600hz/kazoo-konami.git master" >> make/more_apps.mk
+            echo "dep_notify = git https://github.com/2600hz/kazoo-notify.git master" >> make/more_apps.mk
+            echo "dep_spyvsspy = git https://github.com/2600hz/kazoo-spyvsspy.git master" >> make/more_apps.mk
+      - run:
           name: Compiling the project
-          command: JOBS="2" make
+          command: JOBS="2" make apps
       - persist_to_workspace:
           root: .
           paths:

@@ -5,11 +5,12 @@ set -e
 pushd "$(dirname "$0")" >/dev/null
 
 ROOT=$(readlink -f "$(pwd -P)"/..)
+cd $ROOT/core
 
 errors=0
 missing=""
 
-for SRC in $ROOT/core/kazoo_documents/src/*.erl.src; do
+for SRC in kazoo_documents/src/*.erl.src; do
     ERL=$(dirname $SRC)/$(basename $SRC .src)
     if [ ! -f "$ERL" ]; then
         missing="$missing $ERL - creating it from $SRC"$'\n'
@@ -29,7 +30,7 @@ fi
 
 missing=""
 
-for SRC_DIFF in $(git --no-pager diff --name-only HEAD -- $ROOT/core/kazoo_documents/src/*.src); do
+for SRC_DIFF in $(git --no-pager diff --name-only HEAD -- kazoo_documents/src/*.src); do
     ERL=$(dirname $SRC_DIFF)/$(basename $SRC_DIFF .src)
     ERL_DIFF=$(git --no-pager diff --name-only HEAD -- $ERL)
     if [ -z $ERL_DIFF ]; then

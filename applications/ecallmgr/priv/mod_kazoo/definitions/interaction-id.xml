@@ -1,4 +1,0 @@
-<definition name="interaction-id">
-	<field name="variable_Call-Interaction-ID" as="Call-Interaction-ID" />
-	<field name="Call-Interaction-Is-Root" type="expand" value="${cond(${variable_Call-Interaction-ID} == ${variable_Original-Call-Interaction-ID} ? true : false)}" serialize-as="boolean"/>
-</definition>

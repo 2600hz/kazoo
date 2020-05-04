@@ -1,0 +1,24 @@
+# Executed from the root KAZOO directory so all paths are relative to that
+
+# Don't autopatch applications' Makefiles
+# https://erlang.mk/guide/deps.html#_autopatch
+NO_AUTOPATCH_ERLANG_MK = 1
+
+ROOT = $(CURDIR)
+ERLANG_MK_FILENAME = $(ROOT)/erlang.mk
+
+DEPS_DIR = $(ROOT)
+
+.DEFAULT_GOAL := all
+
+DEPS = core
+NO_AUTOPATCH = $(DEPS)
+
+## If you use SSH keys instead
+## FETCH_AS = git@github.com:
+
+FETCH_AS ?= https://github.com/
+
+dep_core = git $(FETCH_AS)2600hz/kazoo-core.git master
+
+include $(ROOT)/erlang.mk

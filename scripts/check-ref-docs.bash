@@ -12,8 +12,9 @@ missing=""
 REF_DIRS=$(find $ROOT/core $ROOT/applications -name "ref" -type d)
 
 for REF_DIR in $REF_DIRS; do
-    for REF_DIFF in $(git --no-pager diff --name-only HEAD -- $REF_DIR); do
-        DOC=$(dirname $(dirname $REF_DIFF))/$(basename $REF_DIFF)
+    for REF_DIFF in $(git -C $REF_DIR --no-pager diff --name-only HEAD -- $REF_DIR); do
+        DOC_DIR=$(dirname $(dirname $REF_DIFF))
+        DOC=$DOC_DIR/$(basename $REF_DIFF)
         DOC_DIFF=$(git --no-pager diff --name-only HEAD -- $DOC)
         if [ -f $DOC ] && [ -z $DOC_DIFF ]; then
             missing="$missing $DOC:1: "$'\n'
@@ -61,6 +62,5 @@ if [ $errors = 1 ]; then
 
     exit $errors
 fi
-
 
 popd >/dev/null
