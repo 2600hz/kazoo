@@ -77,7 +77,7 @@ compile: deps kazoo
 
 .PHONY: sparkly-clean
 sparkly-clean: clean-apps clean-kazoo clean-release clean-deps
-	@(rm -rf $(APPS_DIR)/* $(CORE_DIR))
+	@(rm -rf $(APPS_DIR) $(CORE_DIR))
 
 .PHONY: clean
 clean: clean-core clean-apps
