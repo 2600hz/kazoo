@@ -39,8 +39,8 @@ _work_dirs=
 while [ $# -gt 0 ]; do
     arg="$1"
     case $arg in
-        -a|-a=*|--apps|--apps=*)
-            if ([ "$arg" = "-a" ] || [ "$arg" = "--apps" ]) ; then
+        -kapps|-kapps=*)
+            if [ "$arg" = "-kapps" ]; then
                 if [ -n "$2" ]; then
                     arg="$2"
                     shift
@@ -52,23 +52,39 @@ while [ $# -gt 0 ]; do
             _kazoo_apps="${arg#*=}"
             _kazoo_apps="$(echo $_kazoo_apps | tr ',' ' ')"
             ;;
-        -k|--all-apps)
+        -a|-all-apps)
             include_all_apps=1
             ;;
-        -A|--all)
+        -A|-all)
             include_all=1
             ;;
-        -c|--core)
+        -kcore|-kazoo-core)
             include_core=1
             ;;
-        -r|--include-kazoo-root)
+        -kroot|-kazoo-root)
             include_root=1
             ;;
-        changed|--changed)
+        -kchanged)
             _action="changed"
+            # TODO: maybe read next args for diffing git branch A B
+            # explicit end of options
+            explicit_opts_end=1
+            shift
+            break
             ;;
-        --gh|--github)
+        github|-github)
             _action="github"
+            # explicit end of options
+            explicit_opts_end=1
+            shift
+            break
+            ;;
+        git|--git)
+            _action="git"
+            # explicit end of options
+            explicit_opts_end=1
+            shift
+            break
             ;;
         --)
             # explicit end of options
