@@ -108,6 +108,7 @@ dep_syslog = git https://github.com/2600hz/erlang-syslog bbad537a1cb5e4f37e672d2
 
 dep_fcm = git https://github.com/softwarejoint/fcm-erlang.git b2f68a4c6f0f59475597a35e2dc9be13d9ba2910
 
-dep_gen_smtp = git https://github.com/2600hz/erlang-gen_smtp 973d3ea1867a6bb3565f67afb78b449253c3b76e
+dep_gen_smtp = git https://github.com/2600hz/erlang-gen_smtp 3f80bfcd4fd8704739d264eb4d5005d4392f2a35
 ## pinning gen_smtp because upstream made some breaking changes (using maps in some options)
 ## adding check to not convert if the From/To encodings match
+## latest commit to origin/2600Hz: Fixes for encoding email address in a single comma separated header line

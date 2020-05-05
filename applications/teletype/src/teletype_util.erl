@@ -72,6 +72,7 @@ send_email(Emails0, Subject, RenderedTemplates, Attachments) ->
             ,email_parameters([{<<"To">>, To}
                               ,{<<"Cc">>, props:get_value(<<"cc">>, Emails)}
                               ,{<<"Bcc">>, props:get_value(<<"bcc">>, Emails)}
+                              ,{<<"X-Teletype-Log-ID">>, kz_util:get_callid()}
                               ]
                              ,[{<<"From">>, From}
                               ,{<<"Reply-To">>, props:get_value(<<"reply_to">>, Emails)}
@@ -154,8 +155,6 @@ email_parameters([], Params) ->
     lists:reverse(props:filter_empty(Params));
 email_parameters([{_Key, 'undefined'}|T], Params) ->
     email_parameters(T, Params);
-email_parameters([{Key, Vs}|T], Params) when is_list(Vs) ->
-    email_parameters(T, [{Key, V} || V <- Vs] ++ Params);
 email_parameters([{Key, V}|T], Params) ->
     email_parameters(T, [{Key, V} | Params]).
 
