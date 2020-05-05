@@ -113,6 +113,8 @@ while [ $# -gt 0 ]; do
 done
 unset arg
 
+# explicit_opts_end is for times that we want to have
+# more complex options to use.
 if [ -z "$explicit_opts_end" ]; then
     _action_args="$_extra_args"
 else
@@ -134,12 +136,13 @@ add_work_dir() {
     done
 }
 
-remove_path_from_extra_args() {
-    _path="$1"
-    _extra_args="${_extra_args#$path}"
-    _extra_args="${_extra_args#[[:blank:]]}"
-    unset _path
-}
+# we were using this remove optional paths from _extra_args
+# remove_path_from_extra_args() {
+#     _path="$1"
+#     _extra_args="${_extra_args#$path}"
+#     _extra_args="${_extra_args#[[:blank:]]}"
+#     unset _path
+# }
 
 ## TODO: maybe add support so we can just specify multiple paths
 ## across core and apps repos instead of with the whole app/core
@@ -158,33 +161,36 @@ parse_paths() {
     [ -n "$include_root" ] && add_work_dir "."
     [ -n "$include_all_apps" ] && add_work_dir applications/*
 
-    if [ -n "$explicit_opts_end" ]; then
-        for path in $_extra_args; do
-            case "$path" in
-                core|core/|core/*)
-                    add_work_dir "core"
-                    remove_path_from_extra_args "$path"
-                    ;;
-                applications|applications/)
-                    add_work_dir echo applications/*
-                    remove_path_from_extra_args "$path"
-                    ;;
-                applications/*)
-                    tmp_path="${path#applications/}"
-                    add_work_dir "applications/${tmp_path%%/*}"
-                    remove_path_from_extra_args "$path"
-                    unset tmp_path
-                    ;;
-                *)
-                    if [ -e "$path" ]; then
-                        add_work_dir "."
-                        remove_path_from_extra_args "$path"
-                    fi
-                    ;;
-            esac
-        done
-        unset path
-    fi
+    # The idea was to allow to pass some paths
+    # and we generate _work_dirs base on the path to run the command
+    # but this makes everything more complex and is not something necessary
+    # if [ -n "$explicit_opts_end" ]; then
+    #     for path in $_extra_args; do
+    #         case "$path" in
+    #             core|core/|core/*)
+    #                 add_work_dir "core"
+    #                 remove_path_from_extra_args "$path"
+    #                 ;;
+    #             applications|applications/)
+    #                 add_work_dir echo applications/*
+    #                 remove_path_from_extra_args "$path"
+    #                 ;;
+    #             applications/*)
+    #                 tmp_path="${path#applications/}"
+    #                 add_work_dir "applications/${tmp_path%%/*}"
+    #                 remove_path_from_extra_args "$path"
+    #                 unset tmp_path
+    #                 ;;
+    #             *)
+    #                 if [ -e "$path" ]; then
+    #                     add_work_dir "."
+    #                     remove_path_from_extra_args "$path"
+    #                 fi
+    #                 ;;
+    #         esac
+    #     done
+    #     unset path
+    # fi
     for app in $_kazoo_apps; do
         add_work_dir "applications/$app"
     done
