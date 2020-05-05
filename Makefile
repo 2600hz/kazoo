@@ -78,8 +78,12 @@ compile: ACTION = all
 compile: deps kazoo
 
 .PHONY: sparkly-clean
-sparkly-clean: clean-apps clean-kazoo clean-release clean-deps clean-tags
-	@(rm -rf $(APPS_DIR) $(CORE_DIR))
+sparkly-clean: stop-if-changed clean-apps clean-kazoo clean-release clean-deps clean-tags
+	 @(rm -rf $(APPS_DIR) $(CORE_DIR))
+
+.PHONY: stop-if-changed
+stop-if-changed:
+	@[ -z $(CHANGED) ] || $(error you have unstaged changes: $(CHANGED))
 
 .PHONY: clean
 clean: clean-core clean-apps
@@ -225,7 +229,7 @@ $(CORE_HASH_FILE): $(CORE_DIR)/Makefile
 
 # Target: core/Makefile
 # Using make/Makefile.core, use erlang.mk to fetch the kazoo-core repo (which includes the Makefile needed)
-$(CORE_DIR)/Makefile: .erlang.mk
+$(CORE_DIR)/Makefile: $(DOT_ERLANG_MK)
 	@NO_AUTOPATCH_ERLANG_MK=1 $(MAKE) -f $(ROOT)/make/Makefile.core fetch-deps
 
 # Target: apps
@@ -244,7 +248,7 @@ fetch-apps: $(APPS_HASH_FILE) $(APPS_DIR)/Makefile
 # Target: apps hash file
 # 1. Make sure elrang.mk is setup
 # Once satisfied, create the applications directory and the apps hash file
-$(APPS_HASH_FILE): .erlang.mk make/more_apps.mk
+$(APPS_HASH_FILE): $(DOT_ERLANG_MK) make/more_apps.mk
 	@touch $(APPS_HASH_FILE)
 
 # Bootstrap more_apps.mk with kazoo_proper and kazoo_ast
@@ -403,7 +407,7 @@ dialyze-it-hard: $(PLT)
 dialyze-it-changed: $(PLT)
 	@if [ -n "$(TO_DIALYZE)" ]; then \
 		echo "dialyzing changes against $(BASE_BRANCH)" ; \
-		ERL_LIBS=deps:core:applications $(if $(DEBUG),time -v) $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt --bulk $(TO_DIALYZE) && echo "dialyzer is happy!"; \
+		ERL_LIBS=$(DEPS_DIR):$(CORE_DIR):$(APPS_DIR) $(if $(DEBUG),time -v) $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt --bulk $(TO_DIALYZE) && echo "dialyzer is happy!"; \
 	else \
 		echo "no erlang changes to dialyze"; \
 	fi
