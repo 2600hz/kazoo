@@ -88,7 +88,7 @@ while [ $# -gt 0 ]; do
             shift
             break
             ;;
-        git|--git)
+        git|-git)
             _action="git"
             # explicit end of options
             explicit_opts_end=1
