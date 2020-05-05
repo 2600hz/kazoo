@@ -146,10 +146,18 @@ Now you have a listing of registered processes to put in your .app.src
 ## check-changed.bash
 
 ```shell
-./check-changed [directories]
+./check-changed.bash [directories]
 ```
 
 Find git repos and accumulate changed files
+
+## check-git-status.bash
+
+```shell
+./check-git-status.bash [directories]
+```
+
+Check porcelain status of each repo and accumulate the results
 
 ## check-dialyzer.escript
 

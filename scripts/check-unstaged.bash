@@ -1,8 +1,11 @@
 #!/bin/bash
 
-if [ 0 -ne $(git status --porcelain | wc -l) ]; then
+root=$(readlink -f "$(dirname $0)"/..)
+
+changed=$($root/scripts/check-git-status.bash "$root" "$root/core" "$root/applications/*")
+
+if [ -n "$changed" ]; then
     echo Unstaged changes!
-    git status --porcelain
-    git --no-pager diff
+    echo -e "$changed"
     exit 1
 fi

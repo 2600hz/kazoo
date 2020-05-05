@@ -92,14 +92,14 @@ clean: clean-core clean-apps
 	$(if $(wildcard rel/dev-vm.args), rm rel/dev-vm.args)
 
 .PHONY: clean-kazoo
-clean-kazoo:
+clean-kazoo: stop-if-changed
 	@$(ls -d $(APPS_DIR)/* | xargs rm -rf)
 	@$(rm -rf $(CORE_DIR))
 	@$(if $(wildcard $(CORE_HASH_FILE)), rm -rf $(CORE_HASH_FILE))
 	@$(if $(wildcard $(APPS_HASH_FILE)), rm -rf $(APPS_HASH_FILE))
 
 .PHONY: clean-core
-clean-core:
+clean-core: stop-if-changed
 	@$(if $(wildcard $(CORE_DIR)),$(MAKE) -j$(JOBS) -C $(CORE_DIR) clean)
 	@$(if $(wildcard $(CORE_HASH_FILE)),rm $(CORE_HASH_FILE))
 

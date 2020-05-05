@@ -223,7 +223,7 @@ compile-proper: clean-test compile-test
 
 PLT ?= $(ROOT)/.kazoo.plt
 $(PLT):
-	$(MAKE) -C $(ROOT) '.kazoo.plt'
+	$(MAKE) -C $(ROOT) build-plt
 
 dialyze: TO_DIALYZE ?= $(abspath ebin)
 dialyze: $(PLT) compile

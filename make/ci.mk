@@ -59,11 +59,7 @@ ci-swagger:
 	@-$(MAKE) validate-swagger
 
 ci-unstaged:
-	echo Unstaged changes!
-	git status --porcelain
-	git --no-pager diff
-	echo 'Maybe try `make apis` and see if that fixes anything ;)'
-	exit 1
+	@$(ROOT)/scripts/check-unstaged.bash
 
 ci-dialyze: build-plt
 ci-dialyze:
