@@ -33,8 +33,17 @@ pushd "$ROOT" > /dev/null
 
 
 # global variables
+_kazoo_apps=
 _extra_args=
 _work_dirs=
+
+add_kazoo_apps() {
+    if [ -z "$_kazoo_apps" ]; then
+        _kazoo_apps="$1"
+    else
+        _kazoo_apps="$_kazoo_apps $1"
+    fi
+}
 
 while [ $# -gt 0 ]; do
     arg="$1"
@@ -49,8 +58,8 @@ while [ $# -gt 0 ]; do
                     continue
                 fi
             fi
-            _kazoo_apps="${arg#*=}"
-            _kazoo_apps="$(echo $_kazoo_apps | tr ',' ' ')"
+            arg="${arg#*=}"
+            add_kazoo_apps "$(echo $arg | tr ',' ' ')"
             ;;
         -a|-all-apps)
             include_all_apps=1
