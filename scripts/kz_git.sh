@@ -12,12 +12,24 @@ case $OSTYPE in
     ;;
 esac
 
+_info() {
+    printf "\e[1;36m${0##*/}:\e[1;37m $1\e[00m\n"
+}
+
+_error() {
+    printf "\e[1;36m${0##*/}:\e[1;31m error:\e[1;37m $1\e[00m\n"
+}
+
+_die () {
+    _error "$1"
+    exit 1
+}
 
 # set the cwd to KAZOO_ROOT to avoid headaches
 pushd "$(dirname "$0")" > /dev/null
 ROOT=$($READLINK "$(pwd -P)"/..)
 pushd "$ROOT" > /dev/null
-([ -d "rel" ] && [ -d "scripts" ]) || (echo "Please run this on KAZOO_SRC root" && exit 1)
+([ -d "rel" ] && [ -d "scripts" ]) || _die "Please run this on KAZOO_SRC root"
 
 
 # global variables
@@ -33,8 +45,6 @@ while [ $# -gt 0 ]; do
                     arg="$2"
                     shift
                 else
-                    # echo "$0: error: the following argument required value: --apps"
-                    # exit 1
                     shift
                     continue
                 fi
@@ -57,6 +67,9 @@ while [ $# -gt 0 ]; do
         changed|--changed)
             _action="changed"
             ;;
+        --gh|--github)
+            _action="github"
+            ;;
         --)
             # explicit end of options
             explicit_opts_end=1
@@ -76,21 +89,24 @@ done
 unset arg
 
 if [ -z "$explicit_opts_end" ]; then
-    _git_args="$_extra_args"
+    _action_args="$_extra_args"
 else
-    _git_args="$@"
+    _action_args="$@"
 fi
 
 add_work_dir() {
-    if [ ! -d "$1" ]; then
-        echo "directory $1 doesn't exists!" >&2
-        exit 1
-    fi
-    if [ -z "$_work_dirs" ]; then
-        _work_dirs="$1"
-    else
-        _work_dirs="$_work_dirs $1"
-    fi
+    local path
+    while [ $# -gt 0 ]; do
+        path="$1"
+        [ -f "$1" ] && shift && continue
+        [ ! -d "$1" ] && _die "directory $1 doesn't exists!"
+        if [ -z "$_work_dirs" ]; then
+            _work_dirs="$1"
+        else
+            _work_dirs="$_work_dirs $1"
+        fi
+        shift
+    done
 }
 
 remove_path_from_extra_args() {
@@ -107,21 +123,16 @@ remove_path_from_extra_args() {
 ## this way we may lose POSIX compatibility)
 parse_paths() {
     if [ -n "$include_all" ]; then
-        add_work_dir "applications/*"
+        add_work_dir echo applications/*
         add_work_dir "core"
-        echo include_all
+        add_work_dir "."
         return
     fi
-    if [ -n "$include_core" ]; then
-        add_work_dir "core"
-    fi
-    if [ -n "$include_root" ]; then
-        echo include_root
-        add_work_dir "."
-    fi
-    if [ -n "$include_all_apps" ]; then
-        add_work_dir "applications/*"
-    fi
+
+    [ -n "$include_core" ] && add_work_dir "core"
+    [ -n "$include_root" ] && add_work_dir "."
+    [ -n "$include_all_apps" ] && add_work_dir applications/*
+
     if [ -n "$explicit_opts_end" ]; then
         for path in $_extra_args; do
             case "$path" in
@@ -130,7 +141,7 @@ parse_paths() {
                     remove_path_from_extra_args "$path"
                     ;;
                 applications|applications/)
-                    add_work_dir "applications/*"
+                    add_work_dir echo applications/*
                     remove_path_from_extra_args "$path"
                     ;;
                 applications/*)
@@ -155,7 +166,9 @@ parse_paths() {
     unset app
 
     if [ -z "$_work_dirs" ]; then
-        _work_dirs=". core applications/*"
+        add_work_dir applications/*
+        add_work_dir "core"
+        add_work_dir "."
     fi
 
     _work_dirs="$(echo $_work_dirs | tr ' ' '\n' | sort -u | tr '\n' ' ')"
@@ -164,8 +177,7 @@ parse_paths() {
 parse_paths
 
 if [ -z "$_work_dirs" ]; then
-    echo "no working directories were given" >&2
-    exit 1
+    _die "no working directories were given"
 fi
 
 action_changed() {
@@ -185,20 +197,55 @@ action_changed() {
     echo "$changed"
 }
 
-action_git() {
-    if [ -z "$_git_args" ]; then
-        echo "no git command was given" >&2
+action_github() {
+    if [ -z "$(type gh 2>/dev/null)"  ]; then
+        _error "gh command not found"
+        echo >&2
+        echo "Please follow https://cli.github.com to install," >&2
+        echo "or get the latest release from:" >&2
+        latest_url="https://api.github.com/repos/cli/cli/releases/latest"
+        echo "$(curl -s $latest_url | grep -E "browser_download_url.*(gh_.*(deb|rpm|tar.gz|msi|zip))" | grep -oE 'https://[^"]+')" >&2
+        exit 1
+    fi
+    if [ -z "$_action_args" ]; then
+        _error "no git command was given"
+        gh
         exit 1
     fi
 
     for dir in $_work_dirs; do
-        git -C "$dir" "$_git_args"
+        _info ":: Running gh in $dir"
+        pushd "$dir" >/dev/null
+        gh $_action_args
+        if [ $? -ne 0 ] && [ -z "$_continue_on_failure" ]; then
+            _die "me failed"
+        fi
+        popd >/dev/null
+    done
+}
+
+action_git() {
+    if [ -z "$_action_args" ]; then
+        _error "no git command was given"
+        git
+        exit 1
+    fi
+
+    for dir in $_work_dirs; do
+        _info "Running git in $dir"
+        git -C "$dir" $_action_args
+        if [ $? -ne 0 ] ; then
+            _die "me git failed"
+        fi
     done
 }
 
 case "$_action" in
     changed)
         action_changed
+        ;;
+    github)
+        action_github
         ;;
     *)
         action_git
