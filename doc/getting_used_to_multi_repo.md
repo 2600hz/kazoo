@@ -54,6 +54,8 @@ Options:
                                          list of working directories. This option is default.
     -kchanged:                       Loop over working directories and prints the name of files which are
                                          different than "$BASE_BRANCH". "master" is the default BASE_BRANCH
+                                     This does not run git/hub/gh commands
+    -get-root                        print path to Kazoo source directory and exit
     -q                               be quiet, but still print error messages
     -qq                              be more quiet, also do not print errors
     -help:                           shows help

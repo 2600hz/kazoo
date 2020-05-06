@@ -37,6 +37,7 @@ _kz_git()
         -kchanged
         -help
         -q -qq
+        -get-root
         gh
         git
         hub"

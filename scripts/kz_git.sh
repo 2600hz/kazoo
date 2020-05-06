@@ -55,7 +55,8 @@ elif is_kazoo_src "$_script_path"; then
 elif [ -n "$KAZOO_SRC" ] && is_kazoo_src "$KAZOO_SRC"; then
     ROOT="$KAZOO_SRC"
 else
-    _die "Please place this script on Kazoo root directory or set KAZOO_SRC env variable"
+    _die "Cannot find kazoo source root directory. Please set KAZOO_SRC env variable \
+        or put this script in root of Kazoo source directory"
 fi
 unset _root_candidate
 unset _script_path
@@ -102,9 +103,11 @@ Options:
     -kroot:                          add kazoo source root directory to working directories list
     -a, --all-apps:                  add all Kazoo apps to working directories list
     -A, -All:                        add "core", all kazoo apps and kazoo source root directory to
-                                         list of working directories. This option is default.
+                                         list of working directories. This option is default
     -kchanged:                       Loop over working directories and prints the name of files which are
                                          different than "$BASE_BRANCH". "master" is the default BASE_BRANCH
+                                     This does not run git/hub/gh commands
+    -get-root                        print path to Kazoo source directory and exit
     -q                               be quiet, but still print error messages
     -qq                              be more quiet, also do not print errors
     -help:                           shows help
@@ -155,6 +158,10 @@ while [ $# -gt 0 ]; do
             explicit_opts_end=1
             shift
             break
+            ;;
+        -get-root)
+            echo -n "$ROOT"
+            exit 0
             ;;
         -help)
             usage
