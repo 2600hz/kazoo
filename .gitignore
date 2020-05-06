@@ -1,3 +1,5 @@
+## kazoo generic gitignore
+
 .eunit
 .erlang.cookie
 *~
@@ -17,32 +19,43 @@
 *.dump
 *.swp
 
+*.coverdata
+
 /.edts
 .project
 .settings
+.idea/
 
 sup.bash
 
 _rel/
 
-erlang.mk
-.erlang.mk
-
-deps/
-core/
-applications/*/
+*.md.bak
+*.md.new
 
 .rebar/
 
 make/erlang-formatter/
+.kerl
+*.tar
+.tool-versions
+
+erlang.mk
+.erlang.mk
+
+## app specific gitignore
+
+
+/deps/
+/core/
+/applications/*/
+
 /TAGS
 
 compile_commands.json
 
 /doc/kazoocon/*.pdf
 /doc/kazoocon/*.tex
-
-*.coverdata
 
 /doc/mkdocs/docs
 /doc/mkdocs/site/
@@ -63,18 +76,11 @@ compile_commands.json
 
 /doc/mkdocs/*.local
 
-.idea/
-
-*.md.bak
-*.md.new
-.kerl
 /doc/engineering/.org/proper.pdf
 /doc/engineering/.org/proper.tex
 /todo.org
-*.tar
 /make/pest-*
 # asdf-vm "local" versions handler
-.tool-versions
 /erlang_ls.config
 /make/more_apps.mk
 /applications/Makefile

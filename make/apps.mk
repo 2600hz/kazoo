@@ -38,7 +38,7 @@ NO_AUTOPATCH = $(DEPS)
 
 dep_blackhole = git $(FETCH_AS)2600hz/kazoo-blackhole.git master
 dep_braintree = git $(FETCH_AS)2600hz/kazoo-braintree.git master
-dep_call_inspector = git $(FETCH_AS)2600hz/kazoo-call_inspector.git master
+dep_call_inspector = git $(FETCH_AS)2600hz/kazoo-call-inspector.git master
 dep_callflow = git $(FETCH_AS)2600hz/kazoo-callflow.git master
 dep_cdr = git $(FETCH_AS)2600hz/kazoo-cdr.git master
 dep_conference = git $(FETCH_AS)2600hz/kazoo-conference.git master
@@ -49,7 +49,7 @@ dep_fax = git $(FETCH_AS)2600hz/kazoo-fax.git master
 dep_hangups = git $(FETCH_AS)2600hz/kazoo-hangups.git master
 dep_hotornot = git $(FETCH_AS)2600hz/kazoo-hotornot.git master
 dep_jonny5 = git $(FETCH_AS)2600hz/kazoo-jonny5.git master
-dep_media_mgr = git $(FETCH_AS)2600hz/kazoo-media_mgr.git master
+dep_media_mgr = git $(FETCH_AS)2600hz/kazoo-media-mgr.git master
 dep_milliwatt = git $(FETCH_AS)2600hz/kazoo-milliwatt.git master
 dep_omnipresence = git $(FETCH_AS)2600hz/kazoo-omnipresence.git master
 dep_pivot = git $(FETCH_AS)2600hz/kazoo-pivot.git master
