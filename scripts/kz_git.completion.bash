@@ -36,6 +36,7 @@ _kz_git()
         -kroot
         -kchanged
         -help
+        -q -qq
         gh
         git
         hub"

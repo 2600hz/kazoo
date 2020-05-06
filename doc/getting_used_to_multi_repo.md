@@ -54,6 +54,8 @@ Options:
                                          list of working directories. This option is default.
     -kchanged:                       Loop over working directories and prints the name of files which are
                                          different than "$BASE_BRANCH". "master" is the default BASE_BRANCH
+    -q                               be quiet, but still print error messages
+    -qq                              be more quiet, also do not print errors
     -help:                           shows help
 ```
 
@@ -73,7 +75,7 @@ $ kgit git status --branch -s
 # see latest commit message for core, crossbar, stepswitch and teletype
 $ kgit -kcore -kapps crossbar,stepswitch,teletype git --no-pager log -1
 # less noisy
-$ kgit -kcore -kapps crossbar,stepswitch,teletype git --no-pager log -1 --format
+$ kgit -q -kcore -kapps crossbar,stepswitch,teletype git --no-pager log -1 --format
 
 # commit all changes just for core and root directory
 # this will opens up your editor for each directory for commit message

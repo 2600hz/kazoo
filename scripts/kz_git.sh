@@ -3,10 +3,12 @@
 set -e
 
 _info() {
+    [ -n "$_quiet" ] && return
     printf "\e[1;36m${0##*/}:\e[1;37m $@ \e[00m\n"
 }
 
 _error() {
+    [ -n "$_silence" ] && return
     printf "\e[1;36m${0##*/}:\e[1;31m error:\e[1;37m $@ \e[00m\n"
 }
 
@@ -103,6 +105,8 @@ Options:
                                          list of working directories. This option is default.
     -kchanged:                       Loop over working directories and prints the name of files which are
                                          different than "$BASE_BRANCH". "master" is the default BASE_BRANCH
+    -q                               be quiet, but still print error messages
+    -qq                              be more quiet, also do not print errors
     -help:                           shows help
 END
 }
@@ -155,6 +159,12 @@ while [ $# -gt 0 ]; do
         -help)
             usage
             exit 0
+            ;;
+        -q)
+            _quiet=1
+            ;;
+        -qq)
+            _silence=1
             ;;
         gh)
             _action="gh"
@@ -218,7 +228,7 @@ add_work_dir() {
 
 parse_paths() {
     if [ -n "$include_all" ]; then
-        add_work_dir echo applications/*
+        add_work_dir applications/*
         add_work_dir "core"
         add_work_dir "."
         return
@@ -268,6 +278,7 @@ action_changed() {
 check_action() {
     if [ -n "$_action" ] && [ -z "$(type "$_action" 2>/dev/null)" ]; then
         _error "$_action command not found"
+        [ -n "$_silence" ] && exit 1
         echo >&2
         case "$_action" in
             gh)
