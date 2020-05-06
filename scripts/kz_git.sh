@@ -2,40 +2,64 @@
 
 set -e
 
-# macOS/BSD does not support readlink '-f' flag
-case $OSTYPE in
-    darwin*)
-        export READLINK="readlink"
-    ;;
-    *)
-        export READLINK="readlink -f"
-    ;;
-esac
-
 _info() {
-    printf "\e[1;36m${0##*/}:\e[1;37m $1\e[00m\n"
+    printf "\e[1;36m${0##*/}:\e[1;37m $@ \e[00m\n"
 }
 
 _error() {
-    printf "\e[1;36m${0##*/}:\e[1;31m error:\e[1;37m $1\e[00m\n"
+    printf "\e[1;36m${0##*/}:\e[1;31m error:\e[1;37m $@ \e[00m\n"
 }
 
 _die () {
-    _error "$1"
+    _error "$@"
     exit 1
 }
 
-# set the cwd to KAZOO_ROOT to avoid headaches
-pushd "$(dirname "$0")" > /dev/null
-ROOT=$($READLINK "$(pwd -P)"/..)
-if [ ! -d "$ROOT/rel" ] && [ ! -d "$ROOT/scripts" ]; then
-    if [ -z "$KAZOO_SRC" ]; then
-        _die "Please run this on KAZOO_SRC root"
-    fi
-    ROOT="$KAZOO_SRC"
-fi
-pushd "$ROOT" > /dev/null
+# macOS/BSD does not support readlink '-f' flag
+another_readlink() {
+    TARGET_FILE="$1"
 
+    cd "$(dirname "$TARGET_FILE")"
+    TARGET_FILE="$(basename "$TARGET_FILE")"
+
+    # Iterate down a (possible) chain of symlinks
+    while [ -L "$TARGET_FILE" ]; do
+        TARGET_FILE="$(readlink "$TARGET_FILE")"
+        cd "$(dirname "$TARGET_FILE")"
+        TARGET_FILE="$(basename "$TARGET_FILE")"
+    done
+
+    # Compute the canonicalized name by finding the physical path
+    # for the directory we're in and appending the target file.
+    PHYS_DIR="$(pwd -P)"
+    RESULT="$PHYS_DIR/$TARGET_FILE"
+    echo "$RESULT"
+}
+
+is_kazoo_src() {
+    if [ -d "$1/rel" ] && [ -d "$1/scripts" ]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+_script_path="$(another_readlink "$0")"
+_root_candidate="$(another_readlink "$_script_path")"
+if is_kazoo_src "$_root_candidate/.."; then
+    ROOT="$_root_candidate/.."
+elif is_kazoo_src "$_script_path"; then
+    ROOT="$_script_path"
+elif [ -n "$KAZOO_SRC" ] && is_kazoo_src "$KAZOO_SRC"; then
+    ROOT="$KAZOO_SRC"
+else
+    _die "Please place this script on Kazoo root directory or set KAZOO_SRC env variable"
+fi
+unset _root_candidate
+unset _script_path
+
+# set the cwd to kazoo source root to avoid headache
+pushd "$ROOT" > /dev/null
 
 # global variables
 _kazoo_apps=
@@ -166,7 +190,6 @@ done
 unset arg
 
 if [ -z "$_action" ]; then
-    _error "No action was given. What do you want to do?"
     usage && exit 1
 fi
 
