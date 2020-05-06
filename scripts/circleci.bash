@@ -29,15 +29,15 @@ git checkout $BASE_BRANCH
 
 if [ ! -d $APP_PATH ]; then
     echo adding submodule to $KAZOO_ROOT
-    git submodule add ${CIRCLE_REPOSITORY_URL} $APP_PATH
+    git submodule add -f ${CIRCLE_REPOSITORY_URL} $APP_PATH
 fi
 
-cd $APP_PATH	
+cd $APP_PATH
 
-echo checking out our commit $CIRCLE_BRANCH	
-git fetch --prune	
-git checkout -B $CIRCLE_BRANCH	
-git reset --hard $CIRCLE_SHA1	
+echo checking out our commit $CIRCLE_BRANCH
+git fetch --prune
+git checkout -B $CIRCLE_BRANCH
+git reset --hard $CIRCLE_SHA1
 
 cd $KAZOO_ROOT
 
