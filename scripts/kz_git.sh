@@ -28,8 +28,13 @@ _die () {
 # set the cwd to KAZOO_ROOT to avoid headaches
 pushd "$(dirname "$0")" > /dev/null
 ROOT=$($READLINK "$(pwd -P)"/..)
+if [ ! -d "$ROOT/rel" ] && [ ! -d "$ROOT/scripts" ]; then
+    if [ -z "$KAZOO_SRC" ]; then
+        _die "Please run this on KAZOO_SRC root"
+    fi
+    ROOT="$KAZOO_SRC"
+fi
 pushd "$ROOT" > /dev/null
-([ -d "rel" ] && [ -d "scripts" ]) || _die "Please run this on KAZOO_SRC root"
 
 
 # global variables
