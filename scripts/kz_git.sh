@@ -37,6 +37,47 @@ _kazoo_apps=
 _extra_args=
 _work_dirs=
 
+usage() {
+    cat <<'END' >&2
+    __ _______         _ __
+   / //_/__  /  ____ _(_) /_
+  / ,<    / /  / __ `/ / __/
+ / /| |  / /__/ /_/ / / /_
+/_/ |_| /____/\__, /_/\__/ ☢
+Welcome to   /____/ the FUTURE
+
+A simple wrapper around git and pull request commands
+to provide an easy way to develop on Kazoo multi-repo structure
+
+Usage:
+
+        kz_git.sh [OPTIONS]+ <ACTION> [ACTION_ARGS]+
+
+    Where ACTION can be one of these commands to run in specified
+    Kazoo source folders:
+
+        git        Runs git command
+        gh         Runs gh command (https://cli.github.com)
+        hub        Runs hub command (https://github.com/github/hub)
+
+Example:
+
+    kz_git.sh -kapps crossbar,teletype git status --branch --short
+
+Options:
+
+    -kapps app_name[,app_name...]:   add a comma separated list of Kazoo apps to working directories list
+    -kcore:                          add "core" directory to working directories list
+    -kroot:                          add kazoo source root directory to working directories list
+    -a, --all-apps:                  add all Kazoo apps to working directories list
+    -A, -All:                        add "core", all kazoo apps and kazoo source root directory to
+                                         list of working directories. This option is default.
+    -kchanged:                       Loop over working directories and prints the name of files which are
+                                         different than "$BASE_BRANCH". "master" is the default BASE_BRANCH
+    -help:                           shows help
+END
+}
+
 add_kazoo_apps() {
     if [ -z "$_kazoo_apps" ]; then
         _kazoo_apps="$1"
@@ -68,41 +109,45 @@ while [ $# -gt 0 ]; do
         -A|-all)
             include_all=1
             ;;
-        -kcore|-kazoo-core)
+        -kcore)
             include_core=1
             ;;
-        -kroot|-kazoo-root)
+        -kroot)
             include_root=1
             ;;
         -kchanged)
             _action="changed"
-            # TODO: maybe read next args for diffing git branch A B
+            # TODO: maybe read next args for diff-ing git branch A B
             # explicit end of options
             explicit_opts_end=1
             shift
             break
             ;;
-        gh|-pull_request)
-            _action="pull_request"
+        -help)
+            usage
+            exit 0
+            ;;
+        gh)
+            _action="gh"
             # explicit end of options
             explicit_opts_end=1
             shift
             break
             ;;
-        git|-git)
+        git)
             _action="git"
             # explicit end of options
             explicit_opts_end=1
             shift
             break
             ;;
-        # we don't need explicit end of options for now
-        # --)
-        #     # explicit end of options
-        #     explicit_opts_end=1
-        #     shift
-        #     break
-        #     ;;
+        hub)
+            _action="hub"
+            # explicit end of options
+            explicit_opts_end=1
+            shift
+            break
+            ;;
         *)
             if [ -z "$_extra_args" ]; then
                 _extra_args="$arg"
@@ -114,6 +159,11 @@ while [ $# -gt 0 ]; do
     shift
 done
 unset arg
+
+if [ -z "$_action" ]; then
+    _error "No action was given. What do you want to do?"
+    usage && exit 1
+fi
 
 # explicit_opts_end is for times that we want to have
 # more complex options to use.
@@ -138,19 +188,6 @@ add_work_dir() {
     done
 }
 
-# we were using this remove optional paths from _extra_args
-# remove_path_from_extra_args() {
-#     _path="$1"
-#     _extra_args="${_extra_args#$path}"
-#     _extra_args="${_extra_args#[[:blank:]]}"
-#     unset _path
-# }
-
-## TODO: maybe add support so we can just specify multiple paths
-## across core and apps repos instead of with the whole app/core
-## working directories. (needs something like Bash array to store
-## a map of working dir and the relative path in that dir - but
-## this way we may lose POSIX compatibility)
 parse_paths() {
     if [ -n "$include_all" ]; then
         add_work_dir echo applications/*
@@ -163,36 +200,6 @@ parse_paths() {
     [ -n "$include_root" ] && add_work_dir "."
     [ -n "$include_all_apps" ] && add_work_dir applications/*
 
-    # The idea was to allow to pass some paths
-    # and we generate _work_dirs base on the path to run the command
-    # but this makes everything more complex and is not something necessary
-    # if [ -n "$explicit_opts_end" ]; then
-    #     for path in $_extra_args; do
-    #         case "$path" in
-    #             core|core/|core/*)
-    #                 add_work_dir "core"
-    #                 remove_path_from_extra_args "$path"
-    #                 ;;
-    #             applications|applications/)
-    #                 add_work_dir echo applications/*
-    #                 remove_path_from_extra_args "$path"
-    #                 ;;
-    #             applications/*)
-    #                 tmp_path="${path#applications/}"
-    #                 add_work_dir "applications/${tmp_path%%/*}"
-    #                 remove_path_from_extra_args "$path"
-    #                 unset tmp_path
-    #                 ;;
-    #             *)
-    #                 if [ -e "$path" ]; then
-    #                     add_work_dir "."
-    #                     remove_path_from_extra_args "$path"
-    #                 fi
-    #                 ;;
-    #         esac
-    #     done
-    #     unset path
-    # fi
     for app in $_kazoo_apps; do
         add_work_dir "applications/$app"
     done
@@ -230,57 +237,70 @@ action_changed() {
     echo "$changed"
 }
 
-action_pull_request() {
-    if [ -z "$(type gh 2>/dev/null)"  ]; then
-        _error "gh command not found"
+check_action() {
+    if [ -n "$_action" ] && [ -z "$(type "$_action" 2>/dev/null)" ]; then
+        _error "$_action command not found"
         echo >&2
-        echo "Please follow https://cli.github.com to install," >&2
-        echo "or get the latest release from:" >&2
-        latest_url="https://api.github.com/repos/cli/cli/releases/latest"
-        echo "$(curl -s $latest_url | grep -E "browser_download_url.*(gh_.*(deb|rpm|tar.gz|msi|zip))" | grep -oE 'https://[^"]+')" >&2
-        exit 1
-    fi
-    if [ -z "$_action_args" ]; then
-        _error "no gh command was given"
-        gh
+        case "$_action" in
+            gh)
+                echo "Please follow instructions in https://cli.github.com to install it." >&2
+                ;;
+            git)
+                echo "Please install git version 2+ using your distro package manager." >&2
+                ;;
+            hub)
+                echo "Please follow instructions in https://github.com/github/hub#installation to install it." >&2
+                ;;
+        esac
         exit 1
     fi
 
-    for dir in $_work_dirs; do
-        _info ":: Running gh in $dir"
-        pushd "$dir" >/dev/null
-        gh $_action_args
-        if [ $? -ne 0 ] && [ -z "$_continue_on_failure" ]; then
-            _die "me failed"
-        fi
-        popd >/dev/null
-    done
+    if [ -z "$_action_args" ]; then
+        $_action
+        exit 0
+    fi
 }
 
 action_git() {
-    if [ -z "$_action_args" ]; then
-        _error "no git command was given"
-        git
-        exit 1
-    fi
-
+    check_action
     for dir in $_work_dirs; do
         _info "Running git in $dir"
+
         git -C "$dir" $_action_args
+
         if [ $? -ne 0 ] ; then
             _die "me git failed"
         fi
     done
 }
 
+loop_push_action() {
+    check_action
+    for dir in $_work_dirs; do
+        _info ":: Running $_action in $dir"
+        pushd "$dir" >/dev/null
+
+        $_action $_action_args
+
+        if [ $? -ne 0 ] && [ -z "$_continue_on_failure" ]; then
+            _die "me $_action failed"
+        fi
+        popd >/dev/null
+    done
+}
+
+
 case "$_action" in
     changed)
         action_changed
         ;;
-    pull_request)
-        action_pull_request
+    gh)
+        loop_push_action
         ;;
-    *)
+    git)
         action_git
+        ;;
+    hub)
+        loop_push_action
         ;;
 esac

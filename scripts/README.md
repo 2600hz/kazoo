@@ -554,6 +554,35 @@ tools
 xmerl
 ```
 
+## `kz_git.sh`
+
+A simple wrapper around git and pull request commands to provide an easy way to develop on Kazoo multi-repo structure.
+
+```
+Usage:
+    kz_git.sh [OPTIONS]+ <ACTION> [ACTION_ARGS]+
+
+Where ACTION can be one of these commands to run in specified
+Kazoo source folders:
+
+    git        Runs git command
+    gh         Runs gh command (https://cli.github.com)
+    hub        Runs hub command (https://github.com/github/hub)
+```
+
+Example:
+
+```shell
+kz_git.sh -kapps crossbar,teletype git status --branch --short
+```
+
+For more options run `kz_git.sh -help`. For a small tutorial read [Getting used to multi-repo](../doc/getting_used_to_multi_repo.md).
+
+It is recommended to sym-link this script to `kgit` and put it in your path.
+
+## `kz_git.completion.bash`
+
+Provides bash completion for `kz_git.sh`. You can source this directly in your shell or add to your `~/.bashrc`.
 
 ## `no_raw_json.escript`
 

@@ -550,6 +550,7 @@ nav:
     - 'Flame Graphs': 'doc/engineering/flame_graphs.md'
     - 'Install/Build Kazoo': 'doc/installation.md'
     - 'Install/Build Kazoo on MacOS': 'doc/engineering/installing-on-mac.md'
+    - 'Getting used to multi-repo': 'doc/getting_used_to_multi_repo.md'
     - 'Kazoo Globals Registry': 'doc/engineering/kz_globals.md'
     - 'Kazoo PropEr':
       - 'applications/kazoo_proper/doc/README.md'
