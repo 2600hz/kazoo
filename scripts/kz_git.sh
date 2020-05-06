@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 set -e
 
@@ -48,7 +48,7 @@ add_kazoo_apps() {
 while [ $# -gt 0 ]; do
     arg="$1"
     case $arg in
-        -kapps|-kapps=*)
+        -kapps)
             if [ "$arg" = "-kapps" ]; then
                 if [ -n "$2" ]; then
                     arg="$2"
@@ -58,6 +58,7 @@ while [ $# -gt 0 ]; do
                     continue
                 fi
             fi
+            # this is to support -kapps= but not any more
             arg="${arg#*=}"
             add_kazoo_apps "$(echo $arg | tr ',' ' ')"
             ;;
@@ -81,8 +82,8 @@ while [ $# -gt 0 ]; do
             shift
             break
             ;;
-        github|-github)
-            _action="github"
+        gh|-pull_request)
+            _action="pull_request"
             # explicit end of options
             explicit_opts_end=1
             shift
@@ -95,12 +96,13 @@ while [ $# -gt 0 ]; do
             shift
             break
             ;;
-        --)
-            # explicit end of options
-            explicit_opts_end=1
-            shift
-            break
-            ;;
+        # we don't need explicit end of options for now
+        # --)
+        #     # explicit end of options
+        #     explicit_opts_end=1
+        #     shift
+        #     break
+        #     ;;
         *)
             if [ -z "$_extra_args" ]; then
                 _extra_args="$arg"
@@ -228,7 +230,7 @@ action_changed() {
     echo "$changed"
 }
 
-action_github() {
+action_pull_request() {
     if [ -z "$(type gh 2>/dev/null)"  ]; then
         _error "gh command not found"
         echo >&2
@@ -239,7 +241,7 @@ action_github() {
         exit 1
     fi
     if [ -z "$_action_args" ]; then
-        _error "no git command was given"
+        _error "no gh command was given"
         gh
         exit 1
     fi
@@ -275,8 +277,8 @@ case "$_action" in
     changed)
         action_changed
         ;;
-    github)
-        action_github
+    pull_request)
+        action_pull_request
         ;;
     *)
         action_git
