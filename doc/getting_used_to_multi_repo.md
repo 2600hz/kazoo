@@ -14,7 +14,7 @@ Explain what is going on with each app Makefile and dep.mk, etc....
 
 As you work with multi-repo, especially when your code changes involves many apps or even the core, you start noticing some repetitive tasks like commit and push and updating the pull requests.
 
-For making these kind of task more tolerable, there is small and handy `scripts/kz_git.sh` shell script which wraps around Git command. You simply give this script the directory name of an app (or multiple apps) and the git command you want to run against them and it loop over the folders and run the command. This script can also used together with `gh` [the official GitHub CLI](https://cli.github.com) or `hub` [an unofficial GitHub CLI](https://github.com/github/hub) (which is more mature and powerful and it also wraps `git`) commands.
+For making these kind of task more tolerable, there is small and handy `kgit` shell script which wraps around Git command. You simply give this script the directory name of an app (or multiple apps) and the git command you want to run against them and it loop over the folders and run the command. This script can also used together with `gh` [the official GitHub CLI](https://cli.github.com) or `hub` [an unofficial GitHub CLI](https://github.com/github/hub) (which is more mature and powerful and it also wraps `git`) commands.
 
 The script tries to not get in your way and offers running `git` and other commands like normal command.
 
@@ -31,7 +31,7 @@ to provide an easy way to develop on Kazoo multi-repo structure
 
 Usage:
 
-        kz_git.sh [OPTIONS]+ <ACTION> [ACTION_ARGS]+
+        kgit [OPTIONS]+ <ACTION> [ACTION_ARGS]+
 
     Where ACTION can be one of these commands to run in specified
     Kazoo source folders:
@@ -42,7 +42,7 @@ Usage:
 
 Example:
 
-    kz_git.sh -kapps crossbar,teletype git status --branch --short
+    kgit -kapps crossbar,teletype git status --branch --short
 
 Options:
 
@@ -62,7 +62,7 @@ Options:
 ```
 
 
-It is recommended to sym-link this script to `kgit` and put it in your path. `scripts/kz_git.completion.bash` provides bash completion for `kz_git.sh`. You can source this directly in your shell or add to your `~/.bashrc`.
+It is recommended to sym-link this script to `kgit` and put it in your path. `kgit-completion.bash` provides bash completion for `kgit`. You can source this directly in your shell or add to your `~/.bashrc`.
 
 **Some examples**
 

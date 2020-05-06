@@ -554,18 +554,6 @@ tools
 xmerl
 ```
 
-## `kz_git.sh`
-
-A simple wrapper around git and pull request commands to provide an easy way to develop on Kazoo multi-repo structure.
-
-For more options run `kz_git.sh -help`. For a small tutorial read [Getting used to multi-repo](../doc/getting_used_to_multi_repo.md).
-
-It is recommended to sym-link this script to `kgit` and put it in your path.
-
-## `kz_git.completion.bash`
-
-Provides bash completion for `kz_git.sh`. You can source this directly in your shell or add to your `~/.bashrc`.
-
 ## `no_raw_json.escript`
 
 Erlang has a handful of internal representations of JSON used by the various parses. The kz\_json module handles these details and Kazoo programmers should treat the data structure used as opaque. This script parses the codebase looking for instances where the opaqueness of the data structure is violated.

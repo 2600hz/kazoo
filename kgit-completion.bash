@@ -1,4 +1,4 @@
-_kz_git()
+_kgit()
 {
     local cur prev opts offset i
     _get_comp_words_by_ref cur prev
@@ -62,5 +62,4 @@ _kz_git()
         return
     fi
 } &&
-complete -F _kz_git kz_git &&
-complete -F _kz_git kgit
+complete -F _kgit kgit
