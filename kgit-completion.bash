@@ -38,6 +38,7 @@ _kgit()
         -help
         -q -qq
         -get-root
+        -exit-on-error
         gh
         git
         hub"

@@ -127,7 +127,7 @@ $ kgit git commit -a -m "make kazoo even better"
 # push your codes to your forked repos
 $ kgit git push --set-upstream origin my_new_branch
 
-# make finally create create pull request
+# finally create pull requests for all changed repos
 $ vim /tmp/pr-message.txt
 $ kgit hub pull-request -F /tmp/pr-message.txt
 

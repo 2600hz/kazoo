@@ -66,7 +66,6 @@ pushd "$ROOT" > /dev/null
 
 # global variables
 _kazoo_apps=
-_extra_args=
 _work_dirs=
 
 usage() {
@@ -160,7 +159,7 @@ while [ $# -gt 0 ]; do
             usage
             exit 0
             ;;
-        -m|--edit-message)
+        -m|-edit-message)
             if [ -n "$2" ]; then
                 _message="$2"
                 shift
@@ -197,11 +196,7 @@ while [ $# -gt 0 ]; do
             break
             ;;
         *)
-            if [ -z "$_extra_args" ]; then
-                _extra_args="$arg"
-            else
-                _extra_args="$_extra_args $arg"
-            fi
+            _die "unknown option $arg"
             ;;
     esac
     shift
@@ -309,7 +304,7 @@ run_action() {
     local ret
     check_action "$@"
     for dir in $_work_dirs; do
-        _info ":: $dir"
+        _info "$dir"
 
         case "$_action" in
             git)
@@ -329,8 +324,9 @@ run_action() {
     done
 }
 
-
+# let git/hub/gh fail, we can stop if user requested -exit-non-error
 set +e
+
 case "$_action" in
     changed)
         action_changed
