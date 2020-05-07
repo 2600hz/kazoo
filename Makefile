@@ -37,6 +37,8 @@ else
 	CHANGED := $(CHANGED)
 endif
 
+STATUS = $($(ROOT)/scripts/check-git-status.bash $(ROOT) $(CORE_DIR) $(APPS))
+
 CHANGED_SWAGGER ?= $(shell git -C $(APPS_DIR)/crossbar --no-pager diff --name-only HEAD $(BASE_BRANCH) -- priv/api/swagger.json)
 CHANGED_ERL=$(filter %.hrl %.erl %.escript,$(CHANGED))
 CHANGED_JSON=$(filter %.json,$(CHANGED))
@@ -55,6 +57,9 @@ changed:
 	@echo "changed ERL: $(CHANGED_ERL)"
 	@echo "changed JSON: $(CHANGED_JSON)"
 	@echo "changed YML: $(CHANGED_YML)"
+
+unstaged:
+	$(ROOT)/scripts/check-unstaged.bash
 
 .PHONY: changed_swagger
 changed_swagger:
