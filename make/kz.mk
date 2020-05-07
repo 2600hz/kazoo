@@ -1,13 +1,6 @@
 ## Kazoo Makefile targets
 ## Targets are run from the application's root directory (not KAZOO root).
 
-.PHONY: compile compile-lean compile-test compile-test-direct compile-test-kz-deps \
-	clean clean-test \
-	json \
-	eunit proper test \
-	dialyze xref fixture_shell app_src depend splchk \
-	code_checks apps_of_app
-
 ## Platform detection.
 ifeq ($(PLATFORM),)
     UNAME_S := $(shell uname -s)
@@ -71,7 +64,7 @@ DEPS_HASH_FILE := .deps.mk.$(DEPS_HASH)
 deps: $(DOT_ERLANG_MK) $(DEPS_MK) $(DEPS_HASH_FILE)
 
 $(DEPS_HASH_FILE):
-	@[[ -s $(DEPS_MK) ]] && DEPS_MK='$(DEPS_MK)' $(MAKE) -C $(ROOT)/deps/ all || true
+	@[ -s $(DEPS_MK) ] && DEPS_MK="$(DEPS_MK)" $(MAKE) -C $(ROOT)/deps/ all || true
 
 else
 deps: $(DEPS_MK)
@@ -85,6 +78,7 @@ endif
 $(DOT_ERLANG_MK):
 	@$(MAKE) -C $(ROOT) dot_erlang_mk
 
+.PHONY: clean-deps clean-deps-hash
 clean-deps: clean-deps-hash
 
 clean-deps-hash:
@@ -112,6 +106,7 @@ include $(DEPS_RULES)
 endif
 
 ## COMPILE_MOAR can contain Makefile-specific targets (see CLEAN_MOAR, compile-test)
+.PHONY: compile compile-lean
 compile: deps $(TEST_DEPS) $(COMPILE_MOAR) ebin/$(PROJECT).app json depend $(BEAMS)
 
 compile-lean: ERLC_OPTS := $(filter-out +debug_info,$(ERLC_OPTS)) +deterministic
@@ -129,20 +124,24 @@ ebin/%.beam: src/%.erl
 ebin/%.beam: src/*/%.erl
 	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $<
 
+.PHONY: depend
 depend: $(DEPS_RULES) $(TEST_DEPS)
 
 $(DEPS_RULES):
 	@rm -f $(DEPS_RULES)
 	ERL_LIBS=$(ELIBS) erlc -v +makedep +'{makedep_output, standard_io}' $(PA) -o ebin/ $(SOURCES) > $(DEPS_RULES)
 
+.PHONY: app_src
 app_src:
 	@ERL_LIBS=$(ROOT)/deps:$(ROOT)/core:$(ROOT)/applications $(ROOT)/scripts/apps_of_app.escript -a $(shell find $(ROOT) -name $(PROJECT).app.src)
 
+.PHONY: json
 json: JSON = $(shell find . -name '*.json')
 json:
 	@$(ROOT)/scripts/format-json.py $(JSON)
 
-compile-test: $(TEST_DEPS) compile-test-kz-deps compile-test-direct json
+.PHONY: compile-test compile-test-direct
+compile-test: deps $(TEST_DEPS) compile-test-kz-deps compile-test-direct json
 
 compile-test-direct: deps $(COMPILE_MOAR) test/$(PROJECT).app
 
@@ -156,13 +155,14 @@ KZ_DEPS = $(filter kazoo%,$(shell cat $(TEST_DEPS)))
 KZ_DEPS_TARGETS = $(strip $(subst kazoo,compile-test-core-kazoo,$(KZ_DEPS)))
 endif
 
+.PHONY: compile-test-kz-deps
 ifeq ($(KZ_DEPS_TARGETS),)
-compile-test-kz-deps: test/$(PROJECT).app
+compile-test-kz-deps:
 else
 compile-test-kz-deps: $(KZ_DEPS_TARGETS)
 
 compile-test-core-%:
-	$(MAKE) compile-test-direct -C $(ROOT)/core/$*
+	@$(MAKE) compile-test-direct -C $(ROOT)/core/$*
 endif
 
 test/$(PROJECT).app: ERLC_OPTS += -DTEST
@@ -174,6 +174,7 @@ test/$(PROJECT).app: $(TEST_SOURCES)
 	@sed "s/{modules,\s*\[\]}/{modules, \[$(TEST_MODULES)\]}/" src/$(PROJECT).app.src > $@
 	@sed "s/{modules,\s*\[\]}/{modules, \[$(TEST_MODULES)\]}/" src/$(PROJECT).app.src > ebin/$(PROJECT).app
 
+.PHONY: clean clean-test
 clean: clean-test
 	@$(if $(wildcard cover/*), rm -r cover)
 	@$(if $(wildcard ebin/*), rm ebin/*)
@@ -182,11 +183,12 @@ clean: clean-test
 
 clean-test: $(CLEAN_MOAR)
 	@$(if $(wildcard $(TEST_DEPS)), rm $(TEST_DEPS))
-	$(if $(wildcard test/$(PROJECT).app), rm test/$(PROJECT).app)
+	@$(if $(wildcard test/$(PROJECT).app), rm test/$(PROJECT).app)
 
 TEST_CONFIG=$(ROOT)/rel/config-test.ini
 
 ## Use this one when debugging
+.PHONY: compile-test check-compile-test
 test: compile-test
 	KAZOO_CONFIG=$(TEST_CONFIG) ERL_LIBS=$(ELIBS) $(ROOT)/scripts/eunit_run.escript $(TEST_MODULE_NAMES)
 test.%: check-compile-test
@@ -197,13 +199,15 @@ check-compile-test: $(COMPILE_MOAR) test/$(PROJECT).app
 COVER_REPORT_DIR=cover
 
 ## Use this one when CI
-eunit: compile-test eunit-run
+.PHONY: eunit eunit-run
+eunit: compile-test test/$(PROJECT).app eunit-run
 
 eunit-run:
 	KAZOO_CONFIG=$(TEST_CONFIG) ERL_LIBS=$(ELIBS) $(ROOT)/scripts/eunit_run.escript --with-cover \
 		--cover-project-name $(PROJECT) --cover-report-dir $(COVER_REPORT_DIR) \
 		$(TEST_MODULE_NAMES)
 
+.PHONY: cover cover-report
 cover: $(ROOT)/make/cover.mk
 	COVER=1 $(MAKE) eunit
 
@@ -216,6 +220,7 @@ $(ROOT)/make/cover.mk: $(ROOT)/make/core.mk
 $(ROOT)/make/core.mk:
 	wget 'https://raw.githubusercontent.com/ninenines/erlang.mk/master/core/core.mk' -O $(ROOT)/make/core.mk
 
+.PHONY: proper compile-proper eunit-run
 proper: compile-proper eunit-run
 
 compile-proper: ERLC_OPTS += -DPROPER
@@ -225,6 +230,7 @@ PLT ?= $(ROOT)/.kazoo.plt
 $(PLT):
 	$(MAKE) -C $(ROOT) build-plt
 
+.PHONY: dialyze dialyze-hard
 dialyze: TO_DIALYZE ?= $(abspath ebin)
 dialyze: $(PLT) compile
 	@ERL_LIBS=$(ROOT)/deps:$(ROOT)/core:$(ROOT)/applications $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt $(TO_DIALYZE)
@@ -235,6 +241,7 @@ dialyze-hard: $(PLT) compile
 
 REBAR=$(ROOT)/deps/.erlang.mk/rebar/rebar
 
+.PHONY: xref fmt perf fixture_shell
 xref: TO_XREF = ebin/  #FIXME: set TO_XREF to an app's dependencies' ebin/ directories
 xref: compile
 	@ERL_LIBS=$(ELIBS) $(REBAR) xref skip_deps=true -C $(ROOT)/make/xref.local.config
@@ -253,6 +260,7 @@ fixture_shell:
 	@ERL_CRASH_DUMP="$(ERL_CRASH_DUMP)" ERL_LIBS="$(ERL_LIBS)" KAZOO_CONFIG=$(ROOT)/rel/config-test.ini \
 		erl -name '$(NODE_NAME)' -s reloader "$$@"
 
+.PHONY: code_checks apps_of_app
 code_checks:
 	@printf ":: Check for copyright year\n\n"
 	@$(ROOT)/scripts/bump-copyright-year.py $(SOURCES)
@@ -264,7 +272,7 @@ code_checks:
 	@$(ROOT)/scripts/check-stacktrace.py $(SOURCES)
 
 apps_of_app:
-	ERL_LIBS=$(ROOT)/deps:$(ROOT)/core:$(ROOT)/applications $(ROOT)/scripts/apps_of_app.escript -a $(ROOT)/applications/$(PROJECT)/src/$(PROJECT).app.src
+	@ERL_LIBS=$(ROOT)/deps:$(ROOT)/core:$(ROOT)/applications $(ROOT)/scripts/apps_of_app.escript -a $(ROOT)/applications/$(PROJECT)/src/$(PROJECT).app.src
 
 include $(ROOT)/make/splchk.mk
 include $(ROOT)/make/fmt.mk
