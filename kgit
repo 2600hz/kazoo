@@ -104,11 +104,11 @@ Options:
     -a, --all-apps                   add all Kazoo apps to working directories list
     -A, -All                         add "core", all kazoo apps and kazoo source root directory to
                                          list of working directories. This option is default
-    -continue-on-fail                If command returns exit other than 0, continue to next working directories
-                                        Note: git command used to exit on error anyway
-    -kchanged                        Loop over working directories and prints the name of files which are
+    -continue-on-fail                if command returns exit other than 0, continue to next working directories
+                                         Note: git command used to exit on error anyway
+    -kchanged                        loop over working directories and prints the name of files which are
                                          different than "$BASE_BRANCH". "master" is the default BASE_BRANCH
-                                     This does not run git/hub/gh commands
+                                     this does not run git/hub/gh commands
     -get-root                        print path to Kazoo source directory and exit
     -q                               be quiet, but still print error messages
     -qq                              be more quiet, also do not print errors
@@ -128,18 +128,10 @@ while [ $# -gt 0 ]; do
     arg="$1"
     case $arg in
         -kapps)
-            if [ "$arg" = "-kapps" ]; then
-                if [ -n "$2" ]; then
-                    arg="$2"
-                    shift
-                else
-                    shift
-                    continue
-                fi
+            if [ -n "$2" ]; then
+                add_kazoo_apps "$(echo "$2" | tr ',' ' ')"
+                shift
             fi
-            # this is to support -kapps= but not any more
-            arg="${arg#*=}"
-            add_kazoo_apps "$(echo $arg | tr ',' ' ')"
             ;;
         -a|-all-apps)
             include_all_apps=1
@@ -168,6 +160,12 @@ while [ $# -gt 0 ]; do
         -help)
             usage
             exit 0
+            ;;
+        -m|--edit-message)
+            if [ -n "$2" ]; then
+                _message="$2"
+                shift
+            fi
             ;;
         -q)
             _quiet=1
@@ -302,7 +300,7 @@ check_action() {
         exit 1
     fi
 
-    if [ -z "$@" ]; then
+    if [ -z "$*" ]; then
         $_action
         exit 0
     fi
@@ -315,7 +313,7 @@ action_git() {
 
         git -C "$dir" "$@"
 
-        if [ $? -ne 0 ] ; then
+        if [ $? -ne 0 ] && [ -z "$_continue_on_failure" ]; then
             _die "me git failed"
         fi
     done
