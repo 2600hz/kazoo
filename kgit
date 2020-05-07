@@ -3,7 +3,7 @@
 set -e
 
 _info() {
-    [ -n "$_quiet" ] && return
+    ( [ -n "$_silence" ] || [ -n "$_quiet" ] ) && return
     printf "\e[1;36m${0##*/}:\e[1;37m $@ \e[00m\n"
 }
 
@@ -104,8 +104,7 @@ Options:
     -a, --all-apps                   add all Kazoo apps to working directories list
     -A, -All                         add "core", all kazoo apps and kazoo source root directory to
                                          list of working directories. This option is default
-    -continue-on-fail                if command returns exit other than 0, continue to next working directories
-                                         Note: git command used to exit on error anyway
+    -exit-on-error                   exit if command returns exit other than 0
     -kchanged                        loop over working directories and prints the name of files which are
                                          different than "$BASE_BRANCH". "master" is the default BASE_BRANCH
                                      this does not run git/hub/gh commands
@@ -173,8 +172,8 @@ while [ $# -gt 0 ]; do
         -qq)
             _silence=1
             ;;
-        -continue-on-fail)
-            $_continue_on_failure=1
+        -exit-on-error)
+            $_exit_on_error=1
             ;;
         gh)
             _action="gh"
@@ -306,35 +305,32 @@ check_action() {
     fi
 }
 
-action_git() {
-    check_action "$@"
-    for dir in $_work_dirs; do
-        _info "Running git in $dir"
-
-        git -C "$dir" "$@"
-
-        if [ $? -ne 0 ] && [ -z "$_continue_on_failure" ]; then
-            _die "me git failed"
-        fi
-    done
-}
-
 run_action() {
+    local ret
     check_action "$@"
     for dir in $_work_dirs; do
-        _info ":: Running $_action in $dir"
-        pushd "$dir" >/dev/null
+        _info ":: $dir"
 
-        $_action "$@"
+        case "$_action" in
+            git)
+                $_action -C "$dir" "$@"
+                ret=$?
+                ;;
+            *)
+                pushd "$dir" >/dev/null
+                $_action "$@"
+                ret=$?
+                popd >/dev/null
+        esac
 
-        if [ $? -ne 0 ] && [ -z "$_continue_on_failure" ]; then
-            _die "me $_action failed"
+        if [ $ret -ne 0 ] && [ -n "$_exit_on_error" ]; then
+            _die "$_action failed with non-zero exit code"
         fi
-        popd >/dev/null
     done
 }
 
 
+set +e
 case "$_action" in
     changed)
         action_changed
@@ -346,6 +342,6 @@ case "$_action" in
         run_action "$@"
         ;;
     git)
-        action_git "$@"
+        run_action "$@"
         ;;
 esac
