@@ -83,6 +83,9 @@
         ,publish_dial/2, publish_dial/3
         ,publish_dial_resp/2, publish_dial_resp/3
         ]).
+-export([events/0
+        ,member_update_events/0
+        ]).
 
 -include_lib("kz_amqp_util.hrl").
 -include("kapi_dialplan.hrl").
@@ -572,6 +575,39 @@
 -define(CONF_PLAY_MACRO_REQ_VALUES, []).
 -define(CONF_PLAY_MACRO_REQ_TYPES, [{<<"Conference-ID">>, fun is_binary/1}]).
 
+-define(MEMBER_UPDATE_EVENTS, [<<"stop-talking">>
+                              ,<<"start-talking">>
+                              ,<<"mute-member">>
+                              ,<<"unmute-member">>
+                              ,<<"deaf-member">>
+                              ,<<"undeaf-member">>
+                              ]).
+
+-define(CONFERENCE_EVENTS, [<<"conference-create">>
+                           ,<<"conference-destroy">>
+                           ,<<"lock">>
+                           ,<<"unlock">>
+                           ,<<"add-member">>
+                           ,<<"del-member">>
+                                | ?MEMBER_UPDATE_EVENTS
+                           ]).
+
+%%------------------------------------------------------------------------------
+%% @doc Get allowed connference events.
+%% @end
+%%------------------------------------------------------------------------------
+-spec events() -> kz_term:ne_binaries().
+events() ->
+    kapps_config:get_ne_binaries(<<"ecallmgr">>, <<"publish_conference_event">>, ?CONFERENCE_EVENTS).
+
+-spec member_update_events() -> kz_term:ne_binaries().
+member_update_events() ->
+    ?MEMBER_UPDATE_EVENTS.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec focus_queue_name(atom()) -> kz_term:ne_binary().
 focus_queue_name(Focus) -> <<(kz_term:to_binary(Focus))/binary, "_conference">>.
 

@@ -5,6 +5,11 @@
 %%% @author Peter Defebvre
 %%% @author Ben Wann
 %%% @author Roman Galeev
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(bh_conference).
@@ -16,15 +21,30 @@
 
 -include("blackhole.hrl").
 
+-define(CONFERENCE_EVENTS
+       ,[<<"*">> | kapi_conference:events()
+        ]).
+
 -define(ACCOUNT_BINDING(AccountId, ConferenceId, CallId)
-       ,<<"conference.event.*.", AccountId/binary, ".", ConferenceId/binary, ".", CallId/binary>>
+       ,?ACCOUNT_BINDING(AccountId, ConferenceId, CallId, <<"*">>)
+       ).
+-define(ACCOUNT_BINDING(AccountId, ConferenceId, CallId, Event)
+       ,<<"conference.event.",Event/binary,".", AccountId/binary, ".", ConferenceId/binary, ".", CallId/binary>>
        ).
 -define(BINDING(ConferenceId, CallId)
-       ,<<"conference.event.", ConferenceId/binary, ".", CallId/binary>>
+       ,?BINDING(ConferenceId, CallId, <<"*">>)
+       ).
+-define(BINDING(ConferenceId, CallId, Event)
+       ,<<"conference.event.", ConferenceId/binary, ".", CallId/binary, ".", Event/binary>>
        ).
 -define(COMMAND(ConferenceId)
        ,<<"conference.command.", ConferenceId/binary>>
        ).
+-define(EVENT_BINDINGS(ConferenceId, CallId)
+       ,lists:foldl(fun(E, Acc) -> [?BINDING(ConferenceId, CallId, E) | Acc] end, [], ?CONFERENCE_EVENTS)
+       ).
+-define(ALL, <<"*">>).
+
 
 -spec init() -> any().
 init() ->
@@ -33,8 +53,8 @@ init() ->
     blackhole_bindings:bind(<<"blackhole.events.bindings.conference">>, ?MODULE, 'bindings').
 
 init_bindings() ->
-    Bindings = [?BINDING(<<"{CONFERENCE_ID}">>, <<"{CALL_ID}">>)
-               ,?COMMAND(<<"{CONFERENCE_ID}">>)
+    Bindings = [?COMMAND(<<"{CONFERENCE_ID}">>)
+                | ?EVENT_BINDINGS(<<"{CONFERENCE_ID}">>, <<"{CALL_ID}">>)
                ],
     case kapps_config:set_default(?CONFIG_CAT, [<<"bindings">>, <<"conference">>], Bindings) of
         {'ok', _} -> lager:debug("initialized conference bindings");
@@ -42,14 +62,20 @@ init_bindings() ->
     end.
 
 -spec validate(bh_context:context(), map()) -> bh_context:context().
-validate(Context, #{keys := [<<"command">>, <<"*">>]}) ->
+validate(Context, #{keys := [<<"command">>, ?ALL]}) ->
     bh_context:add_error(Context, <<"ConferenceId required">>);
 validate(Context, #{keys := [<<"command">>, _]}) ->
     Context;
-validate(Context, #{keys := [<<"event">>, <<"*">>, _]}) ->
+validate(Context, #{keys := [<<"event">>, ?ALL | _Rest]}) ->
     bh_context:add_error(Context, <<"ConferenceId required">>);
-validate(Context, #{keys := [<<"event">>, _, _]}) ->
+validate(Context, #{keys := [<<"event">>, _, ?ALL]}) ->
     Context;
+validate(Context, #{keys := [<<"event">>, _, ?ALL, Event]}) ->
+    case lists:member(Event, ?CONFERENCE_EVENTS) of
+        'false' ->
+            bh_context:add_error(Context, <<"Unsupported conference event ",Event/binary>>);
+        'true' -> Context
+    end;
 validate(Context, #{keys := Keys}) ->
     bh_context:add_error(Context, <<"invalid format for conference subscription : ", (kz_binary:join(Keys))/binary>>).
 
@@ -64,12 +90,14 @@ bindings(_Context, #{account_id := _AccountId
         ,subscribed => Subscribed
         ,listeners => Listeners
         };
+bindings(Context, #{keys := [<<"event">>, ConferenceId, CallId]}=Map) ->
+    bindings(Context, Map#{keys => [<<"event">>, ConferenceId, CallId, ?ALL]});
 bindings(_Context, #{account_id := AccountId
-                    ,keys := [<<"event">>, ConferenceId, CallId]
+                    ,keys := [<<"event">>, ConferenceId, CallId, Event]
                     }=Map) ->
-    Requested = ?BINDING(ConferenceId, CallId),
-    Subscribed = [?ACCOUNT_BINDING(AccountId, ConferenceId, CallId)],
-    Listeners = [{'amqp', 'conference', event_binding_options(AccountId, ConferenceId, CallId)}],
+    Requested = ?BINDING(ConferenceId, CallId, Event),
+    Subscribed = [?ACCOUNT_BINDING(AccountId, ConferenceId, CallId, Event)],
+    Listeners = [{'amqp', 'conference', event_binding_options(AccountId, ConferenceId, CallId, Event)}],
     Map#{requested => Requested
         ,subscribed => Subscribed
         ,listeners => Listeners
@@ -89,11 +117,12 @@ command_binding_options(ConfId) ->
     ,'federate'
     ].
 
--spec event_binding_options(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:proplist().
-event_binding_options(AccountId, ConferenceId, CallId) ->
+-spec event_binding_options(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:proplist().
+event_binding_options(AccountId, ConferenceId, CallId, Event) ->
     [{'restrict_to', [{'event', [{'account_id', AccountId}
                                 ,{'conference_id', ConferenceId}
                                 ,{'call_id', CallId}
+                                ,{'event', Event}
                                 ]
                       }]
      }

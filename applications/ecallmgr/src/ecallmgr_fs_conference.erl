@@ -24,23 +24,6 @@
 
 -define(SERVER, ?MODULE).
 
--define(MEMBER_UPDATE_EVENTS, [<<"stop-talking">>
-                              ,<<"start-talking">>
-                              ,<<"mute-member">>
-                              ,<<"unmute-member">>
-                              ,<<"deaf-member">>
-                              ,<<"undeaf-member">>
-                              ]).
-
--define(CONFERENCE_EVENTS, [<<"conference-create">>
-                           ,<<"conference-destroy">>
-                           ,<<"lock">>
-                           ,<<"unlock">>
-                           ,<<"add-member">>
-                           ,<<"del-member">>
-                                | ?MEMBER_UPDATE_EVENTS
-                           ]).
-
 -record(state, {node = 'undefined' :: atom()
                ,options = [] :: kz_term:proplist()
                ,events = [] :: kz_term:ne_binaries()
@@ -78,7 +61,7 @@ init([Node, Options]) ->
     lager:info("starting new fs conference event listener for ~s", [Node]),
     gen_server:cast(self(), 'bind_to_events'),
     ecallmgr_fs_conferences:sync_node(Node),
-    Events = kapps_config:get_ne_binaries(?APP_NAME, <<"publish_conference_event">>, ?CONFERENCE_EVENTS),
+    Events = kapps_config:get_ne_binaries(?APP_NAME, <<"publish_conference_event">>, kapi_conference:events()),
     {'ok', #state{node=Node
                  ,options=Options
                  ,events=Events
@@ -205,7 +188,7 @@ process_event(<<"unlock">>, Props, _) ->
     UUID = kzd_freeswitch:conference_uuid(Props),
     ecallmgr_fs_conferences:update(UUID, {#conference.locked, 'false'});
 process_event(Action, Props, _Node) ->
-    case lists:member(Action, ?MEMBER_UPDATE_EVENTS) of
+    case lists:member(Action, kapi_conference:member_update_events()) of
         'true' -> update_participant(Props);
         'false' -> 'ok'
     end.
