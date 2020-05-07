@@ -31,42 +31,46 @@ to provide an easy way to develop on Kazoo multi-repo structure
 
 Usage:
 
-        kgit [OPTIONS]+ <ACTION> [ACTION_ARGS]+
+        kgit.sh [OPTIONS]+ <ACTION> [ACTION_ARGS]+
 
     Where ACTION can be one of these commands to run in specified
     Kazoo source folders:
 
         git        Runs git command
-        gh         Runs gh command (https://github.com/cli/cli)
+        gh         Runs gh command (https://cli.github.com)
         hub        Runs hub command (https://github.com/github/hub)
 
 Example:
 
-    kgit -kapps crossbar,teletype git status --branch --short
+    kgit.sh -kapps crossbar,teletype git status --branch --short
 
 Options:
 
-    -kapps app_name[,app_name...]:   add a comma separated list of Kazoo apps to working directories list
-    -kcore:                          add "core" directory to working directories list
-    -kroot:                          add kazoo source root directory to working directories list
-    -a, --all-apps:                  add all Kazoo apps to working directories list
-    -A, -All:                        add "core", all kazoo apps and kazoo source root directory to
-                                         list of working directories. This option is default.
-    -kchanged:                       Loop over working directories and prints the name of files which are
+    -kapps app_name[,app_name...]    add a comma separated list of Kazoo apps to working directories list
+    -kcore                           add "core" directory to working directories list
+    -kroot                           add kazoo source root directory to working directories list
+    -a, --all-apps                   add all Kazoo apps to working directories list
+    -A, -All                         add "core", all kazoo apps and kazoo source root directory to
+                                         list of working directories. This option is default
+    -exit-on-error                   exit if command returns exit other than 0
+    -kchanged                        loop over working directories and prints the name of files which are
                                          different than "$BASE_BRANCH". "master" is the default BASE_BRANCH
-                                     This does not run git/hub/gh commands
+                                     this does not run git/hub/gh commands
     -get-root                        print path to Kazoo source directory and exit
     -q                               be quiet, but still print error messages
     -qq                              be more quiet, also do not print errors
-    -help:                           shows help
+    -help                            shows help
 ```
 
 
 It is recommended to sym-link this script to `kgit` and put it in your path. `kgit-completion.bash` provides bash completion for `kgit`. You can source this directly in your shell or add to your `~/.bashrc`.
 
-**Some examples**
+### Some useful examples for working with `kgit`
 
-```
+```shell
+# pull all apps
+$ kgit -a git pull
+
 # run git status in all directories
 $ kgit git status
 
@@ -76,7 +80,8 @@ $ kgit git status --branch -s
 # some git subcommands use pager, you can trun this off by "--no-pager"
 # see latest commit message for core, crossbar, stepswitch and teletype
 $ kgit -kcore -kapps crossbar,stepswitch,teletype git --no-pager log -1
-# less noisy
+
+# make it less noisy
 $ kgit -q -kcore -kapps crossbar,stepswitch,teletype git --no-pager log -1 --format
 
 # commit all changes just for core and root directory
@@ -85,8 +90,49 @@ $ kgit -q -kcore -kapps crossbar,stepswitch,teletype git --no-pager log -1 --for
 # each one to a paragraph
 $ kgit -kcore -kroot git commit -a
 
-# pull all apps
-$ kgit -a git pull
+# commit all changes in all directories with "kazoo is great" as commit title
+# and "my explaination" as commit body
+# kgit git commit -a -m "kazoo is great" -m "my explaination"
+
+# commit all changes in all directories with a message authored in a external file
+# please refer to git manual for format of the file
+$ vim /tmp/commit-message.txt
+$ kgit git commit -a -F /tmp/commit-message.txt
+```
+
+### Examples for working with pull-requests
+
+!!! note
+    These are just example to show you the new work flow. Please adjust it to your work flow.
+
+!!! note
+    For simplicity we are applying the command to all directories. Obviously you can adjust to work with directory that you need, using `-kapps`, `--all-apps`, `-kcore` or `-kroot` accordingly.
+
+```shell
+# forking all using hub
+# Note: hub after forking is adding a git remote for it to each dir
+# please refer to hub documentation for more info
+$ make fetch-apps fetch-core
+$ kgit hub fork
+
+# create a new branch in all dirs
+$ kgit git checkout -b my_new_branch
+
+# start hacking!, add/remove or update some files
+#
+
+# after coding, commit your changes to the your branch
+$ kgit git commit -a -m "make kazoo even better"
+
+# push your codes to your forked repos
+$ kgit git push --set-upstream origin my_new_branch
+
+# make finally create create pull request
+$ vim /tmp/pr-message.txt
+$ kgit hub pull-request -F /tmp/pr-message.txt
+
+# after a few mintues check PRs for their CI checks
+$ kgit hub ci-status
 ```
 
 Please find out usage examples for `gh` and `hub` here:
