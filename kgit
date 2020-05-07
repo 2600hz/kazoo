@@ -98,19 +98,21 @@ Example:
 
 Options:
 
-    -kapps app_name[,app_name...]:   add a comma separated list of Kazoo apps to working directories list
-    -kcore:                          add "core" directory to working directories list
-    -kroot:                          add kazoo source root directory to working directories list
-    -a, --all-apps:                  add all Kazoo apps to working directories list
-    -A, -All:                        add "core", all kazoo apps and kazoo source root directory to
+    -kapps app_name[,app_name...]    add a comma separated list of Kazoo apps to working directories list
+    -kcore                           add "core" directory to working directories list
+    -kroot                           add kazoo source root directory to working directories list
+    -a, --all-apps                   add all Kazoo apps to working directories list
+    -A, -All                         add "core", all kazoo apps and kazoo source root directory to
                                          list of working directories. This option is default
-    -kchanged:                       Loop over working directories and prints the name of files which are
+    -continue-on-fail                If command returns exit other than 0, continue to next working directories
+                                        Note: git command used to exit on error anyway
+    -kchanged                        Loop over working directories and prints the name of files which are
                                          different than "$BASE_BRANCH". "master" is the default BASE_BRANCH
                                      This does not run git/hub/gh commands
     -get-root                        print path to Kazoo source directory and exit
     -q                               be quiet, but still print error messages
     -qq                              be more quiet, also do not print errors
-    -help:                           shows help
+    -help                            shows help
 END
 }
 
@@ -173,6 +175,9 @@ while [ $# -gt 0 ]; do
         -qq)
             _silence=1
             ;;
+        -continue-on-fail)
+            $_continue_on_failure=1
+            ;;
         gh)
             _action="gh"
             # explicit end of options
@@ -206,17 +211,13 @@ while [ $# -gt 0 ]; do
 done
 unset arg
 
+# set action argumants
+set -- "$@"
+
 if [ -z "$_action" ]; then
     usage && exit 1
 fi
 
-# explicit_opts_end is for times that we want to have
-# more complex options to use.
-if [ -z "$explicit_opts_end" ]; then
-    _action_args="$_extra_args"
-else
-    _action_args="$@"
-fi
 
 add_work_dir() {
     local path
@@ -301,18 +302,18 @@ check_action() {
         exit 1
     fi
 
-    if [ -z "$_action_args" ]; then
+    if [ -z "$@" ]; then
         $_action
         exit 0
     fi
 }
 
 action_git() {
-    check_action
+    check_action "$@"
     for dir in $_work_dirs; do
         _info "Running git in $dir"
 
-        git -C "$dir" $_action_args
+        git -C "$dir" "$@"
 
         if [ $? -ne 0 ] ; then
             _die "me git failed"
@@ -320,13 +321,13 @@ action_git() {
     done
 }
 
-loop_push_action() {
-    check_action
+run_action() {
+    check_action "$@"
     for dir in $_work_dirs; do
         _info ":: Running $_action in $dir"
         pushd "$dir" >/dev/null
 
-        $_action $_action_args
+        $_action "$@"
 
         if [ $? -ne 0 ] && [ -z "$_continue_on_failure" ]; then
             _die "me $_action failed"
@@ -341,12 +342,12 @@ case "$_action" in
         action_changed
         ;;
     gh)
-        loop_push_action
-        ;;
-    git)
-        action_git
+        run_action "$@"
         ;;
     hub)
-        loop_push_action
+        run_action "$@"
+        ;;
+    git)
+        action_git "$@"
         ;;
 esac
