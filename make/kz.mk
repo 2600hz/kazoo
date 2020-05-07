@@ -197,7 +197,7 @@ check-compile-test: $(COMPILE_MOAR) test/$(PROJECT).app
 COVER_REPORT_DIR=cover
 
 ## Use this one when CI
-eunit: test/$(PROJECT).app eunit-run
+eunit: compile-test eunit-run
 
 eunit-run:
 	KAZOO_CONFIG=$(TEST_CONFIG) ERL_LIBS=$(ELIBS) $(ROOT)/scripts/eunit_run.escript --with-cover \
