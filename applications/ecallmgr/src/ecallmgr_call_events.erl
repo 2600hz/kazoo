@@ -700,7 +700,7 @@ specific_call_event_props(<<"CHANNEL_DESTROY">>, _, Props) ->
     ,{<<"From-Uri">>, props:get_value(<<"variable_sip_from_uri">>, Props)}
     ,{<<"Remote-SDP">>, props:get_value(<<"variable_switch_r_sdp">>, Props)}
     ,{<<"Local-SDP">>, props:get_value(<<"variable_rtp_local_sdp_str">>, Props)}
-    ,{<<"Duration-Seconds">>, props:get_integer_value(<<"variable_duration">>, Props)}
+    ,{<<"Duration-Seconds">>, get_duration_seconds(Props)}
     ,{<<"Billing-Seconds">>, get_billing_seconds(Props)}
     ,{<<"Ringing-Seconds">>, get_ringing_seconds(Props)}
     ,{<<"User-Agent">>, props:get_value(<<"variable_sip_user_agent">>, Props)}
@@ -1021,18 +1021,34 @@ get_disposition(Props) ->
 get_hangup_code(Props) ->
     kzd_freeswitch:hangup_code(Props).
 
--spec get_billing_seconds(kz_term:proplist()) -> integer().
-get_billing_seconds(Props) ->
-    case props:get_integer_value(<<"variable_billmsec">>, Props) of
-        'undefined' -> props:get_integer_value(<<"variable_billsec">>, Props, 0);
-        Billmsec -> kz_term:ceiling(Billmsec / 1000)
-    end.
+-spec get_duration_seconds(kzd_freeswitch:data()) -> non_neg_integer().
+get_duration_seconds(Props) ->
+    ensure_non_negative(<<"variable_duration">>, props:get_integer_value(<<"variable_duration">>, Props, 0)).
 
--spec get_ringing_seconds(kz_term:proplist()) -> integer().
+-spec get_billing_seconds(kzd_freeswitch:data()) -> non_neg_integer().
+get_billing_seconds(Props) ->
+    {Var, BillingSeconds} =
+        case props:get_integer_value(<<"variable_billmsec">>, Props) of
+            'undefined' -> {<<"variable_billsec">>, props:get_integer_value(<<"variable_billsec">>, Props, 0)};
+            Billmsec -> {<<"variable_billmsec">>, kz_term:ceiling(Billmsec / 1000)}
+        end,
+    ensure_non_negative(Var, BillingSeconds).
+
+-spec get_progress_seconds(kzd_freeswitch:data()) -> non_neg_integer().
+get_progress_seconds(Props) ->
+    ensure_non_negative(<<"variable_progresssec">>, props:get_integer_value(<<"variable_progresssec">>, Props, 0)).
+
+-spec ensure_non_negative(kz_term:ne_binary(), integer()) -> non_neg_integer().
+ensure_non_negative(Var, NegativeS) when NegativeS < 0 ->
+    lager:warning("unexpectedly negative value for ~s: ~p", [Var, NegativeS]),
+    0;
+ensure_non_negative(_Var, NonNegativeS)  -> NonNegativeS.
+
+-spec get_ringing_seconds(kzd_freeswitch:data()) -> non_neg_integer().
 get_ringing_seconds(Props) ->
-    DurationS = props:get_integer_value(<<"variable_duration">>, Props, 0),
+    DurationS = get_duration_seconds(Props),
     BillingS = get_billing_seconds(Props),
-    ProgressS = props:get_integer_value(<<"variable_progresssec">>, Props, 0),
+    ProgressS = get_progress_seconds(Props),
 
     DurationS - BillingS - ProgressS.
 
