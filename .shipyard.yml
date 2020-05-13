@@ -189,11 +189,6 @@ metapackage:
       type: required
       branch: "4.3"
       package: kazoo-application-webhooks
-    -
-      name: meta-kazoo-applications
-      type: deprecated
-      branch: "4.3"
-      package: kazoo-application-dth
 package:
   centos7:
     summary: "2600hz Kazoo communications platform core"
