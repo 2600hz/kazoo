@@ -97,12 +97,15 @@ mandatory_import_fields() ->
 
 %%------------------------------------------------------------------------------
 %% @doc The optional fields that can be set for import action.
+%% Optional fields are pulled from the kzd_users setter functions.
+%% `account_id' is added to allow users to be created in an account different
+%% from the one defined in the url (this valve will overwirte the url value).
 %% @end
 %%------------------------------------------------------------------------------
 -spec optional_import_fields() -> kz_type:proplist().
 optional_import_fields() ->
     AllKeys = maps:keys(kzd_users:get_setters()),
-    AllKeys -- mandatory_import_fields().
+    (AllKeys ++ [<<"account_id">>]) -- mandatory_import_fields().
 
 %%------------------------------------------------------------------------------
 %% @doc The mandatory fields required for delete action.
@@ -110,16 +113,17 @@ optional_import_fields() ->
 %%------------------------------------------------------------------------------
 -spec mandatory_delete_fields() -> kz_type:proplist().
 mandatory_delete_fields() ->
-    [<<"account_id">>
-    ,<<"user_id">>
-    ].
+    [<<"user_id">>].
 
 %%------------------------------------------------------------------------------
 %% @doc The optional fields required for delete action.
+%% `account_id' is added to allow users to be deleted from an account different
+%% from the one defined in the url (this valve will overwirte the url value).
 %% @end
 %%------------------------------------------------------------------------------
 -spec optional_delete_fields() -> kz_type:proplist().
-optional_delete_fields() -> [].
+optional_delete_fields() ->
+    [<<"account_id">>].
 
 -spec help(kz_json:object()) -> kz_json:object().
 help(JObj) -> help(JObj, <<?CATEGORY>>).
@@ -145,6 +149,7 @@ action(<<"import">>) ->
     #{<<"description">> => <<"Bulk-import of users">>
      ,<<"doc">> => <<"Bulk create a user for the defined account id.\n"
                      "Note: account creating the task (or `auth_by` account) must have permissions on the affecting account.\n"
+                     "`account_id` field is added to allow you to overwite, per row (if set), the account id defined in the request url"
                    >>
      ,<<"expected_content">> => [<<"application/json">>, <<"text/csv">>]
      ,<<"mandatory">> => mandatory_import_fields()
@@ -156,6 +161,7 @@ action(<<"delete">>) ->
     #{<<"description">> => <<"Bulk-remove users">>
      ,<<"doc">> => <<"Forces users to be deleted from an account\n"
                      "Note: account creating the task (or `auth_by` account) must have permissions on the affecting account.\n"
+                     "`account_id` field is added to allow you to overwite, per row (if set), the account id defined in the request url"
                    >>
      ,<<"expected_content">> => [<<"application/json">>, <<"text/csv">>]
      ,<<"mandatory">> => mandatory_delete_fields()
@@ -215,14 +221,15 @@ import(#{account_id := URLAccountId
       ,AccountIds
       ,Args
       ) ->
-    AccountId = maps:get(<<"account_id">>, Args, URLAccountId),
+    AccountId = maybe_override_account_id(URLAccountId, Args),
     Resp = case is_authorized_account(AuthAccountId, AccountId) of
                'true' ->
                    generate_validate_and_save_new_user(AccountId, Args);
                'false' ->
-                   {'error', <<"Access denied, auth account does not have access to account">>}
+                   lager:error("failed to create user, auth account does not have access to account '~p'", [AccountId]),
+                   {'error', <<"Access denied, auth account does not have access to account '~p'">>, [AccountId]}
            end,
-    Row = handle_result(Args, Resp, 'import'),
+    Row = handle_result(AccountId, Args, Resp, 'import'),
     {Row, sets:add_element(AccountId, AccountIds)}.
 
 %%------------------------------------------------------------------------------
@@ -234,20 +241,21 @@ import(#{account_id := URLAccountId
 delete(ExtraArgs, 'init', Args) ->
     IterValue = sets:new(),
     delete(ExtraArgs, IterValue, Args);
-delete(#{account_id := Account
+delete(#{account_id := URLAccountId
         ,auth_account_id := AuthAccountId
         }
       ,AccountIds
-      ,Args=#{<<"account_id">> := AccountId0}
+      ,Args
       ) ->
-    AccountId = select_account_id(AccountId0, Account),
+    AccountId = maybe_override_account_id(URLAccountId, Args),
     Resp = case is_authorized_account(AuthAccountId, AccountId) of
                'true' ->
                    delete_user(AccountId, Args);
                'false' ->
-                   {'error', <<"Access denied, Auth Account does not have access to account">>}
+                   lager:error("failed to delete user, auth account does not have access to account '~p'", [AccountId]),
+                   {'error', <<"Access denied, auth account does not have access to account '~p'">>, [AccountId]}
            end,
-    Row = handle_result(Args, Resp, 'delete'),
+    Row = handle_result(AccountId, Args, Resp, 'delete'),
     {Row, sets:add_element(AccountId, AccountIds)}.
 
 %%%=============================================================================
@@ -258,65 +266,66 @@ delete(#{account_id := Account
 %% @doc Process response and format the doc or errors into the CSV row result.
 %% @end
 %%------------------------------------------------------------------------------
--spec handle_result(kz_tasks:args(), {'ok', kzd_users:doc()} | {'error', kz_type:ne_binary()}, atom()) -> kz_tasks:return().
-handle_result(_Args, {'ok', Doc}, Action) ->
-    format_ok_result_to_csv_row(Doc, Action);
-handle_result(Args, {'error', Reason}, Action) ->
-    format_error_result_to_csv_row(Args, Reason, Action).
+-spec handle_result(kz_term:ne_binary(), kz_tasks:args(), {'ok', kzd_users:doc()} | {'error', kz_type:ne_binary()}, atom()) ->
+          kz_tasks:return().
+handle_result(AccountId, _Args, {'ok', Doc}, Action) ->
+    format_ok_result_to_csv_row(AccountId, Doc, Action);
+handle_result(AccountId, Args, {'error', Reason}, Action) ->
+    format_error_result_to_csv_row(AccountId, Args, Reason, Action).
 
 %%------------------------------------------------------------------------------
 %% @doc Format a successfull (ok) result into a csv row response.
 %% @end
 %%------------------------------------------------------------------------------
--spec format_ok_result_to_csv_row(kzd_users:doc(), atom()) -> kz_csv:mapped_row().
-format_ok_result_to_csv_row(Doc, Action) ->
-    Map = generate_return_values_from_doc(Doc, Action),
+-spec format_ok_result_to_csv_row(kz_term:ne_binary(), kzd_users:doc(), atom()) -> kz_csv:mapped_row().
+format_ok_result_to_csv_row(AccountId, Doc, Action) ->
+    Map = generate_return_values_from_doc(AccountId, Doc, Action),
     Map#{?OUTPUT_CSV_HEADER_ERROR => 'undefined'}.
 
 %%------------------------------------------------------------------------------
 %% @doc Format the error result into a csv row response.
 %% @end
 %%------------------------------------------------------------------------------
--spec format_error_result_to_csv_row(kz_tasks:args(), kz_term:ne_binary(),  atom()) -> kz_csv:mapped_row().
-format_error_result_to_csv_row(Args, Error, Action) ->
-    Map = generate_return_values_from_args(Args, Action),
+-spec format_error_result_to_csv_row(kz_term:ne_binary(), kz_tasks:args(), kz_term:ne_binary(),  atom()) -> kz_csv:mapped_row().
+format_error_result_to_csv_row(AccountId, Args, Error, Action) ->
+    Map = generate_return_values_from_args(AccountId, Args, Action),
     Map#{?OUTPUT_CSV_HEADER_ERROR => Error}.
 
 %%------------------------------------------------------------------------------
-%% @doc Generate the csv return row values from the supplied csv inputs
+%% @doc Generate the csv return row values from the supplied csv inputs.
 %% (Error case)
 %% @end
 %%------------------------------------------------------------------------------
--spec generate_return_values_from_args(map(), atom()) -> map().
-generate_return_values_from_args(Args ,'import') ->
+-spec generate_return_values_from_args(kz_term:ne_binary(), kz_tasks:args(), atom()) -> kz_csv:mapped_row().
+generate_return_values_from_args(AccountId, Args ,'import') ->
     #{<<"id">> => 'undefined'
      ,<<"username">> => maps:get(<<"username">>, Args, 'undefined')
      ,<<"first_name">> => maps:get(<<"first_name">>, Args, 'undefined')
      ,<<"last_name">> => maps:get(<<"last_name">>, Args, 'undefined')
-     ,<<"account_id">> => maps:get(<<"account_id">>, Args, 'undefined')
+     ,<<"account_id">> => AccountId
      };
-generate_return_values_from_args(Args ,'delete') ->
+generate_return_values_from_args(AccountId, Args ,'delete') ->
     #{<<"id">> => maps:get(<<"user_id">>, Args, 'undefined')
-     ,<<"account_id">> => maps:get(<<"account_id">>, Args, 'undefined')
+     ,<<"account_id">> => AccountId
      }.
 
 %%------------------------------------------------------------------------------
 %% @doc Generate the csv return row values from the user doc.
 %% @end
 %%------------------------------------------------------------------------------
--spec generate_return_values_from_doc(kzd_users:doc(), atom()) -> map().
-generate_return_values_from_doc(Doc, 'import') ->
+-spec generate_return_values_from_doc(kz_term:ne_binary(), kzd_users:doc(), atom()) -> kz_csv:mapped_row().
+generate_return_values_from_doc(AccountId, Doc, 'import') ->
     lager:debug("generating import resp row from doc: ~p", [Doc]),
     #{<<"id">> => kz_doc:id(Doc)
      ,<<"username">> => kzd_users:username(Doc)
      ,<<"first_name">> => kzd_users:first_name(Doc)
      ,<<"last_name">> => kzd_users:last_name(Doc)
-     ,<<"account_id">> => kz_doc:account_id(Doc)
+     ,<<"account_id">> => kz_doc:account_id(Doc, AccountId)
      };
-generate_return_values_from_doc(Doc, 'delete') ->
+generate_return_values_from_doc(AccountId, Doc, 'delete') ->
     lager:debug("generating delete resp row from doc: ~p", [Doc]),
     #{<<"id">> => kz_doc:id(Doc)
-     ,<<"account_id">> => kz_doc:account_id(Doc)
+     ,<<"account_id">> => kz_doc:account_id(Doc, AccountId)
      }.
 
 
@@ -353,12 +362,15 @@ is_parent_account(<<_/binary>> = Account1, Account2) ->
     lists:member(Account1, kzd_accounts:tree(JObj)).
 
 %%------------------------------------------------------------------------------
-%% @doc Return the first account id if its in the coret format, else return the second
+%% @doc Maybe override the account id defined in the url with one defined in the
+%% row args.
+%% If the `account_id' key in the map is `undefined' then use the `URLAccountId'
+%% else use the value defined in the args map.
 %% @end
 %%------------------------------------------------------------------------------
--spec select_account_id(kz_type:ne_binary(), kz_type:ne_binary()) -> kz_type:ne_binary().
-select_account_id(?MATCH_ACCOUNT_RAW(_)=AccountId, _) -> AccountId;
-select_account_id(_, AccountId) -> AccountId.
+-spec maybe_override_account_id(kz_term:ne_binary(), kz_tasks:args()) -> kz_term:ne_binary().
+maybe_override_account_id(URLAccountId, #{<<"account_id">> := 'undefined'}) -> URLAccountId;
+maybe_override_account_id(_URLAccountId, #{<<"account_id">> := AccountIdOverride}) -> AccountIdOverride.
 
 %%------------------------------------------------------------------------------
 %% @doc Generate a new user from `Args' and verify is passes validation.
