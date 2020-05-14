@@ -3,11 +3,6 @@
 %%% @doc Handles starting/stopping a call recording.
 %%% @author James Aimonetti
 %%% @author Sponsored by Velvetech LLC, Implemented by SIPLABS LLC
-%%%
-%%% This Source Code Form is subject to the terms of the Mozilla Public
-%%% License, v. 2.0. If a copy of the MPL was not distributed with this
-%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
-%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cf_record_call).
@@ -38,13 +33,19 @@ handle(Data, Call, <<"start">>) ->
     Call1 = kapps_call:kvs_store('recording_follow_transfer', ShouldFollowTransfer, Call),
     lager:info("starting call recording via action (follow transfer: ~s)", [ShouldFollowTransfer]),
     cf_exe:update_call(kapps_call:start_recording(Data, Call1));
-
 handle(_Data, Call, <<"stop">>) ->
-    cf_exe:update_call(kapps_call:stop_recording(Call)).
+    cf_exe:update_call(kapps_call:stop_recording(Call));
+handle(Data, Call, <<"start_on_b_leg">>) ->
+    ShouldFollowTransfer = kz_json:is_true(<<"should_follow_transfer">>, Data, 'true'),
+    Call1 = kapps_call:kvs_store('recording_follow_transfer', ShouldFollowTransfer, Call),
+    Call2 = kapps_call:kvs_store('record_on_b_leg', 'true', Call1),
+    lager:info("starting call recording on b-leg via action (follow transfer: ~s)", [ShouldFollowTransfer]),
+    cf_exe:update_call(Call2).
 
 -spec get_action(kz_json:object()) -> kz_term:ne_binary().
 get_action(Data) ->
     case kz_json:get_ne_binary_value(<<"action">>, Data) of
         <<"stop">> -> <<"stop">>;
-        _ -> <<"start">>
+        <<"start_on_b_leg">> -> <<"start_on_b_leg">>;
+        _  -> <<"start">>
     end.
