@@ -71,6 +71,11 @@
             "name": "from",
             "type": "string"
         },
+        "id": {
+            "description": "id",
+            "name": "id",
+            "type": "string"
+        },
         "interaction_id": {
             "description": "interaction_id",
             "name": "interaction_id",
@@ -106,6 +111,71 @@
             "name": "request",
             "type": "string"
         },
+        "soft_delete": {
+            "additionalProperties": false,
+            "description": "recording has been soft deleted",
+            "name": "soft_delete",
+            "properties": {
+                "deleted_at": {
+                    "description": "Timestamp the soft delete was performed",
+                    "name": "deleted_at",
+                    "type": "integer"
+                },
+                "deleted_by": {
+                    "description": "Entity that performed the soft deleted",
+                    "name": "deleted_by",
+                    "properties": {
+                        "account_id": {
+                            "description": "Account-ID",
+                            "name": "account_id",
+                            "type": "string"
+                        },
+                        "user_id": {
+                            "description": "User-ID",
+                            "name": "user_id",
+                            "type": "string"
+                        }
+                    },
+                    "type": "object"
+                }
+            },
+            "type": "object"
+        },
+        "soft_restore": {
+            "additionalProperties": false,
+            "description": "recording has been soft restored",
+            "name": "soft_restore",
+            "properties": {
+                "delete_data": {
+                    "description": "The original data from the soft_delete key",
+                    "name": "delete_data",
+                    "type": "object"
+                },
+                "restored_at": {
+                    "description": "Timestamp the soft restore was performed",
+                    "name": "restored_at",
+                    "type": "integer"
+                },
+                "restored_by": {
+                    "description": "Entity that performed the soft restore",
+                    "name": "restored_by",
+                    "properties": {
+                        "account_id": {
+                            "description": "Account-ID",
+                            "name": "account_id",
+                            "type": "string"
+                        },
+                        "user_id": {
+                            "description": "User-ID",
+                            "name": "user_id",
+                            "type": "string"
+                        }
+                    },
+                    "type": "object"
+                }
+            },
+            "type": "object"
+        },
         "source_type": {
             "description": "source_type",
             "name": "source_type",
@@ -121,11 +191,15 @@
             "name": "to",
             "type": "string"
         },
+        "ui_metadata": {
+            "description": "ui_metadata",
+            "name": "ui_metadata",
+            "type": "object"
+        },
         "url": {
             "description": "url",
             "name": "url",
             "type": "string"
         }
-    },
-    "type": "object"
+    }
 }
