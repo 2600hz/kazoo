@@ -2,6 +2,10 @@
 %%% @copyright (C) 2016-, Voxter
 %%% @doc
 %%% @author Ben Bradford
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kt_users).
@@ -398,7 +402,7 @@ generate_validate_and_save_new_user(AccountId, Args) ->
 %%------------------------------------------------------------------------------
 -spec save_user(kz_type:ne_binary(), kzd_users:doc()) -> {'ok', kzd_users:doc()}  | {'error', kz_type:ne_binary()}.
 save_user(AccountId, UserDoc) ->
-    AccountDb = kzs_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kzs_util:format_account_db(AccountId),
     case kz_datamgr:save_doc(AccountDb, UserDoc) of
         {'error', Reason} ->
             lager:error("failed to save user, Reason: ~p, Doc: ~p", [Reason, UserDoc]),

@@ -2,6 +2,10 @@
 %%% @copyright (C) 2016-, Voxter
 %%% @doc
 %%% @author Ben Bradford
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_tasks_utils).
@@ -15,7 +19,7 @@
 %%------------------------------------------------------------------------------
 -spec delete_doc(kz_type:ne_binary(), kz_type:ne_binary(), kz_type:ne_binary()) -> {'ok', kz_doc:object()}  | {'error', kz_type:ne_binary()}.
 delete_doc(AccountId, DocId, DocType) ->
-    AccountDb = kzs_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kzs_util:format_account_db(AccountId),
     case verify_doc_type(AccountDb, DocId, DocType) of
         {'error', Cause} = Error ->
             lager:error("failed to verify doc type when deleting doc, Cause: ~p, AccountId: ~p, DocId: ~p", [Cause, AccountId, DocId]),
