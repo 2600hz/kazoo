@@ -26,6 +26,16 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/recordings/{RECORDING_ID}
 ```
 
+## Patch
+
+> PATCH /v2/accounts/{ACCOUNT_ID}/recordings/{RECORDING_ID}
+
+```shell
+curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/recordings/{RECORDING_ID}
+```
+
 ## Remove
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/recordings/{RECORDING_ID}
@@ -34,5 +44,15 @@ curl -v -X GET \
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/recordings/{RECORDING_ID}
+```
+
+## Patch
+
+> PATCH /v2/accounts/{ACCOUNT_ID}/recordings/collection
+
+```shell
+curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/recordings/collection
 ```
 
