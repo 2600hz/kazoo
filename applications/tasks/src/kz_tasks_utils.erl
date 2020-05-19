@@ -10,7 +10,12 @@
 %%%-----------------------------------------------------------------------------
 -module(kz_tasks_utils).
 
--export([delete_doc/3]).
+-export([delete_doc/3
+        ,merge_kazoo_doc_validation_errors/1
+        ,generate_new_doc_with_kazoo_doc_setters/2
+        ]).
+
+-define(KAZOO_DOC_ERROR_SEPARATOR, ",").
 
 %%------------------------------------------------------------------------------
 %% @doc Delete a doc from kazoo
@@ -57,3 +62,49 @@ do_delete_doc(AccountDb, DocId) ->
         {'ok', _Doc} = Ok ->
             Ok
     end.
+
+%%------------------------------------------------------------------------------
+%% @doc Convert multiple `kazoo_documents:doc_validation_error()' into a binary
+%% string, Each error separated by `?KAZOO_DOC_ERROR_SEPARATOR'.
+%% @end
+%%------------------------------------------------------------------------------
+-spec merge_kazoo_doc_validation_errors(kazoo_documents:doc_validation_errors()) -> kz_term:ne_binary().
+merge_kazoo_doc_validation_errors(ValidationErrors) ->
+    ErrorBinaries = lists:map(fun(ValidationError) -> kazoo_doc_validation_error_to_binary(ValidationError) end
+                             ,ValidationErrors),
+    kz_term:to_binary(lists:join(?KAZOO_DOC_ERROR_SEPARATOR, ErrorBinaries)).
+
+%%------------------------------------------------------------------------------
+%% @doc Convert `kazoo_documents:doc_validation_error()' into a binary string.
+%% @end
+%%------------------------------------------------------------------------------
+-spec kazoo_doc_validation_error_to_binary(kazoo_documents:doc_validation_error()) -> kz_term:ne_binary().
+kazoo_doc_validation_error_to_binary({Path, ErrorCode, JObj}) ->
+    PathBin = kz_term:to_binary(lists:join(".", Path)),
+    ErrorCodeBin = kz_term:to_binary(ErrorCode),
+    MessageBin = kz_json:get_binary_value(<<"message">>, JObj),
+    <<"Validation error '", ErrorCodeBin/binary, "' on field '", PathBin/binary, "' : ", MessageBin/binary>>.
+
+%%------------------------------------------------------------------------------
+%% @doc Build doc from default values and set / overwrite values defined
+%% in the input Args (CSV row)
+%% This uses `get_setters/0' from the supplied `KazooDocModule' to get a mapping
+%% of doc attributes to setter functions for the document.
+%% It then uses that map and applies any of the functions to a new default doc
+%% where the `Args' value is not `undefined'.
+%% @end
+%%------------------------------------------------------------------------------
+-spec generate_new_doc_with_kazoo_doc_setters(erlang:module(), kz_tasks:args()) -> kz_doc:doc().
+generate_new_doc_with_kazoo_doc_setters(KazooDocModule, Args) ->
+    KeyToSetFunMap = erlang:apply(KazooDocModule, 'get_setters', []),
+    DefaultDoc = erlang:apply(KazooDocModule, 'new', []),
+    SetterFun = fun(_Key, 'undefined', JObjAcc) -> JObjAcc;
+                   (Key, Value, JObjAcc) ->
+                        case maps:get(Key, KeyToSetFunMap, 'undefined') of
+                            'undefined' ->
+                                JObjAcc;
+                            SetterFun ->
+                                erlang:apply('kzd_users', SetterFun, [JObjAcc, Value])
+                        end
+                end,
+    maps:fold(SetterFun, DefaultDoc, Args).

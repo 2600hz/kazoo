@@ -41,8 +41,6 @@
                  ,<<"delete">>
                  ]).
 
--define(ERROR_SEPARATOR, ",").
-
 %%%=============================================================================
 %%% API
 %%%=============================================================================
@@ -290,7 +288,7 @@ format_ok_result_to_csv_row(AccountId, Doc, Action) ->
 %% @doc Format the error result into a csv row response.
 %% @end
 %%------------------------------------------------------------------------------
--spec format_error_result_to_csv_row(kz_term:ne_binary(), kz_tasks:args(), kz_term:ne_binary(),  atom()) -> kz_csv:mapped_row().
+-spec format_error_result_to_csv_row(kz_term:ne_binary(), kz_tasks:args(), kz_term:ne_binary(), atom()) -> kz_csv:mapped_row().
 format_error_result_to_csv_row(AccountId, Args, Error, Action) ->
     Map = generate_return_values_from_args(AccountId, Args, Action),
     Map#{?OUTPUT_CSV_HEADER_ERROR => Error}.
@@ -319,7 +317,6 @@ generate_return_values_from_args(AccountId, Args ,'delete') ->
 %%------------------------------------------------------------------------------
 -spec generate_return_values_from_doc(kz_term:ne_binary(), kzd_users:doc(), atom()) -> kz_csv:mapped_row().
 generate_return_values_from_doc(AccountId, Doc, 'import') ->
-    lager:debug("generating import resp row from doc: ~p", [Doc]),
     #{<<"id">> => kz_doc:id(Doc)
      ,<<"username">> => kzd_users:username(Doc)
      ,<<"first_name">> => kzd_users:first_name(Doc)
@@ -327,7 +324,6 @@ generate_return_values_from_doc(AccountId, Doc, 'import') ->
      ,<<"account_id">> => kz_doc:account_id(Doc, AccountId)
      };
 generate_return_values_from_doc(AccountId, Doc, 'delete') ->
-    lager:debug("generating delete resp row from doc: ~p", [Doc]),
     #{<<"id">> => kz_doc:id(Doc)
      ,<<"account_id">> => kz_doc:account_id(Doc, AccountId)
      }.
@@ -383,14 +379,14 @@ maybe_override_account_id(_URLAccountId, #{<<"account_id">> := AccountIdOverride
 %%------------------------------------------------------------------------------
 -spec generate_validate_and_save_new_user(kz_type:ne_binary(), kz_tasks:args()) -> {'ok', kzd_users:doc()}  | {'error', kz_type:ne_binary()}.
 generate_validate_and_save_new_user(AccountId, Args) ->
-    UserDoc = generate_new_user_doc(Args),
+    UserDoc = kz_tasks_utils:generate_new_doc_with_kazoo_doc_setters('kzd_users', Args),
     case kzd_users:validate(AccountId, 'undefined', UserDoc) of
         {'true', UpdatedUserDoc} ->
             lager:debug("successfully validated new user object"),
             save_user(AccountId, UpdatedUserDoc);
         {'validation_errors', ValidationErrors} ->
             lager:info("validation errors on new user"),
-            {'error', merge_validation_errors(ValidationErrors)};
+            {'error', kz_tasks_utils:merge_kazoo_doc_validation_errors(ValidationErrors)};
         {'system_error', Error} ->
             lager:info("system error validating user: ~p", [Error]),
             {'error', Error}
@@ -411,47 +407,6 @@ save_user(AccountId, UserDoc) ->
             lager:debug("saved user ~p", [kz_doc:id(_User)]),
             Ok
     end.
-
-%%------------------------------------------------------------------------------
-%% @doc Convert multiple `kazoo_documents:doc_validation_error()' into a binary
-%% string, Each error separated by `?ERROR_SEPARATOR'.
-%% @end
-%%------------------------------------------------------------------------------
--spec merge_validation_errors(kazoo_documents:doc_validation_errors()) -> kz_term:ne_binary().
-merge_validation_errors(ValidationErrors) ->
-    ErrorBinaries = lists:map(fun(ValidationError) -> validation_error_to_binary(ValidationError) end
-                             ,ValidationErrors),
-    kz_term:to_binary(lists:join(?ERROR_SEPARATOR, ErrorBinaries)).
-
-%%------------------------------------------------------------------------------
-%% @doc Convert `kazoo_documents:doc_validation_error()' into a binary string.
-%% @end
-%%------------------------------------------------------------------------------
--spec validation_error_to_binary(kazoo_documents:doc_validation_error()) -> kz_term:ne_binary().
-validation_error_to_binary({Path, ErrorCode, JObj}) ->
-    PathBin = kz_term:to_binary(lists:join(".", Path)),
-    ErrorCodeBin = kz_term:to_binary(ErrorCode),
-    MessageBin = kz_json:get_binary_value(<<"message">>, JObj),
-    <<"Validation error '", ErrorCodeBin/binary, "' on field '", PathBin/binary, "' : ", MessageBin/binary>>.
-
-%%------------------------------------------------------------------------------
-%% @doc Build user doc from default values and set / overwrite values defined
-%% in the input Args (CSV row)
-%% @end
-%%------------------------------------------------------------------------------
--spec generate_new_user_doc(kz_tasks:args()) -> kzd_users:doc().
-generate_new_user_doc(Args) ->
-    KeyToSetFunMap = kzd_users:get_setters(),
-    SetterFun = fun(_Key, 'undefined', JObjAcc) -> JObjAcc;
-                   (Key, Value, JObjAcc) ->
-                        case maps:get(Key, KeyToSetFunMap, 'undefined') of
-                            'undefined' ->
-                                JObjAcc;
-                            SetterFun ->
-                                erlang:apply('kzd_users', SetterFun, [JObjAcc, Value])
-                        end
-                end,
-    maps:fold(SetterFun, kzd_users:new(), Args).
 
 %%------------------------------------------------------------------------------
 %% @doc Delete a user from kazoo
