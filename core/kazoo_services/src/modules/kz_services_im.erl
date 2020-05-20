@@ -26,9 +26,11 @@
 -define(DEFAULT_MMS_OUTBOUND_FLAT_RATE, 0.015).
 
 -define(IM_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".im">>).
--define(DEFAULT_POLICY_FOR_NO_PLAN, false).
--define(POLICY_FOR_NO_PLAN_KEY(T), [<<"policy">>, <<"no_plan">>, kz_term:to_binary(T), <<"enabled">>]).
--define(POLICY_FOR_NO_PLAN(T), kapps_config:get_boolean(?IM_CONFIG_CAT, ?POLICY_FOR_NO_PLAN_KEY(T), ?DEFAULT_POLICY_FOR_NO_PLAN)).
+-define(DEFAULT_RESELLER_POLICY_FOR_NO_PLAN, false).
+-define(DEFAULT_ACCOUNT_POLICY_FOR_NO_PLAN, true).
+-define(POLICY_FOR_NO_PLAN_KEY(T,I), [<<"policy">>, <<"no_plan">>, kz_term:to_binary(T), kz_term:to_binary(I), <<"enabled">>]).
+-define(RESELLER_POLICY_FOR_NO_PLAN(T), kapps_config:get_boolean(?IM_CONFIG_CAT, ?POLICY_FOR_NO_PLAN_KEY(<<"reseller">>, T), ?DEFAULT_RESELLER_POLICY_FOR_NO_PLAN)).
+-define(ACCOUNT_POLICY_FOR_NO_PLAN(T), kapps_config:get_boolean(?IM_CONFIG_CAT, ?POLICY_FOR_NO_PLAN_KEY(<<"account">>, T), ?DEFAULT_ACCOUNT_POLICY_FOR_NO_PLAN)).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -104,7 +106,7 @@ is_mms_enabled(AccountId) ->
 -spec is_im_enabled(kz_services:services() | kz_term:ne_binary(), im_type()) -> boolean().
 is_im_enabled(AccountId, Type) ->
     IM = fetch(AccountId),
-    Default = ?POLICY_FOR_NO_PLAN(Type),
+    Default = policy_for_no_plan(kz_services_reseller:is_reseller(AccountId), Type),
     case kz_json:is_empty(IM) of
         'true' -> Default;
         'false' -> kz_json:is_true([kz_term:to_binary(Type), <<"enabled">>], IM, Default)
@@ -134,3 +136,8 @@ cache_origin(AccountId, Caches) ->
     [{'db', ?KZ_SERVICES_DB, AccountId}
      | [{'db', DB, Id}|| {DB, Id} <- lists:usort(Caches)]
     ].
+
+policy_for_no_plan(true, Type) ->
+    ?RESELLER_POLICY_FOR_NO_PLAN(Type);
+policy_for_no_plan(false, Type) ->
+    ?ACCOUNT_POLICY_FOR_NO_PLAN(Type).
