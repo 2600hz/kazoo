@@ -273,7 +273,7 @@ add_message_history(History, JObj) ->
 
 -spec length(doc()) -> integer().
 length(JObj) ->
-    kz_json:get_value(?KEY_META_LENGTH, JObj).
+    kz_json:get_value([?KEY_METADATA, ?KEY_META_LENGTH], JObj).
 
 -spec message_name(doc()) -> kz_term:api_binary().
 message_name(JObj) ->

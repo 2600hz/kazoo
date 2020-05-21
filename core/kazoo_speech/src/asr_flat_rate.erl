@@ -124,5 +124,5 @@ metadata(Request) ->
                       ,{<<"call_id">>, asr_request:call_id(Request)}
                       ,{<<"media_id">>, asr_request:media_id(Request)}
                       ,{<<"provider">>, asr_request:asr_provider(Request)}
-                      ,{<<"recording_seconds">>, asr_request:recording_seconds(Request)}
+                      ,{<<"recording_milliseconds">>, asr_request:recording_milliseconds(Request)}
                       ]).

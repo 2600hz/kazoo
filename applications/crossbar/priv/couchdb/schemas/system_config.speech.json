@@ -28,6 +28,16 @@
             "description": "speech asr provider",
             "type": "string"
         },
+        "asr_trim_media_enabled": {
+            "default": false,
+            "description": "enable trimming media to asr_trim_media_seconds (discarding audio from the end) before sending to asr provider",
+            "type": "boolean"
+        },
+        "asr_trim_media_seconds": {
+            "default": 60,
+            "description": "if asr_trim_media_enabled is true, trim media to the defined length in seconds (discarding audio from the end) before sending to asr provider",
+            "type": "integer"
+        },
         "asr_url": {
             "default": "http://api.ispeech.org/api/json",
             "description": "speech asr url",

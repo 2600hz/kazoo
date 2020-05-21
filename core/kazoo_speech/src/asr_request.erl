@@ -15,6 +15,7 @@
         ,attachment/1, set_attachment/2
         ,billing_method/1
         ,billing_seconds/1
+        ,binary_media/1, set_binary_media/2
         ,call_id/1
         ,content_type/1, set_content_type/2
         ,description/1, set_description/2
@@ -26,7 +27,7 @@
         ,is_valid/1
         ,media_id/1, set_media_id/2
         ,new/0
-        ,recording_seconds/1, set_recording_seconds/2
+        ,recording_milliseconds/1, set_recording_milliseconds/2
         ,reseller_id/1, reseller_id/2, set_reseller_id/2
         ,services/1, set_services/2
         ,setters/2
@@ -54,6 +55,16 @@
 -type setters() :: [setter_kv()].
 
 -include("kazoo_speech.hrl").
+
+-define(ASR_TRIM_MEDIA_ENABLED
+       ,kapps_config:get_boolean(?MOD_CONFIG_CAT, <<"asr_trim_media_enabled">>, 'false')
+       ).
+-define(ASR_TRIM_MEDIA_SECONDS
+       ,kapps_config:get_integer(?MOD_CONFIG_CAT, <<"asr_trim_media_seconds">>, 60)
+       ).
+-define(MEDIA_NORMALIZE_EXECUTABLE
+       ,kapps_config:get_binary(<<"media">>, <<"normalize_executable">>, <<"sox">>)
+       ).
 
 %%------------------------------------------------------------------------------
 %% @doc account_db getter
@@ -112,6 +123,13 @@ billing_method(#asr_req{billing_method=BillingMethod}) -> BillingMethod.
 billing_seconds(#asr_req{billing_seconds=BillingSecs}) -> BillingSecs.
 
 %%------------------------------------------------------------------------------
+%% @doc asr request binary_media getter
+%% @end
+%%------------------------------------------------------------------------------
+-spec binary_media(asr_req()) -> binary().
+binary_media(#asr_req{binary_media=BinaryMedia}) -> BinaryMedia.
+
+%%------------------------------------------------------------------------------
 %% @doc call_id getter
 %% @end
 %%------------------------------------------------------------------------------
@@ -158,7 +176,7 @@ fetch_attachment(#asr_req{account_modb=AccountMODB, attachment_id=AttachmentId, 
             lager:info("transcribing first attachment ~s", [AttachmentId]),
             Bin;
         {'error', E} ->
-            lager:info("error fetching vm: ~p", [E]),
+            lager:error("error fetching vm: ~p", [E]),
             'undefined'
     end.
 
@@ -216,26 +234,109 @@ maybe_impact_reseller(_ResellerId=?NE_BINARY, _AccountId=?NE_BINARY) -> 'true';
 maybe_impact_reseller(_ResellerId='undefined', _AccountId=?NE_BINARY) -> 'false';
 maybe_impact_reseller(_ResellerId=_, _AccountId=_) -> 'false'.
 
-
 %%------------------------------------------------------------------------------
-%% @doc try to transcribe media
+%% @doc If the request has passed validation (request's `validated' is true),
+%% load the binary media attachment from db and store it in the request.
 %% @end
 %%------------------------------------------------------------------------------
--spec maybe_transcribe(asr_req()) -> asr_req().
-maybe_transcribe(#asr_req{validated='false'}=Request) -> Request;
-maybe_transcribe(#asr_req{}=Request) ->
+-spec load_binary_media_into_request(asr_req()) -> asr_req().
+load_binary_media_into_request(#asr_req{validated='false'}=Request) -> Request;
+load_binary_media_into_request(#asr_req{}=Request) ->
     case fetch_attachment(Request) of
         'undefined' ->
             add_error(Request, {'error', 'media_not_found'});
-        Bin ->
-            maybe_transcribe(Request, Bin)
+        BinaryMedia ->
+            set_binary_media(Request, BinaryMedia)
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc try to transcribe media
+%% @doc If `?ASR_TRIM_MEDIA_LENGTH' is true and the media length is greater than
+%% `?ASR_TRIM_MEDIA_SECONDS', then trim the media to `?ASR_TRIM_MEDIA_SECONDS'
+%% and update the request with the trimmed media and new `recording_milliseconds'
+%% length.
+%% If the request's `validated' field is set to false or `binary_media' is set
+%% to `undefined', then skip any trim checks and return the unaltered request.
 %% @end
 %%------------------------------------------------------------------------------
-maybe_transcribe(#asr_req{account_modb=AccountDb, content_type=ContentType, media_id=MediaId}=Request, Bin) ->
+-spec maybe_trim_binary_media_length(asr_req()) -> asr_req().
+maybe_trim_binary_media_length(#asr_req{validated='false'}=Request) -> Request;
+maybe_trim_binary_media_length(#asr_req{binary_media='undefined'}=Request) -> Request;
+maybe_trim_binary_media_length(#asr_req{recording_milliseconds=RecordingMilliseconds}=Request) ->
+    ConfigTrimLengthMillisec = (?ASR_TRIM_MEDIA_SECONDS * 1000),
+    case ?ASR_TRIM_MEDIA_ENABLED
+        andalso RecordingMilliseconds > ConfigTrimLengthMillisec
+    of
+        'false' -> Request;
+        'true' ->
+            trim_binary_media_length(Request, ConfigTrimLengthMillisec)
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc Trim the request's `binary_media' to a length defined in milliseconds.
+%% If the request's `binary_media' is `undefined' then return the unaltered
+%% request.
+%% If the trim operation fails then return the request with the error set.
+%% If the trim is successful then update the request's `binary_media' and
+%% `recording_milliseconds' with the trimmed values.
+%% @end
+%%------------------------------------------------------------------------------
+-spec trim_binary_media_length(asr_req(), integer()) -> asr_req().
+trim_binary_media_length(#asr_req{binary_media='undefined'}=Request, _TrimLengthMillisec) -> Request;
+trim_binary_media_length(#asr_req{binary_media=BinaryMedia
+                                 ,attachment_id=AttachmentId
+                                 ,recording_milliseconds=RecordingMilliseconds
+                                 }=Request
+                        ,TrimLengthMillisec) ->
+    lager:debug("trimming media to ~p (currently ~b) milliseconds", [TrimLengthMillisec, RecordingMilliseconds]),
+    SrcFile = filename:join(?TMP_PATH, AttachmentId),
+    TrimmedFile = filename:join(?TMP_PATH, <<"trimmed-", AttachmentId/binary>>),
+    kz_util:write_file(SrcFile, BinaryMedia),
+    Command = generate_trim_media_command(?MEDIA_NORMALIZE_EXECUTABLE
+                                         ,SrcFile
+                                         ,TrimmedFile
+                                         ,TrimLengthMillisec),
+    CommandResp = kz_os:cmd(Command),
+    case file:read_file(TrimmedFile) of
+        {'ok', TrimmedBinaryMedia} ->
+            _ = file:delete(SrcFile),
+            _ = file:delete(TrimmedFile),
+            set_recording_milliseconds(set_binary_media(Request, TrimmedBinaryMedia), TrimLengthMillisec);
+        {'error', _R} ->
+            lager:error("failed to trim media with command '~s', response: ~p", [Command, CommandResp]),
+            _ = file:delete(SrcFile),
+            add_error(Request, {'error', CommandResp})
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc For an executable, generate and return the command to be run to trim
+%% an audio file to `TrimLengthMillisec'.
+%% @end
+%%------------------------------------------------------------------------------
+-spec generate_trim_media_command(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), integer()) -> 'undefined' | io_lib:chars().
+generate_trim_media_command(<<"sox">>, SrcFile, DestFile, TrimLengthMillisec) ->
+    io_lib:format("sox ~s ~s trim 0 ~f", [SrcFile
+                                         ,DestFile
+                                         ,(TrimLengthMillisec/1000)]);
+generate_trim_media_command(<<"ffmpeg">>, SrcFile, DestFile, TrimLengthMillisec) ->
+    io_lib:format("ffmpeg -i ~s -ss 0 -to ~f -c copy ~s", [SrcFile
+                                                          ,(TrimLengthMillisec/1000)
+                                                          ,DestFile]);
+generate_trim_media_command(Executable, _SrcFile, _DestFile, _TrimLengthMillisec) ->
+    lager:error("missing trim command for executable '~p', not implemented", [Executable]),
+    'undefined'.
+
+%%------------------------------------------------------------------------------
+%% @doc Transcribe the media if the request's `validated' is true and
+%% request's `binary_media' is not `undefined'.
+%% @end
+%%------------------------------------------------------------------------------
+maybe_transcribe(#asr_req{validated='false'}=Request) -> Request;
+maybe_transcribe(#asr_req{binary_media='undefined'}=Request) -> Request;
+maybe_transcribe(#asr_req{account_modb=AccountDb
+                         ,content_type=ContentType
+                         ,media_id=MediaId
+                         ,binary_media=Bin
+                         }=Request) ->
     {'ok', MediaDoc} = kz_datamgr:open_doc(AccountDb, MediaId),
     case kazoo_asr:freeform(Bin, ContentType) of
         {'ok', Resp} ->
@@ -248,10 +349,10 @@ maybe_transcribe(#asr_req{account_modb=AccountDb, content_type=ContentType, medi
                                           ),
             set_transcription(Request, Resp0);
         {'error', ErrorCode}=Err ->
-            lager:info("error transcribing: ~p", [ErrorCode]),
+            lager:error("error transcribing: ~p", [ErrorCode]),
             add_error(Request, Err);
         {'error', ErrorCode, Description}=Err ->
-            lager:info("error transcribing: ~p, ~p", [ErrorCode, Description]),
+            lager:error("error transcribing: ~p, ~p", [ErrorCode, Description]),
             add_error(Request, Err)
     end.
 
@@ -280,8 +381,8 @@ new() -> #asr_req{}.
 %% @doc recording duration getter
 %% @end
 %%------------------------------------------------------------------------------
--spec recording_seconds(asr_req()) -> non_neg_integer().
-recording_seconds(#asr_req{recording_seconds=Duration}) -> Duration.
+-spec recording_milliseconds(asr_req()) -> non_neg_integer().
+recording_milliseconds(#asr_req{recording_milliseconds=Duration}) -> Duration.
 
 %%------------------------------------------------------------------------------
 %% @doc reseller_id getter
@@ -361,12 +462,20 @@ set_attachment_metadata(#asr_req{account_id=AccountId, media_id=MediaId}=Request
             Setters = [{fun set_content_type/2, ContentType}
                       ,{fun set_modb/2, AccountMODB}
                       ,{fun set_attachment/2, AttachmentId}
-                      ,{fun set_recording_seconds/2, kzd_box_message:length(MediaDoc)}
+                      ,{fun set_recording_milliseconds/2, kzd_box_message:length(MediaDoc)}
                       ,{fun set_timestamp/2, kzd_box_message:utc_seconds(MediaDoc)}
                       ,{fun set_impact_reseller/2, maybe_impact_reseller(Request)}
                       ],
             setters(Request, Setters)
     end.
+
+%%------------------------------------------------------------------------------
+%% @doc binary_media response setter
+%% @end
+%%------------------------------------------------------------------------------
+-spec set_binary_media(asr_req(), 'undefined' | binary()) -> asr_req().
+set_binary_media(Request, BinaryMedia) ->
+    Request#asr_req{binary_media=BinaryMedia}.
 
 %%------------------------------------------------------------------------------
 %% @doc media content_type setter
@@ -412,9 +521,9 @@ set_modb(Request, AccountMODB) ->
 %% @doc voicemail/recording's media_id setter
 %% @end
 %%------------------------------------------------------------------------------
--spec set_recording_seconds(asr_req(), non_neg_integer()) -> asr_req().
-set_recording_seconds(Request, Duration) ->
-    Request#asr_req{recording_seconds=Duration}.
+-spec set_recording_milliseconds(asr_req(), non_neg_integer()) -> asr_req().
+set_recording_milliseconds(Request, Duration) ->
+    Request#asr_req{recording_milliseconds=Duration}.
 
 %%------------------------------------------------------------------------------
 %% @doc reseller_id setter
@@ -481,22 +590,20 @@ timestamp(#asr_req{timestamp=Timestamp}) -> Timestamp.
 transcribe(Request) ->
     Validators = [fun authorize/1
                  ,fun validate/1
+                 ,fun load_binary_media_into_request/1
+                 ,fun maybe_trim_binary_media_length/1
                  ,fun maybe_transcribe/1
                  ,fun debit/1
                  ],
-    lists:foldl(fun transcribe_fold_fun/2, Request, Validators).
+    lists:foldl(fun(F, RequestAcc) when is_function(F, 1) -> F(RequestAcc) end
+               ,Request
+               ,Validators).
 
 -spec debit(asr_req()) -> asr_req().
 debit(#asr_req{error={'error', _}}=Request) -> Request;
 debit(#asr_req{error={'error', 'asr_provider_failure', _}}=Request) -> Request;
 debit(#asr_req{billing_method=BillingMethod, error='undefined'}=Request) ->
     BillingMethod:debit(Request).
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
-transcribe_fold_fun(F, Request) when is_function(F, 1) -> F(Request).
 
 %%------------------------------------------------------------------------------
 %% @doc transcription response getter
