@@ -36,12 +36,17 @@
 -export([strategy/1, strategy/2, set_strategy/2]).
 
 
+-export([type/0]).
+
 -include("kz_documents.hrl").
 
 -type doc() :: kz_json:object().
 -export_type([doc/0]).
 
 -define(SCHEMA, <<"queues">>).
+
+-spec type() -> kz_term:ne_binary().
+type() -> <<"queue">>.
 
 -spec new() -> doc().
 new() ->

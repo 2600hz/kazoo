@@ -23,6 +23,7 @@ DEPS ?= amqp_client \
 	nklib \
 	plists \
 	poolboy \
+        pqueue \
 	proper \
 	ra \
 	ranch \
@@ -124,6 +125,8 @@ dep_nklib = git https://github.com/2600hz/erlang-nklib v0.4.1
 
 dep_plists = git https://github.com/2600hz/erlang-plists 1.0.0
 # used by a handful of core apps
+
+dep_pqueue = hex 1.7.2
 
 dep_proper = git https://github.com/2600hz/erlang-proper v1.3
 # used by kazoo_proper, knm, kazoo_caches, kazoo_bindings, kz_util_tests, kazoo_token_buckets, kazoo_stdlib

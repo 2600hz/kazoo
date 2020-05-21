@@ -1,0 +1,34 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.acdc_queue.agents_available_req",
+    "description": "AMQP API for acdc_queue.agents_available_req",
+    "properties": {
+        "Account-ID": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "queue"
+            ]
+        },
+        "Event-Name": {
+            "enum": [
+                "agents_available_req"
+            ]
+        },
+        "Queue-ID": {
+            "type": "string"
+        },
+        "Skills": {
+            "items": {
+                "type": "string"
+            },
+            "type": "array"
+        }
+    },
+    "required": [
+        "Account-ID",
+        "Queue-ID"
+    ],
+    "type": "object"
+}

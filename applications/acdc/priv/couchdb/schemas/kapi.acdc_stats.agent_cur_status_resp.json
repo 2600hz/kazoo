@@ -1,0 +1,24 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.acdc_stats.agent_cur_status_resp",
+    "description": "AMQP API for acdc_stats.agent_cur_status_resp",
+    "properties": {
+        "Agents": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "acdc_stat"
+            ]
+        },
+        "Event-Name": {
+            "enum": [
+                "agent_cur_status_resp"
+            ]
+        }
+    },
+    "required": [
+        "Agents"
+    ],
+    "type": "object"
+}

@@ -2,11 +2,6 @@
 %%% @copyright (C) 2013-2020, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
-%%%
-%%% This Source Code Form is subject to the terms of the Mozilla Public
-%%% License, v. 2.0. If a copy of the MPL was not distributed with this
-%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
-%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(acdc_agent_util).
@@ -24,7 +19,7 @@
 
         ,changed/2, find_most_recent_fold/3
 
-        ,status_should_auto_start/1
+	,agent_priority/1
         ]).
 
 -include("acdc.hrl").
@@ -44,7 +39,8 @@ update_status(?NE_BINARY = AccountId, AgentId, Status, Options) ->
     kz_amqp_worker:cast(API, fun kapi_acdc_stats:publish_status_update/1).
 
 -spec most_recent_status(kz_term:ne_binary(), kz_term:ne_binary()) ->
-          {'ok', kz_term:ne_binary()}.
+          {'ok', kz_term:ne_binary()} |
+          {'error', any()}.
 most_recent_status(AccountId, AgentId) ->
     case most_recent_ets_status(AccountId, AgentId) of
         {'ok', _}=OK -> OK;
@@ -60,25 +56,26 @@ most_recent_status(AccountId, AgentId) ->
           {'ok', kz_term:ne_binary()} |
           {'error', any()}.
 most_recent_ets_status(AccountId, AgentId) ->
-    case most_recent_ets_statuses(AccountId, AgentId) of
-        {'error', _}=E -> E;
-        {'ok', Statuses} ->
-            most_recent_ets_agent_status(kz_json:get_json_value(AgentId, Statuses))
+    API = [{<<"Account-ID">>, AccountId}
+          ,{<<"Agent-ID">>, AgentId}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    case kz_amqp_worker:call(API
+                            ,fun kapi_acdc_stats:publish_status_req/1
+                            ,fun kapi_acdc_stats:status_resp_v/1
+                            )
+    of
+        {'error', _E}=E -> E;
+        {'ok', Resp} ->
+            Stats = kz_json:get_value([<<"Agents">>, AgentId], Resp),
+            {_, StatusJObj} = kz_json:foldl(fun find_most_recent_fold/3, {0, kz_json:new()}, Stats),
+            {'ok', kz_json:get_value(<<"status">>, StatusJObj)}
     end.
-
--spec most_recent_ets_agent_status(kz_term:api_object()) ->
-          {'ok', kz_term:ne_binary()} |
-          {'error', 'not_found'}.
-most_recent_ets_agent_status('undefined') -> {'error', 'not_found'};
-most_recent_ets_agent_status(Stats) ->
-    {_, StatusJObj} = kz_json:foldl(fun find_most_recent_fold/3, {0, kz_json:new()}, Stats),
-    {'ok', kz_json:get_value(<<"status">>, StatusJObj)}.
 
 -spec most_recent_db_status(kz_term:ne_binary(), kz_term:ne_binary()) ->
           {'ok', kz_term:ne_binary()}.
 most_recent_db_status(AccountId, AgentId) ->
     Opts = [{'startkey', [AgentId, kz_time:now_s()]}
-           ,{'endkey', [AgentId, 0]}
            ,{'limit', 1}
            ,'descending'
            ],
@@ -101,7 +98,6 @@ most_recent_db_status(AccountId, AgentId) ->
           {'ok', kz_term:ne_binary()}.
 prev_month_recent_db_status(AccountId, AgentId) ->
     Opts = [{'startkey', [AgentId, kz_time:now_s()]}
-           ,{'endkey', [AgentId, 0]}
            ,{'limit', 1}
            ,'descending'
            ],
@@ -138,38 +134,79 @@ most_recent_statuses(AccountId, Options) when is_list(Options) ->
 -spec most_recent_statuses(kz_term:ne_binary(), kz_term:api_binary(), kz_term:proplist()) ->
           statuses_return().
 most_recent_statuses(AccountId, AgentId, Options) ->
-    ETSStatuses = case most_recent_ets_statuses(AccountId, AgentId, Options) of
-                      {'ok', Statuses} -> Statuses;
-                      {'error', _} -> kz_json:new()
-                  end,
-    DBStatuses = case fetch_db_statuses(AccountId, AgentId) of
-                     {'ok', Statuses2} -> Statuses2;
-                     {'error', _} -> kz_json:new()
-                 end,
-    {'ok', kz_json:merge(DBStatuses, ETSStatuses)}.
+    ETS = kz_process:spawn_monitor(fun async_most_recent_ets_statuses/4, [AccountId, AgentId, Options, self()]),
+    DB = maybe_start_db_lookup('async_most_recent_db_statuses'
+                              ,fun async_most_recent_db_statuses/4
+                              ,AccountId, AgentId, Options, self()
+                              ),
+    {'ok', receive_statuses([ETS, DB])}.
 
-fetch_db_statuses(AccountId, AgentId) ->
-    case kz_cache:fetch_local(?CACHE_NAME, db_fetch_key(AccountId)) of
-        {'ok', Statuses} -> {'ok', filter_agent_statuses(Statuses, AgentId)};
-        {'error', 'not_found'} -> maybe_db_lookup(AccountId, AgentId)
+-spec maybe_start_db_lookup(atom(), fun(), kz_term:ne_binary(), kz_term:api_binary(), list(), pid()) ->
+          kz_term:pid_ref() | 'undefined'.
+maybe_start_db_lookup(F, Fun, AccountId, AgentId, Options, Self) ->
+    case kz_cache:fetch_local(?CACHE_NAME, db_fetch_key(F, AccountId, AgentId)) of
+        {'ok', _} -> 'undefined';
+        {'error', 'not_found'} ->
+            kz_process:spawn_monitor(Fun, [AccountId, AgentId, Options, Self])
     end.
 
--spec maybe_db_lookup(kz_term:ne_binary(), kz_term:ne_binary()) ->
-          statuses_return() | {'error', any()}.
-maybe_db_lookup(AccountId, AgentId) ->
-    case most_recent_db_statuses(AccountId) of
+db_fetch_key(F, AccountId, AgentId) -> {F, AccountId, AgentId}.
+
+-type receive_info() :: [{pid(), reference()} | 'undefined'].
+
+-spec receive_statuses(receive_info()) ->
+          kz_json:object().
+receive_statuses(Reqs) -> receive_statuses(Reqs, kz_json:new()).
+
+-spec receive_statuses(receive_info(), kz_json:object()) ->
+          kz_json:object().
+receive_statuses([], AccJObj) -> AccJObj;
+receive_statuses(['undefined' | Reqs], AccJObj) ->
+    receive_statuses(Reqs, AccJObj);
+receive_statuses([{Pid, Ref} | Reqs], AccJObj) ->
+    receive
+        {'statuses', Statuses, Pid} ->
+            clear_monitor(Ref),
+            receive_statuses(Reqs, kz_json:merge(Statuses, AccJObj));
+        {'DOWN', Ref, 'process', Pid, _R} ->
+            lager:debug("req in ~p died: ~p", [Pid, _R]),
+            clear_monitor(Ref),
+            receive_statuses(Reqs, AccJObj)
+    after 3000 ->
+            lager:debug("timed out waiting for ~p to respond", [Pid]),
+            receive_statuses(Reqs, AccJObj)
+    end.
+
+-spec clear_monitor(reference()) -> 'ok'.
+clear_monitor(Ref) ->
+    erlang:demonitor(Ref, ['flush']),
+    receive
+        {'DOWN', Ref, 'process', _, _} -> clear_monitor(Ref)
+    after 0 -> 'ok'
+    end.
+
+-spec async_most_recent_ets_statuses(kz_term:ne_binary(), kz_term:api_binary(), kz_term:proplist(), pid()) -> 'ok'.
+async_most_recent_ets_statuses(AccountId, AgentId, Options, Pid) ->
+    case most_recent_ets_statuses(AccountId, AgentId, Options) of
         {'ok', Statuses} ->
-            kz_cache:store_local(?CACHE_NAME, db_fetch_key(AccountId), Statuses),
-            {'ok', filter_agent_statuses(Statuses, AgentId)};
-        {'error', _}=E -> E
+            Pid ! {'statuses', Statuses, self()},
+            'ok';
+        {'error', _E} ->
+            Pid ! {'statuses', kz_json:new(), self()},
+            'ok'
     end.
 
--spec db_fetch_key(AccountId) -> {'async_most_recent_db_statuses', AccountId}.
-db_fetch_key(AccountId) -> {'async_most_recent_db_statuses', AccountId}.
-
-filter_agent_statuses(Statuses, 'undefined') -> Statuses;
-filter_agent_statuses(Statuses, KeepAgentId) ->
-    kz_json:filter(fun({AgentId, _}) -> AgentId =:= KeepAgentId end, Statuses).
+-spec async_most_recent_db_statuses(kz_term:ne_binary(), kz_term:api_binary(), kz_term:proplist(), pid()) -> 'ok'.
+async_most_recent_db_statuses(AccountId, AgentId, Options, Pid) ->
+    case most_recent_db_statuses(AccountId, AgentId, Options) of
+        {'ok', Statuses} ->
+            Pid ! {'statuses', Statuses, self()},
+            kz_cache:store_local(?CACHE_NAME, db_fetch_key('async_most_recent_db_statuses', AccountId, AgentId), 'true'),
+            'ok';
+        {'error', _E} ->
+            Pid ! {'statuses', kz_json:new(), self()},
+            'ok'
+    end.
 
 -spec most_recent_ets_statuses(kz_term:ne_binary()) ->
           statuses_return() |
@@ -194,21 +231,14 @@ most_recent_ets_statuses(AccountId, AgentId, Options) ->
             ,{<<"Agent-ID">>, AgentId}
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION) ++ Options
             ]),
-    case kz_amqp_worker:call_collect(API
-                                    ,fun kapi_acdc_stats:publish_status_req/1
-                                    ,'acdc'
-                                    ,3 * ?MILLISECONDS_IN_SECOND
-                                    )
+    case kz_amqp_worker:call(API
+                            ,fun kapi_acdc_stats:publish_status_req/1
+                            ,fun kapi_acdc_stats:status_resp_v/1
+                            )
     of
         {'error', _}=E -> E;
-        {Result, Resps} when Result =:= 'ok'
-                             orelse Result =:= 'timeout' ->
-            OKResps = lists:filter(fun kapi_acdc_stats:status_resp_v/1, Resps),
-            Statuses = lists:foldl(fun(Resp, AccJObj) ->
-                                           AgentsStatuses = kz_json:get_json_value(<<"Agents">>, Resp),
-                                           kz_json:merge(AgentsStatuses, AccJObj)
-                                   end, kz_json:new(), OKResps),
-            {'ok', Statuses}
+        {'ok', Resp} ->
+            {'ok', kz_json:get_value([<<"Agents">>], Resp, kz_json:new())}
     end.
 
 -spec most_recent_db_statuses(kz_term:ne_binary()) ->
@@ -217,7 +247,7 @@ most_recent_ets_statuses(AccountId, AgentId, Options) ->
 most_recent_db_statuses(AccountId) ->
     most_recent_db_statuses(AccountId, 'undefined', []).
 
--spec most_recent_db_statuses(kz_term:ne_binary(), kz_term:api_binary() | kz_term:proplist()) ->
+-spec most_recent_db_statuses(kz_term:ne_binary(), kz_term:api_binary()) ->
           statuses_return() |
           {'error', any()}.
 most_recent_db_statuses(AccountId, ?NE_BINARY = AgentId) ->
@@ -381,7 +411,7 @@ changed([F|From], To, Add, Rm) ->
         'false' -> changed(From, To, Add, [F|Rm])
     end.
 
--spec status_should_auto_start(kz_term:ne_binary()) -> boolean().
-status_should_auto_start(<<"logged_out">>) -> 'false';
-status_should_auto_start(<<"unknown">>) -> 'false';
-status_should_auto_start(_) -> 'true'.
+-spec agent_priority(wh_json:object()) -> agent_priority().
+agent_priority(AgentJObj) ->
+    -1 * kz_json:get_integer_value(<<"acdc_agent_priority">>, AgentJObj, 0).
+

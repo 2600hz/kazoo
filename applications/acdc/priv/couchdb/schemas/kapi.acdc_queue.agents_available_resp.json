@@ -1,0 +1,32 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.acdc_queue.agents_available_resp",
+    "description": "AMQP API for acdc_queue.agents_available_resp",
+    "properties": {
+        "Account-ID": {
+            "type": "string"
+        },
+        "Agent-Count": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "queue"
+            ]
+        },
+        "Event-Name": {
+            "enum": [
+                "agents_available_resp"
+            ]
+        },
+        "Queue-ID": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Account-ID",
+        "Agent-Count",
+        "Queue-ID"
+    ],
+    "type": "object"
+}

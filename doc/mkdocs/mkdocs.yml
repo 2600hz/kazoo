@@ -177,6 +177,8 @@ nav:
         - 'Average Wait Time': 'applications/callflow/doc/acdc_wait_time.md'
       - 'applications/acdc/doc/maintenance.md'
       - 'applications/acdc/doc/acdc_agent_maintenance.md'
+      - 'applications/acdc/doc/features.md'
+      - 'applications/acdc/doc/issues.md'
     - 'Ananke':
       - 'applications/ananke/doc/README.md'
     - 'Braintree':

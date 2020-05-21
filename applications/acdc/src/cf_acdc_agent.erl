@@ -1,6 +1,7 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2012-2020, 2600Hz
-%%% @doc Handles changing an agent's status
+%%% @doc 
+%%% Handles changing an agent's status
 %%% "data":{
 %%%   "action":["login","logout","paused","resume"] // one of these
 %%%   ,"timeout":600 // in seconds, for "paused" status
@@ -11,11 +12,6 @@
 %%% }
 %%%
 %%% @author James Aimonetti
-%%%
-%%% This Source Code Form is subject to the terms of the Mozilla Public
-%%% License, v. 2.0. If a copy of the MPL was not distributed with this
-%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
-%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cf_acdc_agent).
@@ -56,8 +52,8 @@ handle(Data, Call) ->
     cf_exe:continue(Call).
 
 -spec find_agent_status(kapps_call:call() | kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
-find_agent_status(?NE_BINARY = AcctId, AgentId) ->
-    fix_agent_status(acdc_agent_util:most_recent_status(AcctId, AgentId));
+find_agent_status(?NE_BINARY = AccountId, AgentId) ->
+    fix_agent_status(acdc_agent_util:most_recent_status(AccountId, AgentId));
 find_agent_status(Call, AgentId) ->
     find_agent_status(kapps_call:account_id(Call), AgentId).
 
@@ -117,16 +113,21 @@ maybe_login_agent(Call, AgentId, Data) ->
     end.
 
 maybe_pause_agent(Call, AgentId, <<"ready">>, Data) ->
-    pause_agent(Call, AgentId, Data);
+    Timeout = kapps_call:kvs_fetch('cf_capture_group', Call),
+    lager:info("agent pause time: ~p", [Timeout]),
+    case Timeout of
+        undefined -> pause_agent(Call, AgentId, Data);
+        T -> pause_agent(Call, AgentId, Data, binary_to_integer(T) * 60)
+    end;
 maybe_pause_agent(Call, _AgentId, FromStatus, _Data) ->
     lager:info("unable to go from ~s to paused", [FromStatus]),
     play_agent_invalid(Call).
 
--spec login_agent(kapps_call:call(), kz_term:ne_binary()) -> kz_term:api_ne_binary().
+-spec login_agent(kapps_call:call(), kz_term:ne_binary()) -> api_kz_term:ne_binary().
 login_agent(Call, AgentId) ->
     login_agent(Call, AgentId, kz_json:new()).
 
--spec login_agent(kapps_call:call(), kz_term:ne_binary(), kz_json:object()) -> kz_term:api_ne_binary().
+-spec login_agent(kapps_call:call(), kz_term:ne_binary(), kz_json:object()) -> api_kz_term:ne_binary().
 login_agent(Call, AgentId, Data) ->
     Update = props:filter_undefined(
                [{<<"Account-ID">>, kapps_call:account_id(Call)}
@@ -155,7 +156,7 @@ logout_agent(Call, AgentId) ->
 logout_agent(Call, AgentId, Data) ->
     update_agent_status(Call, AgentId, Data, fun kapi_acdc_agent:publish_logout/1).
 
-pause_agent(Call, AgentId, Data, Timeout) when is_integer(Timeout) ->
+pause_agent(Call, AgentId, Data, Timeout) ->
     _ = play_agent_pause(Call),
     update_agent_status(Call, AgentId, Data, fun kapi_acdc_agent:publish_pause/1, Timeout).
 pause_agent(Call, AgentId, Data) ->
@@ -186,10 +187,10 @@ send_new_status(Call, AgentId, Data, PubFun, Timeout) ->
                ]),
     PubFun(Update).
 
--spec presence_id(kz_json:object()) -> kz_term:api_ne_binary().
+-spec presence_id(kz_json:object()) -> api_kz_term:ne_binary().
 presence_id(Data) -> kz_json:get_ne_binary_value(<<"presence_id">>, Data).
 
--spec presence_state(kz_json:object()) -> kz_term:api_ne_binary().
+-spec presence_state(kz_json:object()) -> api_kz_term:ne_binary().
 presence_state(Data) ->
     format_presence_state(kz_json:get_ne_binary_value(<<"presence_state">>, Data)).
 

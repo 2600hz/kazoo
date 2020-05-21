@@ -56,6 +56,18 @@ paths:
       summary: Get stats of queues
       tags:
         - queues
+  /accounts/{ACCOUNT_ID}/queues/stats_summary:
+    get:
+      operationId: GetAccountsAccountIdQueuesStatsSummary
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get stats_summary of queues
+      tags:
+        - queues
   /accounts/{ACCOUNT_ID}/queues/{QUEUE_ID}:
     delete:
       operationId: DeleteAccountsAccountIdQueuesQueueId
@@ -173,5 +185,18 @@ paths:
         200:
           description: Successful operation
       summary: Update an instance of queues
+      tags:
+        - queues
+  /accounts/{ACCOUNT_ID}/queues/{QUEUE_ID}/stats_summary:
+    get:
+      operationId: GetAccountsAccountIdQueuesQueueIdStatsSummary
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/QUEUE_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get stats_summary of queues
       tags:
         - queues

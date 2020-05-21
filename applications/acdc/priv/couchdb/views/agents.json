@@ -4,6 +4,9 @@
         "view_map": [
             {
                 "classification": "account"
+            },
+            {
+                "database": "acdc"
             }
         ]
     },
@@ -16,7 +19,8 @@
                 "  emit(doc._id, {",
                 "    'first_name': doc.first_name,",
                 "    'last_name': doc.last_name,",
-                "    'queues': doc.queues",
+                "    'queues': doc.queues,",
+                "    'skills': doc.acdc_skills || []",
                 "  });",
                 "}"
             ]

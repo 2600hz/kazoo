@@ -4,7 +4,7 @@ Agents represent the endpoints that a call in a queue will try to connect with.
 
 #### Agents
 
-Agents are comprised of two processes, a `gen_listener` (named process) and a `gen_statem`. A supervisor ensures that the `gen_listener` and `gen_statem` are kept alive together. A supervisor above that manages the list of agents.
+Agents are comprised of two processes, a `gen_listener` (named process) and a `gen_fsm`. A supervisor ensures that the `gen_listener` and `gen_fsm` are kept alive together. A supervisor above that manages the list of agents.
 
 > Agent process tree
 
@@ -52,9 +52,11 @@ The interplay between AMQP messages, the agent process, and the agent FSM proces
     <- member_connect_resp --
 ```
 
-An agent will respond to all connect requests while in the *ready* state. The acdc_agent will pass along the `member_connect_req` to the FSM. If the FSM is in the *ready* state, the FSM will pass the request JSON to the agent process to send the `member_connect_resp` message. If the FSM is in any other state, the `member_connect_req` payload will be ignored.
+An agent will respond to all connect requests while in the *ready* state. The acdc_agent will pass along the `member_connect_req` to the FSM. If the FSM is in the *ready* state, the FSM will pass the request JSON to the agent process to send the `member_connect_resp` message. If the FSM is in any other state, the `member_connect_req` payload will be ignored.  
 
-> Member Connect Win
+Depending on the Queue strategy (ring_all, round robin), 1 or more agents that responded may receive the `member_connect_win` message
+
+> Member Connect Win and same Agent answers the member call
 
 ```asciiart
               AMQP                      Erlang
@@ -79,7 +81,24 @@ An agent will respond to all connect requests while in the *ready* state. The ac
                                                         {ready}
 ```
 
-When an agent receives a `member_connect_win` while in the *ready* state, the FSM will instruct the agent process to bridge to the agent's endpoint(s) and enter the *ringing* state. The agent process binds to the call events and attempts the bridge. Once the bridge is established, the FSM will instruct the agent process to send a `member_connect_accepted` and move to the *answered* state. On receiving a hangup event, the FSM will instruct the agent process to unbind from call events and will start the wrapup timer and enter the *wrapup* state. Once the timer fires, the FSM will return to the *ready* state.
+> Member Connect Win and different Agent answers the member call
+
+```asciiart
+              AMQP                        Erlang
+[Queue]                       [Agent]                     [AgentFSM]
+                                                            {ready}
+    ---- member_connect_win ---->
+                                  -- member_connect_win --> ok
+                                  <- bridge_member --------
+                                                            {ringing}
+                           {bind}
+                                -- call_event ---------->
+    -- member_connect_satisfied -->
+                                  -- member_connect_satisfied -->
+                                                            {ready}
+```
+
+When an agent receives a `member_connect_win` while in the *ready* state, the FSM will instruct the agent process to bridge to the agent's endpoint(s) and enter the *ringing* state. The agent process binds to the call events and attempts the bridge. Once the bridge is established, the FSM will instruct the agent process to send a `member_connect_accepted` and move to the *answered* state. On receiving a hangup event, the FSM will instruct the agent process to unbind from call events and will start the wrapup timer and enter the *wrapup* state. Once the timer fires, the FSM will return to the *ready* state. If another answers the member call then the agent process will receive a `member_connect_satisfied` and move back tp the *ready* state.
 
 > Member Connect Win (fail to bridge)
 
@@ -226,10 +245,10 @@ When `acdc_init` starts up (last child of acdc_sup), it iterates through each ac
 acdc_init:
   foreach acct in accts
     foreach queue in acct
-      acdc_queues_sup:new(AcctId, QueueId)
+      acdc_queues_sup:new(AccountId, QueueId)
 ```
 
-`acdc_queues_sup` will start an `acdc_queue_sup` process to represent the AcctId/QueueId combo. The child list of the `acdc_queue_sup` has two entries: `acdc_queue_manager` and `acdc_queue_workers_sup`.
+`acdc_queues_sup` will start an `acdc_queue_sup` process to represent the AccountId/QueueId combo. The child list of the `acdc_queue_sup` has two entries: `acdc_queue_manager` and `acdc_queue_workers_sup`.
 
 `acdc_queue_manager` handles receiving updates from config docs about the queue, member calls to the queue, etc.
 `acdc_queue_workers_sup` handles managing actual member_call processing units. Its really a pool of `member_call workers`. This allows us to utilize AMQP's ack/nack features to handle worker crashes and not lose the member call, but still process multiple calls at once (meaning, if we have a queue with 10 agents, and 5 members call in, 5 phones had better start ringing).

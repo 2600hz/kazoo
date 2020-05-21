@@ -1,0 +1,5 @@
+<event name="PLAYBACK_STOP">
+	<fields verbose="true">
+            <field name="call_event" type="reference"/>
+	</fields>
+</event>
