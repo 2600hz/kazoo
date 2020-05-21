@@ -1,0 +1,36 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.acdc_queue.member_callback_accepted",
+    "description": "AMQP API for acdc_queue.member_callback_accepted",
+    "properties": {
+        "Account-ID": {
+            "type": "string"
+        },
+        "Agent-ID": {
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "member"
+            ]
+        },
+        "Event-Name": {
+            "enum": [
+                "callback_accepted"
+            ]
+        },
+        "Process-ID": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Account-ID",
+        "Agent-ID",
+        "Call-ID",
+        "Process-ID"
+    ],
+    "type": "object"
+}

@@ -23,6 +23,18 @@ paths:
       summary: Get stats of agents
       tags:
         - agents
+  /accounts/{ACCOUNT_ID}/agents/stats_summary:
+    get:
+      operationId: GetAccountsAccountIdAgentsStatsSummary
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get stats_summary of agents
+      tags:
+        - agents
   /accounts/{ACCOUNT_ID}/agents/status:
     get:
       operationId: GetAccountsAccountIdAgentsStatus
@@ -88,6 +100,19 @@ paths:
         - agents
     post:
       operationId: PostAccountsAccountIdAgentsUserIdQueueStatus
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/USER_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of agents
+      tags:
+        - agents
+  /accounts/{ACCOUNT_ID}/agents/{USER_ID}/restart:
+    post:
+      operationId: PostAccountsAccountIdAgentsUserIdRestart
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'

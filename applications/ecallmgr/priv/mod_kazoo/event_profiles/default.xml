@@ -14,6 +14,8 @@
 	<event name="DETECTED_TONE" />
 	<event name="RECORD_START" />
 	<event name="RECORD_STOP" />
+	<event name="PLAYBACK_START" />
+	<event name="PLAYBACK_STOP" />
 	<event name="conference::maintenance" />
 	<event name="kazoo::noop" />
 	<event name="kazoo::masquerade" />

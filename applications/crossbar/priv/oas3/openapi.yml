@@ -22,6 +22,8 @@
     '$ref': 'paths/agents.yml#/paths/~1accounts~1{ACCOUNT_ID}~1agents'
   '/accounts/{ACCOUNT_ID}/agents/stats':
     '$ref': 'paths/agents.yml#/paths/~1accounts~1{ACCOUNT_ID}~1agents~1stats'
+  '/accounts/{ACCOUNT_ID}/agents/stats_summary':
+    '$ref': 'paths/agents.yml#/paths/~1accounts~1{ACCOUNT_ID}~1agents~1stats_summary'
   '/accounts/{ACCOUNT_ID}/agents/status':
     '$ref': 'paths/agents.yml#/paths/~1accounts~1{ACCOUNT_ID}~1agents~1status'
   '/accounts/{ACCOUNT_ID}/agents/status/{USER_ID}':
@@ -32,6 +34,9 @@
   '/accounts/{ACCOUNT_ID}/agents/{USER_ID}/queue_status':
     '$ref': >-
       paths/agents.yml#/paths/~1accounts~1{ACCOUNT_ID}~1agents~1{USER_ID}~1queue_status
+  '/accounts/{ACCOUNT_ID}/agents/{USER_ID}/restart':
+    '$ref': >-
+      paths/agents.yml#/paths/~1accounts~1{ACCOUNT_ID}~1agents~1{USER_ID}~1restart
   '/accounts/{ACCOUNT_ID}/agents/{USER_ID}/status':
     '$ref': >-
       paths/agents.yml#/paths/~1accounts~1{ACCOUNT_ID}~1agents~1{USER_ID}~1status
@@ -418,6 +423,8 @@
     '$ref': 'paths/queues.yml#/paths/~1accounts~1{ACCOUNT_ID}~1queues~1eavesdrop'
   '/accounts/{ACCOUNT_ID}/queues/stats':
     '$ref': 'paths/queues.yml#/paths/~1accounts~1{ACCOUNT_ID}~1queues~1stats'
+  '/accounts/{ACCOUNT_ID}/queues/stats_summary':
+    '$ref': 'paths/queues.yml#/paths/~1accounts~1{ACCOUNT_ID}~1queues~1stats_summary'
   '/accounts/{ACCOUNT_ID}/queues/{QUEUE_ID}':
     '$ref': 'paths/queues.yml#/paths/~1accounts~1{ACCOUNT_ID}~1queues~1{QUEUE_ID}'
   '/accounts/{ACCOUNT_ID}/queues/{QUEUE_ID}/eavesdrop':
@@ -426,6 +433,9 @@
   '/accounts/{ACCOUNT_ID}/queues/{QUEUE_ID}/roster':
     '$ref': >-
       paths/queues.yml#/paths/~1accounts~1{ACCOUNT_ID}~1queues~1{QUEUE_ID}~1roster
+  '/accounts/{ACCOUNT_ID}/queues/{QUEUE_ID}/stats_summary':
+    '$ref': >-
+      paths/queues.yml#/paths/~1accounts~1{ACCOUNT_ID}~1queues~1{QUEUE_ID}~1stats_summary
   '/accounts/{ACCOUNT_ID}/rate_limits':
     '$ref': 'paths/rate_limits.yml#/paths/~1accounts~1{ACCOUNT_ID}~1rate_limits'
   '/accounts/{ACCOUNT_ID}/recordings':

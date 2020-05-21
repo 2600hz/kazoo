@@ -450,6 +450,7 @@
                    ,{'bridge', ['CHANNEL_BRIDGE', 'CHANNEL_UNBRIDGE']}
                    ,{'media', ['DETECTED_TONE', 'DTMF','CHANNEL_PROGRESS','CHANNEL_PROGRESS_MEDIA']}
                    ,{'record', ['RECORD_START', 'RECORD_STOP']}
+                   ,{'playback', ['PLAYBACK_STOP']}
                    ,{'callflow', ['ROUTE_WINNER', 'CHANNEL_EXECUTE_COMPLETE', 'CHANNEL_METAFLOW']}
                    ,{'presence', ['PRESENCE_IN']}
                    ,{'channel_full_update', ['CHANNEL_DATA','CHANNEL_SYNC','CALL_UPDATE']}

@@ -10,11 +10,6 @@
 %%%
 %%%
 %%% @author Sponsored by Raffel Internet B.V., Implemented by Conversant Ltd
-%%%
-%%% This Source Code Form is subject to the terms of the Mozilla Public
-%%% License, v. 2.0. If a copy of the MPL was not distributed with this
-%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
-%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cb_acdc_call_stats).
@@ -36,14 +31,21 @@
 
 -define(COLUMNS
        ,[{<<"id">>, fun col_id/1}
+        ,{<<"entered_timestamp">>, fun col_entered_timestamp/1}
+        ,{<<"abandoned_timestamp">>, fun col_abandoned_timestamp/1}
         ,{<<"handled_timestamp">>, fun col_handled_timestamp/1}
+        ,{<<"processed_timestamp">>, fun col_processed_timestamp/1}
         ,{<<"caller_id_number">>, fun col_caller_id_number/1}
         ,{<<"caller_id_name">>, fun col_caller_id_name/1}
         ,{<<"entered_position">>, fun col_entered_position/1}
+        ,{<<"exited_position">>, fun col_exited_position/1}
         ,{<<"status">>, fun col_status/1}
         ,{<<"agent_id">>, fun col_agent_id/1}
         ,{<<"wait_time">>, fun col_wait_time/1}
         ,{<<"talk_time">>, fun col_talk_time/1}
+        ,{<<"misses">>, fun col_misses/1}
+        ,{<<"required_skills">>, fun col_required_skills/1}
+        ,{<<"call_id">>, fun col_call_id/1}
         ,{<<"queue_id">>, fun col_queue_id/1}
         ]).
 
@@ -127,7 +129,7 @@ load_stats_summary(Context, [_, {?KZ_ACCOUNTS_DB, [_]} | _]) ->
     lager:debug("loading call stats for account ~s", [cb_context:account_id(Context)]),
     Options = [{'is_chunked', 'true'}
               ,{'chunk_size', ?MAX_BULK}
-              ,{'mapper', crossbar_view:get_value_fun()}
+              ,{'mapper', crossbar_view:map_value_fun()}
               ],
     crossbar_view:load_modb(Context, ?CB_LIST, Options);
 load_stats_summary(Context, _Nouns) ->
@@ -155,12 +157,19 @@ normalize_stat_to_csv(Context, JObj) ->
     end.
 
 col_id(JObj) -> kz_doc:id(JObj, <<>>).
+col_entered_timestamp(JObj) -> kz_json:get_value(<<"entered_timestamp">>, JObj, <<>>).
+col_abandoned_timestamp(JObj) -> kz_json:get_value(<<"abandoned_timestamp">>, JObj, <<>>).
 col_handled_timestamp(JObj) -> kz_json:get_value(<<"handled_timestamp">>, JObj, <<>>).
+col_processed_timestamp(JObj) -> kz_json:get_value(<<"processed_timestamp">>, JObj, <<>>).
 col_caller_id_number(JObj) -> kz_json:get_value(<<"caller_id_number">>, JObj, <<>>).
 col_caller_id_name(JObj) -> kz_json:get_value(<<"caller_id_name">>, JObj, <<>>).
 col_entered_position(JObj) -> kz_json:get_value(<<"entered_position">>, JObj, <<>>).
+col_exited_position(JObj) -> kz_json:get_value(<<"exited_position">>, JObj, <<>>).
 col_status(JObj) -> kz_json:get_value(<<"status">>, JObj, <<>>).
 col_agent_id(JObj) -> kz_json:get_value(<<"agent_id">>, JObj, <<>>).
 col_wait_time(JObj) -> kz_json:get_value(<<"wait_time">>, JObj, <<>>).
 col_talk_time(JObj) -> kz_json:get_value(<<"talk_time">>, JObj, <<>>).
+col_misses(JObj) -> kz_json:get_value(<<"misses">>, JObj, <<>>).
+col_required_skills(JObj) -> kz_json:get_value(<<"required_skills">>, JObj, <<>>).
+col_call_id(JObj) -> kz_json:get_value(<<"call_id">>, JObj, <<>>).
 col_queue_id(JObj) -> kz_json:get_value(<<"queue_id">>, JObj, <<>>).

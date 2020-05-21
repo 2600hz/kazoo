@@ -2,8 +2,8 @@
 
 | Function | Arguments | Description |
 | -------- | --------- | ----------- |
-| `acct_restart/1` | `(AcctId)` | |
-| `acct_status/1` | `(AcctId)` | |
-| `agent_restart/2` | `(AcctId,AgentId)` | |
-| `agent_status/2` | `(AcctId,AgentId)` | |
+| `acct_restart/1` | `(AccountId)` | |
+| `acct_status/1` | `(AccountId)` | |
+| `agent_restart/2` | `(AccountId,AgentId)` | |
+| `agent_status/2` | `(AccountId,AgentId)` | |
 | `status/0` |  | |
