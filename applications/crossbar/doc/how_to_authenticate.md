@@ -62,7 +62,7 @@ After the required data is ready, you can use `user_auth` API to get an authenti
 ```shell
 $ curl -v -X PUT \
     -H "Content-Type: application/json" \
-    -d '{"data":{"credentials":"82a2dc91686ec828a67152d45a5c5ef7", "account_name":"{ACCOUNT_NAME"}, "method":[md5|sha1]}' \
+    -d '{"data":{"credentials":"82a2dc91686ec828a67152d45a5c5ef7", "account_name":"{ACCOUNT_NAME"}, "method":[md5|sha]}' \
     https://{SERVER}:8000/v2/user_auth
 ```
 
