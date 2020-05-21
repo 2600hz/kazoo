@@ -197,7 +197,7 @@ no_channels(#state{id = TargetId
     Flow = kz_json:from_list([{<<"module">>, TargetType}
                              ,{<<"data">>, kz_json:from_list([{<<"id">>, TargetId}])}
                              ]),
-    cf_exe:branch(Flow, Call),
+    cf_exe:continue_with_flow(Flow, Call),
     just('connected');
 no_channels(#state{type = <<"offnet">>
                   ,is_no_match = 'true'

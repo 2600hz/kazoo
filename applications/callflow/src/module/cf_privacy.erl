@@ -29,7 +29,7 @@ handle(Data, Call, AccountId, Number) ->
     case cf_flow:lookup(Number, AccountId) of
         {'ok', CallFlow, _NoMatch} ->
             UpdatedCall = update_call(Number, Data, Call),
-            cf_exe:branch(kzd_callflows:flow(CallFlow), UpdatedCall);
+            cf_exe:branch(CallFlow, UpdatedCall);
         {'error', _} ->
             cf_exe:stop(Call)
     end.

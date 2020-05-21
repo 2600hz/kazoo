@@ -53,6 +53,8 @@
 
 -export([token_check/2]).
 
+-export([update_call_on_branch/2, update_call_on_branch/3]).
+
 -include("callflow.hrl").
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 
@@ -372,7 +374,7 @@ get_endpoint_id_by_sip_username(AccountDb, Username) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc
+%% @doc Get the callflow doc for an operator number.
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_operator_callflow(kz_term:ne_binary()) -> {'ok', kz_json:object()} |
@@ -387,8 +389,7 @@ get_operator_callflow(Account, OpNum) ->
         {'ok', _, 'true'} ->
             lager:warning("unable to find operator callflow in ~s: lookup only returned no_match", [Account]),
             {'error', 'no_match'};
-        {'ok', JObj, _} ->
-            {'ok', kz_json:get_json_value(<<"flow">>, JObj, kz_json:new())};
+        {'ok', JObj, _} -> {'ok', JObj};
         {'error', _R}=E ->
             lager:warning("unable to find operator callflow in ~s: ~p", [Account, _R]),
             E
@@ -785,3 +786,34 @@ normalize_capture_group(CaptureGroup, <<AccountId/binary>>) ->
     knm_converters:normalize(CaptureGroup, AccountId);
 normalize_capture_group(CaptureGroup, Call) ->
     normalize_capture_group(CaptureGroup, kapps_call:account_id(Call)).
+
+%%------------------------------------------------------------------------------
+%% @doc Used to keep KVs on call up to date when branching to new callflows,
+%% such as when using cf_callflow or dialing the operator in cf_voicemail.
+%%
+%% @param FlowDoc {@link kzd_callflows:doc()} callflow doc being branched to
+%% @param Call {@link kapps_call:call()} the call to update
+%% @end
+%%------------------------------------------------------------------------------
+-spec update_call_on_branch(kzd_callflows:doc(), kapps_call:call()) -> kapps_call:call().
+update_call_on_branch(FlowDoc, Call) ->
+    update_call_on_branch(FlowDoc, cf_flow:contains_no_match(FlowDoc), Call).
+
+%%------------------------------------------------------------------------------
+%% @see update_call_on_branch/2
+%%
+%% @param FlowDoc {@link kzd_callflows:doc()} callflow doc being branched to
+%% @param NoMatch whether the callflow is the fallback no_match callflow
+%% @param Call {@link kapps_call:call()} the call to update
+%% @end
+%%------------------------------------------------------------------------------
+-spec update_call_on_branch(kzd_callflows:doc(), boolean(), kapps_call:call()) -> kapps_call:call().
+update_call_on_branch(FlowDoc, NoMatch, Call) ->
+    Props = [{'cf_flow_id', kz_doc:id(FlowDoc)}
+            ,{'cf_flow_name', kzd_callflows:name(FlowDoc, kapps_call:request_user(Call))}
+            ,{'cf_flow', kzd_callflows:flow(FlowDoc)}
+            ,{'cf_capture_group', kzd_callflows:capture_group(FlowDoc)}
+            ,{'cf_capture_groups', kzd_callflows:capture_groups(FlowDoc, kz_json:new())}
+            ,{'cf_no_match', NoMatch}
+            ],
+    kapps_call:kvs_store_proplist(Props, Call).

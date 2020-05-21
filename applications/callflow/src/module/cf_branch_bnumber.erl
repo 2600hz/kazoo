@@ -83,13 +83,8 @@ maybe_hunt(_Data, Call, CaptureGroup, 'true') ->
     case cf_flow:lookup(CaptureGroup, AccountId) of
         {'ok', Flow, NoMatch} when (not NoMatch)
                                    orelse AllowNoMatch ->
-            Props = [{'cf_capture_group', kz_json:get_ne_value(<<"capture_group">>, Flow)}
-                    ,{'cf_capture_groups', kz_json:get_value(<<"capture_groups">>, Flow, kz_json:new())}
-                    ],
-            UpdatedCall = kapps_call:kvs_store_proplist(Props, Call),
-            cf_exe:set_call(UpdatedCall),
             lager:info("branching to ~s", [kz_doc:id(Flow)]),
-            cf_exe:branch(kzd_callflows:flow(Flow, kz_json:new()), UpdatedCall);
+            cf_exe:branch(Flow, Call);
         _Else ->
             lager:info("hunt failed to find a callflow"),
             cf_exe:continue(Call)

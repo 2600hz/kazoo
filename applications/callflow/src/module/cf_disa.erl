@@ -163,7 +163,7 @@ maybe_restrict_call(Data, Call, Number, Flow) ->
             _ = kapps_call_command:queued_hangup(Call),
             'ok';
         'false' ->
-            cf_exe:branch(kz_json:get_json_value(<<"flow">>, Flow), Call)
+            cf_exe:branch(Flow, Call)
     end.
 
 -spec should_use_account_cid(kz_json:object()) -> boolean().

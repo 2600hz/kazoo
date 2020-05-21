@@ -247,20 +247,12 @@ pre_park_action(Call) ->
 %%------------------------------------------------------------------------------
 -spec update_call(kzd_callflows:doc(), boolean(), kz_term:ne_binary(), kapps_call:call()) ->
           kapps_call:call().
-update_call(Flow, NoMatch, ControllerQ, Call) ->
-    Props = [{'cf_flow_id', kz_doc:id(Flow)}
-            ,{'cf_flow_name', kzd_callflows:name(Flow, kapps_call:request_user(Call))}
-            ,{'cf_flow', kzd_callflows:flow(Flow)}
-            ,{'cf_capture_group', kzd_callflows:capture_group(Flow)}
-            ,{'cf_capture_groups', kzd_callflows:capture_groups(Flow, kz_json:new())}
-            ,{'cf_no_match', NoMatch}
-            ],
-
-    Updaters = [{fun kapps_call:kvs_store_proplist/2, Props}
-               ,{fun kapps_call:set_controller_queue/2, ControllerQ}
+update_call(FlowDoc, NoMatch, ControllerQ, Call) ->
+    Updaters = [{fun kapps_call:set_controller_queue/2, ControllerQ}
                ,{fun kapps_call:set_application_name/2, ?APP_NAME}
                ,{fun kapps_call:set_application_version/2, ?APP_VERSION}
-               ,{fun kapps_call:insert_custom_channel_var/3, <<"CallFlow-ID">>, kz_doc:id(Flow)}
+               ,{fun kapps_call:insert_custom_channel_var/3, <<"CallFlow-ID">>, kz_doc:id(FlowDoc)}
+               ,{fun cf_util:update_call_on_branch/3, FlowDoc, NoMatch}
                ],
     kapps_call:exec(Updaters, Call).
 

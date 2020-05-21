@@ -141,12 +141,12 @@ continue_with_flow(Flow, Call) ->
     Srv = cf_exe_pid(Call),
     continue_with_flow(Flow, Srv).
 
--spec branch(kz_json:object(), kapps_call:call() | pid()) -> 'ok'.
-branch(Flow, Srv) when is_pid(Srv) ->
-    gen_server:cast(Srv, {'branch', Flow});
-branch(Flow, Call) ->
+-spec branch(kzd_callflows:doc(), kapps_call:call() | pid()) -> 'ok'.
+branch(FlowDoc, Srv) when is_pid(Srv) ->
+    gen_listener:cast(Srv, {'branch', FlowDoc});
+branch(FlowDoc, Call) ->
     Srv = cf_exe_pid(Call),
-    branch(Flow, Srv).
+    branch(FlowDoc, Srv).
 
 -spec next(kapps_call:call() | pid()) -> kz_term:api_object().
 next(Srv) -> next(?DEFAULT_CHILD_KEY, Srv).
@@ -493,27 +493,27 @@ handle_cast('continue_on_destroy', State) ->
 handle_cast({'continue_with_flow', NewFlow}, State) ->
     lager:info("callflow has been reset"),
     {'noreply', launch_cf_module(State#state{flow=NewFlow})};
-handle_cast({'branch', _NewFlow}, #state{branch_count=BC}=State) when BC =< 0 ->
+handle_cast({'branch', _NewFlowDoc}, #state{branch_count=BC}=State) when BC =< 0 ->
     lager:warning("callflow exceeded max branch count, terminating"),
     {'stop', 'normal', State};
-handle_cast({'branch', NewFlow}, #state{flow=Flow
-                                       ,flows=Flows
-                                       ,branch_count=BC
-                                       }=State) ->
+handle_cast({'branch', NewFlowDoc}, #state{call=Call
+                                          ,flow=Flow
+                                          ,flows=Flows
+                                          ,branch_count=BC
+                                          }=State) ->
     lager:info("callflow has been branched"),
-    case kz_json:get_ne_value([<<"children">>, ?DEFAULT_CHILD_KEY], Flow) of
-        'undefined' ->
-            {'noreply', launch_cf_module(State#state{flow=NewFlow
-                                                    ,branch_count=BC-1
-                                                    })};
-        PrevFlow ->
-            {'noreply', launch_cf_module(State#state{flow=NewFlow
-                                                    ,flows=[PrevFlow|Flows]
-                                                    ,branch_count=BC-1
-                                                    }
-                                        )
-            }
-    end;
+    Call1 = cf_util:update_call_on_branch(NewFlowDoc, Call),
+    NewFlow = kz_json:get_json_value(<<"flow">>, NewFlowDoc, kz_json:new()),
+    Flows1 = case kz_json:get_ne_value([<<"children">>, ?DEFAULT_CHILD_KEY], Flow) of
+                 'undefined' -> Flows;
+                 PrevFlow -> [PrevFlow|Flows]
+             end,
+
+    {'noreply', launch_cf_module(State#state{call=Call1
+                                            ,flow=NewFlow
+                                            ,flows=Flows1
+                                            ,branch_count=BC-1
+                                            })};
 handle_cast({'callid_update', NewCallId}, #state{call=Call}=State) ->
     kz_log:put_callid(NewCallId),
     PrevCallId = kapps_call:call_id_direct(Call),

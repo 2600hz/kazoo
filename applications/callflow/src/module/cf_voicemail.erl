@@ -1035,7 +1035,7 @@ maybe_exist_callflow(Number, Call) ->
                       ,{fun kapps_call:set_to/2, list_to_binary([Number, "@", kapps_call:to_realm(Call)])}
                       ],
             Call1 = cf_exe:update_call(kapps_call:exec(Updates, Call)),
-            cf_exe:branch(kz_json:get_json_value(<<"flow">>, Flow), Call1);
+            cf_exe:branch(Flow, Call1);
         _ ->
             lager:info("failed to find a callflow to satisfy ~s", [Number]),
             _ = kapps_call_command:audio_macro([{'prompt', <<"fault-can_not_be_completed_as_dialed">>}], Call),
@@ -2112,7 +2112,7 @@ review_recording(AttachmentName, AllowOperator
         {'ok', Operator} when AllowOperator ->
             lager:info("caller chose to ring the operator"),
             case cf_util:get_operator_callflow(kapps_call:account_id(Call), OpNum) of
-                {'ok', Flow} -> {'branch', Flow};
+                {'ok', FlowDoc} -> {'branch', FlowDoc};
                 {'error',_R} -> review_recording(AttachmentName, AllowOperator, Box, Call, Loop + 1)
             end;
         {'error', 'channel_hungup'} ->

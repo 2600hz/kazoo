@@ -270,7 +270,7 @@ maybe_confirm_match(Call, User, 'true') ->
 -spec route_to_match(kapps_call:call(), 'fail' | kz_json:object()) -> 'ok'.
 route_to_match(Call, 'fail') -> cf_exe:continue(Call);
 route_to_match(Call, Callflow) ->
-    cf_exe:branch(kz_json:get_value(<<"flow">>, Callflow), Call).
+    cf_exe:branch(Callflow, Call).
 
 %%------------------------------------------------------------------------------
 %% Audio Prompts

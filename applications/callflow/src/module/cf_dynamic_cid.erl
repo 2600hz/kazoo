@@ -243,7 +243,7 @@ maybe_restrict_call(Data, Call, Number, Flow) ->
             _ = kapps_call_command:queued_hangup(Call),
             'ok';
         'false' ->
-            cf_exe:branch(kzd_callflows:flow(Flow), Call)
+            cf_exe:branch(Flow, Call)
     end.
 
 %%------------------------------------------------------------------------------

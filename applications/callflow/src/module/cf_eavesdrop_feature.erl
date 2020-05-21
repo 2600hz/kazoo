@@ -62,7 +62,7 @@ handle(Data, Call) ->
                                      ,{<<"module">>, <<"eavesdrop">>}
                                      ,{<<"children">>, kz_json:new()}
                                      ]),
-            cf_exe:branch(Flow, Call);
+            cf_exe:continue_with_flow(Flow, Call);
         'false' ->
             _ = cf_eavesdrop:no_permission_to_eavesdrop(Call),
             cf_exe:stop(Call)
