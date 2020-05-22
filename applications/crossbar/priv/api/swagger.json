@@ -11702,6 +11702,9 @@
                 },
                 "UUID": {
                     "type": "string"
+                },
+                "Zone": {
+                    "type": "string"
                 }
             },
             "required": [
