@@ -1,0 +1,31 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.acdc_queue.sync_req",
+    "description": "AMQP API for acdc_queue.sync_req",
+    "properties": {
+        "Account-ID": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "queue"
+            ]
+        },
+        "Event-Name": {
+            "enum": [
+                "sync_req"
+            ]
+        },
+        "Process-ID": {
+            "type": "string"
+        },
+        "Queue-ID": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Account-ID",
+        "Queue-ID"
+    ],
+    "type": "object"
+}

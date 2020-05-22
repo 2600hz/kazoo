@@ -1,0 +1,37 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.acdc_queue.member_call_success",
+    "description": "AMQP API for acdc_queue.member_call_success",
+    "properties": {
+        "Account-ID": {
+            "type": "string"
+        },
+        "Agent-ID": {
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "member"
+            ]
+        },
+        "Event-Name": {
+            "enum": [
+                "call_success"
+            ]
+        },
+        "Process-ID": {
+            "type": "string"
+        },
+        "Queue-ID": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Account-ID",
+        "Queue-ID"
+    ],
+    "type": "object"
+}

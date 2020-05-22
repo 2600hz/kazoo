@@ -33081,7 +33081,9 @@
                     "description": "The queue strategy for connecting agents to callers",
                     "enum": [
                         "round_robin",
-                        "most_idle"
+                        "most_idle",
+                        "skills_based_round_robin",
+                        "ring_all"
                     ],
                     "type": "string"
                 }

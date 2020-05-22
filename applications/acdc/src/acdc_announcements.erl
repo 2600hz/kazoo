@@ -2,6 +2,10 @@
 %%% @copyright (C) 2017, Voxter Communications
 %%% @doc
 %%% @author Daniel Finke
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(acdc_announcements).
@@ -175,9 +179,9 @@ get_average_wait_time(Call) ->
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ]),
     case kz_amqp_worker:call(Req
-                                     ,fun kapi_acdc_stats:publish_average_wait_time_req/1
-                                     ,fun kapi_acdc_stats:average_wait_time_resp_v/1
-                                     )
+                            ,fun kapi_acdc_stats:publish_average_wait_time_req/1
+                            ,fun kapi_acdc_stats:average_wait_time_resp_v/1
+                            )
     of
         {'error', E} ->
             lager:error("failed to receive current calls from AMQP: ~p", [E]),

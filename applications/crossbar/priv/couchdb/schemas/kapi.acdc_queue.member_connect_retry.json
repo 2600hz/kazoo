@@ -1,0 +1,30 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.acdc_queue.member_connect_retry",
+    "description": "AMQP API for acdc_queue.member_connect_retry",
+    "properties": {
+        "Agent-ID": {
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "member"
+            ]
+        },
+        "Event-Name": {
+            "enum": [
+                "connect_retry"
+            ]
+        },
+        "Process-ID": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Call-ID"
+    ],
+    "type": "object"
+}

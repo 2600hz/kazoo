@@ -7,6 +7,10 @@
 %%%
 %%%
 %%% @author Daniel Finke
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cf_acdc_wait_time).
@@ -23,7 +27,7 @@
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     AccountId = kapps_call:account_id(Call),
-    QueueId = maybe_use_variable(Data, Call),
+    QueueId = kz_doc:id(Data),
     Skills = maybe_include_skills(QueueId, Call),
     Window = kz_json:get_integer_value(<<"window">>, Data),
 
@@ -45,9 +49,9 @@ handle(Data, Call) ->
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ]),
     case kz_amqp_worker:call(Req
-                                     ,fun kapi_acdc_stats:publish_average_wait_time_req/1
-                                     ,fun kapi_acdc_stats:average_wait_time_resp_v/1
-                                     )
+                            ,fun kapi_acdc_stats:publish_average_wait_time_req/1
+                            ,fun kapi_acdc_stats:average_wait_time_resp_v/1
+                            )
     of
         {'ok', Resp} ->
             AverageWaitTime = kz_json:get_integer_value(<<"Average-Wait-Time">>, Resp, 0),
@@ -57,26 +61,6 @@ handle(Data, Call) ->
         {'error', E} ->
             lager:error("could not fetch average wait time for account ~s queue ~s: ~p", [AccountId, QueueId, E]),
             cf_exe:continue(Call)
-    end.
-
-%%------------------------------------------------------------------------------
-%% @private
-%% @doc If a variable id is specified and refers to an existing document,
-%% use that variable id instead of the one specified in the module's
-%% data
-%% @end
-%%------------------------------------------------------------------------------
--spec maybe_use_variable(kz_json:object(), kapps_call:call()) -> kz_term:api_binary().
-maybe_use_variable(Data, Call) ->
-    case kz_json:get_ne_binary_value(<<"var">>, Data) of
-        'undefined' ->
-            kz_json:get_ne_binary_value(<<"id">>, Data);
-        Variable ->
-            Value = kz_json:get_value(<<"value">>, cf_kvs_set:get_kv(Variable, Call)),
-            case kz_datamgr:open_cache_doc(kapps_call:account_db(Call), Value) of
-                {'ok', _} -> Value;
-                _ -> kz_doc:id(Data)
-            end
     end.
 
 %%------------------------------------------------------------------------------

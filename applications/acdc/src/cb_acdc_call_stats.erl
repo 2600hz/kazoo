@@ -10,6 +10,10 @@
 %%%
 %%%
 %%% @author Sponsored by Raffel Internet B.V., Implemented by Conversant Ltd
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cb_acdc_call_stats).
@@ -129,7 +133,7 @@ load_stats_summary(Context, [_, {?KZ_ACCOUNTS_DB, [_]} | _]) ->
     lager:debug("loading call stats for account ~s", [cb_context:account_id(Context)]),
     Options = [{'is_chunked', 'true'}
               ,{'chunk_size', ?MAX_BULK}
-              ,{'mapper', crossbar_view:map_value_fun()}
+              ,{'mapper', crossbar_view:get_value_fun()}
               ],
     crossbar_view:load_modb(Context, ?CB_LIST, Options);
 load_stats_summary(Context, _Nouns) ->

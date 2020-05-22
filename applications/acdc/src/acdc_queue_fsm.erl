@@ -4,6 +4,10 @@
 %%% @author James Aimonetti
 %%%
 %%% @author James Aimonetti
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(acdc_queue_fsm).
@@ -76,9 +80,9 @@
 
                ,member_call :: kapps_call:call()
                ,member_call_start :: kz_term:api_non_neg_integer()
-               ,member_call_winners :: [kz_term:api_object()] %% list of who won the call
+               ,member_call_winners :: [kz_term:api_object()] | 'undefined' %% list of who won the call
 
-                                      %% Config options
+                                       %% Config options
                ,name :: kz_term:ne_binary()
                ,connection_timeout :: pos_integer()
                ,agent_ring_timeout = 10 :: pos_integer() % how long to ring an agent before giving up
@@ -225,7 +229,6 @@ init([MgrPid, ListenerPid, QueueJObj]) ->
            ,account_id = kz_doc:account_id(QueueJObj)
            ,account_db = kz_doc:account_db(QueueJObj)
            ,queue_id = QueueId
-
            ,name = kz_json:get_value(<<"name">>, QueueJObj)
            ,connection_timeout = connection_timeout(kz_json:get_integer_value(<<"connection_timeout">>, QueueJObj))
            ,agent_ring_timeout = agent_ring_timeout(kz_json:get_integer_value(<<"agent_ring_timeout">>, QueueJObj))
@@ -239,7 +242,6 @@ init([MgrPid, ListenerPid, QueueJObj]) ->
            ,recording_url = kz_json:get_ne_value(<<"call_recording_url">>, QueueJObj)
            ,cdr_url = kz_json:get_ne_value(<<"cdr_url">>, QueueJObj)
            ,member_call = 'undefined'
-
            ,notifications = kz_json:get_value(<<"notifications">>, QueueJObj)
            }
     }.
@@ -325,7 +327,7 @@ connect_req({'member_call_cancel', JObj}, #state{queue_proc=Srv
             webseq:evt(?WSD_ID, self(), CallId, <<"member call finish - DTMF">>),
 
             acdc_queue_listener:exit_member_call(Srv),
-            acdc_stats:call_abandoned(AccountId, QueueId, CallId, ?ABANDON_EXIT),
+            _ = acdc_stats:call_abandoned(AccountId, QueueId, CallId, ?ABANDON_EXIT),
             {'next_state', 'ready', clear_member_call(State), 'hibernate'};
         'false' -> {'next_state', 'connect_req', State}
     end;
@@ -390,7 +392,7 @@ connect_req({'member_hungup', JObj}, #state{queue_proc=Srv
             webseq:evt(?WSD_ID, self(), CallId, <<"member call finish - abandon">>),
 
             acdc_queue_listener:cancel_member_call(Srv, JObj),
-            acdc_stats:call_abandoned(AccountId, QueueId, CallId, ?ABANDON_HANGUP),
+            _ = acdc_stats:call_abandoned(AccountId, QueueId, CallId, ?ABANDON_HANGUP),
             {'next_state', 'ready', clear_member_call(State), 'hibernate'};
         'false' ->
             lager:debug("hangup recv for ~s while processing ~s, ignoring", [kz_json:get_value(<<"Call-ID">>, JObj)
@@ -410,7 +412,7 @@ connect_req({'timeout', ConnRef, ?CONNECTION_TIMEOUT_MESSAGE}, #state{queue_proc
     webseq:evt(?WSD_ID, self(), CallId, <<"member call finish - timeout">>),
 
     acdc_queue_listener:timeout_member_call(Srv),
-    acdc_stats:call_abandoned(AccountId, QueueId, CallId, ?ABANDON_TIMEOUT),
+    _ = acdc_stats:call_abandoned(AccountId, QueueId, CallId, ?ABANDON_TIMEOUT),
     {'next_state', 'ready', clear_member_call(State), 'hibernate'};
 
 connect_req({'register_callback', JObj}, #state{connection_timer_ref=ConnRef}=State) ->
@@ -473,12 +475,12 @@ connecting({'member_call_cancel', JObj}, #state{queue_proc=Srv
             webseq:evt(?WSD_ID, self(), CallId, <<"member call finish - DTMF">>),
 
             lists:foreach(fun(Winner) ->
-                lager:debug("sending timeout agent  to ~s(~s)", [kz_json:get_value(<<"Agent-ID">>, Winner) ,kz_json:get_value(<<"Process-ID">>, Winner) ]),
-                acdc_queue_listener:timeout_agent(Srv, Winner)
-                end,
-                Winners),
+                                  lager:debug("sending timeout agent  to ~s(~s)", [kz_json:get_value(<<"Agent-ID">>, Winner) ,kz_json:get_value(<<"Process-ID">>, Winner) ]),
+                                  acdc_queue_listener:timeout_agent(Srv, Winner)
+                          end,
+                          Winners),
             acdc_queue_listener:exit_member_call(Srv),
-            acdc_stats:call_abandoned(AccountId, QueueId, CallId, ?ABANDON_EXIT),
+            _ = acdc_stats:call_abandoned(AccountId, QueueId, CallId, ?ABANDON_EXIT),
             {'next_state', 'ready', clear_member_call(State), 'hibernate'};
         'false' -> {'next_state', 'connecting', State}
     end;
@@ -501,10 +503,10 @@ connecting({'accepted', AcceptJObj}, #state{queue_proc=Srv
             webseq:evt(?WSD_ID, self(), CallId, <<"member call - agent acceptance">>),
 
             lists:foreach(fun(Win) -> acdc_queue_listener:member_connect_satisfied(Srv, kz_json:set_value(<<"Accept-Agent-ID">>, AcceptAgentID, Win), []) end, Wins),
-%%            lists:foreach(fun(Win) -> acdc_queue_listener:member_connect_satisfied(Srv, Win, []) end, Wins),
+            %%            lists:foreach(fun(Win) -> acdc_queue_listener:member_connect_satisfied(Srv, Win, []) end, Wins),
 
             acdc_queue_listener:finish_member_call(Srv, AcceptJObj),
-            case kz_json:get_value(<<"Old-Call-ID">>, AcceptJObj) of
+            _ = case kz_json:get_value(<<"Old-Call-ID">>, AcceptJObj) of
                 'undefined' ->
                     acdc_stats:call_handled(AccountId, QueueId, CallId
                                            ,kz_json:get_value(<<"Agent-ID">>, AcceptJObj)
@@ -549,11 +551,12 @@ connecting({'retry', RetryJObj}, #state{agent_ring_timer_ref=AgentRef
     RetryProcId = kz_json:get_value(<<"Process-ID">>, RetryJObj),
     RetryAgentId = kz_json:get_value(<<"Agent-ID">>, RetryJObj),
 
-    NewWinners = 
-    lists:filter(fun(Winner) ->
-                RetryAgentId =/= kz_json:get_value(<<"Agent-ID">>, Winner) andalso RetryProcId =/=  kz_json:get_value(<<"Process-ID">>, Winner)
-                end,
-                Winners),
+    NewWinners =
+        lists:filter(fun(Winner) ->
+                             RetryAgentId =/= kz_json:get_value(<<"Agent-ID">>, Winner)
+                                 andalso RetryProcId =/=  kz_json:get_value(<<"Process-ID">>, Winner)
+                     end,
+                     Winners),
 
     case NewWinners of
         [] ->
@@ -579,10 +582,10 @@ connecting({'timeout', AgentRef, ?AGENT_RING_TIMEOUT_MESSAGE}, #state{agent_ring
     gen_fsm:send_event(self(), {'timeout', 'undefined', ?COLLECT_RESP_MESSAGE}),
 
     lists:foreach(fun(Winner) ->
-        lager:debug("sending timeout agent  to ~s(~s)", [kz_json:get_value(<<"Agent-ID">>, Winner) ,kz_json:get_value(<<"Process-ID">>, Winner) ]),
-        acdc_queue_listener:timeout_agent(Srv, Winner)
-        end,
-        Winners),
+                          lager:debug("sending timeout agent  to ~s(~s)", [kz_json:get_value(<<"Agent-ID">>, Winner) ,kz_json:get_value(<<"Process-ID">>, Winner) ]),
+                          acdc_queue_listener:timeout_agent(Srv, Winner)
+                  end,
+                  Winners),
     {'next_state', 'connect_req', State#state{agent_ring_timer_ref='undefined'
                                              ,member_call_winners='undefined'
                                              }};
@@ -609,7 +612,7 @@ connecting({'member_hungup', CallEvt}, #state{queue_proc=Srv
     lager:debug("caller hungup while we waited for the agent to connect"),
     acdc_queue_listener:cancel_member_call(Srv, CallEvt),
     CallId = kapps_call:call_id(Call),
-    acdc_stats:call_abandoned(AccountId, QueueId, CallId, ?ABANDON_HANGUP),
+    _ = acdc_stats:call_abandoned(AccountId, QueueId, CallId, ?ABANDON_HANGUP),
 
     webseq:evt(?WSD_ID, self(), CallId, <<"member call - hungup">>),
 
@@ -625,13 +628,13 @@ connecting({'timeout', ConnRef, ?CONNECTION_TIMEOUT_MESSAGE}, #state{queue_proc=
     lager:debug("connection timeout occurred, bounce the caller out of the queue"),
 
     lists:foreach(fun(Winner) ->
-        lager:debug("maybe sending timeout agent  to ~s(~s)", [kz_json:get_value(<<"Agent-ID">>, Winner) ,kz_json:get_value(<<"Process-ID">>, Winner) ]),
-        maybe_timeout_winner(Srv, Winner)
-        end,
-        Winners),
+                          lager:debug("maybe sending timeout agent  to ~s(~s)", [kz_json:get_value(<<"Agent-ID">>, Winner) ,kz_json:get_value(<<"Process-ID">>, Winner) ]),
+                          maybe_timeout_winner(Srv, Winner)
+                  end,
+                  Winners),
 
     CallId = kapps_call:call_id(Call),
-    acdc_stats:call_abandoned(AccountId, QueueId, CallId, ?ABANDON_TIMEOUT),
+    _ = acdc_stats:call_abandoned(AccountId, QueueId, CallId, ?ABANDON_TIMEOUT),
     webseq:evt(?WSD_ID, self(), CallId, <<"member call finish - timeout">>),
     {'next_state', 'ready', clear_member_call(State), 'hibernate'};
 
@@ -647,10 +650,10 @@ connecting({'register_callback', JObj}, #state{queue_proc=Srv
     gen_fsm:send_event(self(), {'timeout', 'undefined', ?COLLECT_RESP_MESSAGE}),
     maybe_stop_timer(AgentRef),
     lists:foreach(fun(Winner) ->
-        lager:debug("sending timeout agent  to ~s(~s)", [kz_json:get_value(<<"Agent-ID">>, Winner) ,kz_json:get_value(<<"Process-ID">>, Winner) ]),
-        acdc_queue_listener:timeout_agent(Srv, Winner)
-        end,
-        Winners),
+                          lager:debug("sending timeout agent  to ~s(~s)", [kz_json:get_value(<<"Agent-ID">>, Winner) ,kz_json:get_value(<<"Process-ID">>, Winner) ]),
+                          acdc_queue_listener:timeout_agent(Srv, Winner)
+                  end,
+                  Winners),
 
     {'next_state', 'connect_req', State#state{connection_timer_ref='undefined'
                                              ,agent_ring_timer_ref='undefined'
@@ -695,7 +698,7 @@ connecting('current_call', _, #state{member_call=Call
 %%
 %% @end
 %%------------------------------------------------------------------------------
--spec handle_event(any(), atom(), state()) -> kz_term:handle_fsm_ret(state()).
+-spec handle_event(any(), atom(), state()) -> kz_types:handle_fsm_ret(state()).
 handle_event({'refresh', QueueJObj}, StateName, State) ->
     lager:debug("refreshing queue configs"),
     {'next_state', StateName, update_properties(QueueJObj, State), 'hibernate'};
@@ -712,7 +715,7 @@ handle_event(_Event, StateName, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_sync_event(any(), {pid(),any()}, atom(), state()) ->
-                               kz_term:handle_sync_event_ret(state()).
+          kz_types:handle_sync_event_ret(state()).
 handle_sync_event('cdr_url', _, StateName, #state{cdr_url=Url}=State) ->
     {'reply', Url, StateName, State};
 handle_sync_event(_Event, _From, StateName, State) ->
@@ -728,7 +731,7 @@ handle_sync_event(_Event, _From, StateName, State) ->
 %%
 %% @end
 %%------------------------------------------------------------------------------
--spec handle_info(any(), atom(), state()) -> kz_term:handle_fsm_ret(state()).
+-spec handle_info(any(), atom(), state()) -> kz_types:handle_fsm_ret(state()).
 handle_info(_Info, StateName, State) ->
     lager:debug("unhandled message in state ~s: ~p", [StateName, _Info]),
     {'next_state', StateName, State}.
@@ -914,7 +917,7 @@ maybe_connect_re_req(MgrSrv, ListenerSrv, #state{account_id=AccountId
             lager:debug("all agents have left the queue, failing call"),
             webseq:note(?WSD_ID, self(), 'right', <<"all agents have left the queue, failing call">>),
             acdc_queue_listener:exit_member_call_empty(ListenerSrv),
-            acdc_stats:call_abandoned(AccountId, QueueId, kapps_call:call_id(Call), ?ABANDON_EMPTY),
+            _ = acdc_stats:call_abandoned(AccountId, QueueId, kapps_call:call_id(Call), ?ABANDON_EMPTY),
             {'next_state', 'ready', clear_member_call(State), 'hibernate'}
     end;
 maybe_connect_re_req(MgrSrv, ListenerSrv, State) ->

@@ -25,6 +25,10 @@
 %%% @author Karl Anderson
 %%% @author James Aimonetti
 %%% @author Daniel Finke
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cb_agents).
@@ -170,12 +174,12 @@ content_types_provided(Context, _, ?RESTART_PATH_TOKEN) -> Context.
 %% @end
 %%------------------------------------------------------------------------------
 -spec validate(cb_context:context()) ->
-                      cb_context:context().
+          cb_context:context().
 validate(Context) ->
     summary(Context).
 
 -spec validate(cb_context:context(), path_token()) ->
-                      cb_context:context().
+          cb_context:context().
 validate(Context, PathToken) ->
     validate_agent(Context, PathToken, cb_context:req_verb(Context)).
 
@@ -189,7 +193,7 @@ validate_agent(Context, Id, ?HTTP_GET) ->
     read(Id, Context).
 
 -spec validate(cb_context:context(), path_token(), path_token()) ->
-                      cb_context:context().
+          cb_context:context().
 validate(Context, AgentId, PathToken) ->
     validate_agent_action(Context, AgentId, PathToken, cb_context:req_verb(Context)).
 
@@ -367,9 +371,9 @@ fetch_stats_summary(Context) ->
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ]),
     case kz_amqp_worker:call(Req
-                                     ,fun kapi_acdc_stats:publish_agent_calls_req/1
-                                     ,fun kapi_acdc_stats:agent_calls_resp_v/1
-                                     )
+                            ,fun kapi_acdc_stats:publish_agent_calls_req/1
+                            ,fun kapi_acdc_stats:agent_calls_resp_v/1
+                            )
     of
         {'error', E} ->
             crossbar_util:response('error', <<"stat request had errors">>, 400
@@ -407,8 +411,8 @@ fetch_current_status(Context, AgentId) ->
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ]),
     case kz_amqp_worker:call(Req
-                                     ,fun kapi_acdc_stats:publish_agent_cur_status_req/1
-                                     )
+                            ,fun kapi_acdc_stats:publish_agent_cur_status_req/1
+                            )
     of
         {'error', E} ->
             crossbar_util:response('error'
@@ -516,7 +520,7 @@ format_stats(Context, Resp) ->
                  ,kz_json:new()
                  ,Stats
                  )
-                          ,Context
+     ,Context
      ).
 
 -spec format_stats_fold(kz_json:object(), kz_json:object()) ->
@@ -547,12 +551,12 @@ format_stats_fold(Stat, Acc) ->
     end.
 
 -spec maybe_add_answered(kz_json:object(), kz_json:object()) ->
-                                [{kz_json:path(), non_neg_integer()}].
+          [{kz_json:path(), non_neg_integer()}].
 maybe_add_answered(Stat, Acc) ->
     maybe_add_answered(Stat, Acc, kz_json:get_value(<<"status">>, Stat)).
 
 -spec maybe_add_answered(kz_json:object(), kz_json:object(), kz_term:api_binary()) ->
-                                [{kz_json:path(), non_neg_integer()}].
+          [{kz_json:path(), non_neg_integer()}].
 maybe_add_answered(Stat, Acc, <<"handled">>) ->
     add_answered(Stat, Acc);
 maybe_add_answered(Stat, Acc, <<"processed">>) ->
@@ -645,12 +649,12 @@ validate_status_change(Context, S) ->
             lager:debug("status ~s not valid", [S]),
             cb_context:add_validation_error(
               <<"status">>
-                                           ,<<"enum">>
-                                           ,kz_json:from_list(
-                                              [{<<"message">>, <<"value is not a valid status">>}
-                                              ,{<<"cause">>, S}
-                                              ])
-                                           ,Context
+                  ,<<"enum">>
+                  ,kz_json:from_list(
+                     [{<<"message">>, <<"value is not a valid status">>}
+                     ,{<<"cause">>, S}
+                     ])
+             ,Context
              )
     end.
 
@@ -663,12 +667,12 @@ check_for_status_error(Context, S) ->
             lager:debug("status ~s not found", [S]),
             cb_context:add_validation_error(
               <<"status">>
-                                           ,<<"enum">>
-                                           ,kz_json:from_list(
-                                              [{<<"message">>, <<"value is not a valid status">>}
-                                              ,{<<"cause">>, S}
-                                              ])
-                                           ,Context
+                  ,<<"enum">>
+                  ,kz_json:from_list(
+                     [{<<"message">>, <<"value is not a valid status">>}
+                     ,{<<"cause">>, S}
+                     ])
+             ,Context
              )
     end.
 
@@ -682,12 +686,12 @@ validate_status_change_params(Context, <<"pause">>) ->
             lager:debug("bad int for pause: ~p", [N]),
             cb_context:add_validation_error(
               <<"timeout">>
-                                           ,<<"minimum">>
-                                           ,kz_json:from_list(
-                                              [{<<"message">>, <<"value must be at least greater than or equal to 0">>}
-                                              ,{<<"cause">>, N}
-                                              ])
-                                           ,Context
+                  ,<<"minimum">>
+                  ,kz_json:from_list(
+                     [{<<"message">>, <<"value must be at least greater than or equal to 0">>}
+                     ,{<<"cause">>, N}
+                     ])
+             ,Context
              )
     catch
         _E:_R -> cb_context:set_resp_status(Context, 'success')

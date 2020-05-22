@@ -4,6 +4,10 @@
 %%% @author James Aimonetti
 %%%
 %%% @author James Aimonetti
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(acdc_stats_util).
@@ -22,6 +26,8 @@
 
         ,call_summary_req/1
         ,publish_summary_data/4
+        ,publish_call_query_errors/3
+        ,publish_query_errors/4
         ]).
 
 -include("acdc.hrl").
@@ -108,8 +114,8 @@ call_summary_req(JObj) ->
     AccountId = kz_json:get_value(<<"Account-ID">>, JObj),
     StartRange = kz_json:get_value(<<"Start-Range">>, JObj),
     EndRange = kz_json:get_value(<<"End-Range">>, JObj),
-    Queues = 
-        case kz_json:get_value(<<"Queue-ID">>, JObj) of 
+    Queues =
+        case kz_json:get_value(<<"Queue-ID">>, JObj) of
             undefined -> [ {A,Q,StartRange,EndRange} || {_, {A, Q}} <- acdc_queues_sup:queues_running(), A == AccountId];
             Else -> [ {AccountId,Else,StartRange,EndRange}]
         end,
@@ -118,25 +124,25 @@ call_summary_req(JObj) ->
 
 -spec query_call_summary([kz_term:ne_binary()]) -> kz_term:proplist().
 query_call_summary(Queues) ->
-    QueryResults = 
-        lists:filter(fun(X) -> not kz_json:is_empty(X) end, 
-                lists:foldl(fun query_call_summary_fold/2, [], Queues)),
+    QueryResults =
+        lists:filter(fun(X) -> not kz_json:is_empty(X) end,
+                     lists:foldl(fun query_call_summary_fold/2, [], Queues)),
 
     JsonResult = lists:foldl(fun(QR, JObj) ->
-                        TotalCalls = kz_json:get_value(<<"calls">>, QR),
-                        AbandonedCalls = kz_json:get_value(<<"abandoned">>, QR),
-                        QueueId = kz_json:get_value(<<"Queue-ID">>, QR),
-                        QueueJObj = kz_json:set_values([{<<"total_calls">>, TotalCalls }
-                                                       ,{<<"abandoned_calls">>, AbandonedCalls}
-                                                       ,{<<"average_wait_time">>, kz_json:get_value(<<"wait_time">>, QR) div TotalCalls}
-                                                       ,{<<"average_talk_time">>, kz_json:get_value(<<"talk_time">>, QR) div (TotalCalls - AbandonedCalls)}
-                                                       ,{<<"max_entered_position">>, kz_json:get_value(<<"entered_position">>, QR)}
-                                                       ]
-                                                      ,kz_json:new()),
-                        kz_json:set_value(QueueId, QueueJObj, JObj)
-                        end
-                        ,kz_json:new()
-                        ,QueryResults),
+                                     TotalCalls = kz_json:get_value(<<"calls">>, QR),
+                                     AbandonedCalls = kz_json:get_value(<<"abandoned">>, QR),
+                                     QueueId = kz_json:get_value(<<"Queue-ID">>, QR),
+                                     QueueJObj = kz_json:set_values([{<<"total_calls">>, TotalCalls }
+                                                                    ,{<<"abandoned_calls">>, AbandonedCalls}
+                                                                    ,{<<"average_wait_time">>, kz_json:get_value(<<"wait_time">>, QR) div TotalCalls}
+                                                                    ,{<<"average_talk_time">>, kz_json:get_value(<<"talk_time">>, QR) div (TotalCalls - AbandonedCalls)}
+                                                                    ,{<<"max_entered_position">>, kz_json:get_value(<<"entered_position">>, QR)}
+                                                                    ]
+                                                                   ,kz_json:new()),
+                                     kz_json:set_value(QueueId, QueueJObj, JObj)
+                             end
+                            ,kz_json:new()
+                            ,QueryResults),
 
     [{<<"Data">>, JsonResult}].
 
@@ -157,11 +163,11 @@ get_results_from_db(DB, {AccountId, QueueId, StartRange, EndRange}) ->
            ],
     case kz_datamgr:get_results(DB, <<"call_stats/call_summary">>, Opts) of
         {'ok', []} -> kz_json:new();
-        {'ok', [JObj]} -> 
+        {'ok', [JObj]} ->
             V1 = kz_json:get_value(<<"value">>, JObj),
             V2 = kz_json:set_values([{<<"Account-ID">>, AccountId},
                                      {<<"Queue-ID">>,QueueId}],
-                                      V1),
+                                    V1),
             V2;
         {'error', _E} ->
             lager:debug("error querying view: ~p", [_E]),
@@ -170,12 +176,12 @@ get_results_from_db(DB, {AccountId, QueueId, StartRange, EndRange}) ->
 
 get_results_from_dbs(DBs, Data) ->
     lists:foldl(fun(DB, Acc) ->
-        H = get_results_from_db(DB, Data),
-        merge_results(H, Acc)
-        end, kz_json:new(), DBs).
+                        H = get_results_from_db(DB, Data),
+                        merge_results(H, Acc)
+                end, kz_json:new(), DBs).
 
 merge_results(JObj1, JObj2) ->
-    Fun = fun(_,{both, V1, V2}) when is_integer(V1), is_integer(V2) -> {ok, V1 + V2}; 
+    Fun = fun(_,{both, V1, V2}) when is_integer(V1), is_integer(V2) -> {ok, V1 + V2};
              (_,{both, V, V}) -> {ok, V} end,
     kz_json:merge(Fun, [JObj1, JObj2]).
 
@@ -184,8 +190,8 @@ modb_range(AccountId, StartRange, EndRange) ->
     {{EY,EM,_}, _} = calendar:gregorian_seconds_to_datetime(EndRange),
     modb_db_list(AccountId,  {SY,SM}, {EY,EM}, []).
 
-modb_db_list(AccountId, Next, End, Acc) 
-                    when Next =:= End ->
+modb_db_list(AccountId, Next, End, Acc)
+  when Next =:= End ->
     [db_name(AccountId, Next)|Acc];
 modb_db_list(AccountId, Next, End, Acc) ->
     modb_db_list(AccountId, next_modb(Next), End, [db_name(AccountId, Next)|Acc]).
@@ -221,12 +227,22 @@ publish_summary_data(RespQ, MsgId, Summary, Active) ->
     kapi_acdc_stats:publish_call_summary_resp(RespQ, Resp).
 
 
+-spec publish_call_query_errors(kz_term:ne_binary()
+                               ,kz_term:ne_binary()
+                               ,kz_term:proplist() | {'error', _}) -> 'ok'.
 publish_call_query_errors(RespQ, MsgId, Errors) ->
     publish_query_errors(RespQ, MsgId, Errors, fun kapi_acdc_stats:publish_current_calls_err/2).
 
+-spec publish_call_summary_query_errors(kz_term:ne_binary()
+                                       ,kz_term:ne_binary()
+                                       ,kz_term:proplist() | {'error', _}) -> 'ok'.
 publish_call_summary_query_errors(RespQ, MsgId, Errors) ->
     publish_query_errors(RespQ, MsgId, Errors, fun kapi_acdc_stats:publish_call_summary_err/2).
 
+-spec publish_query_errors(kz_term:ne_binary()
+                          ,kz_term:ne_binary()
+                          ,kz_term:proplist() | {'error', _}
+                          ,fun())  -> 'ok'.
 publish_query_errors(RespQ, MsgId, Errors, PubFun) ->
     API = [{<<"Error-Reason">>, Errors}
           ,{<<"Msg-ID">>, MsgId}
@@ -234,7 +250,7 @@ publish_query_errors(RespQ, MsgId, Errors, PubFun) ->
           ],
     lager:debug("responding with errors to req ~s: ~p", [MsgId, Errors]),
     PubFun(RespQ, API).
-    
+
 -spec remove_missed(kz_term:proplist()) -> kz_term:proplist().
 remove_missed(Active) ->
     [{<<"Waiting">>, remove_misses_fold(props:get_value(<<"Waiting">>, Active, []))}

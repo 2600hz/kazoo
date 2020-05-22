@@ -1,0 +1,48 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.acdc_agent.resume",
+    "description": "AMQP API for acdc_agent.resume",
+    "properties": {
+        "Account-ID": {
+            "type": "string"
+        },
+        "Agent-ID": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "agent"
+            ]
+        },
+        "Event-Name": {
+            "enum": [
+                "resume"
+            ]
+        },
+        "Presence-ID": {
+            "type": "string"
+        },
+        "Presence-State": {
+            "enum": [
+                "confirmed",
+                "early",
+                "offline",
+                "online",
+                "terminated",
+                "trying"
+            ],
+            "type": "string"
+        },
+        "Queue-ID": {
+            "type": "string"
+        },
+        "Time-Limit": {
+            "type": "integer"
+        }
+    },
+    "required": [
+        "Account-ID",
+        "Agent-ID"
+    ],
+    "type": "object"
+}

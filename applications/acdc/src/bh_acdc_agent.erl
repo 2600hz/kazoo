@@ -2,6 +2,10 @@
 %%% @copyright (C) 2012-2019, Kage DS Ltd
 %%% @doc
 %%% @author Alan R Evans
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(bh_acdc_agent).
@@ -14,11 +18,11 @@
 -include_lib("../blackhole/src/blackhole.hrl").
 
 -define(BINDING(),
-       [
-        <<"acdc.agent.action.*">>
-       ,<<"acdc.agent.change.*">>
-       ,<<"acdc_stats.status.*">>
-       ]).
+        [
+         <<"acdc.agent.action.*">>
+        ,<<"acdc.agent.change.*">>
+        ,<<"acdc_stats.status.*">>
+        ]).
 
 -spec init() -> any().
 init() ->
@@ -26,7 +30,7 @@ init() ->
     _ = blackhole_bindings:bind(<<"blackhole.events.validate.acdc">>, ?MODULE, 'validate'),
     _ = blackhole_bindings:bind(<<"blackhole.events.bindings.acdc">>, ?MODULE, 'bindings'),
     _ = blackhole_bindings:bind(<<"blackhole.events.validate.acdc_stats">>, ?MODULE, 'validate'),
-        blackhole_bindings:bind(<<"blackhole.events.bindings.acdc_stats">>, ?MODULE, 'bindings').
+    blackhole_bindings:bind(<<"blackhole.events.bindings.acdc_stats">>, ?MODULE, 'bindings').
 
 init_bindings() ->
     Bindings = ?BINDING(),

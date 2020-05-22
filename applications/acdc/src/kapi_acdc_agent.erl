@@ -5,6 +5,10 @@
 %%%
 %%% @author James Aimonetti
 %%% @author Daniel Finke
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kapi_acdc_agent).
@@ -120,7 +124,7 @@ sync_req_routing_key(AccountId, Id) ->
 -define(SYNC_RESP_TYPES, []).
 
 -spec sync_resp(kz_term:api_terms()) -> {'ok', iolist()} |
-                                {'error', string()}.
+          {'error', string()}.
 sync_resp(Props) when is_list(Props) ->
     case sync_resp_v(Props) of
         'true' -> kz_api:build_message(Props, ?SYNC_RESP_HEADERS, ?OPTIONAL_SYNC_RESP_HEADERS);
@@ -152,7 +156,7 @@ sync_resp_v(JObj) ->
 -define(STATS_REQ_TYPES, []).
 
 -spec stats_req(kz_term:api_terms()) -> {'ok', iolist()} |
-                                {'error', string()}.
+          {'error', string()}.
 stats_req(Props) when is_list(Props) ->
     case stats_req_v(Props) of
         'true' -> kz_api:build_message(Props, ?STATS_REQ_HEADERS, ?OPTIONAL_STATS_REQ_HEADERS);
@@ -373,8 +377,8 @@ end_wrapup_v(Prop) when is_list(Prop) ->
 end_wrapup_v(JObj) -> end_wrapup_v(kz_json:to_proplist(JObj)).
 
 -spec restart(kz_term:api_terms()) ->
-                     {'ok', iolist()} |
-                     {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 restart(Props) when is_list(Props) ->
     case restart_v(Props) of
         'true' -> kz_api:build_message(Props, ?AGENT_HEADERS, ?OPTIONAL_AGENT_HEADERS);
@@ -447,8 +451,8 @@ fsm_shared_routing_key(AccountId, AgentId) ->
 -define(SHARED_FAILURE_TYPES, []).
 
 -spec shared_originate_failure(kz_term:api_terms()) ->
-                                      {'ok', iolist()} |
-                                      {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 shared_originate_failure(Props) when is_list(Props) ->
     case shared_originate_failure_v(Props) of
         'true' -> kz_api:build_message(Props, ?SHARED_FAILURE_HEADERS, ?OPTIONAL_SHARED_FAILURE_HEADERS);
@@ -472,8 +476,8 @@ shared_originate_failure_v(JObj) -> shared_originate_failure_v(kz_json:to_propli
 -define(SHARED_CALL_ID_TYPES, []).
 
 -spec shared_call_id(kz_term:api_terms()) ->
-                            {'ok', iolist()} |
-                            {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 shared_call_id(Props) when is_list(Props) ->
     case shared_call_id_v(Props) of
         'true' -> kz_api:build_message(Props, ?SHARED_CALL_ID_HEADERS, ?OPTIONAL_SHARED_CALL_ID_HEADERS);

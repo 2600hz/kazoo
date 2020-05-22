@@ -1,0 +1,24 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.acdc_stats.average_wait_time_err",
+    "description": "AMQP API for acdc_stats.average_wait_time_err",
+    "properties": {
+        "Error-Reason": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "acdc_stat"
+            ]
+        },
+        "Event-Name": {
+            "enum": [
+                "average_wait_time_err"
+            ]
+        }
+    },
+    "required": [
+        "Error-Reason"
+    ],
+    "type": "object"
+}

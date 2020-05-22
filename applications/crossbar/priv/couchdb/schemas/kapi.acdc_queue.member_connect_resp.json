@@ -1,0 +1,30 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.acdc_queue.member_connect_resp",
+    "description": "AMQP API for acdc_queue.member_connect_resp",
+    "properties": {
+        "Agent-ID": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "member"
+            ]
+        },
+        "Event-Name": {
+            "enum": [
+                "connect_resp"
+            ]
+        },
+        "Idle-Time": {
+            "type": "integer"
+        },
+        "Process-ID": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Agent-ID"
+    ],
+    "type": "object"
+}

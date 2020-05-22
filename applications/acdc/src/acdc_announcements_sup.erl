@@ -2,6 +2,10 @@
 %%% @copyright (C) 2017, Voxter Communications
 %%% @doc
 %%% @author Daniel Finke
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(acdc_announcements_sup).
@@ -70,7 +74,7 @@ stop_announcements(Pid) ->
 %%
 %% @end
 %%------------------------------------------------------------------------------
--spec init(list()) -> kz_term:sup_init_ret().
+-spec init(list()) -> kz_types:sup_init_ret().
 init([]) ->
 
     SupFlags = #{strategy => simple_one_for_one,
