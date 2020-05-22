@@ -175,8 +175,8 @@ load_chunked_recording_ids(Context, _RespType, _Db, _Ids, _Status) ->
 normalize_recording(Context, <<"json">>, Result) ->
     JObj = kz_json:get_json_value(<<"doc">>, Result),
     kz_json:from_list(
-            props:filter_empty(
-                   [{K, F(JObj, Context)} || {K, F} <- csv_rows(Context)]));
+      props:filter_empty(
+        [{K, F(JObj, Context)} || {K, F} <- csv_rows(Context)]));
 normalize_recording(Context, <<"csv">>, Result) ->
     JObj = kz_json:get_json_value(<<"doc">>, Result),
     <<(kz_binary:join([F(JObj, Context) || {_, F} <- csv_rows(Context)], <<",">>))/binary, "\r\n">>.
@@ -278,7 +278,7 @@ validate(Context) ->
             AdjustedQS = kz_json:set_values(Values, QS),
             AdjustedContext = cb_context:set_query_string(Context, AdjustedQS),
             recording_summary(AdjustedContext)
-end.
+    end.
 
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, ?COLLECTION) ->
@@ -338,7 +338,7 @@ patch_the_doc(RequestData, ExistingDoc) ->
 -spec validate_request(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 validate_request(RecordingId, Context) ->
     ValidateFuns = [
-                   fun validate_schema/2
+                    fun validate_schema/2
                    ],
     lists:foldl(fun(F, C) -> F(RecordingId, C) end
                ,Context
@@ -583,31 +583,31 @@ collection_process(Context, Action) ->
 
 recordings_action(Context, ?HTTP_PATCH, Recordings) ->
     Fun = fun(RecordingId, {Success, Failure}) ->
-            Ctx1 = validate_patch(RecordingId, Context),
-            case cb_context:has_errors(Ctx1) of
-                'true' ->
-                    {'error', {ErrorCode, ErrorMsg, _ErrorData}} = cb_context:response(Ctx1),
-                    Resp = kz_json:from_list([ {<<"cause">>, RecordingId}
-                                              ,{<<"code">>, ErrorCode}
-                                              ,{<<"message">>, ErrorMsg}]),
-                    {Success, kz_json:set_value(RecordingId, Resp, Failure)};
-                'false' ->
-                    Ctx2 = crossbar_doc:save(Ctx1),
-                    Doc = cb_context:doc(Ctx2),
-                    {kz_json:set_value(RecordingId, Doc, Success), Failure}
-            end
-            end,
+                  Ctx1 = validate_patch(RecordingId, Context),
+                  case cb_context:has_errors(Ctx1) of
+                      'true' ->
+                          {'error', {ErrorCode, ErrorMsg, _ErrorData}} = cb_context:response(Ctx1),
+                          Resp = kz_json:from_list([ {<<"cause">>, RecordingId}
+                                                   ,{<<"code">>, ErrorCode}
+                                                   ,{<<"message">>, ErrorMsg}]),
+                          {Success, kz_json:set_value(RecordingId, Resp, Failure)};
+                      'false' ->
+                          Ctx2 = crossbar_doc:save(Ctx1),
+                          Doc = cb_context:doc(Ctx2),
+                          {kz_json:set_value(RecordingId, Doc, Success), Failure}
+                  end
+          end,
     {Success, Failure} = lists:foldl(Fun,
-                            {kz_json:new(), kz_json:new()},
-                            Recordings),
+                                     {kz_json:new(), kz_json:new()},
+                                     Recordings),
     kz_json:merge(
-                    case kz_json:is_empty(Success) of
-                        true -> kz_json:new();
-                        false -> kz_json:set_value(<<"success">>, Success, kz_json:new())
-                    end,
-                    case kz_json:is_empty(Failure) of
-                        true -> kz_json:new();
-                        false -> kz_json:set_value(<<"failure">>, Failure, kz_json:new())
-                    end
-                  ).
+      case kz_json:is_empty(Success) of
+          true -> kz_json:new();
+          false -> kz_json:set_value(<<"success">>, Success, kz_json:new())
+      end,
+      case kz_json:is_empty(Failure) of
+          true -> kz_json:new();
+          false -> kz_json:set_value(<<"failure">>, Failure, kz_json:new())
+      end
+     ).
 
