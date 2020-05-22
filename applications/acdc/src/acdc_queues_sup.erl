@@ -2,6 +2,10 @@
 %%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(acdc_queues_sup).
@@ -79,7 +83,7 @@ find_queue_supervisor(AccountId, QueueId, [Super|Rest]) ->
 status() ->
     ?PRINT("ACDc Queues Status"),
     Ws = workers(),
-%    _ = kz_process:spawn(fun() -> lists:foreach(fun acdc_queue_sup:status/1, Ws) end),
+                                                %    _ = kz_process:spawn(fun() -> lists:foreach(fun acdc_queue_sup:status/1, Ws) end),
     lists:foreach(fun acdc_queue_sup:status/1, Ws),
     'ok'.
 
@@ -99,7 +103,7 @@ queues_running() ->
 %% specifications.
 %% @end
 %%------------------------------------------------------------------------------
--spec init(any()) -> kz_term:sup_init_ret().
+-spec init(any()) -> kz_types:sup_init_ret().
 init([]) ->
     RestartStrategy = 'simple_one_for_one',
     MaxRestarts = 1,

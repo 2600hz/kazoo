@@ -5,6 +5,10 @@
 %%%
 %%% @author James Aimonetti
 %%% @author Daniel Finke
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(acdc_init).
@@ -55,7 +59,7 @@ init_acct(Account) ->
 
     acdc_stats:init_db(AccountId),
 
-    init_acct_queues(AccountDb, AccountId),
+    _ = init_acct_queues(AccountDb, AccountId),
     init_acct_agents(AccountDb, AccountId).
 
 -spec init_acct_queues(kz_term:ne_binary()) -> any().

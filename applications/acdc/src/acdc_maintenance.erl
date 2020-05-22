@@ -4,6 +4,10 @@
 %%% @author James Aimonetti
 %%%
 %%% @author James Aimonetti
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(acdc_maintenance).
@@ -138,9 +142,9 @@ current_calls(AccountId, Props) ->
 get_and_show(AccountId, QueueId, Req) ->
     kz_log:put_callid(<<"acdc_maint.", AccountId/binary, ".", QueueId/binary>>),
     case kz_amqp_worker:call_collect(Req
-                                     ,fun kapi_acdc_stats:publish_current_calls_req/1
-                                     ,'acdc'
-                                     )
+                                    ,fun kapi_acdc_stats:publish_current_calls_req/1
+                                    ,'acdc'
+                                    )
     of
         {_, []} ->
             io:format("no call stats returned for account ~s (queue ~s)~n", [AccountId, QueueId]);
@@ -297,7 +301,7 @@ flush_call_stat(CallId) ->
     case acdc_stats:find_call(CallId) of
         'undefined' -> io:format("nothing found for call ~s~n", [CallId]);
         Call ->
-            acdc_stats:call_abandoned(kz_json:get_value(<<"Account-ID">>, Call)
+            _ = acdc_stats:call_abandoned(kz_json:get_value(<<"Account-ID">>, Call)
                                      ,kz_json:get_value(<<"Queue-ID">>, Call)
                                      ,CallId
                                      ,<<"INTERNAL_ERROR">>

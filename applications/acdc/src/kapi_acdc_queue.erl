@@ -4,6 +4,10 @@
 %%% @author James Aimonetti
 %%% @author KAZOO-3596: Sponsored by GTNetwork LLC, implemented by SIPLABS LLC
 %%% @author Daniel Finke
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kapi_acdc_queue).
@@ -336,8 +340,8 @@ member_connect_win_routing_key(JObj) ->
 -define(MEMBER_CONNECT_SATISFIED_TYPES, []).
 
 -spec member_connect_satisfied(kz_term:api_terms()) ->
-                                      {'ok', iolist()} |
-                                      {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 member_connect_satisfied(Props) when is_list(Props) ->
     case member_connect_satisfied_v(Props) of
         'true' -> kz_api:build_message(Props, ?MEMBER_CONNECT_SATISFIED_HEADERS, ?OPTIONAL_MEMBER_CONNECT_SATISFIED_HEADERS);
@@ -426,8 +430,8 @@ member_connect_accepted_v(JObj) ->
 -define(MEMBER_CALLBACK_ACCEPTED_TYPES, []).
 
 -spec member_callback_accepted(kz_term:api_terms()) ->
-                                      {'ok', iolist()} |
-                                      {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 member_callback_accepted(Props) when is_list(Props) ->
     case member_callback_accepted_v(Props) of
         'true' -> kz_api:build_message(Props, ?MEMBER_CALLBACK_ACCEPTED_HEADERS, ?OPTIONAL_MEMBER_CALLBACK_ACCEPTED_HEADERS);
@@ -660,8 +664,8 @@ agents_availability_routing_key(AccountId, QueueId) ->
 -define(AGENTS_AVAILABLE_REQ_TYPES, [{<<"Skills">>, fun kz_term:is_ne_binaries/1}]).
 
 -spec agents_available_req(kz_term:api_terms()) ->
-                                  {'ok', iolist()} |
-                                  {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 agents_available_req(Prop) when is_list(Prop) ->
     case agents_available_req_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?AGENTS_AVAILABLE_REQ_HEADERS, ?OPTIONAL_AGENTS_AVAILABLE_REQ_HEADERS);
@@ -682,8 +686,8 @@ agents_available_req_v(JObj) -> agents_available_req_v(kz_json:to_proplist(JObj)
 -define(AGENTS_AVAILABLE_RESP_TYPES, []).
 
 -spec agents_available_resp(kz_term:api_terms()) ->
-                                   {'ok', iolist()} |
-                                   {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 agents_available_resp(Prop) when is_list(Prop) ->
     case agents_available_resp_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?AGENTS_AVAILABLE_RESP_HEADERS, ?OPTIONAL_AGENTS_AVAILABLE_RESP_HEADERS);
@@ -788,8 +792,8 @@ member_callback_reg_routing_key(AccountId, QueueId, CallId) ->
 -define(MEMBER_CALLBACK_TYPES, []).
 
 -spec member_callback_reg(kz_term:api_terms()) ->
-                                 {'ok', iolist()} |
-                                 {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 member_callback_reg(Props) when is_list(Props) ->
     case member_callback_reg_v(Props) of
         'true' -> kz_api:build_message(Props, ?MEMBER_CALLBACK_HEADERS, ?OPTIONAL_MEMBER_CALLBACK_HEADERS);
@@ -816,13 +820,13 @@ queue_size(AccountId, QueueId) ->
     Q = shared_queue_name(AccountId, QueueId),
     Priority = acdc_util:max_priority(kzs_util:format_account_db(AccountId), QueueId),
     try kz_amqp_util:new_queue(Q, [{'return_field', 'all'}
-                               ,{'exclusive', 'false'}
-                               ,{'arguments', [{<<"x-message-ttl">>, ?MILLISECONDS_IN_DAY}
-                                              ,{<<"x-max-length">>, 1000}
-                                              ,{<<"x-max-priority">>, Priority}
-                                              ]
-                                }
-                               ])
+                                  ,{'exclusive', 'false'}
+                                  ,{'arguments', [{<<"x-message-ttl">>, ?MILLISECONDS_IN_DAY}
+                                                 ,{<<"x-max-length">>, 1000}
+                                                 ,{<<"x-max-priority">>, Priority}
+                                                 ]
+                                   }
+                                  ])
     of
         {'error', {'server_initiated_close', 404, _Msg}} ->
             lager:debug("failed to query queue size: ~s", [_Msg]),

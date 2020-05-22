@@ -2,6 +2,10 @@
 %%% @copyright (C) 2012-2019, Kage DS Ltd
 %%% @doc
 %%% @author Alan R Evans
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(bh_acdc_queue).
@@ -14,11 +18,11 @@
 -include_lib("../blackhole/src/blackhole.hrl").
 
 -define(BINDING(),
-       [
-        <<"acdc_queue.doc_created">>
-       ,<<"acdc_queue.doc_edited">>
-       ,<<"acdc_queue.doc_deleted">>
-       ]).
+        [
+         <<"acdc_queue.doc_created">>
+        ,<<"acdc_queue.doc_edited">>
+        ,<<"acdc_queue.doc_deleted">>
+        ]).
 
 -spec init() -> any().
 init() ->
@@ -35,8 +39,8 @@ init_bindings() ->
 
 -spec validate(bh_context:context(), map()) -> bh_context:context().
 validate(Context, #{keys := [Action]
-                   }) when Action =:= <<"doc_created">> 
-                           ; Action =:= <<"doc_edited">> 
+                   }) when Action =:= <<"doc_created">>
+                           ; Action =:= <<"doc_edited">>
                            ; Action =:= <<"doc_deleted">> ->
     Context;
 validate(Context, #{keys := Keys}) ->

@@ -3,6 +3,10 @@
 %%% @doc
 %%% @author James Aimonetti
 %%% @author Daniel Finke
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(acdc_agent_sup).
@@ -114,7 +118,7 @@ child_of_type(S, T) -> [P || {Ty, P, 'worker', _} <- supervisor:which_children(S
 %% specifications.
 %% @end
 %%------------------------------------------------------------------------------
--spec init(any()) -> kz_term:sup_init_ret().
+-spec init(any()) -> kz_types:sup_init_ret().
 init(Args) ->
     RestartStrategy = 'one_for_all',
     MaxRestarts = 2,

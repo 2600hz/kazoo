@@ -1,0 +1,42 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.acdc_queue.member_connect_satisfied",
+    "description": "AMQP API for acdc_queue.member_connect_satisfied",
+    "properties": {
+        "Accept-Agent-ID": {
+            "type": "string"
+        },
+        "Agent-ID": {
+            "type": "string"
+        },
+        "Agent-Process-IDs": {
+            "type": "string"
+        },
+        "Call": {
+            "type": "object"
+        },
+        "Event-Category": {
+            "enum": [
+                "member"
+            ]
+        },
+        "Event-Name": {
+            "enum": [
+                "connect_satisfied"
+            ]
+        },
+        "Process-ID": {
+            "type": "string"
+        },
+        "Queue-ID": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Accept-Agent-ID",
+        "Agent-ID",
+        "Call",
+        "Queue-ID"
+    ],
+    "type": "object"
+}

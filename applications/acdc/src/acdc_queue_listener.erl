@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz INC
+%%% @copyright (C) 2012-2020, 2600Hz INC
 %%% @doc The queue process manages two queues
 %%%   1. a private one that Agents will send member_connect_* messages
 %%%      and such
@@ -12,6 +12,10 @@
 %%% @author James Aimonetti
 %%% @author KAZOO-3596: Sponsored by GTNetwork LLC, implemented by SIPLABS LLC
 %%% @author Daniel Finke
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(acdc_queue_listener).
@@ -596,7 +600,7 @@ send_member_connect_win(RespJObj, Call, QueueId, MyQ, MyId, QueueOpts) ->
 -spec send_member_connect_satisfied(kz_json:object(), kapps_call:call(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 send_member_connect_satisfied(RespJObj, Call, QueueId, MyQ, MyId, QueueOpts) ->
     CallJSON = kapps_call:to_json(Call),
-%%    Q = kz_json:get_value(<<"Server-ID">>, RespJObj),
+    %%    Q = kz_json:get_value(<<"Server-ID">>, RespJObj),
     Satisfied = props:filter_undefined(
                   [{<<"Call">>, CallJSON}
                   ,{<<"Process-ID">>, MyId}
@@ -606,7 +610,7 @@ send_member_connect_satisfied(RespJObj, Call, QueueId, MyQ, MyId, QueueOpts) ->
                   ,{<<"Accept-Agent-ID">>, kz_json:get_value(<<"Accept-Agent-ID">>, RespJObj)}
                    | QueueOpts ++ kz_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
                   ]),
-%%    publish(Q, Satisfied, fun kapi_acdc_queue:publish_member_connect_satisfied/2).
+    %%    publish(Q, Satisfied, fun kapi_acdc_queue:publish_member_connect_satisfied/2).
     publish(Satisfied, fun kapi_acdc_queue:publish_member_connect_satisfied/1).
 
 -spec send_agent_timeout(kz_json:object(), kapps_call:call(), kz_term:ne_binary()) -> 'ok'.
@@ -678,7 +682,7 @@ publish_sync_resp(Strategy, StrategyState, ReqJObj, Id) ->
     publish(kz_json:get_value(<<"Server-ID">>, ReqJObj), Resp, fun kapi_acdc_queue:publish_sync_resp/2).
 
 -spec apply_callback_details(kapps_call:call(), kz_term:proplist()) ->
-                                    kapps_call:call().
+          kapps_call:call().
 apply_callback_details(Call, Props) ->
     case props:get_value(<<"Callback-Details">>, Props) of
         'undefined' -> Call;

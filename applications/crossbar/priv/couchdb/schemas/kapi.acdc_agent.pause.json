@@ -1,0 +1,51 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.acdc_agent.pause",
+    "description": "AMQP API for acdc_agent.pause",
+    "properties": {
+        "Account-ID": {
+            "type": "string"
+        },
+        "Agent-ID": {
+            "type": "string"
+        },
+        "Alias": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "agent"
+            ]
+        },
+        "Event-Name": {
+            "enum": [
+                "pause"
+            ]
+        },
+        "Presence-ID": {
+            "type": "string"
+        },
+        "Presence-State": {
+            "enum": [
+                "confirmed",
+                "early",
+                "offline",
+                "online",
+                "terminated",
+                "trying"
+            ],
+            "type": "string"
+        },
+        "Queue-ID": {
+            "type": "string"
+        },
+        "Time-Limit": {
+            "type": "integer"
+        }
+    },
+    "required": [
+        "Account-ID",
+        "Agent-ID"
+    ],
+    "type": "object"
+}

@@ -2,6 +2,10 @@
 %%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(acdc_queue_sup).
@@ -94,7 +98,7 @@ status(Supervisor) ->
 %% specifications.
 %% @end
 %%------------------------------------------------------------------------------
--spec init(list()) -> kz_term:sup_init_ret().
+-spec init(list()) -> kz_types:sup_init_ret().
 init(Args) ->
     RestartStrategy = 'one_for_all',
     MaxRestarts = 2,

@@ -2,6 +2,10 @@
 %%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(acdc_sup).
@@ -49,7 +53,7 @@ start_link() ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec init(any()) -> kz_term:sup_init_ret().
+-spec init(any()) -> kz_types:sup_init_ret().
 init([]) ->
     kz_util:set_startup(),
     RestartStrategy = 'one_for_one',

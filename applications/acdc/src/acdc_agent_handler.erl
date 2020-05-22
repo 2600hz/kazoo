@@ -6,6 +6,10 @@
 %%%
 %%% @author James Aimonetti
 %%% @author Daniel Finke
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(acdc_agent_handler).
@@ -258,17 +262,17 @@ handle_new_channel(JObj, AccountId) ->
 -spec handle_new_channel_acct(kz_json:object(), kz_term:api_binary()) -> 'ok'.
 handle_new_channel_acct(_, 'undefined') -> 'ok';
 handle_new_channel_acct(JObj, AccountId) ->
-    FromUser = 
-    case kz_json:is_defined(<<"From-Uri">>, JObj) of
-        false -> hd(binary:split(kz_json:get_value(<<"From">>, JObj), <<"@">>));
-        true -> hd(binary:split(kz_json:get_value(<<"From-Uri">>, JObj), <<"@">>))
-    end,
+    FromUser =
+        case kz_json:is_defined(<<"From-Uri">>, JObj) of
+            false -> hd(binary:split(kz_json:get_value(<<"From">>, JObj), <<"@">>));
+            true -> hd(binary:split(kz_json:get_value(<<"From-Uri">>, JObj), <<"@">>))
+        end,
     ToUser = get_to_user(JObj),
     CallId = kz_json:get_value(<<"Call-ID">>, JObj),
     MemberCallId = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Member-Call-ID">>], JObj),
     lager:debug("new channel in acct ~s: from ~s to ~s", [AccountId, FromUser, ToUser]),
     case kz_call_event:call_direction(JObj) of
-        <<"inbound">> -> 
+        <<"inbound">> ->
             gproc:send(?NEW_CHANNEL_REG(AccountId, FromUser), ?NEW_CHANNEL_TO(CallId, ToUser, <<"unknown">>));
         <<"outbound">> ->
             CR_IDNumber  =  kz_json:get_value(<<"Caller-ID-Number">>, JObj),
@@ -288,11 +292,11 @@ handle_new_channel_acct(JObj, AccountId) ->
 %%------------------------------------------------------------------------------
 -spec handle_destroyed_channel(kz_json:object(), kz_term:api_binary()) -> 'ok'.
 handle_destroyed_channel(JObj, AccountId) ->
-    FromUser = 
-    case kz_json:is_defined(<<"From-Uri">>, JObj) of
-        false -> hd(binary:split(kz_json:get_value(<<"From">>, JObj), <<"@">>));
-        true -> hd(binary:split(kz_json:get_value(<<"From-Uri">>, JObj), <<"@">>))
-    end,
+    FromUser =
+        case kz_json:is_defined(<<"From-Uri">>, JObj) of
+            false -> hd(binary:split(kz_json:get_value(<<"From">>, JObj), <<"@">>));
+            true -> hd(binary:split(kz_json:get_value(<<"From-Uri">>, JObj), <<"@">>))
+        end,
 
     ToUser = get_to_user(JObj),
 
@@ -508,8 +512,8 @@ update_probe(JObj, P) when is_pid(P) ->
 
 send_probe(JObj, State) ->
     To = <<(kz_json:get_value(<<"Username">>, JObj))/binary
-           ,"@"
-           ,(kz_json:get_value(<<"Realm">>, JObj))/binary>>,
+          ,"@"
+          ,(kz_json:get_value(<<"Realm">>, JObj))/binary>>,
     PresenceUpdate =
         [{<<"State">>, State}
         ,{<<"Presence-ID">>, To}

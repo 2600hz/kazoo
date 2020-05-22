@@ -1,0 +1,50 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.acdc_stats.status_connected",
+    "description": "AMQP API for acdc_stats.status_connected",
+    "properties": {
+        "Account-ID": {
+            "type": "string"
+        },
+        "Agent-ID": {
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Caller-ID-Name": {
+            "type": "string"
+        },
+        "Caller-ID-Number": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "acdc_status_stat"
+            ]
+        },
+        "Event-Name": {
+            "enum": [
+                "connected"
+            ]
+        },
+        "Pause-Alias": {
+            "type": "string"
+        },
+        "Pause-Time": {
+            "type": "integer"
+        },
+        "Timestamp": {
+            "type": "string"
+        },
+        "Wait-Time": {
+            "type": "integer"
+        }
+    },
+    "required": [
+        "Account-ID",
+        "Agent-ID",
+        "Timestamp"
+    ],
+    "type": "object"
+}

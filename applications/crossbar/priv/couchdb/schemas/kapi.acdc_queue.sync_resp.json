@@ -1,0 +1,38 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.acdc_queue.sync_resp",
+    "description": "AMQP API for acdc_queue.sync_resp",
+    "properties": {
+        "Account-ID": {
+            "type": "string"
+        },
+        "Current-Strategy": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "queue"
+            ]
+        },
+        "Event-Name": {
+            "enum": [
+                "sync_resp"
+            ]
+        },
+        "Process-ID": {
+            "type": "string"
+        },
+        "Queue-ID": {
+            "type": "string"
+        },
+        "Strategy-State": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Account-ID",
+        "Current-Strategy",
+        "Queue-ID"
+    ],
+    "type": "object"
+}

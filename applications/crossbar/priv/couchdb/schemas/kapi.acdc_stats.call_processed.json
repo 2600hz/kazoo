@@ -1,0 +1,41 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.acdc_stats.call_processed",
+    "description": "AMQP API for acdc_stats.call_processed",
+    "properties": {
+        "Account-ID": {
+            "type": "string"
+        },
+        "Agent-ID": {
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "acdc_call_stat"
+            ]
+        },
+        "Event-Name": {
+            "enum": [
+                "processed"
+            ]
+        },
+        "Hung-Up-By": {
+            "type": "string"
+        },
+        "Processed-Timestamp": {
+            "type": "string"
+        },
+        "Queue-ID": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Account-ID",
+        "Call-ID",
+        "Queue-ID"
+    ],
+    "type": "object"
+}

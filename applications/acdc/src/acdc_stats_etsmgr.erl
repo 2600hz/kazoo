@@ -4,6 +4,10 @@
 %%% @author James Aimonetti
 %%%
 %%% @author James Aimonetti
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(acdc_stats_etsmgr).
@@ -54,12 +58,9 @@ start_link(TableId, TableOptions) ->
 %%------------------------------------------------------------------------------
 -spec init(list()) -> {'ok', #state{}}.
 init([TableId, TableOptions]) ->
-    process_flag('trap_exit', 'true'),
     kz_log:put_callid(?MODULE),
     gen_server:cast(self(), {'begin', TableId, TableOptions}),
-
     lager:debug("started etsmgr for stats for ~s", [TableId]),
-
     {'ok', #state{}}.
 
 %%------------------------------------------------------------------------------
@@ -68,7 +69,7 @@ init([TableId, TableOptions]) ->
 %%
 %% @end
 %%------------------------------------------------------------------------------
--spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_term:handle_call_ret_state(state()).
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     lager:debug("unhandled call: ~p", [_Request]),
     {'reply', {'error', 'not_implemented'}, State}.
@@ -79,7 +80,7 @@ handle_call(_Request, _From, State) ->
 %%
 %% @end
 %%------------------------------------------------------------------------------
--spec handle_cast(any(), state()) -> kz_term:handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'begin', TableId, TableOptions}, State) ->
     Tbl = ets:new(TableId, TableOptions),
 
@@ -97,16 +98,7 @@ handle_cast(_Msg, State) ->
 %%
 %% @end
 %%------------------------------------------------------------------------------
--spec handle_info(any(), state()) -> kz_term:handle_info_ret_state(state()).
-handle_info({'EXIT', Etssrv, 'killed'}, #state{etssrv=Etssrv}=State) ->
-    lager:debug("ets mgr ~p killed", [Etssrv]),
-    {'noreply', State#state{etssrv='undefined'}};
-handle_info({'EXIT', EtsMgr, 'shutdown'}, #state{etssrv=EtsMgr}=State) ->
-    lager:debug("ets mgr ~p shutdown", [EtsMgr]),
-    {'noreply', State#state{etssrv='undefined'}};
-handle_info({'EXIT', EtsMgr, _Reason}, #state{etssrv=EtsMgr}=State) ->
-    lager:debug("ets mgr ~p exited: ~p", [EtsMgr, _Reason]),
-    {'noreply', State#state{etssrv='undefined'}};
+-spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'ETS-TRANSFER', Tbl, Etssrv, Data}, #state{table_id=Tbl
                                                        ,etssrv=Etssrv
                                                        ,give_away_ref='undefined'
@@ -132,8 +124,6 @@ handle_info({'give_away', Tbl, Data}, #state{table_id=Tbl
                                    ,give_away_ref=Ref
                                    }}
     end;
-handle_info({'EXIT', _Pid, _Reason}, State) ->
-    {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
@@ -163,7 +153,8 @@ send_give_away_retry(Tbl, Data, Timeout) ->
 %%------------------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
-    lager:debug("ETS mgr going down: ~p", [_Reason]).
+    lager:debug("ETS mgr going down: ~p", [_Reason]),
+    ok.
 
 %%------------------------------------------------------------------------------
 %% @private

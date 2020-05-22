@@ -7776,6 +7776,8 @@
       'enum':
         - round_robin
         - most_idle
+        - skills_based_round_robin
+        - ring_all
       'type': string
   'required':
     - name

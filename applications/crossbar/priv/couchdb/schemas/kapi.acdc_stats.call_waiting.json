@@ -1,0 +1,53 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.acdc_stats.call_waiting",
+    "description": "AMQP API for acdc_stats.call_waiting",
+    "properties": {
+        "Account-ID": {
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Caller-ID-Name": {
+            "type": "string"
+        },
+        "Caller-ID-Number": {
+            "type": "string"
+        },
+        "Caller-Priority": {
+            "type": "string"
+        },
+        "Entered-Position": {
+            "type": "string"
+        },
+        "Entered-Timestamp": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "acdc_call_stat"
+            ]
+        },
+        "Event-Name": {
+            "enum": [
+                "waiting"
+            ]
+        },
+        "Queue-ID": {
+            "type": "string"
+        },
+        "Required-Skills": {
+            "items": {
+                "type": "string"
+            },
+            "type": "array"
+        }
+    },
+    "required": [
+        "Account-ID",
+        "Call-ID",
+        "Queue-ID"
+    ],
+    "type": "object"
+}

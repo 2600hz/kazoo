@@ -2,6 +2,10 @@
 %%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc Created : 29 Nov 2012 by James Aimonetti
 %%% @author James Aimonetti
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(acdc_eavesdrop).
@@ -26,10 +30,10 @@ start(MCall, AccountId, AgentCallId) ->
 eavesdrop_req(Prop) ->
     lager:debug("sending eavs ~p", [Prop]),
     case kz_amqp_worker:call(Prop
-                                     ,fun kapi_resource:publish_eavesdrop_req/1
-                                     ,fun kapi_resource:eavesdrop_resp_v/1
-                                     ,2000
-                                     )
+                            ,fun kapi_resource:publish_eavesdrop_req/1
+                            ,fun kapi_resource:eavesdrop_resp_v/1
+                            ,2000
+                            )
     of
         {'ok', Resp} -> lager:debug("ok: ~p", [Resp]);
         {'error', 'timeout'} -> lager:debug("err: timeout");

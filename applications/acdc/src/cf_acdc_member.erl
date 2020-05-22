@@ -1,18 +1,23 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2012-2020, 2600Hz
-%%% @doc Data: {
+%%% @doc
+%%%  data: {
 %%%   "id":"queue id"
-%%% }
+%%%  }
 %%%
-%%% Data: {
+%%%  data: {
 %%%   "id":"queue id",
 %%%   "enter_as_callback","Boolean, if true, enter the queue as a callback from the start"
-%%% }
+%%%  }
 %%%
 %%%
 %%% @author James Aimonetti
 %%% @author KAZOO-3596: Sponsored by GTNetwork LLC, implemented by SIPLABS LLC
 %%% @author Daniel Finke
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cf_acdc_member).
@@ -22,6 +27,8 @@
 -include_lib("callflow/src/callflow.hrl").
 
 -type max_wait() :: pos_integer() | 'infinity'.
+
+-define(DEFAULT_AMQP_MGT_URL, <<"http://guest:guest@127.0.0.1:15672">>).
 
 -define(MEMBER_TIMEOUT, <<"member_timeout">>).
 -define(MEMBER_HANGUP, <<"member_hangup">>).
@@ -67,7 +74,7 @@ handle(Data, Call) ->
     {'ok', QueueJObj} = kz_datamgr:open_cache_doc(kapps_call:account_db(Call), QueueId),
 
     MaxWait = max_wait(kz_json:get_integer_value(<<"connection_timeout">>, QueueJObj, 3600)),
-    MaxQueueSize = max_queue_size(kz_json:get_integer_value(<<"max_queue_size">>, QueueJObj, 0)),
+    MaxQueueSize = max_queue_size(kz_json:get_integer_value(<<"max_queue_size">>, QueueJObj, 'undefined')),
 
     Call1 = maybe_enable_callback(
               kapps_call:kvs_store_proplist([{'caller_exit_key', kz_json:get_value(<<"caller_exit_key">>, QueueJObj)}]
@@ -76,7 +83,7 @@ handle(Data, Call) ->
              ,QueueJObj
              ),
 
-    CurrQueueSize = kapi_acdc_queue:queue_size(kapps_call:account_id(Call1), QueueId),
+    CurrQueueSize = current_queue_size(kapps_call:account_id(Call1), QueueId),
 
     lager:info("max size: ~p curr size: ~p", [MaxQueueSize, CurrQueueSize]),
 
@@ -112,7 +119,7 @@ lookup_priority(Data, Call) ->
     case {FromData, FromCall} of
         {FromData, _} when is_integer(FromData) -> FromData;
         {_, FromCall} when is_binary(FromCall) -> kz_term:to_integer(FromCall);
-        _ -> 'undefined' 
+        _ -> 'undefined'
     end.
 
 -spec maybe_enter_queue(member_call(), boolean()) -> any().
@@ -342,7 +349,7 @@ process_breakout_message(DTMF
             lager:debug("accepted callback for number ~s", [Number]),
             register_callback(MC, Number),
 
-%%            PromptVars = kz_json:from_list([{<<"var1">>, <<"breakout-callback_registered">>}]),
+            %%            PromptVars = kz_json:from_list([{<<"var1">>, <<"breakout-callback_registered">>}]),
             kapps_call_command:prompt(callback_registered(BreakoutMedia), kapps_call:language(Call), Call),
             kapps_call_command:queued_hangup(Call),
             'callback_registered';
@@ -431,11 +438,33 @@ max_wait(N) when N < 1 -> 'infinity';
 max_wait(N) -> N * ?MILLISECONDS_IN_SECOND.
 
 max_queue_size(N) when is_integer(N), N > 0 -> N;
-max_queue_size(_) -> 0.
+max_queue_size(_) -> undefined.
 
--spec is_queue_full(non_neg_integer(), non_neg_integer()) -> boolean().
-is_queue_full(0, _) -> 'false';
+-spec is_queue_full(integer()|'undefined', integer()|'undefined') -> boolean().
+is_queue_full('undefined', _) -> 'false';
+is_queue_full(_, 'undefined') -> 'false';
 is_queue_full(MaxQueueSize, CurrQueueSize) -> CurrQueueSize >= MaxQueueSize.
+
+-spec current_queue_size(kz_term:ne_binary(), kz_term:ne_binary()) -> integer() | 'undefined'.
+current_queue_size(AccountId, QueueId) ->
+    [MGT] = kz_config:get(<<"amqp">>, <<"mgt_url">>, [?DEFAULT_AMQP_MGT_URL]),
+    URL = hackney_url:make_url(MGT
+                               ,<<"/api/queues/%2F/acdc.queue."
+                               ,AccountId/binary
+                               ,"."
+                               ,QueueId/binary>>
+                               ,[{<<"columns">>, <<"messages">>}]),
+    Headers = [{<<"Content-Type">>, <<"application/json">>}],
+    case hackney:request('get', URL, Headers, [], []) of
+        {ok, _, _, ClientRef} ->
+            {ok, Body} = hackney:body(ClientRef),
+            JObj = kz_json:decode(Body),
+            kz_json:get_integer_value(<<"messages">>, JObj);
+        _Else ->
+            lager:warning("rabbitMQ Management plugin problem, check that 'rabbitmq_management' is enabled in",
+                          "/etc/kazoo/rabbitmq/enabled_plugins"),
+            'undefined'
+    end.
 
 -spec cancel_member_call(kapps_call:call(), kz_term:ne_binary()) -> 'ok'.
 cancel_member_call(Call, <<"timeout">>) ->

@@ -3,6 +3,10 @@
 %%% @doc
 %%% @author James Aimonetti
 %%% @author KAZOO-3596: Sponsored by GTNetwork LLC, implemented by SIPLABS LLC
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(acdc_queue_worker_sup).
@@ -111,7 +115,7 @@ print_status([{K, V}|T]) ->
 %% specifications.
 %% @end
 %%------------------------------------------------------------------------------
--spec init(list()) -> kz_term:sup_init_ret().
+-spec init(list()) -> kz_types:sup_init_ret().
 init(Args) ->
     RestartStrategy = 'one_for_all',
     MaxRestarts = 2,

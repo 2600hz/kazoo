@@ -1,0 +1,31 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.acdc_queue.agent_timeout",
+    "description": "AMQP API for acdc_queue.agent_timeout",
+    "properties": {
+        "Agent-Process-ID": {
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "agent"
+            ]
+        },
+        "Event-Name": {
+            "enum": [
+                "connect_timeout"
+            ]
+        },
+        "Queue-ID": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Call-ID",
+        "Queue-ID"
+    ],
+    "type": "object"
+}
