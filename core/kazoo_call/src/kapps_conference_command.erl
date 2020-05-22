@@ -8,7 +8,7 @@
 
 -include("kapps_call_command.hrl").
 
--export([search/1]).
+-export([search/1, search/3]).
 -export([deaf_participant/2]).
 -export([participant_energy/3]).
 -export([kick/1, kick/2]).
@@ -33,10 +33,18 @@
 -spec search(kapps_conference:conference()) ->
           {'ok', kz_json:object()} |
           {'error', any()}.
+
 search(Conference) ->
     AppName = kapps_conference:application_name(Conference),
     AppVersion = kapps_conference:application_version(Conference),
     ConferenceId = kapps_conference:id(Conference),
+
+    search(ConferenceId, AppName, AppVersion).
+
+-spec search(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
+          {'ok', kz_json:object()} |
+          {'error', any()}.
+search(ConferenceId, AppName, AppVersion) ->
     Req = [{<<"Conference-ID">>, ConferenceId}
            | kz_api:default_headers(AppName, AppVersion)
           ],

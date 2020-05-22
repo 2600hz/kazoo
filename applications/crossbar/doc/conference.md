@@ -192,7 +192,27 @@ Dial-able endpoints are
 
 Note: Phone numbers will involve some internal legs being generated (loopback legs) to process the number as if it was a call coming in for the desired number. This means billing and limits will be applied just the same as if a user dialed the number from their device.
 
-**Examples**
+#### Dial schema
+
+Schema for conference dial API command
+
+
+
+Key | Description | Type | Default | Required | Support Level
+--- | ----------- | ---- | ------- | -------- | -------------
+`caller_id_name` | Caller ID Name to use when dialing out to endpoints | `string()` |   | `false` |
+`caller_id_number` | Caller ID Number to use when dialing out to endpoints | `string()` |   | `false` |
+`endpoints.[]` |   | `string()|[#/definitions/devices](#devices)` |   |   |
+`endpoints` | Endpoints to dial out to and join to the conference | `array()` |   | `true` |
+`participant_flags.[]` |   | `string('mute' | 'deaf' | 'distribute_dtmf' | 'is_moderator' | 'disable_moh' | 'ghost' | 'join_existing' | 'video_mute')` |   | `false` |
+`participant_flags` | Participant flags applied to each endpoint when it joins the conference | `array(string('mute' | 'deaf' | 'distribute_dtmf' | 'is_moderator' | 'disable_moh' | 'ghost' | 'join_existing' | 'video_mute'))` |   | `false` |
+`profile_name` | The profile name to use for configuration | `string()` |   | `false` |
+`target_call_id` | Existing UUID to use as a hint for where to start the conference | `string()` |   | `false` |
+`timeout` | How long to try to reach the endpoint(s) | `integer()` |   | `false` |
+
+
+
+#### Example payloads
 
 ```json
 {
