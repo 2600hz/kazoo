@@ -30,7 +30,7 @@ maybe_record_inbound(FromNetwork, Endpoint, Call) ->
 maybe_record_inbound(_FromNetwork, _Endpoint, _Call, 'undefined') -> 'false';
 maybe_record_inbound(FromNetwork, Endpoint, Call, Data) ->
     case kz_json:is_true(<<"enabled">>, Data)
-         orelse kapps_call:kvs_fetch('record_on_b_leg', 'false', Call) of
+        orelse kapps_call:kvs_fetch('record_on_b_leg', 'false', Call) of
         'false' -> 'false';
         'true' ->
             Values = [{<<"origin">>, <<"inbound from ", FromNetwork/binary, " to endpoint">>}
