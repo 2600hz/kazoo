@@ -449,11 +449,11 @@ is_queue_full(MaxQueueSize, CurrQueueSize) -> CurrQueueSize >= MaxQueueSize.
 current_queue_size(AccountId, QueueId) ->
     [MGT] = kz_config:get(<<"amqp">>, <<"mgt_url">>, [?DEFAULT_AMQP_MGT_URL]),
     URL = hackney_url:make_url(MGT
-                               ,<<"/api/queues/%2F/acdc.queue."
-                               ,AccountId/binary
-                               ,"."
-                               ,QueueId/binary>>
-                               ,[{<<"columns">>, <<"messages">>}]),
+                              ,<<"/api/queues/%2F/acdc.queue."
+                                ,AccountId/binary
+                                ,"."
+                                ,QueueId/binary>>
+                              ,[{<<"columns">>, <<"messages">>}]),
     Headers = [{<<"Content-Type">>, <<"application/json">>}],
     case hackney:request('get', URL, Headers, [], []) of
         {ok, _, _, ClientRef} ->
