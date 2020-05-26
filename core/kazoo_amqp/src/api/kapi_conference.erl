@@ -119,6 +119,7 @@
                                       ,<<"Switch-Hostname">>
                                       ,<<"Switch-URL">>
                                       ,<<"UUID">>
+                                      ,<<"Zone">>
                                       ]).
 -define(SEARCH_RESP_VALUES, [{<<"Event-Category">>, <<"conference">>}
                             ,{<<"Event-Name">>, <<"search_resp">>}

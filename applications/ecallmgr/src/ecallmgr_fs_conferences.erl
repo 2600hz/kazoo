@@ -223,6 +223,7 @@ handle_search_conference(JObj, _Props, Name) ->
                    ,{<<"Switch-External-IP">>, ExternalIP}
                    ,{<<"Participant-Count">>, length(Participants)}
                    ,{<<"Participants">>, participants_to_json(Participants)}
+                   ,{<<"Zone">>, kz_config:zone('binary')}
                     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
             kapi_conference:publish_search_resp(kz_api:server_id(JObj), Resp);
@@ -467,7 +468,7 @@ conference_control_node(Node, Props, undefined) ->
     UUID = kzd_freeswitch:call_id(Props),
     CtrlNode = kz_nodes:whapp_oldest_node(ecallmgr),
     ToSet = [{<<"Ecallmgr-Node">>, kz_term:to_binary(CtrlNode)}],
-    ecallmgr_fs_command:bg_set(Node, UUID, ToSet),
+    _ = ecallmgr_fs_command:bg_set(Node, UUID, ToSet),
     CtrlNode;
 conference_control_node(_Node, _Props, Value) ->
     Value.
