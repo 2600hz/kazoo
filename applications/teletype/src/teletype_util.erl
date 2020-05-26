@@ -353,7 +353,7 @@ add_rendered_templates_to_email([{ContentType, Content}|Rs], Acc) ->
                   ,{<<"Content-Transfer-Encoding">>, CTEncoding}
                   ])
                ,[]
-               ,iolist_to_binary(Content)
+               ,sanitize_content(iolist_to_binary(Content))
                },
     lager:debug("adding template ~s (encoding ~s)", [ContentType, CTEncoding]),
     add_rendered_templates_to_email(Rs, [Template | Acc]).
@@ -361,6 +361,32 @@ add_rendered_templates_to_email([{ContentType, Content}|Rs], Acc) ->
 -spec default_content_transfer_encoding(binary()) -> binary().
 default_content_transfer_encoding(<<"text/html">>) -> <<"base64">>;
 default_content_transfer_encoding(_) -> <<"7BIT">>.
+
+%% @doc Sanitizing Email Content.
+%% This function is soppouse to sanitize the email content. For now
+%% it just fixing Bare Line Feed.
+%%
+%% Per SMTP spec bare line feed (LF) are forbidden and
+%% CRLF should be used instead. Some SMTP relays and server in both ends
+%% are nice enough to correct bad line ending, but some don't.
+%%
+%% Like in one case relay server is Office 365 and receiving end is AOL.com.
+%% Office 365 stopped correcting line endings and AOL is not fixing it either.
+%% This cause the email to bounce back with Non-Delivery Report (NDR) message.
+%%
+%% When bare line feed characters are included in a message, the SMTP protocol
+%% chunking feature is required to transmit the message between email servers.
+%% Chunking uses the SMTP protocol BDAT command, but the recipient's email
+%% server (in our case AOL) doesn't support the BDAT command.
+-spec sanitize_content(binary()) -> binary().
+sanitize_content(Content) ->
+    %% We first replace `\r\n' to `\n', so when converting `\n' back to `\r\n' we don't
+    %% double converting `\n', just in case the template lines are edited to end with `\r\n'.
+    binary:replace(binary:replace(Content, <<$\r, $\n>>, <<$\n>>, ['global'])
+                  ,<<$\n>>
+                  ,<<$\r, $\n>>
+                  ,['global']
+                  ).
 
 -spec system_params() -> kz_term:proplist().
 system_params() ->
