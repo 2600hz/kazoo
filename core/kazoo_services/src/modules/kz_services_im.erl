@@ -27,7 +27,7 @@
 
 -define(IM_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".im">>).
 -define(DEFAULT_RESELLER_POLICY_FOR_NO_PLAN, false).
--define(DEFAULT_ACCOUNT_POLICY_FOR_NO_PLAN, true).
+-define(DEFAULT_ACCOUNT_POLICY_FOR_NO_PLAN, false).
 -define(POLICY_FOR_NO_PLAN_KEY(T,I), [<<"policy">>, <<"no_plan">>, kz_term:to_binary(T), kz_term:to_binary(I), <<"enabled">>]).
 -define(RESELLER_POLICY_FOR_NO_PLAN(T), kapps_config:get_boolean(?IM_CONFIG_CAT, ?POLICY_FOR_NO_PLAN_KEY(<<"reseller">>, T), ?DEFAULT_RESELLER_POLICY_FOR_NO_PLAN)).
 -define(ACCOUNT_POLICY_FOR_NO_PLAN(T), kapps_config:get_boolean(?IM_CONFIG_CAT, ?POLICY_FOR_NO_PLAN_KEY(<<"account">>, T), ?DEFAULT_ACCOUNT_POLICY_FOR_NO_PLAN)).
