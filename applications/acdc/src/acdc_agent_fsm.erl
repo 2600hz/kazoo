@@ -1462,15 +1462,15 @@ maybe_member_no_answer(CallId, Cause, #state{account_id=AccountId
                                             ,agent_call_id=ACallId
                                             }=State) ->
     _ = case props:get_value(CallId, Candidates) of
-        'undefined' -> 'ok';
-        _ ->
-            ErrReason = missed_reason(Cause),
-            lager:debug("member did not answer callback ~s (~s)", [CallId, ErrReason]),
+            'undefined' -> 'ok';
+            _ ->
+                ErrReason = missed_reason(Cause),
+                lager:debug("member did not answer callback ~s (~s)", [CallId, ErrReason]),
 
-            acdc_agent_listener:member_connect_accepted(AgentListener, ACallId, MemberCall),
+                acdc_agent_listener:member_connect_accepted(AgentListener, ACallId, MemberCall),
 
-            acdc_stats:call_handled(AccountId, QueueId, OriginalMemberCallId, AgentId)
-    end,
+                acdc_stats:call_handled(AccountId, QueueId, OriginalMemberCallId, AgentId)
+        end,
     {'next_state', 'awaiting_callback', State}.
 
 %%------------------------------------------------------------------------------
