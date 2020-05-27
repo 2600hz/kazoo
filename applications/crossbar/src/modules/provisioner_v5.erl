@@ -59,9 +59,9 @@ maybe_set_line_defaults(LineJObj) ->
     kz_json:expand(
       kz_json:from_list(
         [case KV of
-             {[<<"advanced">>, <<"expire">>], undefined} -> {Path, 360};
-             {[<<"advanced">>, <<"srtp">>], undefined} -> {Path, false};
-             {[<<"basic">>, <<"enabled">>], undefined} -> {Path, true};
+             {[<<"advanced">>, <<"expire">>], 'undefined'} -> {Path, 360};
+             {[<<"advanced">>, <<"srtp">>], 'undefined'} -> {Path, 'false'};
+             {[<<"basic">>, <<"enabled">>], 'undefined'} -> {Path, 'true'};
              _ -> KV
          end
          || {Path,_}=KV <- kz_json:to_proplist(kz_json:flatten(LineJObj))
@@ -374,8 +374,8 @@ settings_advanced(JObj) ->
 -spec settings_datetime(kz_json:object()) -> kz_json:object().
 settings_datetime(JObj) ->
     kz_json:from_list(
-      [{<<"time">>, settings_time(JObj)}
-      ]).
+      [{<<"time">>, settings_time(JObj)}]
+     ).
 
 -spec settings_feature_keys(kz_json:object()) -> kz_json:object().
 settings_feature_keys(JObj) ->
@@ -392,9 +392,9 @@ settings_keys(Assoc, KeyKind, JObj) ->
     Family = get_family(JObj),
     AccountId = kz_doc:account_id(JObj),
 
-    Fun = fun(Key, null, Acc) ->
+    Fun = fun(Key, 'null', Acc) ->
                   %% workaround since `kz_json:set_value/3' is removing key if the value is `null'.
-                  kz_json:from_list([{Key, null} | kz_json:to_proplist(Acc)]);
+                  kz_json:from_list([{Key, 'null'} | kz_json:to_proplist(Acc)]);
              (Key, Value, Acc) ->
                   Type = kz_json:get_binary_value(<<"type">>, Value),
                   V = kz_json:get_value(<<"value">>, Value),
@@ -409,7 +409,7 @@ settings_keys(Assoc, KeyKind, JObj) ->
         LineKey -> kz_json:set_value(<<"account">>, LineKey, Keys)
     end.
 
--spec get_label(kz_json:object()) -> binary()|'undefined'.
+-spec get_label(kz_json:object()) -> binary() | 'undefined'.
 get_label(Doc) ->
     case {kz_json:get_ne_binary_value(<<"first_name">>, Doc)
          ,kz_json:get_ne_binary_value(<<"last_name">>, Doc)
@@ -725,4 +725,3 @@ req_headers(Token) ->
       ,{"X-Kazoo-Cluster-ID", kzd_cluster:id()}
       ,{"User-Agent", kz_term:to_list(erlang:node())}
       ]).
-

@@ -53,6 +53,9 @@ Key | Description | Type | Default | Required | Support Level
 `outbound_flags` | List of flags (features) this device requires when making outbound calls | `array(string()) | object()` |   | `false` |  
 `owner_id` | The ID of the user object that 'owns' the device | `string(32)` |   | `false` |  
 `presence_id` | Static presence ID (used instead of SIP username) | `string()` |   | `false` | `supported`
+`provision.check_sync_event` | Value to use in Event header for device reload/reboot | `string()` |   | `false` |  
+`provision.check_sync_reboot` | Value to append to 'check-sync' event if phone should reboot after reloading settings | `string()` | `reboot=true` | `false` |  
+`provision.check_sync_reload` | Value to append to 'check-sync' event if phone should not reboot after reloading settings | `string()` | `reboot=false` | `false` |  
 `provision.combo_keys./^[0-9]+$/` | Device provisioner Combo/Feature Key | [#/definitions/devices.combo_key](#devicescombo_key) |   | `false` |  
 `provision.combo_keys` |   | `object()` |   | `false` |  
 `provision.endpoint_brand` | Brand of the phone | `string()` |   | `false` |  
@@ -656,6 +659,52 @@ curl -v -X POST \
     "status": "success"
 }
 ```
+
+### Reboot or not after syncing
+
+If your device can support it, you can toggle whether to reboot the phone after it resyncs its configuration.
+
+On the device document, set `provision.check_sync_reboot` to the suffix to add to the `check-sync` event when syncing the phone and rebooting.
+
+On the device document, set `provision.check_sync_reload` to the suffix to add to the `check-sync` event when syncing the phone when not rebooting.
+
+And of course you can override the `check-sync` prefix with `provision.check_sync_event`.
+
+#### Rebooting example
+
+The device settings:
+
+```json
+{"provision":{
+   "check_sync_reboot":"reboot=true"
+ }
+}
+```
+
+API to force the reboot: `POST /v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/sync?reboot=true`
+
+Will generate `Event: check-sync;reboot=true` in the SIP NOTIFY.
+
+#### Reloading example
+
+The device settings:
+
+```json
+{"provision":{
+   "check_sync_reload":"reboot=false"
+ }
+}
+```
+
+API to force the reboot: `POST /v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/sync?reboot=false`
+
+Will generate `Event: check-sync;reboot=false` in the SIP NOTIFY.
+
+#### Check Sync Event
+
+Should the device respond to a different value for the purposes of syncing, it can be overridden in the `provision.check_sync_event`.
+
+There is also a system_config in `crossbar.devices`, `check_sync_event`, that can be set for defaults.
 
 ## Quickcalls
 
