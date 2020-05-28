@@ -189,11 +189,6 @@ seq_kcro_24() ->
     NewCDRIds = [CDRId || {CDRId, <<"new">>} <- ExpectedCDRs],
 
     lager:info("expected CDR IDs: ~p", [ExpectedCDRIds]),
-    lager:info("sleeping 60 sec"),
-    timer:sleep(60000),
-    _X = list_messages(API, AccountId, BoxId),
-    lager:info("X listed messages ~s", [_X]),
-    timer:sleep(60000),
 
     %% The main principle to reproduce the issue seems to be to "tune"
     %% page_size in such a way that it would be less than db size but
@@ -374,7 +369,7 @@ create_messages(API, AccountId, BoxId, {{Year, Month, Day}, Folders}) ->
 
 create_voicemail(Folder, {Timestamp, Messages}) ->
     Message = create_message(Folder, Timestamp),
-    {Timestamp + ?SECONDS_IN_HOUR, [Message | Messages]}.
+    {Timestamp + ?SECONDS_IN_MINUTE, [Message | Messages]}.
 
 create_message({CallId, Folder}, Timestamp) ->
     kz_json:from_list([{<<"call_id">>, CallId}
