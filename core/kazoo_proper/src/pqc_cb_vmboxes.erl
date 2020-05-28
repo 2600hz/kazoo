@@ -189,6 +189,7 @@ seq_kcro_24() ->
     NewCDRIds = [CDRId || {CDRId, <<"new">>} <- ExpectedCDRs],
 
     lager:info("expected CDR IDs: ~p", [ExpectedCDRIds]),
+    timer:sleep(10000),
 
     %% The main principle to reproduce the issue seems to be to "tune"
     %% page_size in such a way that it would be less than db size but
