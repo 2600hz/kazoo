@@ -369,7 +369,7 @@ create_messages(API, AccountId, BoxId, {{Year, Month, Day}, Folders}) ->
 
 create_voicemail(Folder, {Timestamp, Messages}) ->
     Message = create_message(Folder, Timestamp),
-    {Timestamp + ?SECONDS_IN_HOUR, [Message | Messages]}.
+    {Timestamp + ?SECONDS_IN_MINUTE, [Message | Messages]}.
 
 create_message({CallId, Folder}, Timestamp) ->
     kz_json:from_list([{<<"call_id">>, CallId}
