@@ -1533,11 +1533,7 @@ validate_schema(ParentId, AccountId, {Doc, Errors}) ->
 on_successful_schema_validation(ParentId, 'undefined', {Doc, Errors}) ->
     lager:info("schema validation passed for new account: ~s", [kz_json:encode(Doc)]),
     {set_private_properties(ParentId, Doc), Errors};
-on_successful_schema_validation(_ParentId, AccountId, {Doc, Errors}) ->
-    case update(AccountId, kz_json:to_proplist(kz_json:flatten(Doc))) of
-        {'ok', UpdatedAccount} -> {UpdatedAccount, Errors};
-        {'error', _E} -> {Doc, Errors}
-    end.
+on_successful_schema_validation(_ParentId, _AccountId, ValidateAcc) -> ValidateAcc.
 
 -spec normalize_alphanum_name(kz_term:api_ne_binary(), kazoo_documents:doc_validation_acc()) -> kazoo_documents:doc_validation_acc().
 normalize_alphanum_name(_AccountId, {Doc, Errors}) ->
