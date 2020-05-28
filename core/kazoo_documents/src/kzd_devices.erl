@@ -628,9 +628,9 @@ provision_check_sync_event(Doc, Default) ->
 set_provision_check_sync_event(Doc, ProvisionCheckSyncEvent) ->
     kz_json:set_value([<<"provision">>, <<"check_sync_event">>], ProvisionCheckSyncEvent, Doc).
 
--spec provision_check_sync_reboot(doc()) -> binary().
+-spec provision_check_sync_reboot(doc()) -> 'undefined' | binary().
 provision_check_sync_reboot(Doc) ->
-    provision_check_sync_reboot(Doc, <<"reboot=true">>).
+    provision_check_sync_reboot(Doc, 'undefined').
 
 -spec provision_check_sync_reboot(doc(), Default) -> binary() | Default.
 provision_check_sync_reboot(Doc, Default) ->
@@ -640,9 +640,9 @@ provision_check_sync_reboot(Doc, Default) ->
 set_provision_check_sync_reboot(Doc, ProvisionCheckSyncReboot) ->
     kz_json:set_value([<<"provision">>, <<"check_sync_reboot">>], ProvisionCheckSyncReboot, Doc).
 
--spec provision_check_sync_reload(doc()) -> binary().
+-spec provision_check_sync_reload(doc()) -> 'undefined' | binary().
 provision_check_sync_reload(Doc) ->
-    provision_check_sync_reload(Doc, <<"reboot=false">>).
+    provision_check_sync_reload(Doc, 'undefined').
 
 -spec provision_check_sync_reload(doc(), Default) -> binary() | Default.
 provision_check_sync_reload(Doc, Default) ->

@@ -5505,12 +5505,10 @@
                             "type": "string"
                         },
                         "check_sync_reboot": {
-                            "default": "reboot=true",
                             "description": "Value to append to 'check-sync' event if phone should reboot after reloading settings",
                             "type": "string"
                         },
                         "check_sync_reload": {
-                            "default": "reboot=false",
                             "description": "Value to append to 'check-sync' event if phone should not reboot after reloading settings",
                             "type": "string"
                         },
