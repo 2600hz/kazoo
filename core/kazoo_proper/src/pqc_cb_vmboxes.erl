@@ -189,6 +189,10 @@ seq_kcro_24() ->
     NewCDRIds = [CDRId || {CDRId, <<"new">>} <- ExpectedCDRs],
 
     lager:info("expected CDR IDs: ~p", [ExpectedCDRIds]),
+    lager:info("sleeping 60 sec"),
+    timer:sleep(60000),
+    _X = list_messages(API, AccountId, BoxId),
+    lager:info("X listed messages ~s", [_X]),
     timer:sleep(60000),
 
     %% The main principle to reproduce the issue seems to be to "tune"
