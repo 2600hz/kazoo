@@ -514,7 +514,6 @@ connecting({'accepted', AcceptJObj}, #state{queue_proc=Srv
                     %% If the old call id is set, we've already done the call handled stat update
                     _ -> 'ok'
                 end,
-
             {'next_state', 'ready', clear_member_call(State), 'hibernate'};
         'false' ->
             lager:debug("ignoring accepted message"),
