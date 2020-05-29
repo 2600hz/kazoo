@@ -62,13 +62,14 @@ create_modbs() ->
     io:format("creating modbs in ~p~n", [_P]).
 
 -spec create_modbs(kz_time:year(), kz_time:month()) -> 'ok'.
-create_modbs(Year, Month) ->
-    create_modbs(Year, Month, kz_datamgr:get_results_count(?KZ_ACCOUNTS_DB, <<"accounts/listing_by_id">>, [])).
+create_modbs(Year, CurrentMonth) ->
+    create_modbs(Year, CurrentMonth, kz_datamgr:get_results_count(?KZ_ACCOUNTS_DB, <<"accounts/listing_by_id">>, [])).
 
 -spec create_modbs(kz_time:year(), kz_time:month(), {'ok', non_neg_integer()} | kz_datamgr:data_error()) -> 'ok'.
-create_modbs(_Year, _Month, {'ok', 0}) -> 'ok';
-create_modbs(Year, Month, {'ok', NumAccounts}) ->
-    NextMonthS = calendar:datetime_to_gregorian_seconds({kz_date:normalize({Year, Month+1, 1}), {0,0,0}}),
+create_modbs(_Year, _CurrentMonth, {'ok', 0}) -> 'ok';
+create_modbs(Year, CurrentMonth, {'ok', NumAccounts}) ->
+    NextOne = {NextYear, NextMonth, _} = kz_date:normalize({Year, CurrentMonth+1, 1}),
+    NextMonthS = calendar:datetime_to_gregorian_seconds({NextOne, {0,0,0}}),
     NowS = kz_time:now_s(),
     SecondsLeft = NextMonthS - NowS,
 
@@ -80,34 +81,34 @@ create_modbs(Year, Month, {'ok', NumAccounts}) ->
     lager:info("creating ~p modbs (~p per pass), ~p seconds delay between passes"
               ,[NumAccounts, AccountsPerPass, SecondsPerPass]
               ),
-    create_modbs_metered(Year, Month, AccountsPerPass, SecondsPerPass).
+    create_modbs_metered(NextYear, NextMonth, AccountsPerPass, SecondsPerPass).
 
-create_modbs_metered(Year, Month, AccountsPerPass, SecondsPerPass) ->
-    create_modbs_metered(Year, Month, AccountsPerPass, SecondsPerPass
+create_modbs_metered(NextYear, NextMonth, AccountsPerPass, SecondsPerPass) ->
+    create_modbs_metered(NextYear, NextMonth, AccountsPerPass, SecondsPerPass
                         ,get_page(AccountsPerPass, 'undefined')
                         ).
 
-create_modbs_metered(Year, Month, _AccountsPerPass, _SecondsPerPass, {'ok', Accounts, 'undefined'}) ->
-    _ = [create_modb(Year, Month, Account) || Account <- Accounts],
+create_modbs_metered(NextYear, NextMonth, _AccountsPerPass, _SecondsPerPass, {'ok', Accounts, 'undefined'}) ->
+    _ = [create_modb(NextYear, NextMonth, Account) || Account <- Accounts],
     lager:info("finished creating account MODBs");
-create_modbs_metered(Year, Month, AccountsPerPass, SecondsPerPass, {'ok', Accounts, NextPageKey}) ->
+create_modbs_metered(NextYear, NextMonth, AccountsPerPass, SecondsPerPass, {'ok', Accounts, NextPageKey}) ->
     NowS = kz_time:now_s(),
-    _ = [create_modb(Year, Month, Account) || Account <- Accounts],
+    _ = [create_modb(NextYear, NextMonth, Account) || Account <- Accounts],
     ElapsedS = kz_time:elapsed_s(NowS),
     WaitS = SecondsPerPass - ElapsedS,
     lager:info("created ~p modb(s), waiting ~ps for next pass", [length(Accounts), WaitS]),
     timer:sleep(WaitS * ?MILLISECONDS_IN_SECOND),
-    create_modbs_metered(Year, Month, AccountsPerPass, SecondsPerPass
+    create_modbs_metered(NextYear, NextMonth, AccountsPerPass, SecondsPerPass
                         ,get_page(AccountsPerPass, NextPageKey)
                         );
-create_modbs_metered(_Year, _Month, _AccountsPerPass, _SecondsPerPass, {'error', _E}) ->
+create_modbs_metered(_NextYear, _NextMonth, _AccountsPerPass, _SecondsPerPass, {'error', _E}) ->
     lager:info("error paginating accounts: ~p", [_E]).
 
--spec create_modb(kz_time:year(), kz_time:month(), kz_json:object()) -> boolean().
-create_modb(Year, Month, AccountView) ->
+-spec create_modb(kz_time:year(), kz_time:month(), kz_json:object()) -> pid().
+create_modb(NextYear, NextMonth, AccountView) ->
     AccountId = kz_doc:id(AccountView),
-    AccountMODB = kz_util:format_account_id(AccountId, Year, Month),
-    kazoo_modb:maybe_create(AccountMODB).
+    AccountMODB = kz_util:format_account_id(AccountId, NextYear, NextMonth),
+    kz_util:spawn(fun kazoo_modb:maybe_create/1, [AccountMODB]).
 
 -spec get_page(pos_integer(), kz_json:api_json_term()) -> kz_datamgr:paginated_results().
 get_page(AccountsPerPass, 'undefined') ->
