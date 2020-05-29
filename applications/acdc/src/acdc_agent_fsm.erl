@@ -713,7 +713,6 @@ ready({'member_connect_win', JObj, 'different_node'}, #state{agent_listener=Agen
                             'undefined' -> 'ringing';
                             _Details -> 'ringing_callback'
                         end,
-
             lager:debug("monitoring agent ~s to connect to caller in queue ~s", [AgentId, QueueId]),
             {'next_state', NextState, State#state{wrapup_timeout=WrapupTimer
                                                  ,member_call=Call
@@ -1132,9 +1131,7 @@ ringing_callback({'originate_failed', JObj}, #state{agent_listener=AgentListener
                                                      ]),
 
     acdc_agent_listener:member_connect_retry(AgentListener, CallId),
-
     _ = acdc_stats:call_missed(AccountId, QueueId, AgentId, CallId, ErrReason),
-
     acdc_agent_listener:presence_update(AgentListener, ?PRESENCE_GREEN),
 
     {'next_state', 'ringing_callback', State};
@@ -1303,13 +1300,9 @@ awaiting_callback({'originate_failed', JObj}, #state{account_id=AccountId
                                                      ,{<<"Agent-ID">>, AgentId}
                                                       | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                                                      ]),
-
     acdc_agent_listener:member_connect_accepted(AgentListener, ACallId, MemberCall),
-
     _ = acdc_stats:call_handled(AccountId, QueueId, OriginalMemberCallId, AgentId),
-
     acdc_agent_listener:presence_update(AgentListener, ?PRESENCE_GREEN),
-
     {'next_state', 'awaiting_callback', State#state{wrapup_ref=hangup_call(State, 'member')}};
 awaiting_callback({'shared_failure', _}, #state{agent_listener=AgentListener
                                                ,agent_call_id=ACallId
@@ -1387,7 +1380,6 @@ awaiting_callback(?DESTROYED_CHANNEL(ACallId, _Cause), #state{agent_listener=Age
                                                              }=State) ->
     lager:debug("agent hungup ~s while waiting for a callback to connect", [ACallId]),
     acdc_agent_listener:channel_hungup(AgentListener, ACallId),
-
     {'next_state', 'wrapup', State#state{wrapup_ref=hangup_call(State, 'member')}};
 awaiting_callback(?DESTROYED_CHANNEL(ACallId, _Cause), #state{account_id=AccountId
                                                              ,agent_id=AgentId
@@ -1400,11 +1392,8 @@ awaiting_callback(?DESTROYED_CHANNEL(ACallId, _Cause), #state{account_id=Account
     lager:info("agent hungup ~s while waiting for a callback to connect", [ACallId]),
 
     acdc_agent_listener:member_connect_accepted(AgentListener, ACallId, MemberCall),
-
     _ = acdc_stats:call_handled(AccountId, QueueId, OriginalMemberCallId, AgentId),
-
     acdc_agent_listener:presence_update(AgentListener, ?PRESENCE_GREEN),
-
     {'next_state', 'wrapup', State#state{wrapup_ref=hangup_call(State, 'member')}};
 awaiting_callback(?DESTROYED_CHANNEL(CallId, Cause), State) ->
     maybe_member_no_answer(CallId, Cause, State);
@@ -1462,15 +1451,15 @@ maybe_member_no_answer(CallId, Cause, #state{account_id=AccountId
                                             ,agent_call_id=ACallId
                                             }=State) ->
     _ = case props:get_value(CallId, Candidates) of
-        'undefined' -> 'ok';
-        _ ->
-            ErrReason = missed_reason(Cause),
-            lager:debug("member did not answer callback ~s (~s)", [CallId, ErrReason]),
+            'undefined' -> 'ok';
+            _ ->
+                ErrReason = missed_reason(Cause),
+                lager:debug("member did not answer callback ~s (~s)", [CallId, ErrReason]),
 
-            acdc_agent_listener:member_connect_accepted(AgentListener, ACallId, MemberCall),
+                acdc_agent_listener:member_connect_accepted(AgentListener, ACallId, MemberCall),
 
-            acdc_stats:call_handled(AccountId, QueueId, OriginalMemberCallId, AgentId)
-    end,
+                acdc_stats:call_handled(AccountId, QueueId, OriginalMemberCallId, AgentId)
+        end,
     {'next_state', 'awaiting_callback', State}.
 
 %%------------------------------------------------------------------------------

@@ -302,10 +302,10 @@ flush_call_stat(CallId) ->
         'undefined' -> io:format("nothing found for call ~s~n", [CallId]);
         Call ->
             _ = acdc_stats:call_abandoned(kz_json:get_value(<<"Account-ID">>, Call)
-                                     ,kz_json:get_value(<<"Queue-ID">>, Call)
-                                     ,CallId
-                                     ,<<"INTERNAL_ERROR">>
-                                     ),
+                                         ,kz_json:get_value(<<"Queue-ID">>, Call)
+                                         ,CallId
+                                         ,<<"INTERNAL_ERROR">>
+                                         ),
             io:format("setting call to 'abandoned'~n", [])
     end.
 

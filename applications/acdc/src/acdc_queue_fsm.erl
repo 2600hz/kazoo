@@ -507,14 +507,13 @@ connecting({'accepted', AcceptJObj}, #state{queue_proc=Srv
 
             acdc_queue_listener:finish_member_call(Srv, AcceptJObj),
             _ = case kz_json:get_value(<<"Old-Call-ID">>, AcceptJObj) of
-                'undefined' ->
-                    acdc_stats:call_handled(AccountId, QueueId, CallId
-                                           ,kz_json:get_value(<<"Agent-ID">>, AcceptJObj)
-                                           );
-                %% If the old call id is set, we've already done the call handled stat update
-                _ -> 'ok'
-            end,
-
+                    'undefined' ->
+                        acdc_stats:call_handled(AccountId, QueueId, CallId
+                                               ,kz_json:get_value(<<"Agent-ID">>, AcceptJObj)
+                                               );
+                    %% If the old call id is set, we've already done the call handled stat update
+                    _ -> 'ok'
+                end,
             {'next_state', 'ready', clear_member_call(State), 'hibernate'};
         'false' ->
             lager:debug("ignoring accepted message"),
