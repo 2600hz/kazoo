@@ -26,6 +26,11 @@
             "description": "If request is proxied, should Crossbar check allowed reverse proxies",
             "type": "boolean"
         },
+        "check_sync_event": {
+            "default": "check-sync",
+            "description": "crossbar check_sync_event",
+            "type": "string"
+        },
         "compress_response_body": {
             "default": true,
             "description": "crossbar compress response body",

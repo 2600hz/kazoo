@@ -5500,6 +5500,18 @@
                 "provision": {
                     "description": "Provision data",
                     "properties": {
+                        "check_sync_event": {
+                            "description": "Value to use in Event header for device reload/reboot",
+                            "type": "string"
+                        },
+                        "check_sync_reboot": {
+                            "description": "Value to append to 'check-sync' event if phone should reboot after reloading settings",
+                            "type": "string"
+                        },
+                        "check_sync_reload": {
+                            "description": "Value to append to 'check-sync' event if phone should not reboot after reloading settings",
+                            "type": "string"
+                        },
                         "combo_keys": {
                             "type": "object"
                         },
@@ -30227,6 +30239,11 @@
                     "description": "If request is proxied, should Crossbar check allowed reverse proxies",
                     "type": "boolean"
                 },
+                "check_sync_event": {
+                    "default": "check-sync",
+                    "description": "crossbar check_sync_event",
+                    "type": "string"
+                },
                 "compress_response_body": {
                     "default": true,
                     "description": "crossbar compress response body",
@@ -30725,6 +30742,11 @@
                     "default": true,
                     "description": "crossbar.devices allow aggregates",
                     "type": "boolean"
+                },
+                "check_sync_event": {
+                    "default": "check-sync",
+                    "description": "crossbar devices check_sync_event",
+                    "type": "string"
                 },
                 "provisioner_host": {
                     "description": "crossbar.devices provisioner host",

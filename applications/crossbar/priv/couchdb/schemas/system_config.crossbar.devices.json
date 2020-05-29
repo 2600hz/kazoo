@@ -8,6 +8,11 @@
             "description": "crossbar.devices allow aggregates",
             "type": "boolean"
         },
+        "check_sync_event": {
+            "default": "check-sync",
+            "description": "crossbar devices check_sync_event",
+            "type": "string"
+        },
         "provisioner_host": {
             "description": "crossbar.devices provisioner host",
             "type": "string"

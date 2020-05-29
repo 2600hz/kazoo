@@ -254,6 +254,18 @@
         "provision": {
             "description": "Provision data",
             "properties": {
+                "check_sync_event": {
+                    "description": "Value to use in Event header for device reload/reboot",
+                    "type": "string"
+                },
+                "check_sync_reboot": {
+                    "description": "Value to append to 'check-sync' event if phone should reboot after reloading settings",
+                    "type": "string"
+                },
+                "check_sync_reload": {
+                    "description": "Value to append to 'check-sync' event if phone should not reboot after reloading settings",
+                    "type": "string"
+                },
                 "combo_keys": {
                     "patternProperties": {
                         "^[0-9]+$": {

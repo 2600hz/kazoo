@@ -46,6 +46,9 @@
 -export([owner_id/1, owner_id/2, set_owner_id/2]).
 -export([presence_id/1, presence_id/2, set_presence_id/2]).
 -export([provision/1, provision/2, set_provision/2]).
+-export([provision_check_sync_event/1, provision_check_sync_event/2, set_provision_check_sync_event/2]).
+-export([provision_check_sync_reboot/1, provision_check_sync_reboot/2, set_provision_check_sync_reboot/2]).
+-export([provision_check_sync_reload/1, provision_check_sync_reload/2, set_provision_check_sync_reload/2]).
 -export([provision_combo_keys/1, provision_combo_keys/2, set_provision_combo_keys/2]).
 -export([provision_combo_key/2, provision_combo_key/3, set_provision_combo_key/3]).
 -export([provision_endpoint_brand/1, provision_endpoint_brand/2, set_provision_endpoint_brand/2]).
@@ -564,6 +567,42 @@ provision(Doc, Default) ->
 -spec set_provision(doc(), kz_json:object()) -> doc().
 set_provision(Doc, Provision) ->
     kz_json:set_value([<<"provision">>], Provision, Doc).
+
+-spec provision_check_sync_event(doc()) -> kz_term:api_binary().
+provision_check_sync_event(Doc) ->
+    provision_check_sync_event(Doc, 'undefined').
+
+-spec provision_check_sync_event(doc(), Default) -> binary() | Default.
+provision_check_sync_event(Doc, Default) ->
+    kz_json:get_binary_value([<<"provision">>, <<"check_sync_event">>], Doc, Default).
+
+-spec set_provision_check_sync_event(doc(), binary()) -> doc().
+set_provision_check_sync_event(Doc, ProvisionCheckSyncEvent) ->
+    kz_json:set_value([<<"provision">>, <<"check_sync_event">>], ProvisionCheckSyncEvent, Doc).
+
+-spec provision_check_sync_reboot(doc()) -> kz_term:api_binary().
+provision_check_sync_reboot(Doc) ->
+    provision_check_sync_reboot(Doc, 'undefined').
+
+-spec provision_check_sync_reboot(doc(), Default) -> binary() | Default.
+provision_check_sync_reboot(Doc, Default) ->
+    kz_json:get_binary_value([<<"provision">>, <<"check_sync_reboot">>], Doc, Default).
+
+-spec set_provision_check_sync_reboot(doc(), binary()) -> doc().
+set_provision_check_sync_reboot(Doc, ProvisionCheckSyncReboot) ->
+    kz_json:set_value([<<"provision">>, <<"check_sync_reboot">>], ProvisionCheckSyncReboot, Doc).
+
+-spec provision_check_sync_reload(doc()) -> kz_term:api_binary().
+provision_check_sync_reload(Doc) ->
+    provision_check_sync_reload(Doc, 'undefined').
+
+-spec provision_check_sync_reload(doc(), Default) -> binary() | Default.
+provision_check_sync_reload(Doc, Default) ->
+    kz_json:get_binary_value([<<"provision">>, <<"check_sync_reload">>], Doc, Default).
+
+-spec set_provision_check_sync_reload(doc(), binary()) -> doc().
+set_provision_check_sync_reload(Doc, ProvisionCheckSyncReload) ->
+    kz_json:set_value([<<"provision">>, <<"check_sync_reload">>], ProvisionCheckSyncReload, Doc).
 
 -spec provision_combo_keys(doc()) -> kz_term:api_object().
 provision_combo_keys(Doc) ->
