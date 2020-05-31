@@ -46,6 +46,16 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/status
 ```
 
+## Change
+
+> POST /v2/accounts/{ACCOUNT_ID}/agents/{USER_ID}/restart
+
+```shell
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/{USER_ID}/restart
+```
+
 ## Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/agents/{USER_ID}/queue_status

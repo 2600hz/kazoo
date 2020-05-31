@@ -6884,6 +6884,54 @@
             ],
             "type": "object"
         },
+        "kapi.acdc_agent.restart": {
+            "description": "AMQP API for acdc_agent.restart",
+            "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Agent-ID": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "agent"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "restart"
+                    ],
+                    "type": "string"
+                },
+                "Presence-ID": {
+                    "type": "string"
+                },
+                "Presence-State": {
+                    "enum": [
+                        "trying",
+                        "online",
+                        "offline",
+                        "early",
+                        "confirmed",
+                        "terminated"
+                    ],
+                    "type": "string"
+                },
+                "Queue-ID": {
+                    "type": "string"
+                },
+                "Time-Limit": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "Account-ID",
+                "Agent-ID"
+            ],
+            "type": "object"
+        },
         "kapi.acdc_agent.resume": {
             "description": "AMQP API for acdc_agent.resume",
             "properties": {
@@ -38140,6 +38188,26 @@
                     }
                 }
             },
+            "post": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/USER_ID"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/agents/{USER_ID}/restart": {
             "post": {
                 "parameters": [
                     {
