@@ -283,8 +283,13 @@ handle_member_message(JObj, Props, <<"connect_req">>) ->
     'true' = kapi_acdc_queue:member_connect_req_v(JObj),
     acdc_agent_fsm:member_connect_req(props:get_value('fsm_pid', Props), JObj);
 handle_member_message(JObj, Props, <<"connect_win">>) ->
-    'true' = kapi_acdc_queue:member_connect_win_v(JObj),
-    acdc_agent_fsm:member_connect_win(props:get_value('fsm_pid', Props), JObj);
+    'true' = kapi_acdc_agent:member_connect_win_v(JObj),
+    FSMPid = props:get_value('fsm_pid', Props),
+    MyId = acdc_util:proc_id(FSMPid),
+    case kz_json:get_value(<<"Agent-Process-ID">>, JObj) of
+        MyId -> acdc_agent_fsm:member_connect_win(FSMPid, JObj, 'same_node');
+        _ -> acdc_agent_fsm:member_connect_win(FSMPid, JObj, 'different_node')
+    end;
 handle_member_message(_, _, EvtName) ->
     lager:debug("not handling member event ~s", [EvtName]).
 

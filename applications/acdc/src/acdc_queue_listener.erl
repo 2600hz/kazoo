@@ -531,15 +531,15 @@ send_member_connect_req(CallId, AccountId, QueueId, MyQ, MyId) ->
 -spec send_member_connect_win(kz_json:object(), kapps_call:call(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 send_member_connect_win(RespJObj, Call, QueueId, MyQ, MyId, QueueOpts) ->
     CallJSON = kapps_call:to_json(Call),
-    Q = kz_json:get_value(<<"Server-ID">>, RespJObj),
     Win = props:filter_undefined(
             [{<<"Call">>, CallJSON}
             ,{<<"Process-ID">>, MyId}
             ,{<<"Agent-Process-ID">>, kz_json:get_value(<<"Agent-Process-ID">>, RespJObj)}
             ,{<<"Queue-ID">>, QueueId}
+            ,{<<"Agent-ID">>, kz_json:get_value(<<"Agent-ID">>, RespJObj)}
              | QueueOpts ++ kz_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
             ]),
-    publish(Q, Win, fun kapi_acdc_queue:publish_member_connect_win/2).
+    publish(Win, fun kapi_acdc_agent:publish_member_connect_win/1).
 
 -spec send_agent_timeout(kz_json:object(), kapps_call:call(), kz_term:ne_binary()) -> 'ok'.
 send_agent_timeout(RespJObj, Call, QueueId) ->

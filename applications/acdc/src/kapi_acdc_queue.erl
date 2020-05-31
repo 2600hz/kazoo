@@ -15,7 +15,6 @@
         ,member_call_cancel/1, member_call_cancel_v/1
         ,member_connect_req/1, member_connect_req_v/1
         ,member_connect_resp/1, member_connect_resp_v/1
-        ,member_connect_win/1, member_connect_win_v/1
         ,agent_timeout/1, agent_timeout_v/1
         ,member_connect_retry/1, member_connect_retry_v/1
         ,member_connect_accepted/1, member_connect_accepted_v/1
@@ -45,7 +44,6 @@
         ,publish_member_call_cancel/1, publish_member_call_cancel/2
         ,publish_member_connect_req/1, publish_member_connect_req/2
         ,publish_member_connect_resp/2, publish_member_connect_resp/3
-        ,publish_member_connect_win/2, publish_member_connect_win/3
         ,publish_agent_timeout/2, publish_agent_timeout/3
         ,publish_member_connect_retry/2, publish_member_connect_retry/3
         ,publish_member_connect_accepted/2, publish_member_connect_accepted/3
@@ -270,38 +268,6 @@ member_connect_resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?MEMBER_CONNECT_RESP_HEADERS, ?MEMBER_CONNECT_RESP_VALUES, ?MEMBER_CONNECT_RESP_TYPES);
 member_connect_resp_v(JObj) ->
     member_connect_resp_v(kz_json:to_proplist(JObj)).
-
-%%------------------------------------------------------------------------------
-%% Member Connect Win
-%%------------------------------------------------------------------------------
--define(MEMBER_CONNECT_WIN_HEADERS, [<<"Queue-ID">>, <<"Call">>]).
--define(OPTIONAL_MEMBER_CONNECT_WIN_HEADERS, [<<"Ring-Timeout">>, <<"Caller-Exit-Key">>
-                                             ,<<"Wrapup-Timeout">>, <<"CDR-Url">>
-                                             ,<<"Process-ID">>, <<"Agent-Process-ID">>
-                                             ,<<"Record-Caller">>, <<"Recording-URL">>
-                                             ,<<"Notifications">>
-                                             ]).
--define(MEMBER_CONNECT_WIN_VALUES, [{<<"Event-Category">>, <<"member">>}
-                                   ,{<<"Event-Name">>, <<"connect_win">>}
-                                   ]).
--define(MEMBER_CONNECT_WIN_TYPES, [{<<"Record-Caller">>, fun kz_term:is_boolean/1}]).
-
--spec member_connect_win(kz_term:api_terms()) ->
-          {'ok', iolist()} |
-          {'error', string()}.
-member_connect_win(Props) when is_list(Props) ->
-    case member_connect_win_v(Props) of
-        'true' -> kz_api:build_message(Props, ?MEMBER_CONNECT_WIN_HEADERS, ?OPTIONAL_MEMBER_CONNECT_WIN_HEADERS);
-        'false' -> {'error', "Proplist failed validation for member_connect_win"}
-    end;
-member_connect_win(JObj) ->
-    member_connect_win(kz_json:to_proplist(JObj)).
-
--spec member_connect_win_v(kz_term:api_terms()) -> boolean().
-member_connect_win_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?MEMBER_CONNECT_WIN_HEADERS, ?MEMBER_CONNECT_WIN_VALUES, ?MEMBER_CONNECT_WIN_TYPES);
-member_connect_win_v(JObj) ->
-    member_connect_win_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
 %% Agent Timeout
@@ -805,15 +771,6 @@ publish_member_connect_resp(Q, JObj) ->
 -spec publish_member_connect_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_member_connect_resp(Q, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?MEMBER_CONNECT_RESP_VALUES, fun member_connect_resp/1),
-    kz_amqp_util:targeted_publish(Q, Payload, ContentType).
-
--spec publish_member_connect_win(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
-publish_member_connect_win(Q, JObj) ->
-    publish_member_connect_win(Q, JObj, ?DEFAULT_CONTENT_TYPE).
-
--spec publish_member_connect_win(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
-publish_member_connect_win(Q, API, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(API, ?MEMBER_CONNECT_WIN_VALUES, fun member_connect_win/1),
     kz_amqp_util:targeted_publish(Q, Payload, ContentType).
 
 -spec publish_agent_timeout(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.

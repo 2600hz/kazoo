@@ -19,6 +19,8 @@
         ,logout_queue/1, logout_queue_v/1
 
         ,login_resp/1, login_resp_v/1
+
+        ,member_connect_win/1, member_connect_win_v/1
         ]).
 
 -export([bind_q/2
@@ -39,6 +41,8 @@
         ,publish_logout_queue/1, publish_logout_queue/2
 
         ,publish_login_resp/2, publish_login_resp/3
+
+        ,publish_member_connect_win/1, publish_member_connect_win/2
         ]).
 
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
@@ -381,6 +385,48 @@ login_resp_v(JObj) ->
     login_resp_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
+%% Member Connect Win
+%%------------------------------------------------------------------------------
+-define(MEMBER_CONNECT_WIN_HEADERS, [<<"Queue-ID">>, <<"Agent-ID">>, <<"Call">>, <<"Agent-Process-ID">>]).
+-define(OPTIONAL_MEMBER_CONNECT_WIN_HEADERS, [<<"Ring-Timeout">>, <<"Caller-Exit-Key">>
+                                             ,<<"Wrapup-Timeout">>, <<"CDR-Url">>
+                                             ,<<"Process-ID">>
+                                             ,<<"Record-Caller">>, <<"Recording-URL">>
+                                             ,<<"Notifications">>
+                                             ]).
+-define(MEMBER_CONNECT_WIN_VALUES, [{<<"Event-Category">>, <<"member">>}
+                                   ,{<<"Event-Name">>, <<"connect_win">>}
+                                   ]).
+-define(MEMBER_CONNECT_WIN_TYPES, [{<<"Record-Caller">>, fun kz_term:is_boolean/1}]).
+
+-spec member_connect_win(kz_term:api_terms()) ->
+          {'ok', iolist()} |
+          {'error', string()}.
+member_connect_win(Props) when is_list(Props) ->
+    case member_connect_win_v(Props) of
+        'true' -> kz_api:build_message(Props, ?MEMBER_CONNECT_WIN_HEADERS, ?OPTIONAL_MEMBER_CONNECT_WIN_HEADERS);
+        'false' -> {'error', "Proplist failed validation for member_connect_win"}
+    end;
+member_connect_win(JObj) ->
+    member_connect_win(kz_json:to_proplist(JObj)).
+
+-spec member_connect_win_v(kz_term:api_terms()) -> boolean().
+member_connect_win_v(Prop) when is_list(Prop) ->
+    kz_api:validate(Prop, ?MEMBER_CONNECT_WIN_HEADERS, ?MEMBER_CONNECT_WIN_VALUES, ?MEMBER_CONNECT_WIN_TYPES);
+member_connect_win_v(JObj) ->
+    member_connect_win_v(kz_json:to_proplist(JObj)).
+
+-spec member_connect_win_routing_key(kz_term:api_terms() | kz_term:ne_binary()) -> kz_term:ne_binary().
+member_connect_win_routing_key(Props) when is_list(Props) ->
+    AgentId = props:get_value(<<"Agent-ID">>, Props),
+    member_connect_win_routing_key(AgentId);
+member_connect_win_routing_key(AgentId) when is_binary(AgentId) ->
+    <<"acdc.member.connect_win.", AgentId/binary>>;
+member_connect_win_routing_key(JObj) ->
+    AgentId = kz_json:get_value(<<"Agent-ID">>, JObj),
+    member_connect_win_routing_key(AgentId).
+
+%%------------------------------------------------------------------------------
 %% Bind/Unbind the queue as appropriate
 %%------------------------------------------------------------------------------
 
@@ -397,6 +443,9 @@ bind_q(Q, {AcctId, AgentId, Status}, 'undefined') ->
     kz_amqp_util:bind_q_to_kapps(Q, sync_req_routing_key(AcctId, AgentId)),
     kz_amqp_util:bind_q_to_kapps(Q, stats_req_routing_key(AcctId)),
     kz_amqp_util:bind_q_to_kapps(Q, stats_req_routing_key(AcctId, AgentId));
+bind_q(Q, {_, AgentId, _}=Ids, ['member_connect_win'|T]) ->
+    kz_amqp_util:bind_q_to_kapps(Q, member_connect_win_routing_key(AgentId)),
+    bind_q(Q, Ids, T);
 bind_q(Q, {AcctId, AgentId, Status}=Ids, ['status'|T]) ->
     kz_amqp_util:bind_q_to_kapps(Q, agent_status_routing_key(AcctId, AgentId, Status)),
     bind_q(Q, Ids, T);
@@ -425,6 +474,9 @@ unbind_q(Q, {AcctId, AgentId, Status}, 'undefined') ->
     _ = kz_amqp_util:unbind_q_from_kapps(Q, agent_status_routing_key(AcctId, AgentId, Status)),
     _ = kz_amqp_util:unbind_q_from_kapps(Q, sync_req_routing_key(AcctId, AgentId)),
     kz_amqp_util:unbind_q_from_kapps(Q, stats_req_routing_key(AcctId));
+unbind_q(Q, {_, AgentId, _}=Ids, ['member_connect_win'|T]) ->
+    kz_amqp_util:unbind_q_from_kapps(Q, member_connect_win_routing_key(AgentId)),
+    unbind_q(Q, Ids, T);
 unbind_q(Q, {AcctId, AgentId, Status}=Ids, ['status'|T]) ->
     _ = kz_amqp_util:unbind_q_from_kapps(Q, agent_status_routing_key(AcctId, AgentId, Status)),
     unbind_q(Q, Ids, T);
@@ -560,3 +612,12 @@ publish_login_resp(RespQ, JObj) ->
 publish_login_resp(RespQ, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?LOGIN_RESP_VALUES, fun login_resp/1),
     kz_amqp_util:targeted_publish(RespQ, Payload, ContentType).
+
+-spec publish_member_connect_win(kz_term:api_terms()) -> 'ok'.
+publish_member_connect_win(JObj) ->
+    publish_member_connect_win(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_member_connect_win(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
+publish_member_connect_win(API, ContentType) ->
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?MEMBER_CONNECT_WIN_VALUES, fun member_connect_win/1),
+    kz_amqp_util:kapps_publish(member_connect_win_routing_key(API), Payload, ContentType).
