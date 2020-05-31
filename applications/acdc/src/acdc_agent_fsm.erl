@@ -1727,7 +1727,7 @@ unmonitor_endpoint(EP, AccountId, AgentListener) ->
 
 -spec maybe_add_endpoint(kz_term:ne_binary(), kz_json:object(), kz_json:objects(), kz_term:ne_binary(), kz_types:server_ref()) -> any().
 maybe_add_endpoint(EPId, EP, EPs, AccountId, AgentListener) ->
-    case lists:partition(fun(E) -> kz_doc:id(E) =:= EPId end, EPs) of
+    case lists:partition(fun(E) -> find_endpoint_id(E) =:= EPId end, EPs) of
         {[], _} ->
             lager:debug("endpoint ~s not in our list, adding it", [EPId]),
             [begin monitor_endpoint(EP, AccountId, AgentListener), EP end | EPs];
@@ -1736,7 +1736,7 @@ maybe_add_endpoint(EPId, EP, EPs, AccountId, AgentListener) ->
 
 -spec maybe_remove_endpoint(kz_term:ne_binary(), kz_json:objects(), kz_term:ne_binary(), kz_types:server_ref()) -> kz_json:objects().
 maybe_remove_endpoint(EPId, EPs, AccountId, AgentListener) ->
-    case lists:partition(fun(EP) -> kz_doc:id(EP) =:= EPId end, EPs) of
+    case lists:partition(fun(EP) -> find_endpoint_id(EP) =:= EPId end, EPs) of
         {[], _} -> EPs; %% unknown endpoint
         {[RemoveEP], EPs1} ->
             lager:debug("endpoint ~s in our list, removing it", [EPId]),
