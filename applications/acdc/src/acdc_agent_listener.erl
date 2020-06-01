@@ -232,9 +232,10 @@ hangup_call(Srv) ->
 bridge_to_member(Srv, Call, WinJObj, EPs, CDRUrl, RecordingUrl) ->
     gen_listener:cast(Srv, {'bridge_to_member', Call, WinJObj, EPs, CDRUrl, RecordingUrl}).
 
--spec monitor_call(pid(), kapps_call:call(), kz_term:api_binary(), kz_term:api_binary()) -> 'ok'.
-monitor_call(Srv, Call, CDRUrl, RecordingUrl) ->
-    gen_listener:cast(Srv, {'monitor_call', Call, CDRUrl, RecordingUrl}).
+-spec monitor_call(pid(), kapps_call:call(), kz_json:object(), kz_term:api_binary()) ->
+          'ok'.
+monitor_call(Srv, Call, WinJObj, RecordingUrl) ->
+    gen_listener:cast(Srv, {'monitor_call', Call, WinJObj, RecordingUrl}).
 
 -spec channel_hungup(pid(), kz_term:ne_binary()) -> 'ok'.
 channel_hungup(Srv, CallId) ->
@@ -612,6 +613,7 @@ handle_cast({'bridge_to_member', Call, WinJObj, EPs, CDRUrl, RecordingUrl}, #sta
     lager:debug("originate sent, waiting on successful bridge now"),
     update_my_queues_of_change(AcctId, AgentId, Qs),
     {'noreply', State#state{call=Call
+                           ,acdc_queue_id=kz_json:get_value(<<"Queue-ID">>, WinJObj)
                            ,record_calls=ShouldRecord
                            ,msg_queue_id=kz_json:get_value(<<"Server-ID">>, WinJObj)
                            ,agent_call_ids=AgentCallIds
@@ -640,6 +642,7 @@ handle_cast({'bridge_to_member', Call, WinJObj, _, CDRUrl, RecordingUrl}, #state
     kapps_call_command:pickup(kapps_call:call_id(Agent), <<"now">>, Call),
 
     {'noreply', State#state{call=Call
+                           ,acdc_queue_id=kz_json:get_value(<<"Queue-ID">>, WinJObj)
                            ,msg_queue_id=kz_json:get_value(<<"Server-ID">>, WinJObj)
                            ,agent_call_ids=[AgentCallId]
                            ,cdr_urls=dict:store(kapps_call:call_id(Call), CDRUrl,
@@ -702,9 +705,7 @@ handle_cast({'member_connect_resp', ReqJObj}, #state{agent_id=AgentId
             lager:debug("responding to member_connect_req"),
 
             send_member_connect_resp(ReqJObj, MyQ, AgentId, MyId, LastConn),
-            {'noreply', State#state{acdc_queue_id = ACDcQueue
-                                   ,msg_queue_id = kz_json:get_value(<<"Server-ID">>, ReqJObj)
-                                   }
+            {'noreply', State#state{msg_queue_id=kz_json:get_value(<<"Server-ID">>, ReqJObj)}
             ,'hibernate'}
     end;
 
@@ -732,7 +733,7 @@ handle_cast({'hangup_call'}, #state{my_id=MyId
                            }
     ,'hibernate'};
 
-handle_cast({'monitor_call', Call, _CDRUrl, RecordingUrl}, State) ->
+handle_cast({'monitor_call', Call, WinJObj, RecordingUrl}, State) ->
     _ = kapps_call:put_callid(Call),
 
     acdc_util:bind_to_call_events(Call),
@@ -740,6 +741,8 @@ handle_cast({'monitor_call', Call, _CDRUrl, RecordingUrl}, State) ->
     lager:debug("monitoring member call ~s", [kapps_call:call_id(Call)]),
 
     {'noreply', State#state{call=Call
+                           ,acdc_queue_id=kz_json:get_value(<<"Queue-ID">>, WinJObj)
+                           ,msg_queue_id=kz_json:get_value(<<"Server-ID">>, WinJObj)
                            ,agent_call_ids=[]
                            ,recording_url=RecordingUrl
                            }
