@@ -630,6 +630,7 @@ ready('cast', {'member_connect_win', JObj, 'different_node'}, #state{agent_liste
     CallerExitKey = kz_json:get_value(<<"Caller-Exit-Key">>, JObj, <<"#">>),
     QueueId = kz_json:get_value(<<"Queue-ID">>, JObj),
 
+    CDRUrl = cdr_url(JObj),
     RecordingUrl = recording_url(JObj),
 
     %% Only start monitoring if the agent can actually take the call
@@ -643,7 +644,7 @@ ready('cast', {'member_connect_win', JObj, 'different_node'}, #state{agent_liste
         {'ok', UpdatedEPs} ->
             acdc_util:bind_to_call_events(Call, AgentListener),
 
-            acdc_agent_listener:monitor_call(AgentListener, Call, JObj, RecordingUrl),
+            acdc_agent_listener:monitor_call(AgentListener, Call, CDRUrl, RecordingUrl),
             NextState = 'ringing',
 
             lager:debug("monitoring agent ~s to connect to caller in queue ~s", [AgentId, QueueId]),
