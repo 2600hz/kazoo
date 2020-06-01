@@ -1470,11 +1470,8 @@ terminate(Reason, _StateName, #state{account_id=AccountId
                                     }) ->
     lager:debug("acdc agent statem terminating while in ~s: ~p", [_StateName, Reason]),
 
-    case Reason of
-        OKReason when OKReason == 'normal'; OKReason == 'shutdown' ->
-            kz_util:spawn(fun acdc_agents_sup:stop_agent/2, [AccountId, AgentId]);
-        _ -> 'ok'
-    end,
+    Reason =:= 'normal'
+        andalso kz_util:spawn(fun acdc_agents_sup:stop_agent/2, [AccountId, AgentId]),
 
     acdc_agent_listener:presence_update(AgentListener, ?PRESENCE_RED_SOLID).
 

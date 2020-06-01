@@ -906,7 +906,8 @@ terminate(Reason, #state{agent_queues=Queues
                         }
          ) when Reason == 'normal'; Reason == 'shutdown' ->
     _ = [rm_queue_binding(AcctId, AgentId, QueueId) || QueueId <- Queues],
-    _ = kz_util:spawn(fun acdc_agents_sup:stop_agent/2, [AcctId, AgentId]),
+    Reason =:= 'normal' %% Prevent race condition of supervisor delete_child/restart_child
+        andalso kz_util:spawn(fun acdc_agents_sup:stop_agent/2, [AcctId, AgentId]),
     lager:debug("agent process going down: ~p", [Reason]);
 terminate(_Reason, _State) ->
     lager:debug("agent process going down: ~p", [_Reason]).
