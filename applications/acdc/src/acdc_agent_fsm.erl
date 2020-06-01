@@ -617,7 +617,7 @@ ready('cast', {'member_connect_win', JObj}, #state{agent_listener=AgentListener
         _OtherId ->
             lager:debug("monitoring agent ~s to connect to caller in queue ~s", [AgentId, QueueId]),
 
-            acdc_agent_listener:monitor_call(AgentListener, Call, CDRUrl, RecordingUrl),
+            acdc_agent_listener:monitor_call(AgentListener, Call, JObj, RecordingUrl),
 
             {'next_state', 'ringing', State#state{wrapup_timeout=WrapupTimer
                                                  ,member_call_id=CallId

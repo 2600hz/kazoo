@@ -232,9 +232,10 @@ hangup_call(Srv) ->
 bridge_to_member(Srv, Call, WinJObj, EPs, CDRUrl, RecordingUrl) ->
     gen_listener:cast(Srv, {'bridge_to_member', Call, WinJObj, EPs, CDRUrl, RecordingUrl}).
 
--spec monitor_call(pid(), kapps_call:call(), kz_term:api_binary(), kz_term:api_binary()) -> 'ok'.
-monitor_call(Srv, Call, CDRUrl, RecordingUrl) ->
-    gen_listener:cast(Srv, {'monitor_call', Call, CDRUrl, RecordingUrl}).
+-spec monitor_call(pid(), kapps_call:call(), kz_json:object(), kz_term:api_binary()) ->
+          'ok'.
+monitor_call(Srv, Call, WinJObj, RecordingUrl) ->
+    gen_listener:cast(Srv, {'monitor_call', Call, WinJObj, RecordingUrl}).
 
 -spec channel_hungup(pid(), kz_term:ne_binary()) -> 'ok'.
 channel_hungup(Srv, CallId) ->
@@ -731,7 +732,7 @@ handle_cast({'hangup_call'}, #state{my_id=MyId
                            }
     ,'hibernate'};
 
-handle_cast({'monitor_call', Call, _CDRUrl, RecordingUrl}, State) ->
+handle_cast({'monitor_call', Call, WinJObj, RecordingUrl}, State) ->
     _ = kapps_call:put_callid(Call),
 
     acdc_util:bind_to_call_events(Call),
