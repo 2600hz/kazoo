@@ -611,6 +611,7 @@ handle_cast({'bridge_to_member', Call, WinJObj, EPs, CDRUrl, RecordingUrl}, #sta
     lager:debug("originate sent, waiting on successful bridge now"),
     update_my_queues_of_change(AcctId, AgentId, Qs),
     {'noreply', State#state{call=Call
+                           ,acdc_queue_id=kz_json:get_value(<<"Queue-ID">>, WinJObj)
                            ,record_calls=ShouldRecord
                            ,msg_queue_id=kz_json:get_value(<<"Server-ID">>, WinJObj)
                            ,agent_call_ids=AgentCallIds
@@ -639,6 +640,7 @@ handle_cast({'bridge_to_member', Call, WinJObj, _, CDRUrl, RecordingUrl}, #state
     kapps_call_command:pickup(kapps_call:call_id(Agent), <<"now">>, Call),
 
     {'noreply', State#state{call=Call
+                           ,acdc_queue_id=kz_json:get_value(<<"Queue-ID">>, WinJObj)
                            ,msg_queue_id=kz_json:get_value(<<"Server-ID">>, WinJObj)
                            ,agent_call_ids=[AgentCallId]
                            ,cdr_urls=dict:store(kapps_call:call_id(Call), CDRUrl,
@@ -701,9 +703,7 @@ handle_cast({'member_connect_resp', ReqJObj}, #state{agent_id=AgentId
             lager:debug("responding to member_connect_req"),
 
             send_member_connect_resp(ReqJObj, MyQ, AgentId, MyId, LastConn),
-            {'noreply', State#state{acdc_queue_id = ACDcQueue
-                                   ,msg_queue_id = kz_json:get_value(<<"Server-ID">>, ReqJObj)
-                                   }
+            {'noreply', State#state{msg_queue_id=kz_json:get_value(<<"Server-ID">>, ReqJObj)}
             ,'hibernate'}
     end;
 
@@ -739,6 +739,8 @@ handle_cast({'monitor_call', Call, _CDRUrl, RecordingUrl}, State) ->
     lager:debug("monitoring member call ~s", [kapps_call:call_id(Call)]),
 
     {'noreply', State#state{call=Call
+                           ,acdc_queue_id=kz_json:get_value(<<"Queue-ID">>, WinJObj)
+                           ,msg_queue_id=kz_json:get_value(<<"Server-ID">>, WinJObj)
                            ,agent_call_ids=[]
                            ,recording_url=RecordingUrl
                            }
