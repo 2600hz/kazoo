@@ -513,6 +513,7 @@ handle_cast({'channel_hungup', CallId}, #state{call=Call
                                            ,acdc_queue_id='undefined'
                                            ,agent_call_ids=[]
                                            ,recording_url='undefined'
+                                           ,last_connect=os:timestamp()
                                            }
                     ,'hibernate'};
                 'true' ->
