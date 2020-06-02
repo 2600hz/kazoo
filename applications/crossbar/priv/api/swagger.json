@@ -7052,6 +7052,74 @@
             ],
             "type": "object"
         },
+        "kapi.acdc_agent.shared_call_id": {
+            "description": "AMQP API for acdc_agent.shared_call_id",
+            "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Agent-Call-ID": {
+                    "type": "string"
+                },
+                "Agent-ID": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "agent"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "shared_call_id"
+                    ],
+                    "type": "string"
+                },
+                "Member-Call-ID": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Account-ID",
+                "Agent-ID"
+            ],
+            "type": "object"
+        },
+        "kapi.acdc_agent.shared_originate_failure": {
+            "description": "AMQP API for acdc_agent.shared_originate_failure",
+            "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Agent-ID": {
+                    "type": "string"
+                },
+                "Blame": {
+                    "enum": [
+                        "member"
+                    ],
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "agent"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "shared_failure"
+                    ],
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Account-ID",
+                "Agent-ID"
+            ],
+            "type": "object"
+        },
         "kapi.acdc_agent.stats_req": {
             "description": "AMQP API for acdc_agent.stats_req",
             "properties": {

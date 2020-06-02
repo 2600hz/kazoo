@@ -305,6 +305,12 @@ handle_agent_message(JObj, Props) ->
 handle_agent_message(JObj, Props, <<"connect_timeout">>) ->
     'true' = kapi_acdc_queue:agent_timeout_v(JObj),
     acdc_agent_fsm:agent_timeout(props:get_value('fsm_pid', Props), JObj);
+handle_agent_message(JObj, Props, <<"shared_failure">>) ->
+    'true' = kapi_acdc_agent:shared_originate_failure_v(JObj),
+    acdc_agent_fsm:shared_failure(props:get_value('fsm_pid', Props), JObj);
+handle_agent_message(JObj, Props, <<"shared_call_id">>) ->
+    'true' = kapi_acdc_agent:shared_call_id_v(JObj),
+    acdc_agent_fsm:shared_call_id(props:get_value('fsm_pid', Props), JObj);
 handle_agent_message(_, _, _EvtName) ->
     lager:debug("not handling agent event ~s", [_EvtName]).
 

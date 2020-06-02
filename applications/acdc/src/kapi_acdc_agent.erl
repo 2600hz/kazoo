@@ -21,6 +21,9 @@
 
         ,login_resp/1, login_resp_v/1
 
+        ,shared_originate_failure/1, shared_originate_failure_v/1
+        ,shared_call_id/1, shared_call_id_v/1
+
         ,member_connect_win/1, member_connect_win_v/1
         ]).
 
@@ -43,6 +46,9 @@
         ,publish_restart/1, publish_restart/2
 
         ,publish_login_resp/2, publish_login_resp/3
+
+        ,publish_shared_originate_failure/1, publish_shared_originate_failure/2
+        ,publish_shared_call_id/1, publish_shared_call_id/2
 
         ,publish_member_connect_win/1, publish_member_connect_win/2
         ]).
@@ -403,6 +409,69 @@ login_resp_v(JObj) ->
     login_resp_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
+%% Sharing of originate_failure to all agent FSMs
+%%------------------------------------------------------------------------------
+-define(FSM_SHARED_KEY, "acdc.agent.fsm_shared.").
+
+-spec fsm_shared_routing_key(kz_term:proplist()) -> kz_term:ne_binary().
+fsm_shared_routing_key(Props) when is_list(Props) ->
+    Id = props:get_value(<<"Agent-ID">>, Props, <<"*">>),
+    AcctId = props:get_value(<<"Account-ID">>, Props, <<"*">>),
+    fsm_shared_routing_key(AcctId, Id).
+
+-spec fsm_shared_routing_key(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
+fsm_shared_routing_key(AcctId, AgentId) ->
+    <<?FSM_SHARED_KEY, AcctId/binary, ".", AgentId/binary>>.
+
+-define(SHARED_FAILURE_HEADERS, [<<"Account-ID">>, <<"Agent-ID">>]).
+-define(OPTIONAL_SHARED_FAILURE_HEADERS, [<<"Blame">>]).
+-define(SHARED_FAILURE_VALUES, [{<<"Event-Category">>, <<"agent">>}
+                               ,{<<"Event-Name">>, <<"shared_failure">>}
+                               ,{<<"Blame">>, [<<"member">>]}
+                               ]).
+-define(SHARED_FAILURE_TYPES, []).
+
+-spec shared_originate_failure(kz_term:api_terms()) ->
+          {'ok', iolist()} |
+          {'error', string()}.
+shared_originate_failure(Props) when is_list(Props) ->
+    case shared_originate_failure_v(Props) of
+        'true' -> kz_api:build_message(Props, ?SHARED_FAILURE_HEADERS, ?OPTIONAL_SHARED_FAILURE_HEADERS);
+        'false' -> {'error', "Proplist failed validation for shared_originate_failure"}
+    end;
+shared_originate_failure(JObj) -> shared_originate_failure(kz_json:to_proplist(JObj)).
+
+-spec shared_originate_failure_v(kz_term:api_terms()) -> boolean().
+shared_originate_failure_v(Prop) when is_list(Prop) ->
+    kz_api:validate(Prop, ?SHARED_FAILURE_HEADERS, ?SHARED_FAILURE_VALUES, ?SHARED_FAILURE_TYPES);
+shared_originate_failure_v(JObj) -> shared_originate_failure_v(kz_json:to_proplist(JObj)).
+
+%%------------------------------------------------------------------------------
+%% Sharing of answered call id to all agent FSMs
+%%------------------------------------------------------------------------------
+-define(SHARED_CALL_ID_HEADERS, [<<"Account-ID">>, <<"Agent-ID">>]).
+-define(OPTIONAL_SHARED_CALL_ID_HEADERS, [<<"Agent-Call-ID">>, <<"Member-Call-ID">>]).
+-define(SHARED_CALL_ID_VALUES, [{<<"Event-Category">>, <<"agent">>}
+                               ,{<<"Event-Name">>, <<"shared_call_id">>}
+                               ]).
+-define(SHARED_CALL_ID_TYPES, []).
+
+-spec shared_call_id(kz_term:api_terms()) ->
+          {'ok', iolist()} |
+          {'error', string()}.
+shared_call_id(Props) when is_list(Props) ->
+    case shared_call_id_v(Props) of
+        'true' -> kz_api:build_message(Props, ?SHARED_CALL_ID_HEADERS, ?OPTIONAL_SHARED_CALL_ID_HEADERS);
+        'false' -> {'error', "Proplist failed validation for shared_call_id"}
+    end;
+shared_call_id(JObj) -> shared_call_id(kz_json:to_proplist(JObj)).
+
+-spec shared_call_id_v(kz_term:api_terms()) -> boolean().
+shared_call_id_v(Prop) when is_list(Prop) ->
+    kz_api:validate(Prop, ?SHARED_CALL_ID_HEADERS, ?SHARED_CALL_ID_VALUES, ?SHARED_CALL_ID_TYPES);
+shared_call_id_v(JObj) -> shared_call_id_v(kz_json:to_proplist(JObj)).
+
+%%------------------------------------------------------------------------------
 %% Member Connect Win
 %%------------------------------------------------------------------------------
 -define(MEMBER_CONNECT_WIN_HEADERS, [<<"Queue-ID">>, <<"Agent-ID">>, <<"Call">>, <<"Agent-Process-ID">>]).
@@ -458,6 +527,7 @@ bind_q(Q, Props) ->
 -spec bind_q(binary(), {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}, 'undefined' | list()) -> 'ok'.
 bind_q(Q, {AcctId, AgentId, Status}, 'undefined') ->
     kz_amqp_util:bind_q_to_kapps(Q, agent_status_routing_key(AcctId, AgentId, Status)),
+    kz_amqp_util:bind_q_to_kapps(Q, fsm_shared_routing_key(AcctId, AgentId)),
     kz_amqp_util:bind_q_to_kapps(Q, sync_req_routing_key(AcctId, AgentId)),
     kz_amqp_util:bind_q_to_kapps(Q, stats_req_routing_key(AcctId)),
     kz_amqp_util:bind_q_to_kapps(Q, stats_req_routing_key(AcctId, AgentId));
@@ -466,6 +536,9 @@ bind_q(Q, {_, AgentId, _}=Ids, ['member_connect_win'|T]) ->
     bind_q(Q, Ids, T);
 bind_q(Q, {AcctId, AgentId, Status}=Ids, ['status'|T]) ->
     kz_amqp_util:bind_q_to_kapps(Q, agent_status_routing_key(AcctId, AgentId, Status)),
+    bind_q(Q, Ids, T);
+bind_q(Q, {AcctId, AgentId, _}=Ids, ['fsm_shared'|T]) ->
+    kz_amqp_util:bind_q_to_kapps(Q, fsm_shared_routing_key(AcctId, AgentId)),
     bind_q(Q, Ids, T);
 bind_q(Q, {AcctId, AgentId, _}=Ids, ['sync'|T]) ->
     kz_amqp_util:bind_q_to_kapps(Q, sync_req_routing_key(AcctId, AgentId)),
@@ -490,6 +563,7 @@ unbind_q(Q, Props) ->
 -spec unbind_q(binary(), {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}, 'undefined' | list()) -> 'ok'.
 unbind_q(Q, {AcctId, AgentId, Status}, 'undefined') ->
     _ = kz_amqp_util:unbind_q_from_kapps(Q, agent_status_routing_key(AcctId, AgentId, Status)),
+    _ = kz_amqp_util:unbind_q_from_kapps(Q, fsm_shared_routing_key(AcctId, AgentId)),
     _ = kz_amqp_util:unbind_q_from_kapps(Q, sync_req_routing_key(AcctId, AgentId)),
     kz_amqp_util:unbind_q_from_kapps(Q, stats_req_routing_key(AcctId));
 unbind_q(Q, {_, AgentId, _}=Ids, ['member_connect_win'|T]) ->
@@ -497,6 +571,9 @@ unbind_q(Q, {_, AgentId, _}=Ids, ['member_connect_win'|T]) ->
     unbind_q(Q, Ids, T);
 unbind_q(Q, {AcctId, AgentId, Status}=Ids, ['status'|T]) ->
     _ = kz_amqp_util:unbind_q_from_kapps(Q, agent_status_routing_key(AcctId, AgentId, Status)),
+    unbind_q(Q, Ids, T);
+unbind_q(Q, {AcctId, AgentId, _}=Ids, ['fsm_shared'|T]) ->
+    _ = kz_amqp_util:unbind_q_from_kapps(Q, fsm_shared_routing_key(AcctId, AgentId)),
     unbind_q(Q, Ids, T);
 unbind_q(Q, {AcctId, AgentId, _}=Ids, ['sync'|T]) ->
     _ = kz_amqp_util:unbind_q_from_kapps(Q, sync_req_routing_key(AcctId, AgentId)),
@@ -639,6 +716,24 @@ publish_login_resp(RespQ, JObj) ->
 publish_login_resp(RespQ, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?LOGIN_RESP_VALUES, fun login_resp/1),
     kz_amqp_util:targeted_publish(RespQ, Payload, ContentType).
+
+-spec publish_shared_originate_failure(kz_term:api_terms()) -> 'ok'.
+publish_shared_originate_failure(JObj) ->
+    publish_shared_originate_failure(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_shared_originate_failure(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
+publish_shared_originate_failure(API, ContentType) ->
+    {'ok', Payload} = shared_originate_failure((API1 = kz_api:prepare_api_payload(API, ?SHARED_FAILURE_VALUES))),
+    kz_amqp_util:kapps_publish(fsm_shared_routing_key(API1), Payload, ContentType).
+
+-spec publish_shared_call_id(kz_term:api_terms()) -> 'ok'.
+publish_shared_call_id(JObj) ->
+    publish_shared_call_id(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_shared_call_id(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
+publish_shared_call_id(API, ContentType) ->
+    {'ok', Payload} = shared_call_id((API1 = kz_api:prepare_api_payload(API, ?SHARED_CALL_ID_VALUES))),
+    kz_amqp_util:kapps_publish(fsm_shared_routing_key(API1), Payload, ContentType).
 
 -spec publish_member_connect_win(kz_term:api_terms()) -> 'ok'.
 publish_member_connect_win(JObj) ->
