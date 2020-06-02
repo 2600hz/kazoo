@@ -527,9 +527,12 @@ validate_request(UserId, Context) ->
         {'validation_errors', ValidationErrors} ->
             lager:info("validation errors on user"),
             cb_context:add_doc_validation_errors(Context, ValidationErrors);
-        {'system_error', Error} ->
+        {'system_error', Error} when is_atom(Error) ->
             lager:info("system error validating user: ~p", [Error]),
-            cb_context:add_system_error(Error, Context)
+            cb_context:add_system_error(Error, Context);
+        {'system_error', {Error, Message}} ->
+            lager:info("system error validating user: ~p, ~p", [Error, Message]),
+            cb_context:add_system_error(Error, Message, Context)
     end.
 
 %%------------------------------------------------------------------------------

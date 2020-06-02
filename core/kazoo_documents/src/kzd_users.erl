@@ -1003,10 +1003,7 @@ full_name(_, _, Default) ->
 %% or returns the validation error {Path, ErrorType, ErrorMessage}
 %% @end
 %%------------------------------------------------------------------------------
--spec validate(kz_term:api_ne_binary(), kz_term:api_ne_binary(), doc()) ->
-          {'true', doc()} |
-          {'validation_errors', kazoo_documents:doc_validation_errors()} |
-          {'system_error', atom()}.
+-spec validate(kz_term:api_ne_binary(), kz_term:api_ne_binary(), doc()) -> kazoo_documents:doc_validation_return().
 validate(AccountId, UserId, ReqJObj) ->
     ValidateFuns = [fun maybe_normalize_username/3
                    ,fun maybe_validate_username_is_unique/3

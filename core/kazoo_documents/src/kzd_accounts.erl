@@ -1367,10 +1367,7 @@ is_alphanumeric(_) ->
 %% or returns the validation error {Path, ErrorType, ErrorMessage}
 %% @end
 %%------------------------------------------------------------------------------
--spec validate(kz_term:api_ne_binary(), kz_term:api_ne_binary(), doc()) ->
-          {'true', doc()} |
-          {'validation_errors', kazoo_documents:doc_validation_errors()} |
-          {'system_error', atom()}.
+-spec validate(kz_term:api_ne_binary(), kz_term:api_ne_binary(), doc()) -> kazoo_documents:doc_validation_return().
 validate(ParentId, AccountId, ReqJObj) ->
     ValidateFuns = [fun ensure_account_has_realm/2
                    ,fun ensure_account_has_timezone/2
