@@ -85,7 +85,8 @@ init_acct_queues(AccountDb, AccountId) ->
 -spec init_acct_agents(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 init_acct_agents(AccountDb, AccountId) ->
     init_agents(AccountId
-               ,kz_datamgr:get_results(AccountDb, <<"queues/agents_listing">>, [])
+               ,kz_datamgr:get_results(AccountDb, <<"queues/agents_listing">>
+                                      ,[{'reduce', 'false'}])
                ).
 
 -spec init_queues(kz_term:ne_binary(), kazoo_data:get_results_return()) -> 'ok'.

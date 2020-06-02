@@ -539,7 +539,11 @@ load_queue_agents(Id, Context) ->
     end.
 
 load_agent_roster(Id, Context) ->
-    crossbar_doc:load_view(?CB_AGENTS_LIST, [{'key', Id}]
+    crossbar_doc:load_view(?CB_AGENTS_LIST
+                          ,[{'startkey', [Id]}
+                           ,{'endkey', [Id, kz_json:new()]}
+                           ,{'reduce', 'false'}
+                           ]
                           ,Context
                           ,fun normalize_agents_results/2
                           ).
