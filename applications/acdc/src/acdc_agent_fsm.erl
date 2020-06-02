@@ -451,12 +451,9 @@ callback_mode() ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec wait(gen_statem:event_type(), any(), state()) -> kz_types:handle_fsm_ret(state()).
-wait('cast', {'listener', AgentListener, NextState, SyncRef}, #state{account_id=AccountId
-                                                                    ,agent_id=AgentId
-                                                                    }=State) ->
+wait('cast', {'listener', AgentListener, NextState, SyncRef}, State) ->
     lager:debug("setting agent proc to ~p", [AgentListener]),
     acdc_agent_listener:fsm_started(AgentListener, self()),
-    acdc_agent_stats:agent_ready(AccountId, AgentId),
     {'next_state', NextState, State#state{agent_listener=AgentListener
                                          ,sync_ref=SyncRef
                                          ,agent_listener_id=acdc_util:proc_id()
