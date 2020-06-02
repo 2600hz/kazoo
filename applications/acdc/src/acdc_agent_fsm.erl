@@ -1256,9 +1256,7 @@ paused('cast', {'member_connect_win', JObj, 'same_node'}, #state{agent_listener=
 
     {'next_state', 'paused', State};
 paused('cast', {'originate_uuid', ACallId, ACtrlQ}, #state{agent_listener=AgentListener}=State) ->
-    lager:debug("ignoring an outbound call that is the result of a failed originate"),
     acdc_agent_listener:originate_uuid(AgentListener, ACallId, ACtrlQ),
-    acdc_agent_listener:channel_hungup(AgentListener, ACallId),
     {'next_state', 'paused', State};
 paused('cast', Evt, State) ->
     handle_event(Evt, 'paused', State);
