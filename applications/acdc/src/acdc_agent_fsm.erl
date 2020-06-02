@@ -198,7 +198,9 @@ call_event(ServerRef, <<"error">>, <<"dialplan">>, JObj) ->
 call_event(ServerRef, <<"call_event">>, <<"CHANNEL_REPLACED">>, JObj) ->
     gen_statem:cast(ServerRef, {'channel_replaced', JObj});
 call_event(ServerRef, <<"call_event">>, <<"CHANNEL_TRANSFEREE">>, JObj) ->
-    gen_statem:cast(ServerRef, {'channel_unbridged', call_id(JObj)});
+    Transferor = kz_call_event:other_leg_call_id(JObj),
+    Transferee = kz_call_event:call_id(JObj),
+    gen_statem:cast(ServerRef, {'channel_transferee', Transferor, Transferee});
 call_event(_, _C, _E, _) ->
     lager:info("Unhandled combo: ~s/~s", [_C, _E]).
 
@@ -1017,29 +1019,6 @@ answered('cast', {'dialplan_error', _App}, #state{agent_listener=AgentListener
 
     acdc_agent_listener:presence_update(AgentListener, ?PRESENCE_GREEN),
     apply_state_updates(clear_call(State, 'ready'));
-answered('cast', {'channel_bridged', CallId}, #state{member_call_id=CallId
-                                                    ,agent_listener=AgentListener
-                                                    ,queue_notifications=Ns
-                                                    }=State) ->
-    lager:debug("agent has connected to member"),
-    acdc_agent_listener:member_connect_accepted(AgentListener),
-    maybe_notify(Ns, ?NOTIFY_PICKUP, State),
-    {'next_state', 'answered', State};
-answered('cast', {'channel_bridged', CallId}, #state{agent_call_id=CallId
-                                                    ,agent_listener=AgentListener
-                                                    ,queue_notifications=Ns
-                                                    }=State) ->
-    lager:debug("agent has connected (~s) to caller", [CallId]),
-    acdc_agent_listener:member_connect_accepted(AgentListener, CallId),
-    maybe_notify(Ns, ?NOTIFY_PICKUP, State),
-    {'next_state', 'answered', State};
-answered('cast', {'channel_replaced', JObj}, #state{agent_listener=AgentListener}=State) ->
-    CallId = kz_call_event:call_id(JObj),
-    ReplacedBy = kz_call_event:replaced_by(JObj),
-    acdc_agent_listener:rebind_events(AgentListener, CallId, ReplacedBy),
-    kz_util:put_callid(ReplacedBy),
-    lager:info("channel ~s replaced by ~s", [CallId, ReplacedBy]),
-    {'next_state', 'answered', State#state{member_call_id = ReplacedBy}};
 answered('cast', {'sync_req', JObj}, #state{agent_listener=AgentListener
                                            ,member_call_id=CallId
                                            }=State) ->
@@ -1075,6 +1054,25 @@ answered('cast', {'channel_answered', JObj}=Evt, #state{agent_call_id=AgentCallI
                     {'next_state', 'answered', State}
             end
     end;
+answered('cast', {'channel_bridged', _}, State) ->
+    {'next_state', 'answered', State};
+answered('cast', {'channel_unbridged', _}, State) ->
+    {'next_state', 'answered', State};
+answered('cast', {'channel_transferee', Transferor, Transferee}, #state{account_id=AccountId
+                                                                       ,agent_id=AgentId
+                                                                       ,member_call_id=Transferor
+                                                                       ,member_call_queue_id=QueueId
+                                                                       ,queue_notifications=Ns
+                                                                       ,agent_call_id=Transferee
+                                                                       }=State) ->
+    lager:info("caller transferred the agent"),
+    acdc_stats:call_processed(AccountId, QueueId, AgentId, Transferor, 'member'),
+    maybe_notify(Ns, ?NOTIFY_HANGUP, State),
+    {'next_state', 'outbound', start_outbound_call_handling(Transferee, clear_call(State, 'ready'))};
+answered('cast', {'channel_transferee', _, _}, State) ->
+    {'next_state', 'answered', State};
+answered('cast', {'channel_replaced', _}, State) ->
+    {'next_state', 'answered', State};
 answered('cast', {'originate_started', _CallId}, State) ->
     {'next_state', 'answered', State};
 answered('cast', {'leg_created', _CallId}, State) ->
@@ -1198,6 +1196,12 @@ wrapup('cast', {'sync_req', JObj}, #state{agent_listener=AgentListener
     {'next_state', 'wrapup', State};
 wrapup('cast', {'sync_resp', _}, State) ->
     {'next_state', 'wrapup', State};
+wrapup('cast', {'channel_bridged', _}, State) ->
+    {'next_state', 'wrapup', State};
+wrapup('cast', {'channel_unbridged', _}, State) ->
+    {'next_state', 'wrapup', State};
+wrapup('cast', {'channel_transferee', _, _}, State) ->
+    {'next_state', 'wrapup', State};
 wrapup('cast', {'leg_destroyed', CallId}, #state{agent_listener=AgentListener}=State) ->
     lager:debug("leg ~s destroyed", [CallId]),
     acdc_agent_listener:channel_hungup(AgentListener, CallId),
@@ -1316,6 +1320,8 @@ outbound('cast', {'sync_resp', _}, State) ->
 outbound('cast', {'leg_created', _}, State) ->
     {'next_state', 'outbound', State};
 outbound('cast', {'channel_answered', _}, State) ->
+    {'next_state', 'outbound', State};
+outbound('cast', {'channel_replaced', _}, State) ->
     {'next_state', 'outbound', State};
 outbound('cast', {'channel_bridged', _}, State) ->
     {'next_state', 'outbound', State};
