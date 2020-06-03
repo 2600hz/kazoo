@@ -18,6 +18,7 @@
         ,presence_update/3, presence_update/4
         ,send_cdr/2
         ,hangup_cause/1
+        ,max_priority/2
         ]).
 
 -include("acdc.hrl").
@@ -146,3 +147,14 @@ hangup_cause(JObj) ->
         'undefined' -> <<"unknown">>;
         Cause -> Cause
     end.
+
+-spec max_priority(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_integer().
+max_priority(AccountDb, QueueId) ->
+    case kz_datamgr:open_cache_doc(AccountDb, QueueId) of
+        {'ok', QueueJObj} -> max_priority(QueueJObj);
+        _ -> 'undefined'
+    end.
+
+-spec max_priority(kz_json:object()) -> kz_term:api_integer().
+max_priority(QueueJObj) ->
+    kz_json:get_integer_value(<<"max_priority">>, QueueJObj).

@@ -29,7 +29,7 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {fsm_pid :: pid()
+-record(state, {fsm_pid :: kz_term:api_pid()
                ,deliveries = [] :: deliveries()
                }).
 -type state() :: #state{}.
@@ -64,15 +64,16 @@
 %% @doc Starts the server.
 %% @end
 %%------------------------------------------------------------------------------
--spec start_link(kz_types:server_ref(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_integer()) -> kz_types:startlink_ret().
-start_link(FSMPid, AcctId, QueueId, Priority) ->
+-spec start_link(pid(), pid(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_types:startlink_ret().
+start_link(WorkerSup, _, AccountId, QueueId) ->
+    Priority = acdc_util:max_priority(kz_util:format_account_db(AccountId), QueueId),
     gen_listener:start_link(?SERVER
-                           ,[{'bindings', ?SHARED_QUEUE_BINDINGS(AcctId, QueueId)}
+                           ,[{'bindings', ?SHARED_QUEUE_BINDINGS(AccountId, QueueId)}
                             ,{'responders', ?RESPONDERS}
-                            ,{'queue_name', kapi_acdc_queue:shared_queue_name(AcctId, QueueId)}
+                            ,{'queue_name', kapi_acdc_queue:shared_queue_name(AccountId, QueueId)}
                              | ?SHARED_BINDING_OPTIONS(Priority)
                             ]
-                           ,[FSMPid]
+                           ,[WorkerSup]
                            ).
 
 -spec ack(kz_types:server_ref(), gen_listener:basic_deliver()) -> 'ok'.
@@ -98,11 +99,12 @@ deliveries(Srv) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec init([pid()]) -> {'ok', state()}.
-init([FSMPid]) ->
+init([WorkerSup]) ->
     kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
 
-    lager:debug("shared queue proc started, sending messages to FSM ~p", [FSMPid]),
-    {'ok', #state{fsm_pid=FSMPid}}.
+    lager:debug("shared queue proc started"),
+    gen_listener:cast(self(), {'get_fsm_proc', WorkerSup}),
+    {'ok', #state{}}.
 
 %%------------------------------------------------------------------------------
 %% @doc Handling call messages.
@@ -119,6 +121,10 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
+handle_cast({'get_fsm_proc', WorkerSup}, State) ->
+    FSMPid = acdc_queue_worker_sup:fsm(WorkerSup),
+    lager:debug("sending messages to FSM ~p", [FSMPid]),
+    {'noreply', State#state{fsm_pid=FSMPid}};
 handle_cast({'delivery', Delivery}, #state{deliveries=Ds}=State) ->
     {'noreply', State#state{deliveries=[Delivery|Ds]}};
 handle_cast({'ack', Delivery}, #state{deliveries=Ds}=State) ->
