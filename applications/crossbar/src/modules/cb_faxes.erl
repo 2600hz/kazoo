@@ -48,6 +48,9 @@
                               ,{<<"delivered">>, fun get_delivered_date/1}
                               ,{<<"status">>, fun get_execution_status/2}
                               ]).
+-define(OUTBOX_FAX_DOC_MAP, [{[<<"_read_only">>, <<"created">>], <<"pvt_created">>}
+                            ,{[<<"_read_only">>, <<"status">>], <<"pvt_job_status">>}
+                            ]).
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".fax">>).
 
@@ -392,7 +395,8 @@ read(Id, Type, Context) ->
 
 -spec load_modb_fax_doc(kz_term:ne_binary(), kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_modb_fax_doc(Id, Folder, Context) ->
-    validate_fax_doc_folder(Folder, read(Id, ?FAX_TYPE, Context)).
+    Ctx = validate_fax_doc_folder(Folder, read(Id, ?FAX_TYPE, Context)),
+    crossbar_util:apply_response_map(Ctx, ?OUTBOX_FAX_DOC_MAP).
 
 -spec validate_fax_doc_folder(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 validate_fax_doc_folder(Folder, Context) ->
