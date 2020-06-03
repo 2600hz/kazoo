@@ -309,7 +309,7 @@ init(Super, AccountId, QueueId, QueueJObj) ->
     process_flag('trap_exit', 'false'),
 
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
-    kz_datamgr:add_to_doc_cache(AccountDb, QueueId, QueueJObj),
+    _ = kz_datamgr:add_to_doc_cache(AccountDb, QueueId, QueueJObj),
 
     _ = start_secondary_queue(AccountId, QueueId),
 
@@ -519,9 +519,10 @@ handle_cast({'reject_member_call', Call, JObj}, #state{account_id=AccountId
     {'noreply', State};
 
 handle_cast({'sync_with_agent', A}, #state{account_id=AccountId}=State) ->
-    case acdc_agent_util:most_recent_status(AccountId, A) of
-        {'ok', <<"logged_out">>} -> gen_listener:cast(self(), {'agent_unavailable', A});
-        _ -> gen_listener:cast(self(), {'agent_available', A})
+    {'ok', Status} = acdc_agent_util:most_recent_status(AccountId, A),
+    case acdc_agent_util:status_should_auto_start(Status) of
+        'true' -> 'ok';
+        'false' -> gen_listener:cast(self(), {'agent_unavailable', A, 0})
     end,
     {'noreply', State};
 
