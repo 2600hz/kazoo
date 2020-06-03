@@ -412,9 +412,9 @@ handle_cast({'remove_call', [{M, P, _}]}, State) ->
         andalso lager:debug("removed calls: ~p", [N]),
     {'noreply', State};
 
-handle_cast({'update_status', Id, Updates}, State) ->
+handle_cast({'update_status', Id, Key, Updates}, State) ->
     lager:debug("updating status stat ~s: ~p", [Id, Updates]),
-    ets:update_element(acdc_agent_stats:status_table_id(), Id, Updates),
+    ets:update_element(acdc_agent_stats:status_table_id(), Key, Updates),
     {'noreply', State};
 handle_cast({'remove_status', [{M, P, _}]}, State) ->
     Match = [{M, P, ['true']}],
@@ -686,7 +686,7 @@ cleanup_data(Srv) ->
                  }],
     gen_listener:cast(Srv, {'remove_call', CallMatch}),
 
-    StatusMatch = [{#status_stat{timestamp='$1', _='_'}
+    StatusMatch = [{#status_stat{key=#status_stat_key{timestamp='$1'}, _='_'}
                    ,[{'=<', '$1', Past}]
                    ,['$_']
                    }],
