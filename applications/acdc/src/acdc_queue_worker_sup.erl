@@ -16,15 +16,18 @@
 -export([start_link/3
         ,stop/1
         ,listener/1
-        ,shared_queue/1, start_shared_queue/5
-        ,fsm/1, start_fsm/3
+        ,shared_queue/1
+        ,fsm/1
         ,status/1
         ]).
 
 %% Supervisor callbacks
 -export([init/1]).
 
--define(CHILDREN, [?WORKER_ARGS('acdc_queue_listener', [self() | Args])]).
+-define(CHILDREN, [?WORKER_ARGS('acdc_queue_listener', [self() | Args])
+                  ,?WORKER_ARGS('acdc_queue_shared', [self() | Args])
+                  ,?WORKER_ARGS('acdc_queue_fsm', [self() | Args])
+                  ]).
 
 %%%=============================================================================
 %%% API functions
@@ -55,21 +58,12 @@ shared_queue(WorkerSup) ->
         [P] -> P
     end.
 
--spec start_shared_queue(pid(), pid(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_integer()) -> kz_types:sup_startchild_ret().
-start_shared_queue(WorkerSup, FSMPid, AcctId, QueueId, Priority) ->
-    supervisor:start_child(WorkerSup, ?WORKER_ARGS('acdc_queue_shared', [FSMPid, AcctId, QueueId, Priority])).
-
 -spec fsm(pid()) -> kz_term:api_pid().
 fsm(WorkerSup) ->
     case child_of_type(WorkerSup, 'acdc_queue_fsm') of
         [] -> 'undefined';
         [P] -> P
     end.
-
--spec start_fsm(pid(), pid(), kz_json:object()) -> kz_types:sup_startchild_ret().
-start_fsm(WorkerSup, MgrPid, QueueJObj) ->
-    ListenerPid = self(),
-    supervisor:start_child(WorkerSup, ?WORKER_ARGS('acdc_queue_fsm', [MgrPid, ListenerPid, QueueJObj])).
 
 -spec child_of_type(pid(), atom()) -> [pid()].
 child_of_type(WSup, T) ->
