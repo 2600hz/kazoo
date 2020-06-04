@@ -430,7 +430,7 @@ delete(Context, ?PROVIDERS_PATH, _Id) ->
 maybe_authenticate(Context) ->
     case kz_auth:authenticate(cb_context:doc(Context)) of
         {'ok', Claims} ->
-            lager:debug("verified auth: ~p",[Claims]),
+            lager:debug("verified auth claims: ~p", [Claims]),
             Doc = kz_json:set_value(<<"Claims">>, kz_json:from_list(Claims), kz_json:new()),
             Setters = [{fun cb_context:set_resp_status/2, 'success'}
                       ,{fun cb_context:set_doc/2, Doc}

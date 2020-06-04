@@ -100,7 +100,7 @@ maybe_load_profile(#{auth_provider := #{profile_url := _ProfileURL} = Provider
     Headers = [{<<"host">>, Host}
                | profile_authorization_headers(Token, AccessToken)
               ],
-    lager:debug("getting profile (~s) from ~s", [Verb, URL]),
+    lager:debug("fetch profile: ~s ~s", [Verb, URL]),
     case kz_http:req(Verb, URL, Headers, <<>>, Options) of
         {'ok', 200, _RespHeaders, RespXML} ->
             Token#{profile => kz_json:decode(RespXML)};
@@ -170,9 +170,15 @@ profile_url(#{auth_provider := #{profile_url := ProfileURL} = Provider
 
 -spec maybe_compose_profile_url(kz_term:ne_binary(), map()) -> binary().
 maybe_compose_profile_url(Url, Token) ->
-    case re:run(Url, ?PROFILE_URL_REGEX, ?PROFILE_URL_REGEX_OPTIONS) of
-        {'match', [_ | _] = Fields} -> compose_profile_url(Url, lists:flatten(Fields), Token);
-        _ -> Url
+    {Scheme, Location, Path, Query, Frag} = kz_http_util:urlsplit(Url),
+
+    lager:debug("testing URL path ~s against ~s", [Path, ?PROFILE_URL_REGEX]),
+    case re:run(Path, ?PROFILE_URL_REGEX, ?PROFILE_URL_REGEX_OPTIONS) of
+        {'match', [_ | _] = Fields} ->
+            ReplacedPath = compose_profile_url(Path, lists:flatten(Fields), Token),
+            kz_http_util:urlunsplit({Scheme, Location, ReplacedPath, Query, Frag});
+        _ ->
+            Url
     end.
 
 -spec compose_profile_url(kz_term:ne_binary(), kz_term:ne_binaries(), map()) -> binary().

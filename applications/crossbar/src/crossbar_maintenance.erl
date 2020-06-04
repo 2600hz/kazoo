@@ -52,6 +52,8 @@
 
 -export([db_init/0]).
 
+-export([auth_token/0, auth_token/1]).
+
 -include("crossbar.hrl").
 -include_lib("kazoo/include/kz_system_config.hrl").
 
@@ -1336,3 +1338,20 @@ db_init() ->
 -spec register_views() -> 'ok'.
 register_views() ->
     kz_datamgr:register_views_from_folder('crossbar').
+
+-spec auth_token() -> kz_term:ne_binary().
+auth_token() ->
+    {'ok', AccountId} = kapps_util:get_master_account_id(),
+    auth_token(AccountId).
+
+-spec auth_token(kz_term:ne_binary()) -> kz_term:ne_binary().
+auth_token(<<AccountId/binary>>) ->
+    {'ok', _Account} = kzd_accounts:fetch(AccountId),
+    Context = cb_context:setters(cb_context:new()
+                                ,[{fun cb_context:set_resp_status/2, 'success'}
+                                 ,{fun cb_context:set_doc/2, kz_json:from_list([{<<"account_id">>, AccountId}])}
+                                 ,{fun cb_context:store/3, 'auth_type', <<"account_api_token">>}
+                                 ]
+                                ),
+    Context1 = crossbar_auth:create_auth_token(Context, 'cb_api_auth'),
+    cb_context:auth_token(Context1).
