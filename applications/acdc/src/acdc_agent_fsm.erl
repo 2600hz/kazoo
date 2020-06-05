@@ -1782,7 +1782,7 @@ maybe_add_endpoint(EPId, EP, EPs, AccountId) ->
     case lists:partition(fun(E) -> find_endpoint_id(E) =:= EPId end, EPs) of
         {[], _} ->
             lager:debug("endpoint ~s not in our list, adding it", [EPId]),
-            [begin monitor_endpoint(EP, AccountId), EP end | EPs];
+            [begin monitor_endpoint(convert_to_endpoint(EP), AccountId), EP end | EPs];
         {_, _} -> EPs
     end.
 
@@ -1794,6 +1794,19 @@ maybe_remove_endpoint(EPId, EPs, AccountId) ->
             lager:debug("endpoint ~s in our list, removing it", [EPId]),
             _ = unmonitor_endpoint(RemoveEP, AccountId),
             EPs1
+    end.
+
+-spec convert_to_endpoint(kz_json:object()) -> kz_term:api_object().
+convert_to_endpoint(EPDoc) ->
+    Setters = [{fun kapps_call:set_account_id/2, kz_doc:account_id(EPDoc)}
+              ,{fun kapps_call:set_account_db/2, kz_doc:account_db(EPDoc)}
+              ,{fun kapps_call:set_resource_type/2, ?RESOURCE_TYPE_AUDIO}
+              ],
+
+    Call = kapps_call:exec(Setters, kapps_call:new()),
+    case kz_endpoint:build(kz_doc:id(EPDoc), [], Call) of
+        {'ok', EP} -> EP;
+        {'error', _} -> 'undefined'
     end.
 
 -spec get_endpoints(kz_json:objects(), kapps_call:call(), kz_term:api_binary(), kz_term:api_binary()) ->
