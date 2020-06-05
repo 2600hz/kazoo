@@ -74,7 +74,7 @@ new_thief(Call, QueueId) ->
     AccountId = kapps_call:account_id(Call),
     CallId = kapps_call:call_id(Call),
     Id = ?THIEF_ID(AccountId, QueueId, CallId),
-    supervisor:start_child(?MODULE, ?CHILD(Id, [Call, QueueId])).
+    supervisor:start_child(?SERVER, ?CHILD(Id, [Call, QueueId])).
 
 -spec stop_agent(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_types:sup_deletechild_ret().
 stop_agent(AcctId, AgentId) ->
@@ -180,7 +180,7 @@ start_agent(AcctId, AgentId, AgentJObj) ->
 -spec start_agent(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), [any()]) -> kz_types:sup_startchild_ret().
 start_agent(AcctId, AgentId, AgentJObj, ExtraArgs) ->
     Id = ?CHILD_ID(AcctId, AgentId),
-    case supervisor:start_child(?MODULE, ?CHILD(Id, [AcctId, AgentId, AgentJObj] ++ ExtraArgs)) of
+    case supervisor:start_child(?SERVER, ?CHILD(Id, [AcctId, AgentId, AgentJObj] ++ ExtraArgs)) of
         {'error', 'already_present'}=E ->
             lager:debug("agent ~s(~s) already present", [AgentId, AcctId]),
             E;

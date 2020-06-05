@@ -580,8 +580,6 @@ handle_cast({'bridge_to_member', Call, WinJObj, EPs, CDRUrl, RecordingUrl}, #sta
                                           ,kz_json:is_true(<<"Record-Caller">>, WinJObj, 'false')
                                           ),
 
-    acdc_util:bind_to_call_events(Call),
-
     AgentCallIds = lists:append(maybe_connect_to_agent(MyQ, EPs, Call, RingTimeout, AgentId, CDRUrl)
                                ,ACallIds),
 
@@ -592,8 +590,9 @@ handle_cast({'bridge_to_member', Call, WinJObj, EPs, CDRUrl, RecordingUrl}, #sta
                            ,record_calls=ShouldRecord
                            ,msg_queue_id=kz_json:get_value(<<"Server-ID">>, WinJObj)
                            ,agent_call_ids=AgentCallIds
-                           ,cdr_urls=dict:store(kapps_call:call_id(Call), CDRUrl,
-                                                dict:store(AgentCallIds, CDRUrl, Urls)
+                           ,cdr_urls=dict:store(kapps_call:call_id(Call)
+                                               ,CDRUrl
+                                               ,dict:store(AgentCallIds, CDRUrl, Urls)
                                                )
                            ,recording_url=RecordingUrl
                            }
@@ -621,8 +620,9 @@ handle_cast({'bridge_to_member', Call, WinJObj, _, CDRUrl, RecordingUrl}, #state
                            ,acdc_queue_id=kz_json:get_value(<<"Queue-ID">>, WinJObj)
                            ,msg_queue_id=kz_json:get_value(<<"Server-ID">>, WinJObj)
                            ,agent_call_ids=[AgentCallId | ACallIds]
-                           ,cdr_urls=dict:store(kapps_call:call_id(Call), CDRUrl,
-                                                dict:store(AgentCallId, CDRUrl, Urls)
+                           ,cdr_urls=dict:store(kapps_call:call_id(Call)
+                                               ,CDRUrl
+                                               ,dict:store(AgentCallId, CDRUrl, Urls)
                                                )
                            ,record_calls=ShouldRecord
                            ,recording_url=RecordingUrl
@@ -715,8 +715,6 @@ handle_cast({'hangup_call'}, #state{my_id=MyId
 
 handle_cast({'monitor_call', Call, WinJObj, RecordingUrl}, State) ->
     _ = kapps_call:put_callid(Call),
-
-    acdc_util:bind_to_call_events(Call),
 
     lager:debug("monitoring member call ~s", [kapps_call:call_id(Call)]),
 
@@ -1032,7 +1030,7 @@ call_id(Call) ->
     end.
 
 -spec maybe_connect_to_agent(kz_term:ne_binary(), kz_json:objects(), kapps_call:call(), kz_term:api_integer(), kz_term:ne_binary(), kz_term:api_binary()) ->
-          kz_term:ne_binaries().
+          kz_term:proplist().
 maybe_connect_to_agent(MyQ, EPs, Call, Timeout, AgentId, _CdrUrl) ->
     MCallId = kapps_call:call_id(Call),
     kz_util:put_callid(MCallId),
