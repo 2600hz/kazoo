@@ -594,10 +594,9 @@ ready('cast', {'member_connect_win', JObj, 'same_node'}, #state{agent_listener=A
 
             acdc_agent_listener:bridge_to_member(AgentListener, Call, JObj, UpdatedEPs, CDRUrl, RecordingUrl),
 
-            CIDName = kapps_call:caller_id_name(Call),
-            CIDNum = kapps_call:caller_id_number(Call),
+            {CIDNumber, CIDName} = acdc_util:caller_id(Call),
 
-            acdc_agent_stats:agent_connecting(AccountId, AgentId, CallId, CIDName, CIDNum, QueueId),
+            acdc_agent_stats:agent_connecting(AccountId, AgentId, CallId, CIDName, CIDNumber, QueueId),
             lager:info("trying to ring agent endpoints(~p)", [length(UpdatedEPs)]),
             lager:debug("notifications for the queue: ~p", [kz_json:get_value(<<"Notifications">>, JObj)]),
             {'next_state', 'ringing', State#state{wrapup_timeout=WrapupTimer
@@ -752,10 +751,9 @@ ringing('cast', {'originate_started', ACallId}, #state{agent_listener=AgentListe
 
     maybe_notify(Ns, ?NOTIFY_PICKUP, State),
 
-    CIDName = kapps_call:caller_id_name(MemberCall),
-    CIDNum = kapps_call:caller_id_number(MemberCall),
+    {CIDNumber, CIDName} = acdc_util:caller_id(MemberCall),
 
-    acdc_agent_stats:agent_connected(AccountId, AgentId, MemberCallId, CIDName, CIDNum, QueueId),
+    acdc_agent_stats:agent_connected(AccountId, AgentId, MemberCallId, CIDName, CIDNumber, QueueId),
 
     {'next_state', 'answered', State#state{agent_call_id=ACallId
                                           ,connect_failures=0
@@ -813,10 +811,9 @@ ringing('cast', {'channel_bridged', MemberCallId}, #state{member_call_id=MemberC
 
     maybe_notify(Ns, ?NOTIFY_PICKUP, State),
 
-    CIDName = kapps_call:caller_id_name(MemberCall),
-    CIDNum = kapps_call:caller_id_number(MemberCall),
+    {CIDNumber, CIDName} = acdc_util:caller_id(MemberCall),
 
-    acdc_agent_stats:agent_connected(AccountId, AgentId, MemberCallId, CIDName, CIDNum, QueueId),
+    acdc_agent_stats:agent_connected(AccountId, AgentId, MemberCallId, CIDName, CIDNumber, QueueId),
 
     {'next_state', 'answered', State#state{connect_failures=0}};
 ringing('cast', {'channel_bridged', _CallId}, State) ->
@@ -876,11 +873,10 @@ ringing('cast', {'originate_resp', ACallId}, #state{agent_listener=AgentListener
 
     maybe_notify(Ns, ?NOTIFY_PICKUP, State),
 
-    CIDName = kapps_call:caller_id_name(MemberCall),
-    CIDNum = kapps_call:caller_id_number(MemberCall),
+    {CIDNumber, CIDName} = acdc_util:caller_id(MemberCall),
 
     acdc_agent_listener:member_connect_accepted(AgentListener, ACallId),
-    acdc_agent_stats:agent_connected(AccountId, AgentId, MemberCallId, CIDName, CIDNum, QueueId),
+    acdc_agent_stats:agent_connected(AccountId, AgentId, MemberCallId, CIDName, CIDNumber, QueueId),
 
     {'next_state', 'ringing', State};
 ringing('cast', {'shared_failure', _JObj}, #state{connect_failures=Fails
@@ -1647,9 +1643,11 @@ clear_call(#state{statem_call_id=StateMCallId
           kz_term:api_object().
 current_call('undefined', _, _, _) -> 'undefined';
 current_call(Call, AgentState, QueueId, Start) ->
+    {CIDNumber, CIDName} = acdc_util:caller_id(Call),
+
     kz_json:from_list([{<<"call_id">>, kapps_call:call_id(Call)}
-                      ,{<<"caller_id_name">>, kapps_call:caller_id_name(Call)}
-                      ,{<<"caller_id_number">>, kapps_call:caller_id_name(Call)}
+                      ,{<<"caller_id_name">>, CIDName}
+                      ,{<<"caller_id_number">>, CIDNumber}
                       ,{<<"to">>, kapps_call:to_user(Call)}
                       ,{<<"from">>, kapps_call:from_user(Call)}
                       ,{<<"agent_state">>, kz_term:to_binary(AgentState)}
@@ -1883,14 +1881,15 @@ notify(Url, Method, Key, #state{account_id=AccountId
                                ,member_call_queue_id=QueueId
                                }) ->
     kz_util:put_callid(kapps_call:call_id(MemberCall)),
+    {CIDNumber, CIDName} = acdc_util:caller_id(MemberCall),
     Data = kz_json:from_list(
              [{<<"account_id">>, AccountId}
              ,{<<"agent_id">>, AgentId}
              ,{<<"agent_call_id">>, AgentCallId}
              ,{<<"queue_id">>, QueueId}
              ,{<<"member_call_id">>, kapps_call:call_id(MemberCall)}
-             ,{<<"caller_id_name">>, kapps_call:caller_id_name(MemberCall)}
-             ,{<<"caller_id_number">>, kapps_call:caller_id_number(MemberCall)}
+             ,{<<"caller_id_name">>, CIDName}
+             ,{<<"caller_id_number">>, CIDNumber}
              ,{<<"call_state">>, Key}
              ,{<<"now">>, kz_time:now_s()}
              ]),
