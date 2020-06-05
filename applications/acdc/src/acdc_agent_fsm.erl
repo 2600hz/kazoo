@@ -1427,13 +1427,11 @@ handle_event('load_endpoints', StateName, #state{agent_listener='undefined'}=Sta
     gen_statem:cast(self(), 'load_endpoints'),
     {'next_state', StateName, State};
 handle_event('load_endpoints', StateName, #state{agent_id=AgentId
-                                                ,agent_listener=AgentListener
                                                 ,account_id=AccountId
                                                 ,account_db=AccountDb
                                                 }=State) ->
     Setters = [{fun kapps_call:set_account_id/2, AccountId}
               ,{fun kapps_call:set_account_db/2, AccountDb}
-              ,{fun kapps_call:set_owner_id/2, AgentId}
               ,{fun kapps_call:set_resource_type/2, ?RESOURCE_TYPE_AUDIO}
               ],
 
