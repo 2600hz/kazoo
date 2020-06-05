@@ -546,10 +546,11 @@ handle_cast({'add_queue_member', JObj}, #state{account_id=AccountId
                                             ,Position
                                             ,kapps_call:from_json(kz_json:get_value(<<"Call">>, JObj))),
 
+    {CIDNumber, CIDName} = acdc_util:caller_id(Call),
     'ok' = acdc_stats:call_waiting(AccountId, QueueId
                                   ,kapps_call:call_id(Call)
-                                  ,kapps_call:caller_id_name(Call)
-                                  ,kapps_call:caller_id_number(Call)
+                                  ,CIDName
+                                  ,CIDNumber
                                   ,kz_json:get_integer_value(<<"Member-Priority">>, JObj)
                                   ),
 

@@ -1040,12 +1040,17 @@ maybe_connect_to_agent(MyQ, EPs, Call, Timeout, AgentId, _CdrUrl) ->
     ReqId = kz_binary:rand_hex(6),
     AcctId = kapps_call:account_id(Call),
 
+    {CIDNumber, CIDName} = acdc_util:caller_id(Call),
+    {OriginalCIDNumber, OriginalCIDName} = acdc_util:caller_id(kapps_call:kvs_flush(Call)),
+
     CCVs = props:filter_undefined([{<<"Account-ID">>, AcctId}
                                   ,{<<"Authorizing-ID">>, kapps_call:authorizing_id(Call)}
                                   ,{<<"Request-ID">>, ReqId}
                                   ,{<<"Retain-CID">>, <<"true">>}
                                   ,{<<"Agent-ID">>, AgentId}
                                   ,{<<"Member-Call-ID">>, MCallId}
+                                  ,{<<"Original-Caller-ID-Name">>, OriginalCIDName}
+                                  ,{<<"Original-Caller-ID-Number">>, OriginalCIDNumber}
                                   ]),
 
     {ACallIds, Endpoints} = lists:foldl(fun(EP, {Cs, Es}) ->
@@ -1074,10 +1079,10 @@ maybe_connect_to_agent(MyQ, EPs, Call, Timeout, AgentId, _CdrUrl) ->
              ,{<<"Account-ID">>, AcctId}
              ,{<<"Resource-Type">>, <<"originate">>}
              ,{<<"Application-Name">>, <<"bridge">>}
-             ,{<<"Caller-ID-Name">>, kapps_call:caller_id_name(Call)}
-             ,{<<"Caller-ID-Number">>, kapps_call:caller_id_number(Call)}
-             ,{<<"Outbound-Caller-ID-Name">>, kapps_call:caller_id_name(Call)}
-             ,{<<"Outbound-Caller-ID-Number">>, kapps_call:caller_id_number(Call)}
+             ,{<<"Caller-ID-Name">>, CIDName}
+             ,{<<"Caller-ID-Number">>, CIDNumber}
+             ,{<<"Outbound-Caller-ID-Name">>, CIDName}
+             ,{<<"Outbound-Caller-ID-Number">>, CIDNumber}
              ,{<<"Existing-Call-ID">>, kapps_call:call_id(Call)}
              ,{<<"Dial-Endpoint-Method">>, <<"simultaneous">>}
               | kz_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
