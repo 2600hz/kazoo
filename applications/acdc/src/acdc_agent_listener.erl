@@ -39,7 +39,6 @@
         ,logout_agent/1
         ,agent_info/2
         ,maybe_update_presence_id/2
-        ,maybe_update_presence_state/2
         ,presence_update/2
         ,update_agent_status/2
         ]).
@@ -318,11 +317,6 @@ logout_agent(Srv) -> gen_listener:cast(Srv, 'logout_agent').
 maybe_update_presence_id(_Srv, 'undefined') -> 'ok';
 maybe_update_presence_id(Srv, Id) ->
     gen_listener:cast(Srv, {'presence_id', Id}).
-
--spec maybe_update_presence_state(pid(), kz_term:api_ne_binary()) -> 'ok'.
-maybe_update_presence_state(_Srv, 'undefined') -> 'ok';
-maybe_update_presence_state(Srv, State) ->
-    presence_update(Srv, State).
 
 -spec presence_update(pid(), kz_term:api_ne_binary()) -> 'ok'.
 presence_update(_, 'undefined') -> 'ok';
