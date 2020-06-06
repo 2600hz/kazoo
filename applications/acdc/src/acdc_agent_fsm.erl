@@ -1165,16 +1165,6 @@ answered('info', Evt, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec wrapup(gen_statem:event_type(), any(), state()) -> kz_types:handle_fsm_ret(state()).
-wrapup('cast', {'pause', Timeout}, #state{account_id=AccountId
-                                         ,agent_id=AgentId
-                                         ,agent_listener=AgentListener
-                                         }=State) ->
-    lager:debug("recv status update: pausing for up to ~b s", [Timeout]),
-    Ref = start_pause_timer(Timeout),
-    acdc_agent_stats:agent_paused(AccountId, AgentId, Timeout),
-    acdc_agent_listener:presence_update(AgentListener, ?PRESENCE_RED_FLASH),
-
-    {'next_state', 'paused', State#state{pause_ref=Ref}};
 wrapup('cast', {'member_connect_req', _}, State) ->
     {'next_state', 'wrapup', State#state{wrapup_timeout=0}};
 wrapup('cast', {'member_connect_win', JObj, 'same_node'}, #state{agent_listener=AgentListener}=State) ->
@@ -1257,6 +1247,8 @@ paused('cast', {'member_connect_win', JObj, 'same_node'}, #state{agent_listener=
     {'next_state', 'paused', State};
 paused('cast', {'originate_uuid', ACallId, ACtrlQ}, #state{agent_listener=AgentListener}=State) ->
     acdc_agent_listener:originate_uuid(AgentListener, ACallId, ACtrlQ),
+    {'next_state', 'paused', State};
+paused('cast', {'originate_failed', _E}, State) ->
     {'next_state', 'paused', State};
 paused('cast', Evt, State) ->
     handle_event(Evt, 'paused', State);
@@ -1396,6 +1388,19 @@ handle_event({'resume'}=Event, StateName, #state{agent_state_updates=Queue}=Stat
     lager:debug("recv resume during ~p, delaying", [StateName]),
     NewQueue = [Event | Queue],
     {'next_state', StateName, State#state{agent_state_updates=NewQueue}};
+handle_event({'pause', Timeout}, 'ringing', #state{agent_listener=AgentListener
+                                                  ,account_id=AccountId
+                                                  ,agent_id=AgentId
+                                                  ,member_call_id=CallId
+                                                  ,member_call_queue_id=QueueId
+                                                  }=State) ->
+    %% Give up the current ringing call
+    acdc_agent_listener:hangup_call(AgentListener),
+    lager:debug("stopping ringing agent in order to move to pause"),
+    acdc_stats:call_missed(AccountId, QueueId, AgentId, CallId, <<"agent pausing">>),
+    NewFSMState = clear_call(State, 'failed'),
+    %% After clearing we are basically 'ready' state, pause from that state
+    handle_event({'pause', Timeout}, 'ready', NewFSMState);
 handle_event({'pause', Timeout}=Event, 'ready', #state{agent_state_updates=Queue}=State) ->
     lager:debug("recv status update: pausing for up to ~b s", [Timeout]),
     NewQueue = [Event | Queue],
