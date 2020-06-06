@@ -13,6 +13,7 @@
         ,queue_id/2
 
         ,get_query_limit/1
+        ,apply_query_window_wiggle_room/2
         ,db_name/1
         ]).
 
@@ -61,6 +62,22 @@ get_query_limit(JObj, 'false') ->
         'undefined' -> 'no_limit';
         N when N < 1 -> 1;
         N -> N
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc If a query timestamp value is less than the minimum permitted by
+%% validation, allow a little wiggle room in case the request just took a little
+%% while to be processed.
+%% @end
+%%------------------------------------------------------------------------------
+-spec apply_query_window_wiggle_room(pos_integer(), pos_integer()) -> pos_integer().
+apply_query_window_wiggle_room(Timestamp, Minimum) ->
+    Offset = Minimum - Timestamp,
+    WithinWiggleRoom = Offset < ?QUERY_WINDOW_WIGGLE_ROOM_S,
+    case Offset =< 0 of
+        'true' -> Timestamp;
+        'false' when WithinWiggleRoom -> Minimum;
+        'false' -> Timestamp
     end.
 
 -spec db_name(kz_term:ne_binary()) -> kz_term:ne_binary().
