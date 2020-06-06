@@ -8,6 +8,9 @@
 -define(STATS_QUERY_LIMITS_ENABLED, kapps_config:get_is_true(?CONFIG_CAT, <<"stats_query_limits_enabled">>, 'true')).
 -define(MAX_RESULT_SET, kapps_config:get_integer(?CONFIG_CAT, <<"max_result_set">>, 25)).
 
+%% Wiggle room for queries in case the AMQP message is delayed a little
+-define(QUERY_WINDOW_WIGGLE_ROOM_S, 5).
+
 -record(agent_miss, {agent_id :: kz_term:api_binary()
                     ,miss_reason :: kz_term:api_binary()
                     ,miss_timestamp = kz_time:now_s() :: pos_integer()

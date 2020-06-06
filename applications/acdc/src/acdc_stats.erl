@@ -507,8 +507,9 @@ call_match_builder_fold(<<"Status">>, Status, {CallStat, Contstraints}) ->
 call_match_builder_fold(<<"Start-Range">>, Start, {CallStat, Contstraints}) ->
     Now = kz_time:now_s(),
     Past = Now - ?CLEANUP_WINDOW,
+    Start1 = acdc_stats_util:apply_query_window_wiggle_room(Start, Past),
 
-    try kz_term:to_integer(Start) of
+    try kz_term:to_integer(Start1) of
         N when N < Past ->
             {'error', kz_json:from_list([{<<"Start-Range">>, <<"supplied value is too far in the past">>}
                                         ,{<<"Window-Size">>, ?CLEANUP_WINDOW}
@@ -530,8 +531,9 @@ call_match_builder_fold(<<"Start-Range">>, Start, {CallStat, Contstraints}) ->
 call_match_builder_fold(<<"End-Range">>, End, {CallStat, Contstraints}) ->
     Now = kz_time:now_s(),
     Past = Now - ?CLEANUP_WINDOW,
+    End1 = acdc_stats_util:apply_query_window_wiggle_room(End, Past),
 
-    try kz_term:to_integer(End) of
+    try kz_term:to_integer(End1) of
         N when N < Past ->
             {'error', kz_json:from_list([{<<"End-Range">>, <<"supplied value is too far in the past">>}
                                         ,{<<"Window-Size">>, ?CLEANUP_WINDOW}
