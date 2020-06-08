@@ -232,10 +232,19 @@ couch_save(AccountMODb, Doc, Options, _Reason, Retry) ->
         Error -> Error
     end.
 
--spec save_fun(boolean()) -> function().
+-spec save_fun(boolean()) -> fun((kz_term:ne_binary(), kz_json:object(), kz_term:proplist()) ->
+                                        {'ok', kz_json:object()} |
+                                        kz_datamgr:data_error()
+                                            ).
 save_fun('false') -> fun kz_datamgr:save_doc/3;
-save_fun('true') -> fun kz_datamgr:ensure_saved/3.
-
+save_fun('true') ->
+    fun(EncodedMODb, Doc, _Options) ->
+            Id = kz_doc:id(Doc),
+            Updates = [{'update', kz_json:to_proplist(Doc)}
+                      ,{'esnure_saved', 'true'}
+                      ],
+            kz_datamgr:update_doc(EncodedMODb, Id, Updates)
+    end.
 
 -spec save_docs(kz_term:text(), kz_json:objects()) ->
           {'ok', kz_json:objects()} |
