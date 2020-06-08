@@ -185,7 +185,7 @@ handle_cast({'request', Uri, Method}
 handle_cast({'request', Uri, Method, Params}
            ,#state{call=Call
                   ,debug=Debug
-                  ,requester_queue=Q
+                  ,requester_queue=RequesterQ
                   ,request_body_format=ReqBodyFormat
                   ,request_timeout_ms=TimeoutMs
                   }=State) ->
@@ -205,9 +205,7 @@ handle_cast({'request', Uri, Method, Params}
                         }
             };
         _ ->
-            kapi_pivot:publish_failed(Q, [{<<"Call-ID">>, kapps_call:call_id(Call)}
-                                          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-                                         ]),
+            publish_failed(Call, RequesterQ),
             {'stop', 'normal', State}
     end;
 
@@ -285,11 +283,14 @@ handle_info({'http', {ReqId, 'stream_start', Hdrs}}
     {'noreply', State#state{response_headers=RespHeaders}};
 
 handle_info({'http', {ReqId, {'error', Error}}}
-           ,#state{request_id=ReqId
+           ,#state{call=Call
+                  ,request_id=ReqId
                   ,response_body=_RespBody
+                  ,requester_queue=RequesterQ
                   }=State) ->
     lager:info("recv error ~p : collected: ~s", [Error, lists:reverse(_RespBody)]),
-    {'noreply', State};
+    publish_failed(Call, RequesterQ),
+    {'stop', 'error', State};
 
 handle_info({'http', {ReqId, 'stream', Chunk}}
            ,#state{request_id=ReqId
