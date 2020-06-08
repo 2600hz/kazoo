@@ -35,14 +35,14 @@ put_attachment(Settings, DbName, DocId, AName, Contents, Options) ->
 
     {Container, Name} = resolve_path(Settings, {DbName, DocId, AName}),
     Pid = azure_pid(Settings),
-    AzureOptions = [{content_type, kz_term:to_list(CT)}, return_headers],
+    AzureOptions = [{'content_type', kz_term:to_list(CT)}, 'return_headers'],
     Url = lists:concat([Container, "/", Name]),
     Routines = [{fun kz_att_error:set_req_url/2, Url}
                 | kz_att_error:put_routines(Settings, DbName, DocId, AName, Contents, Options)
                ],
     try
         case erlazure:put_block_blob(Pid, Container, Name, Contents, AzureOptions) of
-            {ok, Headers, _Body} ->
+            {'ok', Headers, _Body} ->
                 props:to_log(Headers, <<"AZURE HEADERS">>),
                 Data = base64:encode(term_to_binary({Settings#{file => Name}, Name})),
                 Metadata = kz_json:from_list(kz_att_util:headers_as_binaries(Headers)),
@@ -61,7 +61,6 @@ put_attachment(Settings, DbName, DocId, AName, Contents, Options) ->
                         [_StackTrace, _FnFailing]),
             handle_erlazure_error_response(ErrorResp, Routines)
     end.
-
 
 -spec fetch_attachment(gen_attachment:handler_props()
                       ,gen_attachment:db_name()

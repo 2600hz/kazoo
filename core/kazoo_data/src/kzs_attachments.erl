@@ -6,8 +6,7 @@
 -module(kzs_attachments).
 
 %% Attachment-related
--export([fetch_attachment/4
-        ,fetch_attachment/5
+-export([fetch_attachment/4, fetch_attachment/5
         ,stream_attachment/5
         ,put_attachment/6
         ,delete_attachment/5
@@ -43,7 +42,7 @@ fetch_attachment(#{}=Server, DbName, DocId, AName, Options) ->
 do_fetch_attachment(#{server := {App, Conn}}=Server, DbName, DocId, AName, Att, Options) ->
     AttHandler = maps:get('att_handler', Server, 'undefined'),
 
-    case kz_json:get_value(<<"handler">>, Att) of
+    case kz_json:get_json_value(<<"handler">>, Att) of
         'undefined' ->
             App:fetch_attachment(Conn, DbName, DocId, AName);
         Handler ->
@@ -84,32 +83,36 @@ stream_attachment(#{}=Server, DbName, DocId, AName, Caller) ->
 do_stream_attachment(#{server := {App, Conn}}=Server, DbName, DocId, AName, Att, Caller) ->
     AttHandler = maps:get('att_handler', Server, 'undefined'),
     case kz_json:get_value(<<"handler">>, Att) of
-        'undefined' -> App:stream_attachment(Conn, DbName, DocId, AName, Caller);
-        Handler -> do_stream_attachment_from_handler(kz_json:to_proplist(Handler), AttHandler, DbName, DocId, AName, Caller)
+        'undefined' ->
+            App:stream_attachment(Conn, DbName, DocId, AName, Caller);
+        Handler ->
+            HandlerPL = kz_json:to_proplist(Handler),
+            do_stream_attachment_from_handler(HandlerPL, AttHandler, DbName, DocId, AName, Caller)
     end.
 
 do_stream_attachment_from_handler([{Handler, Props}], 'undefined', DbName, DocId, AName, Caller) ->
     Module = kz_term:to_atom(Handler, 'true'),
     Ref = make_ref(),
-    kz_util:spawn(fun relay_stream_attachment/7, [Caller, Ref, Module, Props, DbName, DocId, AName]),
+    _Pid = kz_util:spawn(fun relay_stream_attachment/7, [Caller, Ref, Module, Props, DbName, DocId, AName]),
+    lager:debug("relaying streamed attachment via ~p(~p) in ~s", [_Pid, Ref, Module]),
     {'ok', Ref};
 do_stream_attachment_from_handler([{Handler, HandlerProps}], {Module, ModuleProps}, DbName, DocId, AName, Caller) ->
-    case kz_term:to_atom(Handler, 'true') of
-        Module ->
-            FinalModule = Module,
-            Props = kz_json:set_value(<<"handler_props">>, ModuleProps, HandlerProps);
-        DiffModule ->
-            FinalModule = DiffModule,
-            Props = HandlerProps
-    end,
+    Props = kz_json:set_value(<<"handler_props">>, ModuleProps, HandlerProps),
+    {FinalModule, FinalProps} =
+        case kz_term:to_atom(Handler, 'true') of
+            Module -> {Module, Props};
+            DiffModule -> {DiffModule, HandlerProps}
+        end,
     Ref = make_ref(),
-    kz_util:spawn(fun relay_stream_attachment/7, [Caller, Ref, FinalModule, Props, DbName, DocId, AName]),
+    _Pid = kz_util:spawn(fun relay_stream_attachment/7, [Caller, Ref, FinalModule, FinalProps, DbName, DocId, AName]),
+    lager:debug("relaying streamed attachment via ~p(~p) in ~s", [_Pid, Ref, FinalModule]),
     {'ok', Ref}.
 
 relay_stream_attachment(Caller, Ref, Module, Props, DbName, DocId, AName) ->
+    lager:debug("fetching attachment for caller ~p in ~s", [Caller, Module]),
     case Module:fetch_attachment(Props, DbName, DocId, AName) of
-        {'ok', Bin} -> relay_stream_attachment(Caller, Ref, Bin);
-        {'error', _} = Error -> Caller ! {Ref, Error};
+        {'ok', Bin} ->                  relay_stream_attachment(Caller, Ref, Bin);
+        {'error', _E} = Error ->        Caller ! {Ref, Error};
         {'error', Reason, _Extended} -> Caller ! {Ref, {'error', Reason}}
     end.
 
