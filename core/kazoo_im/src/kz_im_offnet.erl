@@ -30,6 +30,7 @@
 
 -record(state, {connection :: amqp_listener_connection()
                ,confirms = #{count => 1, pids => #{}} :: map()
+               ,registered = false :: boolean()
                }).
 -type state() :: #state{}.
 
@@ -147,16 +148,18 @@ handle_call(_Request, _From, State) ->
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'gen_listener', {'created_queue', _QueueNAme}}, State) ->
     {'noreply', State};
-handle_cast({'gen_listener', {'is_consuming', 'false'}}, State) ->
+handle_cast({'gen_listener', {'is_consuming', 'false'}}, #state{registered = true} = State) ->
     lager:debug("deactivating offnet worker"),
     _ = gproc:unreg({'p', 'l', 'im_offnet'}),
+    {'noreply', State#state{registered = false}};
+handle_cast({'gen_listener', {'is_consuming', 'false'}}, #state{registered = false} = State) ->
     {'noreply', State};
 handle_cast({'gen_listener', {'is_consuming', 'true'}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener',{'server_confirms', 'true'}}, State) ->
     lager:debug("broker can confirm deliveries, activating offnet worker"),
     'true' = gproc:reg({'p', 'l', 'im_offnet'}),
-    {'noreply', State};
+    {'noreply', State#state{registered = true}};
 handle_cast({'gen_listener',{'server_confirms', 'false'}}, State) ->
     lager:warning("broker can't confirm deliveries"),
     {'stop', {'shutdown', 'no_confirms'}, State};
