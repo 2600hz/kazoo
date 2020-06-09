@@ -31,6 +31,7 @@
         ,ensure_can_create/1
         ,ensure_can_load_to_create/1
         ,state_for_create/1, allowed_creation_states/1, allowed_creation_states/2
+        ,validate_ownership/2
         ]).
 
 -ifdef(TEST).
@@ -232,6 +233,35 @@ ensure_can_create(T0=#{'todo' := Nums, 'options' := Options}) ->
 ensure_can_create(Num, Options) ->
     ensure_account_can_create(Options, knm_number_options:auth_by(Options))
         andalso ensure_number_is_not_porting(Num, Options).
+
+%%------------------------------------------------------------------------------
+%% @doc Return true if the numbers are all owned by the account, else return the
+%% tuple where the first element is `false' and the second is a list of all the
+%% numbers that are not owned by the account.
+%% @end
+%%------------------------------------------------------------------------------
+-spec validate_ownership(kz_term:ne_binary(), knm_numbers:num() | knm_numbers:nums()) -> 'true' | {'false', knm_numbers:nums()}.
+validate_ownership(AccountId, Number=?NE_BINARY) ->
+    validate_ownership(AccountId, [Number]);
+validate_ownership(_AccountId, []) -> 'true';
+validate_ownership(AccountId, Numbers) ->
+    Options = [{'auth_by', AccountId}],
+    #{'ko' := KOs} = knm_numbers:get(Numbers, Options),
+    case maps:fold(fun validate_ownership_fold/3, [], KOs) of
+        [] -> 'true';
+        Unauthorized -> {'false', Unauthorized}
+    end.
+
+-spec validate_ownership_fold(knm_numbers:num(), knm_numbers:ko(), kz_term:ne_binaries()) ->
+          kz_term:ne_binaries().
+validate_ownership_fold(_, Reason, UnauthorizedAcc) when is_atom(Reason) ->
+    %% Ignoring atom reasons, i.e. 'not_found' or 'not_reconcilable'
+    UnauthorizedAcc;
+validate_ownership_fold(Number, ReasonJObj, UnauthorizedAcc) ->
+    case knm_errors:error(ReasonJObj) of
+        <<"forbidden">> -> [Number|UnauthorizedAcc];
+        _ -> UnauthorizedAcc
+    end.
 
 -ifdef(TEST).
 -define(LOAD_ACCOUNT(Options, _AccountId)

@@ -199,26 +199,16 @@ remove_plaintext_password(Context) ->
 -spec validate_number_ownership(kz_term:ne_binaries(), cb_context:context()) ->
           cb_context:context().
 validate_number_ownership(Numbers, Context) ->
-    Options = [{'auth_by', cb_context:auth_account_id(Context)}],
-    #{ko := KOs} = knm_numbers:get(Numbers, Options),
-    case maps:fold(fun validate_number_ownership_fold/3, [], KOs) of
-        [] -> Context;
-        Unauthorized ->
+    AccountId =  cb_context:auth_account_id(Context),
+    case kz_term:is_empty(AccountId)
+        orelse knm_number:validate_ownership(AccountId, Numbers)
+    of
+        'true' -> Context;
+        {'false', Unauthorized} ->
             Prefix = <<"unauthorized to use ">>,
             NumbersStr = kz_binary:join(Unauthorized, <<", ">>),
             Message = <<Prefix/binary, NumbersStr/binary>>,
             cb_context:add_system_error(403, 'forbidden', Message, Context)
-    end.
-
--spec validate_number_ownership_fold(knm_numbers:num(), knm_numbers:ko(), kz_term:ne_binaries()) ->
-          kz_term:ne_binaries().
-validate_number_ownership_fold(_, Reason, Unauthorized) when is_atom(Reason) ->
-    %% Ignoring atom reasons, i.e. 'not_found' or 'not_reconcilable'
-    Unauthorized;
-validate_number_ownership_fold(Number, ReasonJObj, Unauthorized) ->
-    case knm_errors:error(ReasonJObj) of
-        <<"forbidden">> -> [Number|Unauthorized];
-        _ -> Unauthorized
     end.
 
 -type assignment_to_apply() :: {kz_term:ne_binary(), kz_term:api_binary()}.
