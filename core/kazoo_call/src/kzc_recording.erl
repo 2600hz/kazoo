@@ -529,6 +529,7 @@ store_recording_meta(#state{call=Call
     MediaDoc = kz_doc:update_pvt_parameters(BaseMediaDoc, AccountMODb, [{'type', kzd_call_recordings:type()}]),
     case kazoo_modb:save_doc(AccountMODb, MediaDoc, [{'ensure_saved', 'true'}]) of
         {'ok', Doc} ->
+            lager:debug("saved metadata: ~s", [kz_json:encode(Doc)]),
             {'ok', Doc};
         {'error', _E}= Err ->
             lager:warning("failed to save media doc ~s to ~s: ~p", [DocId, AccountMODb, _E]),
