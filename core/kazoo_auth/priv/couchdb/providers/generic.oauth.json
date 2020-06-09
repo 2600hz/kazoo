@@ -1,0 +1,47 @@
+{
+    "_id": "your_provider",
+    "access_code_url": "https://oauth.server/oauth2/token",
+    "auth_module": "oauth",
+    "auth_url": "https://oauth.server/oauth2/token",
+    "authorization_endpoint": "https://oauth.server/oauth2/auth",
+    "discovery": "https://oauth.server/.well-known/openid-configuration",
+    "enabled": true,
+    "grant_types_supported": [
+        "authorization_code",
+        "password",
+        "urn:ietf:params:oauth:grant-type:jwt-bearer",
+        "refresh_token"
+    ],
+    "id_token_alg_values_supported": "RS256",
+    "issuer_domains": [
+        "oauth.server"
+    ],
+    "name": "Your OAuth Provider",
+    "oauth_url": "https://oauth.server/oauth2/token",
+    "profile_displayName_field": "name",
+    "profile_identity_field": "sub",
+    "profile_url": "https://oauth.server/oauth2/userinfo",
+    "public_key_discovery_field": "jwks_uri",
+    "public_key_jwt_field": "kid",
+    "public_key_jwt_location": "header",
+    "public_key_lookup_field": "kid",
+    "public_key_method": "lookup",
+    "pvt_provider_type": "oauth",
+    "pvt_type": "provider",
+    "response_types_supported": [
+        "code",
+        "token",
+        "id_token"
+    ],
+    "revocation_endpoint": "https://oauth.server/oauth2/revoke",
+    "scopes": [
+        "openid",
+        "email",
+        "profile"
+    ],
+    "subject_types_supported": [
+        "public"
+    ],
+    "token_endpoint": "https://oauth.server/oauth2/token",
+    "userinfo_endpoint": "https://oauth.server/oauth2/userinfo"
+}

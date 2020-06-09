@@ -67,8 +67,10 @@ fetch_access_code(#{auth_app := #{name := ClientId
              ,{"code", AuthorizationCode}
              ],
     Body = string:join(lists:append(lists:map(fun({K,V}) -> [string:join([K, kz_term:to_list(V)], "=") ] end, Fields)),"&"),
+    lager:debug("POST ~s: ~s", [URL, Body]),
     case kz_http:post(kz_term:to_list(URL), Headers, Body, [{'ssl', [{'versions', ['tlsv1.2']}]}]) of
-        {'ok', 200, _RespHeaders, RespXML} -> {'ok', kz_json:decode(RespXML)};
+        {'ok', 200, _RespHeaders, RespJSON} ->
+            {'ok', kz_json:decode(RespJSON)};
         Else ->
             lager:error("~p", [Else]),
             {'error', Else}

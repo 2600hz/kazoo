@@ -15,38 +15,36 @@
         <script src="//code.jquery.com/jquery-1.9.1.min.js"></script>
         <script src="popup.js"></script>
         <script>
-        function test() {
-        	var params = {
-        		client_id :"YOUR_CLIENT_ID",
-        		response_type : "code",
-        		redirect_uri : "WEB_URL",
-        		scope: ["openid", "profile", "email", "https://www.googleapis.com/auth/drive.file"].join(" "),
-        		include_granted_scopes : true,
-        		access_type : "offline",
-        		authuser : 0
-        	};
-            var url = "https://accounts.google.com/o/oauth2/auth?" + jQuery.param( params );
-            popup(url, params.redirect_uri, function(data) {
-                console.log(data);
-                $("#response")[0].innerText = JSON.stringify(data, null, 2);
-            });
-        }
-        function popup(url, redirect_url, callback) {
-            var pop = new Popup();
-            pop.open(url, "oauth", {}, redirect_url).then(function(oauth) {
-                callback(oauth)
-            }, function(error) {
-                console.log(error);
-            });
-        }
+          function test() {
+              // Adjust params according to your OAuth provider's requirements
+              var params = {
+        	  client_id :"084b9807-c15e-414c-ac49-774a9b156388",
+        	  redirect_uri : "http://localhost:8888",
+                  response_type: "code"
+              };
+              var url = "http://oauth.provider/oauth2/authorize?"  + jQuery.param( params );
 
-        function decode() {
-        	var Token = $('#token')[0].value;
-            var base64Url = Token.split('.')[1];
-            var base64 = base64Url.replace('-', '+').replace('_', '/');
-        	var decoded = JSON.parse(window.atob(base64));
-        	$('#decoded')[0].innerText = JSON.stringify(decoded, null, 2);
-        }
+              popup(url, params.redirect_uri, function(data) {
+                  console.log(data);
+                  $("#response")[0].innerText = JSON.stringify(data, null, 2);
+              });
+          }
+          function popup(url, redirect_url, callback) {
+              var pop = new Popup();
+              pop.open(url, "oauth", {}, redirect_url).then(function(oauth) {
+                  callback(oauth)
+              }, function(error) {
+                  console.log(error);
+              });
+          }
+
+          function decode() {
+              var Token = $('#token')[0].value;
+              var base64Url = Token.split('.')[1];
+              var base64 = base64Url.replace('-', '+').replace('_', '/');
+              var decoded = JSON.parse(window.atob(base64));
+              $('#decoded')[0].innerText = JSON.stringify(decoded, null, 2);
+          }
         </script>
         <div style="margin-top:50px;margin-left:100px">
         <button onclick="test();">AUTHORIZE</button>
