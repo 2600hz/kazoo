@@ -101,7 +101,7 @@ init_system() ->
 
     _ = kz_data_tracing:clear_all_traces(),
     _ = [kapps_controller:start_app(App) ||
-            App <- ['crossbar']
+            App <- ['crossbar', 'media_mgr']
         ],
     _ = [crossbar_maintenance:start_module(Mod) ||
             Mod <- ['cb_storage', 'cb_vmboxes']
@@ -405,7 +405,19 @@ test_vm_message(API, AccountId) ->
 
     MessageBin = pqc_cb_vmboxes:fetch_message_binary(API, AccountId, BoxId, MediaId),
     lager:info("message bin =:= MP3: ~p", [MessageBin =:= MP3]),
-    MessageBin = MP3.
+    MessageBin = MP3,
+
+    %% Tests that the media file can be retrieved from storage and proxied via KAZOO
+    URL = kvm_message:media_url(AccountId, MediaId),
+    lager:info("fetched URL: ~s", [URL]),
+    {'ok', 200, _RespHeaders, FetchBin} = kz_http:get(URL),
+    lager:info("resp headers: ~p", [_RespHeaders]),
+
+    %% media_mgr adds ShoutCAST related data
+    MP3Size = byte_size(MP3),
+    <<FetchedMP3:MP3Size/binary, _/binary>> = FetchBin,
+    lager:info("fetched bin =:= MP3: ~p", [FetchedMP3 =:= MP3]),
+    FetchedMP3 = MP3.
 
 create_voicemail(API, AccountId, BoxId, MP3) ->
     MessageJObj = default_message(),

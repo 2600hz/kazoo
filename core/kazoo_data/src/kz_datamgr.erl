@@ -1098,7 +1098,11 @@ stream_attachment(DbName, DocId, AName, Options) ->
 stream_attachment(DbName, {DocType, DocId}, AName, Options, Pid) when ?VALID_DBNAME(DbName) ->
     stream_attachment(DbName, DocId, AName, maybe_add_doc_type(DocType, Options), Pid);
 stream_attachment(DbName, DocId, AName, Options, Pid) when ?VALID_DBNAME(DbName) ->
-    kzs_attachments:stream_attachment(kzs_plan:plan(DbName, Options), DbName, DocId, AName, Pid);
+    case attachment_options(DbName, DocId, Options) of
+        {'error', _E}=Error -> Error;
+        {'ok', NewOpts} ->
+            kzs_attachments:stream_attachment(kzs_plan:plan(DbName, NewOpts), DbName, DocId, AName, Pid)
+    end;
 stream_attachment(DbName, DocId, AName, Options, Pid) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> stream_attachment(Db, DocId, AName, Options, Pid);
