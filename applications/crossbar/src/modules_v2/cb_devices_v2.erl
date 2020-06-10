@@ -222,7 +222,9 @@ patch(Context, Id) ->
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
-    Context1 = crossbar_doc:save(Context),
+    Context1 = crossbar_doc:save(
+                 cb_modules_util:take_sync_field(Context)
+                ),
     handle_device_update('undefined', Context1).
 
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
