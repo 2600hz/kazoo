@@ -732,7 +732,7 @@ get_provisioning_type() ->
 
 -spec maybe_sync_sip_data(cb_context:context(), 'user' | 'device') -> 'ok'.
 maybe_sync_sip_data(Context, Type) ->
-    ShouldSync = cb_context:fetch(Context, 'sync'),
+    ShouldSync = cb_context:fetch(Context, 'sync', 'false'),
     maybe_sync_sip_data(Context, Type, ShouldSync).
 
 -spec maybe_sync_sip_data(cb_context:context(), 'user' | 'device', boolean() | 'force') -> 'ok'.
