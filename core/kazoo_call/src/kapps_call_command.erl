@@ -2417,8 +2417,8 @@ collect_digits(MaxDigits, Timeout, Interdigit, Call) ->
                                          ,after_timeout=kz_term:to_integer(Timeout)
                                          }).
 
--spec collect_digits(integer() | kz_term:ne_binary(), integer() | kz_term:ne_binary(), integer() | kz_term:ne_binary(), kz_term:api_binary(), kapps_call:call()) ->
-          collect_digits_return().
+-spec collect_digits(integer() | kz_term:ne_binary(), integer() | kz_term:ne_binary(), integer() | kz_term:ne_binary(), kz_term:api_binary()
+                    ,kapps_call:call()) -> collect_digits_return().
 collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Call) ->
     do_collect_digits(#wcc_collect_digits{max_digits=kz_term:to_integer(MaxDigits)
                                          ,timeout=kz_term:to_integer(Timeout)
@@ -2427,8 +2427,8 @@ collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Call) ->
                                          ,call=Call
                                          }).
 
--spec collect_digits(integer(), integer(), integer(), kz_term:api_binary(), list(), kapps_call:call()) ->
-          collect_digits_return().
+-spec collect_digits(integer() | kz_term:ne_binary(), integer() | kz_term:ne_binary(), integer() | kz_term:ne_binary(), kz_term:api_binary()
+                    ,kz_term:ne_binaries(), kapps_call:call()) -> collect_digits_return().
 collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call) ->
     do_collect_digits(#wcc_collect_digits{max_digits=kz_term:to_integer(MaxDigits)
                                          ,timeout=kz_term:to_integer(Timeout)
@@ -2439,8 +2439,8 @@ collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call) ->
                                          ,after_timeout=kz_term:to_integer(Timeout)
                                          }).
 
--spec collect_digits(integer(), integer(), integer(), kz_term:api_binary(), list(), boolean(), kapps_call:call()) ->
-          collect_digits_return().
+-spec collect_digits(integer() | kz_term:ne_binary(), integer() | kz_term:ne_binary(), integer() | kz_term:ne_binary(), kz_term:api_binary()
+                    ,kz_term:ne_binaries(), boolean(), kapps_call:call()) -> collect_digits_return().
 collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, FlushOnDigit, Call) ->
     do_collect_digits(#wcc_collect_digits{max_digits=kz_term:to_integer(MaxDigits)
                                          ,timeout=kz_term:to_integer(Timeout)
