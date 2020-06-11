@@ -241,7 +241,7 @@ save_fun('true') ->
     fun(EncodedMODb, Doc, _Options) ->
             Id = kz_doc:id(Doc),
             Updates = [{'update', kz_json:to_proplist(Doc)}
-                      ,{'esnure_saved', 'true'}
+                      ,{'ensure_saved', 'true'}
                       ],
             kz_datamgr:update_doc(EncodedMODb, Id, Updates)
     end.
