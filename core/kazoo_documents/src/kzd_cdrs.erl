@@ -15,6 +15,10 @@
 -export([callee_id_number/1, callee_id_number/2, set_callee_id_number/2]).
 -export([caller_id_name/1, caller_id_name/2, set_caller_id_name/2]).
 -export([caller_id_number/1, caller_id_number/2, set_caller_id_number/2]).
+-export([channel_call_state/1, channel_call_state/2, set_channel_call_state/2]).
+-export([channel_created_time/1, channel_created_time/2, set_channel_created_time/2]).
+-export([channel_name/1, channel_name/2, set_channel_name/2]).
+-export([channel_state/1, channel_state/2, set_channel_state/2]).
 -export([custom_application_vars/1, custom_application_vars/2, set_custom_application_vars/2]).
 -export([custom_channel_vars/1, custom_channel_vars/2, set_custom_channel_vars/2]).
 -export([custom_channel_var/2, custom_channel_var/3]).
@@ -22,6 +26,8 @@
 -export([digits_dialed/1, digits_dialed/2, set_digits_dialed/2]).
 -export([disposition/1, disposition/2, set_disposition/2]).
 -export([duration_seconds/1, duration_seconds/2, set_duration_seconds/2]).
+-export([event_category/1, event_category/2, set_event_category/2]).
+-export([event_name/1, event_name/2, set_event_name/2]).
 -export([fax_bad_rows/1, fax_bad_rows/2, set_fax_bad_rows/2]).
 -export([fax_ecm_used/1, fax_ecm_used/2, set_fax_ecm_used/2]).
 -export([fax_result_code/1, fax_result_code/2, set_fax_result_code/2]).
@@ -36,8 +42,11 @@
 -export([hangup_cause/1, hangup_cause/2, set_hangup_cause/2]).
 -export([hangup_code/1, hangup_code/2, set_hangup_code/2]).
 -export([interaction_id/1, interaction_id/2, set_interaction_id/2]).
+-export([interaction_key/1, interaction_key/2, set_interaction_key/2]).
+-export([interaction_time/1, interaction_time/2, set_interaction_time/2]).
 -export([local_sdp/1, local_sdp/2, set_local_sdp/2]).
 -export([media_server/1, media_server/2, set_media_server/2]).
+-export([msg_id/1, msg_id/2, set_msg_id/2]).
 -export([node/1, node/2, set_node/2]).
 -export([other_leg_call_id/1, other_leg_call_id/2, set_other_leg_call_id/2]).
 -export([other_leg_caller_id_name/1, other_leg_caller_id_name/2, set_other_leg_caller_id_name/2]).
@@ -48,6 +57,10 @@
 -export([remote_sdp/1, remote_sdp/2, set_remote_sdp/2]).
 -export([request/1, request/2, set_request/2]).
 -export([ringing_seconds/1, ringing_seconds/2, set_ringing_seconds/2]).
+-export([switch_hostname/1, switch_hostname/2, set_switch_hostname/2]).
+-export([switch_nodename/1, switch_nodename/2, set_switch_nodename/2]).
+-export([switch_uri/1, switch_uri/2, set_switch_uri/2]).
+-export([switch_url/1, switch_url/2, set_switch_url/2]).
 -export([timestamp/1, timestamp/2, set_timestamp/2]).
 -export([to/1, to/2, set_to/2]).
 -export([to_tag/1, to_tag/2, set_to_tag/2]).
@@ -178,6 +191,54 @@ caller_id_number(Doc, Default) ->
 set_caller_id_number(Doc, CallerIdNumber) ->
     kz_json:set_value([<<"caller_id_number">>], CallerIdNumber, Doc).
 
+-spec channel_call_state(doc()) -> kz_term:api_binary().
+channel_call_state(Doc) ->
+    channel_call_state(Doc, 'undefined').
+
+-spec channel_call_state(doc(), Default) -> binary() | Default.
+channel_call_state(Doc, Default) ->
+    kz_json:get_binary_value([<<"channel_call_state">>], Doc, Default).
+
+-spec set_channel_call_state(doc(), binary()) -> doc().
+set_channel_call_state(Doc, ChannelCallState) ->
+    kz_json:set_value([<<"channel_call_state">>], ChannelCallState, Doc).
+
+-spec channel_created_time(doc()) -> kz_term:api_integer().
+channel_created_time(Doc) ->
+    channel_created_time(Doc, 'undefined').
+
+-spec channel_created_time(doc(), Default) -> integer() | Default.
+channel_created_time(Doc, Default) ->
+    kz_json:get_integer_value([<<"channel_created_time">>], Doc, Default).
+
+-spec set_channel_created_time(doc(), integer()) -> doc().
+set_channel_created_time(Doc, ChannelCreatedTime) ->
+    kz_json:set_value([<<"channel_created_time">>], ChannelCreatedTime, Doc).
+
+-spec channel_name(doc()) -> kz_term:api_binary().
+channel_name(Doc) ->
+    channel_name(Doc, 'undefined').
+
+-spec channel_name(doc(), Default) -> binary() | Default.
+channel_name(Doc, Default) ->
+    kz_json:get_binary_value([<<"channel_name">>], Doc, Default).
+
+-spec set_channel_name(doc(), binary()) -> doc().
+set_channel_name(Doc, ChannelName) ->
+    kz_json:set_value([<<"channel_name">>], ChannelName, Doc).
+
+-spec channel_state(doc()) -> kz_term:api_binary().
+channel_state(Doc) ->
+    channel_state(Doc, 'undefined').
+
+-spec channel_state(doc(), Default) -> binary() | Default.
+channel_state(Doc, Default) ->
+    kz_json:get_binary_value([<<"channel_state">>], Doc, Default).
+
+-spec set_channel_state(doc(), binary()) -> doc().
+set_channel_state(Doc, ChannelState) ->
+    kz_json:set_value([<<"channel_state">>], ChannelState, Doc).
+
 -spec custom_application_vars(doc()) -> kz_term:api_object().
 custom_application_vars(Doc) ->
     custom_application_vars(Doc, 'undefined').
@@ -257,6 +318,30 @@ duration_seconds(Doc, Default) ->
 -spec set_duration_seconds(doc(), integer()) -> doc().
 set_duration_seconds(Doc, DurationSeconds) ->
     kz_json:set_value([<<"duration_seconds">>], DurationSeconds, Doc).
+
+-spec event_category(doc()) -> kz_term:api_binary().
+event_category(Doc) ->
+    event_category(Doc, 'undefined').
+
+-spec event_category(doc(), Default) -> binary() | Default.
+event_category(Doc, Default) ->
+    kz_json:get_binary_value([<<"event_category">>], Doc, Default).
+
+-spec set_event_category(doc(), binary()) -> doc().
+set_event_category(Doc, EventCategory) ->
+    kz_json:set_value([<<"event_category">>], EventCategory, Doc).
+
+-spec event_name(doc()) -> kz_term:api_binary().
+event_name(Doc) ->
+    event_name(Doc, 'undefined').
+
+-spec event_name(doc(), Default) -> binary() | Default.
+event_name(Doc, Default) ->
+    kz_json:get_binary_value([<<"event_name">>], Doc, Default).
+
+-spec set_event_name(doc(), binary()) -> doc().
+set_event_name(Doc, EventName) ->
+    kz_json:set_value([<<"event_name">>], EventName, Doc).
 
 -spec fax_bad_rows(doc()) -> kz_term:api_binary().
 fax_bad_rows(Doc) ->
@@ -426,6 +511,30 @@ interaction_id(Doc, Default) ->
 set_interaction_id(Doc, InteractionId) ->
     kz_json:set_value([<<"interaction_id">>], InteractionId, Doc).
 
+-spec interaction_key(doc()) -> kz_term:api_binary().
+interaction_key(Doc) ->
+    interaction_key(Doc, 'undefined').
+
+-spec interaction_key(doc(), Default) -> binary() | Default.
+interaction_key(Doc, Default) ->
+    kz_json:get_binary_value([<<"interaction_key">>], Doc, Default).
+
+-spec set_interaction_key(doc(), binary()) -> doc().
+set_interaction_key(Doc, InteractionKey) ->
+    kz_json:set_value([<<"interaction_key">>], InteractionKey, Doc).
+
+-spec interaction_time(doc()) -> kz_term:api_integer().
+interaction_time(Doc) ->
+    interaction_time(Doc, 'undefined').
+
+-spec interaction_time(doc(), Default) -> integer() | Default.
+interaction_time(Doc, Default) ->
+    kz_json:get_integer_value([<<"interaction_time">>], Doc, Default).
+
+-spec set_interaction_time(doc(), integer()) -> doc().
+set_interaction_time(Doc, InteractionTime) ->
+    kz_json:set_value([<<"interaction_time">>], InteractionTime, Doc).
+
 -spec local_sdp(doc()) -> kz_term:api_binary().
 local_sdp(Doc) ->
     local_sdp(Doc, 'undefined').
@@ -449,6 +558,18 @@ media_server(Doc, Default) ->
 -spec set_media_server(doc(), binary()) -> doc().
 set_media_server(Doc, MediaServer) ->
     kz_json:set_value([<<"media_server">>], MediaServer, Doc).
+
+-spec msg_id(doc()) -> kz_term:api_binary().
+msg_id(Doc) ->
+    msg_id(Doc, 'undefined').
+
+-spec msg_id(doc(), Default) -> binary() | Default.
+msg_id(Doc, Default) ->
+    kz_json:get_binary_value([<<"msg_id">>], Doc, Default).
+
+-spec set_msg_id(doc(), binary()) -> doc().
+set_msg_id(Doc, MsgId) ->
+    kz_json:set_value([<<"msg_id">>], MsgId, Doc).
 
 -spec node(doc()) -> kz_term:api_binary().
 node(Doc) ->
@@ -569,6 +690,54 @@ ringing_seconds(Doc, Default) ->
 -spec set_ringing_seconds(doc(), integer()) -> doc().
 set_ringing_seconds(Doc, RingingSeconds) ->
     kz_json:set_value([<<"ringing_seconds">>], RingingSeconds, Doc).
+
+-spec switch_hostname(doc()) -> kz_term:api_binary().
+switch_hostname(Doc) ->
+    switch_hostname(Doc, 'undefined').
+
+-spec switch_hostname(doc(), Default) -> binary() | Default.
+switch_hostname(Doc, Default) ->
+    kz_json:get_binary_value([<<"switch_hostname">>], Doc, Default).
+
+-spec set_switch_hostname(doc(), binary()) -> doc().
+set_switch_hostname(Doc, SwitchHostname) ->
+    kz_json:set_value([<<"switch_hostname">>], SwitchHostname, Doc).
+
+-spec switch_nodename(doc()) -> kz_term:api_binary().
+switch_nodename(Doc) ->
+    switch_nodename(Doc, 'undefined').
+
+-spec switch_nodename(doc(), Default) -> binary() | Default.
+switch_nodename(Doc, Default) ->
+    kz_json:get_binary_value([<<"switch_nodename">>], Doc, Default).
+
+-spec set_switch_nodename(doc(), binary()) -> doc().
+set_switch_nodename(Doc, SwitchNodename) ->
+    kz_json:set_value([<<"switch_nodename">>], SwitchNodename, Doc).
+
+-spec switch_uri(doc()) -> kz_term:api_binary().
+switch_uri(Doc) ->
+    switch_uri(Doc, 'undefined').
+
+-spec switch_uri(doc(), Default) -> binary() | Default.
+switch_uri(Doc, Default) ->
+    kz_json:get_binary_value([<<"switch_uri">>], Doc, Default).
+
+-spec set_switch_uri(doc(), binary()) -> doc().
+set_switch_uri(Doc, SwitchUri) ->
+    kz_json:set_value([<<"switch_uri">>], SwitchUri, Doc).
+
+-spec switch_url(doc()) -> kz_term:api_binary().
+switch_url(Doc) ->
+    switch_url(Doc, 'undefined').
+
+-spec switch_url(doc(), Default) -> binary() | Default.
+switch_url(Doc, Default) ->
+    kz_json:get_binary_value([<<"switch_url">>], Doc, Default).
+
+-spec set_switch_url(doc(), binary()) -> doc().
+set_switch_url(Doc, SwitchUrl) ->
+    kz_json:set_value([<<"switch_url">>], SwitchUrl, Doc).
 
 -spec timestamp(doc()) -> kz_term:api_integer().
 timestamp(Doc) ->
