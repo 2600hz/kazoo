@@ -191,7 +191,7 @@ cdr_url(ServerRef) ->
 init([WorkerSup, MgrPid, AccountId, QueueId]) ->
     kz_util:put_callid(<<"statem_", QueueId/binary, "_", (kz_term:to_binary(self()))/binary>>),
 
-    webseq:start(?WSD_ID),
+    _ = webseq:start(?WSD_ID),
     webseq:reg_who(?WSD_ID, self(), iolist_to_binary([<<"qFSM">>, pid_to_list(self())])),
 
     AccountDb = kz_util:format_account_db(AccountId),

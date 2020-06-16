@@ -71,7 +71,7 @@
                ,msg_queue_id :: kz_term:api_ne_binary() % the AMQP Queue ID of the ACDc Queue process
                ,agent_id :: kz_term:api_ne_binary()
                ,acct_db :: kz_term:api_ne_binary()
-               ,acct_id :: kz_term:api_ne_binary()
+               ,acct_id :: kz_term:api_binary()
                ,fsm_pid :: kz_term:api_pid()
                ,agent_queues = [] :: kz_term:ne_binaries()
                ,last_connect :: kz_time:now() | 'undefined' % last connection
@@ -1203,28 +1203,28 @@ recording_format() ->
 
 -spec agent_id(agent()) -> kz_term:api_binary().
 agent_id(Agent) ->
-    case kz_json:is_json_object(Agent) of
-        'true' -> kz_doc:id(Agent);
-        'false' -> kapps_call:owner_id(Agent)
+    case is_thief(Agent) of
+        'true' -> kapps_call:owner_id(Agent);
+        'false' -> kz_doc:id(Agent)
     end.
 
 -spec account_id(agent()) -> kz_term:api_binary().
 account_id(Agent) ->
-    case kz_json:is_json_object(Agent) of
-        'true' -> find_account_id(Agent);
-        'false' -> kapps_call:account_id(Agent)
+    case is_thief(Agent) of
+        'true' -> kapps_call:account_id(Agent);
+        'false' -> find_account_id(Agent)
     end.
 
--spec account_db(agent()) -> kz_term:api_binary().
+-spec account_db(agent()) -> kz_term:api_ne_binary().
 account_db(Agent) ->
-    case kz_json:is_json_object(Agent) of
-        'true' -> kz_doc:account_db(Agent);
-        'false' -> kapps_call:account_db(Agent)
+    case is_thief(Agent) of
+        'true' -> kapps_call:account_db(Agent);
+        'false' -> kz_doc:account_db(Agent)
     end.
 
 -spec record_calls(agent()) -> boolean().
 record_calls(Agent) ->
-    kz_json:is_json_object(Agent)
+    not is_thief(Agent)
         andalso kz_json:is_true(<<"record_calls">>, Agent, 'false').
 
 -spec is_thief(agent()) -> boolean().
@@ -1243,6 +1243,7 @@ stop_agent_leg(ACallId, ACtrlQ) ->
     lager:debug("sending hangup to ~s: ~s", [ACallId, ACtrlQ]),
     kapi_dialplan:publish_command(ACtrlQ, Command).
 
+-spec find_account_id(kz_json:object()) -> kz_term:api_ne_binary().
 find_account_id(JObj) ->
     case kz_doc:account_id(JObj) of
         'undefined' -> kz_util:format_account_id(kz_doc:account_db(JObj), 'raw');

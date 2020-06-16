@@ -83,7 +83,7 @@ call_waiting(AccountId, QueueId, CallId, CallerIdName, CallerIdNumber, CallerPri
     call_state_change(AccountId, 'waiting', Prop),
     'ok' = kz_amqp_worker:cast(Prop, fun kapi_acdc_stats:publish_call_waiting/1).
 
--spec call_abandoned(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), atom()) -> 'ok'.
+-spec call_abandoned(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 call_abandoned(AccountId, QueueId, CallId, Reason) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
@@ -1012,7 +1012,7 @@ update_call_stat(Id, Updates, Props) ->
 
 call_state_change(AccountId, Status, Prop) ->
     Body = kz_json:normalize(kz_json:from_list([{<<"Event">>, <<"call_status_change">>}
-                                               ,{<<"Status">>, Status}
+                                               ,{<<"Status">>, kz_term:to_binary(Status)}
                                                 | Prop
                                                ])),
     kz_edr:event(?APP_NAME, ?APP_VERSION, 'ok', 'info', Body, AccountId).

@@ -567,7 +567,7 @@ unbind_q(Q, {AcctId, AgentId, Status}, 'undefined') ->
     _ = kz_amqp_util:unbind_q_from_kapps(Q, sync_req_routing_key(AcctId, AgentId)),
     kz_amqp_util:unbind_q_from_kapps(Q, stats_req_routing_key(AcctId));
 unbind_q(Q, {_, AgentId, _}=Ids, ['member_connect_win'|T]) ->
-    kz_amqp_util:unbind_q_from_kapps(Q, member_connect_win_routing_key(AgentId)),
+    _ = kz_amqp_util:unbind_q_from_kapps(Q, member_connect_win_routing_key(AgentId)),
     unbind_q(Q, Ids, T);
 unbind_q(Q, {AcctId, AgentId, Status}=Ids, ['status'|T]) ->
     _ = kz_amqp_util:unbind_q_from_kapps(Q, agent_status_routing_key(AcctId, AgentId, Status)),

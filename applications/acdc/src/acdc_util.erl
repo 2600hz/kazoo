@@ -82,7 +82,7 @@ send_cdr(Url, JObj, Retries) ->
     end.
 
 %% Returns the list of agents configured for the queue
--spec agents_in_queue(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:path().
+-spec agents_in_queue(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:objects().
 agents_in_queue(AcctDb, QueueId) ->
     case kz_datamgr:get_results(AcctDb, <<"queues/agents_listing">>
                                ,[{'startkey', [QueueId]}

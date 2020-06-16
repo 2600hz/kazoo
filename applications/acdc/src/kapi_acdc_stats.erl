@@ -657,21 +657,21 @@ unbind_q(Q, Props) ->
     unbind_q(Q, AcctId, QID, AID, props:get_value('restrict_to', Props)).
 
 unbind_q(Q, AcctId, QID, AID, 'undefined') ->
-    kz_amqp_util:unbind_q_from_kapps(Q, call_stat_routing_key(AcctId, QID)),
-    kz_amqp_util:unbind_q_from_kapps(Q, status_stat_routing_key(AcctId, AID)),
-    kz_amqp_util:unbind_q_from_kapps(Q, query_call_stat_routing_key(AcctId, QID)),
-    kz_amqp_util:unbind_q_from_kapps(Q, query_status_stat_routing_key(AcctId, AID));
+    _ = kz_amqp_util:unbind_q_from_kapps(Q, call_stat_routing_key(AcctId, QID)),
+    _ = kz_amqp_util:unbind_q_from_kapps(Q, status_stat_routing_key(AcctId, AID)),
+    _ = kz_amqp_util:unbind_q_from_kapps(Q, query_call_stat_routing_key(AcctId, QID)),
+    _ = kz_amqp_util:unbind_q_from_kapps(Q, query_status_stat_routing_key(AcctId, AID));
 unbind_q(Q, AcctId, QID, AID, ['call_stat'|L]) ->
-    kz_amqp_util:unbind_q_from_kapps(Q, call_stat_routing_key(AcctId, QID)),
+    _ = kz_amqp_util:unbind_q_from_kapps(Q, call_stat_routing_key(AcctId, QID)),
     unbind_q(Q, AcctId, QID, AID, L);
 unbind_q(Q, AcctId, QID, AID, ['status_stat'|L]) ->
-    kz_amqp_util:unbind_q_from_kapps(Q, status_stat_routing_key(AcctId, AID)),
+    _ = kz_amqp_util:unbind_q_from_kapps(Q, status_stat_routing_key(AcctId, AID)),
     unbind_q(Q, AcctId, QID, AID, L);
 unbind_q(Q, AcctId, QID, AID, ['query_call_stat'|L]) ->
-    kz_amqp_util:unbind_q_from_kapps(Q, query_call_stat_routing_key(AcctId, QID)),
+    _ = kz_amqp_util:unbind_q_from_kapps(Q, query_call_stat_routing_key(AcctId, QID)),
     unbind_q(Q, AcctId, QID, AID, L);
 unbind_q(Q, AcctId, QID, AID, ['query_status_stat'|L]) ->
-    kz_amqp_util:unbind_q_from_kapps(Q, query_status_stat_routing_key(AcctId, AID)),
+    _ = kz_amqp_util:unbind_q_from_kapps(Q, query_status_stat_routing_key(AcctId, AID)),
     unbind_q(Q, AcctId, QID, AID, L);
 unbind_q(Q, AcctId, QID, AID, [_|L]) ->
     unbind_q(Q, AcctId, QID, AID, L);
