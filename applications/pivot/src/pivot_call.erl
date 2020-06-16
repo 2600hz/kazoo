@@ -92,7 +92,7 @@ stop_call(Srv, Call) -> gen_listener:cast(Srv, {'stop', Call}).
 new_request(Srv, Uri, Method) ->
     gen_listener:cast(Srv, {'request', Uri, Method}).
 
--spec new_request(pid(), kz_term:ne_binary(), http_method(), kz_json:object()) -> 'ok'.
+-spec new_request(pid(), kz_term:ne_binary(), http_method(), kz_term:proplist()) -> 'ok'.
 new_request(Srv, Uri, Method, Params) ->
     gen_listener:cast(Srv, {'request', Uri, Method, Params}).
 
@@ -142,7 +142,7 @@ init([Call, JObj]) ->
 
     ReqFormat = kz_json:get_value(<<"Request-Format">>, JObj, <<"twiml">>),
     ReqBodyFormat = kz_json:get_value(<<"Request-Body-Format">>, JObj, <<"form">>),
-    BaseParams = kz_json:from_list(req_params(ReqFormat, Call)),
+    BaseParams = req_params(ReqFormat, Call),
 
     lager:debug("starting pivot req to ~s to ~s", [Method, VoiceUri]),
 
@@ -196,7 +196,7 @@ handle_cast({'request', Uri, Method, Params}
             lager:debug("sent request ~p to '~s' via '~s'", [ReqId, Uri, Method]),
             {'noreply'
             ,State#state{request_id=ReqId
-                        ,request_params=Params
+                        ,request_params=kz_json:from_list(Params)
                         ,response_content_type = <<>>
                         ,response_body = []
                         ,method=Method
@@ -414,11 +414,9 @@ code_change(_OldVsn, State, _Extra) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec send_req(kapps_call:call(), kz_term:ne_binary(), http_method(), kz_json:object() | kz_term:proplist(), kz_term:ne_binary(), pos_integer(), boolean()) ->
+-spec send_req(kapps_call:call(), kz_term:ne_binary(), http_method(), kz_term:proplist(), kz_term:ne_binary(), pos_integer(), boolean()) ->
           {'ok', kz_http:req_id(), kapps_call:call()} |
           {'stop', kapps_call:call()}.
-send_req(Call, Uri, Method, BaseParams, ReqBodyFormat, TimeoutMs, Debug) when not is_list(BaseParams) ->
-    send_req(Call, Uri, Method, kz_json:to_proplist(BaseParams), ReqBodyFormat, TimeoutMs, Debug);
 send_req(Call, Uri, 'get', BaseParams, _ReqBodyFormat, TimeoutMs, Debug) ->
     UserParams = kzt_translator:get_user_vars(Call),
     Params = kz_json:set_values(BaseParams, UserParams),
