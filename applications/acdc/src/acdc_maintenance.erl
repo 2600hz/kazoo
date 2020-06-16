@@ -302,7 +302,7 @@ flush_call_stat(CallId) ->
             acdc_stats:call_abandoned(kz_json:get_value(<<"Account-ID">>, Call)
                                      ,kz_json:get_value(<<"Queue-ID">>, Call)
                                      ,CallId
-                                     ,'INTERNAL_ERROR'
+                                     ,?ABANDON_INTERNAL_ERROR
                                      ),
             io:format("setting call to 'abandoned'~n", [])
     end.
