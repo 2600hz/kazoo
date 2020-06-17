@@ -141,7 +141,6 @@ process_message(#member_call{call=Call
             lager:info("call failed to be processed: ~s (took ~b s)"
                       ,[Failure, kz_time:elapsed_s(Start)]
                       ),
-            cancel_member_call(Call, Failure),
             stop_hold_music(Call),
             cf_exe:continue(Call);
         'false' ->

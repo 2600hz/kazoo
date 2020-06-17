@@ -13,6 +13,7 @@
 
 %% Event injectors
 -export([member_call/3
+        ,member_call_cancel/2
         ,member_connect_resp/2
         ,member_accepted/2
         ,member_connect_retry/2
@@ -20,7 +21,6 @@
         ,refresh/2
         ,current_call/1
         ,status/1
-        ,finish_member_call/1
 
          %% Accessors
         ,cdr_url/1
@@ -123,6 +123,14 @@ member_call(ServerRef, CallJObj, Delivery) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+-spec member_call_cancel(pid(), kz_json:object()) -> 'ok'.
+member_call_cancel(ServerRef, JObj) ->
+    gen_statem:cast(ServerRef, {'member_call_cancel', JObj}).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec member_connect_resp(pid(), kz_json:object()) -> 'ok'.
 member_connect_resp(ServerRef, Resp) ->
     gen_statem:cast(ServerRef, {'agent_resp', Resp}).
@@ -152,18 +160,9 @@ member_connect_retry(ServerRef, RetryJObj) ->
 -spec call_event(pid(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 call_event(ServerRef, <<"call_event">>, <<"CHANNEL_DESTROY">>, EvtJObj) ->
     gen_statem:cast(ServerRef, {'member_hungup', EvtJObj});
-call_event(ServerRef, <<"call_event">>, <<"DTMF">>, EvtJObj) ->
-    gen_statem:cast(ServerRef, {'dtmf_pressed', kz_json:get_value(<<"DTMF-Digit">>, EvtJObj)});
 call_event(ServerRef, <<"call_event">>, <<"CHANNEL_BRIDGE">>, EvtJObj) ->
     gen_statem:cast(ServerRef, {'channel_bridged', EvtJObj});
 call_event(_, _E, _N, _J) -> 'ok'.
-%% lager:debug("unhandled event: ~s: ~s (~s)"
-%%             ,[_E, _N, kz_json:get_value(<<"Application-Name">>, _J)]
-%%            ).
-
--spec finish_member_call(pid()) -> 'ok'.
-finish_member_call(ServerRef) ->
-    gen_statem:cast(ServerRef, {'member_finished'}).
 
 -spec current_call(pid()) -> kz_term:api_object().
 current_call(ServerRef) ->
@@ -241,21 +240,32 @@ ready('cast', {'get_listener_proc', WorkerSup}, State) ->
     ListenerSrv = acdc_queue_worker_sup:listener(WorkerSup),
     lager:debug("got listener proc: ~p", [ListenerSrv]),
     {'next_state', 'ready', State#state{listener_proc=ListenerSrv}};
-ready('cast', {'member_call', CallJObj, Delivery}, #state{listener_proc=ListenerSrv
-                                                         ,manager_proc=MgrSrv
-                                                         }=State) ->
+ready('cast', {'member_call', CallJObj, Delivery}, #state{listener_proc=ListenerSrv}=State) ->
     Call = kapps_call:from_json(kz_json:get_value(<<"Call">>, CallJObj)),
     CallId = kapps_call:call_id(Call),
     kz_util:put_callid(CallId),
 
+    acdc_queue_listener:member_call(ListenerSrv, CallJObj, Delivery),
+
+    ready('cast', {'check_if_next', CallJObj, Delivery}, State#state{member_call=Call});
+ready('cast', {'check_if_next', CallJObj, Delivery}, #state{listener_proc=ListenerSrv
+                                                           ,manager_proc=MgrSrv
+                                                           ,member_call=Call
+                                                           }=State) ->
     case acdc_queue_manager:should_ignore_member_call(MgrSrv, Call, CallJObj) of
         'false' ->
-            maybe_delay_connect_req(Call, CallJObj, Delivery, State);
+            maybe_abort_connect_req(fun maybe_delay_connect_req/3
+                                   ,[CallJObj, Delivery]
+                                   ,State
+                                   );
         'true' ->
-            lager:debug("queue mgr said to ignore this call: ~s", [CallId]),
+            lager:debug("queue mgr said to ignore this call: ~s", [kapps_call:call_id(Call)]),
             acdc_queue_listener:ignore_member_call(ListenerSrv, Call, Delivery),
-            {'next_state', 'ready', State}
+            {'next_state', 'ready', clear_member_call(State)}
     end;
+ready('cast', {'member_call_cancel', _}, State) ->
+    %% Let check_if_next handle this call being cancelled
+    {'next_state', 'ready', State};
 ready('cast', {'agent_resp', _Resp}, State) ->
     lager:debug("someone jumped the gun, or was slow on the draw"),
     {'next_state', 'ready', State};
@@ -266,13 +276,6 @@ ready('cast', {'retry', _RetryJObj}, State) ->
     lager:debug("weird to receive a retry when we're just hanging here"),
     {'next_state', 'ready', State};
 ready('cast', {'member_hungup', _CallEvt}, State) ->
-    lager:debug("member hungup from previous call: ~p", [_CallEvt]),
-    {'next_state', 'ready', State};
-ready('cast', {'member_finished'}, State) ->
-    lager:debug("member finished while in 'ready', ignore"),
-    {'next_state', 'ready', State};
-ready('cast', {'dtmf_pressed', _DTMF}, State) ->
-    lager:debug("DTMF(~s) for old call", [_DTMF]),
     {'next_state', 'ready', State};
 ready('cast', Event, State) ->
     handle_event(Event, ready, State);
@@ -287,7 +290,10 @@ ready({'call', From}, 'status', #state{cdr_url=Url
 ready({'call', From}, 'current_call', State) ->
     {'next_state', 'ready', State, {'reply', From, 'undefined'}};
 ready({'call', From}, Event, State) ->
-    handle_sync_event(Event, From, ready, State).
+    handle_sync_event(Event, From, ready, State);
+
+ready('info', {'timeout', _, ?COLLECT_RESP_MESSAGE}, State) ->
+    {'next_state', 'ready', State}.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -301,17 +307,19 @@ connect_req('cast', {'member_call', CallJObj, Delivery}, #state{listener_proc=Li
     acdc_queue_listener:cancel_member_call(ListenerSrv, CallJObj, Delivery),
     {'next_state', 'connect_req', State};
 
+connect_req('cast', {'member_call_cancel', JObj}, State) ->
+    handle_member_call_cancel(JObj, 'connect_req', State);
+
 connect_req('cast', {'agent_resp', Resp}, #state{connect_resps=CRs
                                                 ,manager_proc=MgrSrv
                                                 }=State) ->
     Agents = acdc_queue_manager:current_agents(MgrSrv),
     Resps = [Resp | CRs],
-    {NextState, State1} =
-        case have_agents_responded(Resps, Agents) of
-            'true' -> handle_agent_responses(State#state{connect_resps=Resps});
-            'false' -> {'connect_req', State#state{connect_resps=Resps}}
-        end,
-    {'next_state', NextState, State1};
+    State1 = State#state{connect_resps=Resps},
+    case have_agents_responded(Resps, Agents) of
+        'true' -> handle_agent_responses(State1);
+        'false' -> {'next_state', 'connect_req', State1}
+    end;
 
 connect_req('cast', {'accepted', AcceptJObj}=Accept, #state{member_call=Call}=State) ->
     case accept_is_for_call(AcceptJObj, Call) of
@@ -347,30 +355,6 @@ connect_req('cast', {'member_hungup', JObj}, #state{listener_proc=ListenerSrv
                                                                             ]),
             {'next_state', 'connect_req', State}
     end;
-
-connect_req('cast', {'member_finished'}, #state{member_call=Call}=State) ->
-    case catch kapps_call:call_id(Call) of
-        CallId when is_binary(CallId) ->
-            lager:debug("member finished while in connect_req: ~s", [CallId]),
-            webseq:evt(?WSD_ID, self(), CallId, <<"member call finished - forced">>);
-        _E->
-            lager:debug("member finished, but callid became ~p", [_E])
-    end,
-    {'next_state', 'ready', clear_member_call(State), 'hibernate'};
-
-connect_req('cast', {'dtmf_pressed', DTMF}, #state{caller_exit_key=DTMF
-                                                  ,listener_proc=ListenerSrv
-                                                  ,account_id=AccountId
-                                                  ,queue_id=QueueId
-                                                  ,member_call=Call
-                                                  }=State) when is_binary(DTMF) ->
-    lager:debug("member pressed the exit key (~s)", [DTMF]),
-    CallId = kapps_call:call_id(Call),
-    webseq:evt(?WSD_ID, self(), CallId, <<"member call finish - DTMF">>),
-
-    acdc_queue_listener:exit_member_call(ListenerSrv),
-    acdc_stats:call_abandoned(AccountId, QueueId, CallId, ?ABANDON_EXIT),
-    {'next_state', 'ready', clear_member_call(State), 'hibernate'};
 
 connect_req('cast', Event, State) ->
     handle_event(Event, connect_req, State);
@@ -416,26 +400,14 @@ connect_req('info', {'timeout', Ref, ?COLLECT_RESP_MESSAGE}, #state{collect_ref=
         'true' ->
             lager:debug("queue mgr said to ignore this call: ~s, not retrying agents", [kapps_call:call_id(Call)]),
             acdc_queue_listener:finish_member_call(ListenerSrv),
-            {'next_state', 'ready', State};
+            {'next_state', 'ready', clear_member_call(State), 'hibernate'};
         'false' ->
-            maybe_connect_re_req(MgrSrv, ListenerSrv, State)
+            maybe_abort_connect_req(fun maybe_delay_connect_re_req/1, [], State)
     end;
 connect_req('info', {'timeout', Ref, ?COLLECT_RESP_MESSAGE}, #state{collect_ref=Ref}=State) ->
-    {NextState, State1} = handle_agent_responses(State),
-    {'next_state', NextState, State1};
-connect_req('info', {'timeout', ConnRef, ?CONNECTION_TIMEOUT_MESSAGE}, #state{listener_proc=ListenerSrv
-                                                                             ,connection_timer_ref=ConnRef
-                                                                             ,account_id=AccountId
-                                                                             ,queue_id=QueueId
-                                                                             ,member_call=Call
-                                                                             }=State) ->
-    lager:debug("connection timeout occurred, bounce the caller out of the queue"),
-    CallId = kapps_call:call_id(Call),
-    webseq:evt(?WSD_ID, self(), CallId, <<"member call finish - timeout">>),
-
-    acdc_queue_listener:timeout_member_call(ListenerSrv),
-    acdc_stats:call_abandoned(AccountId, QueueId, CallId, ?ABANDON_TIMEOUT),
-    {'next_state', 'ready', clear_member_call(State), 'hibernate'}.
+    handle_agent_responses(State);
+connect_req('info', {'timeout', ConnRef, ?CONNECTION_TIMEOUT_MESSAGE}, State) ->
+    handle_connection_timeout(ConnRef, State).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -446,6 +418,9 @@ connecting('cast', {'member_call', CallJObj, Delivery}, #state{listener_proc=Lis
     lager:debug("recv a member_call while connecting"),
     acdc_queue_listener:cancel_member_call(ListenerSrv, CallJObj, Delivery),
     {'next_state', 'connecting', State};
+
+connecting('cast', {'member_call_cancel', JObj}, State) ->
+    handle_member_call_cancel(JObj, 'connecting', State);
 
 connecting('cast', {'agent_resp', _Resp}, State) ->
     lager:debug("agent resp must have just missed cutoff"),
@@ -462,7 +437,7 @@ connecting('cast', {'accepted', AcceptJObj}, #state{listener_proc=ListenerSrv
             CallId = kapps_call:call_id(Call),
             webseq:evt(?WSD_ID, self(), CallId, <<"member call - agent acceptance">>),
 
-            acdc_queue_listener:finish_member_call(ListenerSrv, AcceptJObj),
+            acdc_queue_listener:finish_member_call(ListenerSrv),
             acdc_stats:call_handled(AccountId, QueueId, CallId
                                    ,kz_json:get_value(<<"Agent-ID">>, AcceptJObj)
                                    ),
@@ -483,7 +458,6 @@ connecting('cast', {'retry', RetryJObj}, #state{agent_ring_timer_ref=AgentRef
         {RetryAgentId, RetryProcId} ->
             lager:debug("recv retry from our winning agent ~s(~s)", [RetryAgentId, RetryProcId]),
 
-            lager:debug("but wait, we have others who wanted to try"),
             erlang:send(self(), {'timeout', 'undefined', ?COLLECT_RESP_MESSAGE}),
 
             maybe_stop_timer(CollectRef),
@@ -516,32 +490,6 @@ connecting('cast', {'member_hungup', CallEvt}, #state{listener_proc=ListenerSrv
     webseq:evt(?WSD_ID, self(), CallId, <<"member call - hungup">>),
 
     {'next_state', 'ready', clear_member_call(State), 'hibernate'};
-
-connecting('cast', {'member_finished'}, #state{member_call=Call}=State) ->
-    case catch kapps_call:call_id(Call) of
-        CallId when is_binary(CallId) ->
-            lager:debug("member finished while in connecting: ~s", [CallId]),
-            webseq:evt(?WSD_ID, self(), CallId, <<"member call finished - forced">>);
-        _E->
-            lager:debug("member finished, but callid became ~p", [_E])
-    end,
-    {'next_state', 'ready', clear_member_call(State), 'hibernate'};
-connecting('cast', {'dtmf_pressed', DTMF}, #state{caller_exit_key=DTMF
-                                                 ,listener_proc=ListenerSrv
-                                                 ,account_id=AccountId
-                                                 ,queue_id=QueueId
-                                                 ,member_call=Call
-                                                 }=State) when is_binary(DTMF) ->
-    lager:debug("member pressed the exit key (~s)", [DTMF]),
-    acdc_queue_listener:exit_member_call(ListenerSrv),
-    CallId = kapps_call:call_id(Call),
-    webseq:evt(?WSD_ID, self(), CallId, <<"member call finish - DTMF">>),
-    acdc_stats:call_abandoned(AccountId, QueueId, CallId, ?ABANDON_EXIT),
-    {'next_state', 'ready', clear_member_call(State), 'hibernate'};
-
-connecting('cast', {'dtmf_pressed', _DTMF}, State) ->
-    lager:debug("caller pressed ~s, ignoring", [_DTMF]),
-    {'next_state', 'connecting', State};
 
 connecting('cast', Event, State) ->
     handle_event(Event, connecting, State);
@@ -592,22 +540,8 @@ connecting('info', {'timeout', AgentRef, ?AGENT_RING_TIMEOUT_MESSAGE}, #state{ag
 connecting('info', {'timeout', _OtherAgentRef, ?AGENT_RING_TIMEOUT_MESSAGE}, #state{agent_ring_timer_ref=_AgentRef}=State) ->
     lager:debug("unknown agent ref: ~p known: ~p", [_OtherAgentRef, _AgentRef]),
     {'next_state', 'connect_req', State};
-connecting('info', {'timeout', ConnRef, ?CONNECTION_TIMEOUT_MESSAGE}, #state{listener_proc=ListenerSrv
-                                                                            ,connection_timer_ref=ConnRef
-                                                                            ,account_id=AccountId
-                                                                            ,queue_id=QueueId
-                                                                            ,member_call=Call
-                                                                            ,member_call_winner=Winner
-                                                                            }=State) ->
-    lager:debug("connection timeout occurred, bounce the caller out of the queue"),
-
-    maybe_timeout_winner(ListenerSrv, Winner),
-    CallId = kapps_call:call_id(Call),
-    acdc_stats:call_abandoned(AccountId, QueueId, CallId, ?ABANDON_TIMEOUT),
-
-    webseq:evt(?WSD_ID, self(), CallId, <<"member call finish - timeout">>),
-
-    {'next_state', 'ready', clear_member_call(State), 'hibernate'}.
+connecting('info', {'timeout', ConnRef, ?CONNECTION_TIMEOUT_MESSAGE}, State) ->
+    handle_connection_timeout(ConnRef, State).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -664,6 +598,65 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
+%% @doc Handle a member_call_cancel event.
+%% @end
+%%------------------------------------------------------------------------------
+-spec handle_member_call_cancel(kz_json:object(), atom(), state()) -> kz_types:handle_fsm_ret(state()).
+handle_member_call_cancel(JObj, StateName, State) ->
+    case kz_json:get_ne_binary_value(<<"Reason">>, JObj) of
+        <<"dtmf_exit">> -> handle_member_call_cancel_dtmf_exit(JObj, StateName, State);
+        _ -> {'next_state', StateName, State}
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc Handle a member_call_cancel event as a result of the caller pressing the
+%% caller_exit_key.
+%% @end
+%%------------------------------------------------------------------------------
+-spec handle_member_call_cancel_dtmf_exit(kz_json:object(), atom(), state()) -> kz_types:handle_fsm_ret(state()).
+handle_member_call_cancel_dtmf_exit(JObj, StateName, #state{listener_proc=ListenerSrv
+                                                           ,account_id=AccountId
+                                                           ,queue_id=QueueId
+                                                           ,member_call=MemberCall
+                                                           ,member_call_winner=Winner
+                                                           ,caller_exit_key=DTMF
+                                                           }=State) ->
+    CallId = kz_json:get_ne_binary_value(<<"Call-ID">>, JObj),
+    MemberCallId = kapps_call:call_id(MemberCall),
+    case CallId of
+        MemberCallId ->
+            lager:debug("member pressed the exit key (~s)", [DTMF]),
+
+            webseq:evt(?WSD_ID, self(), CallId, <<"member call finish - DTMF">>),
+
+            acdc_queue_listener:exit_member_call(ListenerSrv, Winner),
+            acdc_stats:call_abandoned(AccountId, QueueId, CallId, ?ABANDON_EXIT),
+            {'next_state', 'ready', clear_member_call(State), 'hibernate'};
+        _ -> {'next_state', StateName, State}
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc Handle a connection timeout event as a result of the caller reaching the
+%% max wait time in the queue.
+%% @end
+%%------------------------------------------------------------------------------
+-spec handle_connection_timeout(reference(), state()) -> kz_types:handle_fsm_ret(state()).
+handle_connection_timeout(ConnRef, #state{listener_proc=ListenerSrv
+                                         ,connection_timer_ref=ConnRef
+                                         ,account_id=AccountId
+                                         ,queue_id=QueueId
+                                         ,member_call=Call
+                                         ,member_call_winner=Winner
+                                         }=State) ->
+    lager:debug("connection timeout occurred, bounce the caller out of the queue"),
+    CallId = kapps_call:call_id(Call),
+    webseq:evt(?WSD_ID, self(), CallId, <<"member call finish - timeout">>),
+
+    acdc_queue_listener:timeout_member_call(ListenerSrv, Winner),
+    acdc_stats:call_abandoned(AccountId, QueueId, CallId, ?ABANDON_TIMEOUT),
+    {'next_state', 'ready', clear_member_call(State), 'hibernate'}.
+
+%%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -691,12 +684,6 @@ maybe_stop_timer('undefined') -> 'ok';
 maybe_stop_timer(ConnRef) ->
     _ = erlang:cancel_timer(ConnRef),
     'ok'.
-
--spec maybe_timeout_winner(pid(), kz_term:api_object()) -> 'ok'.
-maybe_timeout_winner(Srv, 'undefined') ->
-    acdc_queue_listener:timeout_member_call(Srv);
-maybe_timeout_winner(Srv, Winner) ->
-    acdc_queue_listener:timeout_member_call(Srv, Winner).
 
 -spec clear_member_call(state()) -> state().
 clear_member_call(#state{connection_timer_ref=ConnRef
@@ -758,56 +745,20 @@ elapsed(Ref) when is_reference(Ref) ->
 elapsed(Time) -> kz_time:elapsed_s(Time).
 
 %%------------------------------------------------------------------------------
-%% @doc If some agents are busy, the manager will tell us to delay our
-%% connect reqs
-%%
+%% @doc Abort a queue call if agents have left the building
 %% @end
 %%------------------------------------------------------------------------------
--spec maybe_delay_connect_req(kapps_call:call(), kz_json:object(), gen_listener:basic_deliver(), state()) ->
-          {'next_state', 'ready' | 'connect_req', state()}.
-maybe_delay_connect_req(Call, CallJObj, Delivery, #state{listener_proc=ListenerSrv
+-type on_continue_callback() :: fun((...) -> kz_types:handle_fsm_ret(state())).
+
+-spec maybe_abort_connect_req(on_continue_callback(), [term()], state()) -> kz_types:handle_fsm_ret(state()).
+maybe_abort_connect_req(OnContinue, CallbackArgs, #state{listener_proc=ListenerSrv
                                                         ,manager_proc=MgrSrv
-                                                        ,connection_timeout=ConnTimeout
-                                                        ,connection_timer_ref=ConnRef
-                                                        ,cdr_url=Url
+                                                        ,account_id=AccountId
+                                                        ,queue_id=QueueId
+                                                        ,member_call=Call
                                                         }=State) ->
-    CallId = kapps_call:call_id(Call),
-    case acdc_queue_manager:up_next(MgrSrv, CallId) of
-        'true' ->
-            lager:debug("member call received: ~s", [CallId]),
-
-            webseq:note(?WSD_ID, self(), 'right', [CallId, <<": member call">>]),
-            webseq:evt(?WSD_ID, CallId, self(), <<"member call received">>),
-
-            acdc_queue_listener:member_connect_req(ListenerSrv, CallJObj, Delivery, Url),
-
-            maybe_stop_timer(ConnRef), % stop the old one, maybe
-
-            {'next_state', 'connect_req', State#state{collect_ref=start_collect_timer()
-                                                     ,member_call=Call
-                                                     ,member_call_start=kz_time:now_s()
-                                                     ,connection_timer_ref=start_connection_timer(ConnTimeout)
-                                                     }};
-        'false' ->
-            lager:debug("connect_req delayed (not up next)"),
-            _ = timer:apply_after(1000, 'gen_statem', 'cast', [self(), {'member_call', CallJObj, Delivery}]),
-            {'next_state', 'ready', State}
-    end.
-
-%%------------------------------------------------------------------------------
-%% @doc Abort a queue call between connect_reqs if agents have left the
-%% building
-%%
-%% @end
-%%------------------------------------------------------------------------------
--spec maybe_connect_re_req(pid(), pid(), state()) -> kz_types:handle_fsm_ret(state()).
-maybe_connect_re_req(MgrSrv, ListenerSrv, #state{account_id=AccountId
-                                                ,queue_id=QueueId
-                                                ,member_call=Call
-                                                }=State) ->
     case acdc_queue_manager:are_agents_available(MgrSrv) of
-        'true' ->
-            maybe_delay_connect_re_req(MgrSrv, ListenerSrv, State);
+        'true' -> apply(OnContinue, CallbackArgs ++ [State]);
         'false' ->
             lager:debug("all agents have left the queue, failing call"),
             webseq:note(?WSD_ID, self(), 'right', <<"all agents have left the queue, failing call">>),
@@ -816,15 +767,53 @@ maybe_connect_re_req(MgrSrv, ListenerSrv, #state{account_id=AccountId
             {'next_state', 'ready', clear_member_call(State), 'hibernate'}
     end.
 
--spec maybe_delay_connect_re_req(pid(), pid(), state()) ->
-          {'next_state', 'connect_req', state()}.
-maybe_delay_connect_re_req(MgrSrv, ListenerSrv, #state{member_call=Call}=State) ->
+%%------------------------------------------------------------------------------
+%% @doc If some agents are busy, the manager will tell us to delay our
+%% connect reqs
+%%
+%% @end
+%%------------------------------------------------------------------------------
+-spec maybe_delay_connect_req(kz_json:object(), gen_listener:basic_deliver(), state()) ->
+          {'next_state', 'ready' | 'connect_req', state()}.
+maybe_delay_connect_req(CallJObj, Delivery, #state{listener_proc=ListenerSrv
+                                                  ,manager_proc=MgrSrv
+                                                  ,connection_timeout=ConnTimeout
+                                                  ,connection_timer_ref=ConnRef
+                                                  ,member_call=Call
+                                                  }=State) ->
+    CallId = kapps_call:call_id(Call),
+    case acdc_queue_manager:up_next(MgrSrv, CallId) of
+        'true' ->
+            lager:debug("member call received: ~s", [CallId]),
+
+            webseq:note(?WSD_ID, self(), 'right', [CallId, <<": member call">>]),
+            webseq:evt(?WSD_ID, CallId, self(), <<"member call received">>),
+
+            acdc_queue_listener:member_connect_req(ListenerSrv),
+
+            maybe_stop_timer(ConnRef), % stop the old one, maybe
+
+            {'next_state', 'connect_req', State#state{collect_ref=start_collect_timer()
+                                                     ,member_call_start=kz_time:now_s()
+                                                     ,connection_timer_ref=start_connection_timer(ConnTimeout)
+                                                     }};
+        'false' ->
+            lager:debug("connect_req delayed (not up next)"),
+            _ = timer:apply_after(1000, 'gen_statem', 'cast', [self(), {'check_if_next', CallJObj, Delivery}]),
+            {'next_state', 'ready', State}
+    end.
+
+-spec maybe_delay_connect_re_req(state()) -> {'next_state', 'connect_req', state()}.
+maybe_delay_connect_re_req(#state{listener_proc=ListenerSrv
+                                 ,manager_proc=MgrSrv
+                                 ,member_call=Call
+                                 }=State) ->
     CallId = kapps_call:call_id(Call),
     case acdc_queue_manager:up_next(MgrSrv, CallId) of
         'true' ->
             lager:debug("done waiting, no agents responded, let's ask again"),
             webseq:note(?WSD_ID, self(), 'right', <<"no agents responded, trying again">>),
-            acdc_queue_listener:member_connect_re_req(ListenerSrv),
+            acdc_queue_listener:member_connect_req(ListenerSrv),
             {'next_state', 'connect_req', State#state{collect_ref=start_collect_timer()}};
         'false' ->
             lager:debug("connect_re_req delayed (not up next)"),
@@ -840,7 +829,7 @@ accept_is_for_call(AcceptJObj, Call) ->
 update_agent(Agent, Winner) ->
     kz_json:set_value(<<"Agent-Process-ID">>, kz_json:get_value(<<"Process-ID">>, Winner), Agent).
 
--spec handle_agent_responses(state()) -> {atom(), state()}.
+-spec handle_agent_responses(state()) -> kz_types:handle_fsm_ret(state()).
 handle_agent_responses(#state{collect_ref=Ref
                              ,manager_proc=MgrSrv
                              ,listener_proc=ListenerSrv
@@ -853,52 +842,46 @@ handle_agent_responses(#state{collect_ref=Ref
         'true' ->
             lager:debug("queue mgr said to ignore this call: ~s, not connecting to agents", [kapps_call:call_id(Call)]),
             acdc_queue_listener:finish_member_call(ListenerSrv),
-            {'ready', State};
+            {'next_state', 'ready', clear_member_call(State)};
         'false' ->
             lager:debug("done waiting for agents to respond, picking a winner"),
             maybe_pick_winner(State)
     end.
 
--spec maybe_pick_winner(state()) -> {atom(), state()}.
+-spec maybe_pick_winner(state()) -> kz_types:handle_fsm_ret(state()).
 maybe_pick_winner(#state{connect_resps=CRs
                         ,listener_proc=ListenerSrv
                         ,manager_proc=Mgr
                         ,agent_ring_timeout=RingTimeout
                         ,agent_wrapup_time=AgentWrapup
-                        ,caller_exit_key=CallerExitKey
                         ,cdr_url=CDRUrl
                         ,record_caller=ShouldRecord
                         ,recording_url=RecordUrl
                         ,notifications=Notifications
                         }=State) ->
     case acdc_queue_manager:pick_winner(Mgr, CRs) of
-        {[Winner|_]=Agents, Rest} ->
+        {[Winner|_], _} ->
             QueueOpts = [{<<"Ring-Timeout">>, RingTimeout}
                         ,{<<"Wrapup-Timeout">>, AgentWrapup}
-                        ,{<<"Caller-Exit-Key">>, CallerExitKey}
                         ,{<<"CDR-Url">>, CDRUrl}
                         ,{<<"Record-Caller">>, ShouldRecord}
                         ,{<<"Recording-URL">>, RecordUrl}
                         ,{<<"Notifications">>, Notifications}
                         ],
 
-            _ = [acdc_queue_listener:member_connect_win(ListenerSrv, update_agent(Agent, Winner), QueueOpts)
-                 || Agent <- Agents
-                ],
+            acdc_queue_listener:member_connect_win(ListenerSrv, update_agent(Winner, Winner), props:filter_undefined(QueueOpts)),
 
             lager:debug("sending win to ~s(~s)", [kz_json:get_value(<<"Agent-ID">>, Winner)
                                                  ,kz_json:get_value(<<"Process-ID">>, Winner)
                                                  ]),
-            {'connecting', State#state{connect_resps=Rest
-                                      ,collect_ref='undefined'
-                                      ,agent_ring_timer_ref=start_agent_ring_timer(RingTimeout)
-                                      ,member_call_winner=Winner
-                                      }};
+            {'next_state', 'connecting', State#state{connect_resps=[]
+                                                    ,collect_ref='undefined'
+                                                    ,agent_ring_timer_ref=start_agent_ring_timer(RingTimeout)
+                                                    ,member_call_winner=Winner
+                                                    }};
         'undefined' ->
             lager:debug("no more responses to choose from"),
-
-            acdc_queue_listener:cancel_member_call(ListenerSrv),
-            {'ready', clear_member_call(State)}
+            maybe_abort_connect_req(fun maybe_delay_connect_re_req/1, [], State#state{connect_resps=[]})
     end.
 
 -spec have_agents_responded(kz_json:objects(), kz_term:ne_binaries()) -> boolean().

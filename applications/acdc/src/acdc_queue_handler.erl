@@ -8,6 +8,7 @@
 
 -export([handle_call_event/2
         ,handle_member_call/3
+        ,handle_member_call_cancel/2
         ,handle_member_resp/2
         ,handle_member_accepted/2
         ,handle_member_retry/2
@@ -51,6 +52,11 @@ handle_member_call(JObj, Props, Delivery) ->
     'true' = kapi_acdc_queue:member_call_v(JObj),
     acdc_queue_fsm:member_call(props:get_value('fsm_pid', Props), JObj, Delivery),
     gen_listener:cast(props:get_value('server', Props), {'delivery', Delivery}).
+
+-spec handle_member_call_cancel(kz_json:object(), kz_term:proplist()) -> 'ok'.
+handle_member_call_cancel(JObj, Props) ->
+    'true' = kapi_acdc_queue:member_call_cancel_v(JObj),
+    acdc_queue_fsm:member_call_cancel(props:get_value('fsm_pid', Props), JObj).
 
 -spec handle_member_resp(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_member_resp(JObj, Props) ->

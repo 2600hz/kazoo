@@ -205,9 +205,8 @@ handle_member_call_success(JObj, Prop) ->
 
 -spec handle_member_call_cancel(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_member_call_cancel(JObj, Props) ->
-    kz_util:put_callid(JObj),
-    lager:debug("cancel call ~p", [JObj]),
     'true' = kapi_acdc_queue:member_call_cancel_v(JObj),
+    _ = kz_util:put_callid(JObj),
     K = make_ignore_key(kz_json:get_value(<<"Account-ID">>, JObj)
                        ,kz_json:get_value(<<"Queue-ID">>, JObj)
                        ,kz_json:get_value(<<"Call-ID">>, JObj)
@@ -409,14 +408,27 @@ handle_cast({'update_queue_config', JObj}, #state{enter_when_empty=_EnterWhenEmp
     lager:debug("maybe changing ewe from ~s to ~s", [_EnterWhenEmpty, EWE]),
     {'noreply', State#state{enter_when_empty=EWE}, 'hibernate'};
 
-handle_cast({'member_call_cancel', K, JObj}, #state{ignored_member_calls=Dict}=State) ->
+handle_cast({'member_call_cancel', K, JObj}, #state{ignored_member_calls=Dict
+                                                   ,current_member_calls=Calls
+                                                   }=State) ->
     AccountId = kz_json:get_value(<<"Account-ID">>, JObj),
     QueueId = kz_json:get_value(<<"Queue-ID">>, JObj),
     CallId = kz_json:get_value(<<"Call-ID">>, JObj),
     Reason = kz_json:get_value(<<"Reason">>, JObj),
 
     'ok' = acdc_stats:call_abandoned(AccountId, QueueId, CallId, Reason),
+
+    %% For cancels triggered outside of cf_acdc_member, inform cf_acdc_member
+    %% proc to continue
+    case queue_member(CallId, Calls) of
+        'undefined' -> 'ok';
+        Call ->
+            Q = kapps_call:controller_queue(Call),
+            publish_member_call_failure(Q, AccountId, QueueId, CallId, Reason)
+    end,
+
     {'noreply', State#state{ignored_member_calls=dict:store(K, 'true', Dict)}};
+
 handle_cast({'monitor_call', Call}, State) ->
     CallId = kapps_call:call_id(Call),
     gen_listener:add_binding(self(), 'call', [{'callid', CallId}
@@ -508,14 +520,8 @@ handle_cast({'agent_unavailable', JObj}, State) ->
 handle_cast({'reject_member_call', Call, JObj}, #state{account_id=AccountId
                                                       ,queue_id=QueueId
                                                       }=State) ->
-    Prop = [{<<"Call-ID">>, kapps_call:call_id(Call)}
-           ,{<<"Account-ID">>, AccountId}
-           ,{<<"Queue-ID">>, QueueId}
-           ,{<<"Failure-Reason">>, <<"no agents">>}
-            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-           ],
     Q = kz_json:get_value(<<"Server-ID">>, JObj),
-    catch kapi_acdc_queue:publish_member_call_failure(Q, Prop),
+    publish_member_call_failure(Q, AccountId, QueueId, kapps_call:call_id(Call), <<"no agents">>),
     {'noreply', State};
 
 handle_cast({'sync_with_agent', A}, #state{account_id=AccountId}=State) ->
@@ -652,6 +658,27 @@ start_secondary_queue(AccountId, QueueId) ->
 make_ignore_key(AccountId, QueueId, CallId) ->
     {AccountId, QueueId, CallId}.
 
+-spec queue_member(kz_term:ne_binary(), list()) -> kapps_call:call() | 'undefined'.
+queue_member(CallId, Calls) ->
+    case queue_member_lookup(CallId, Calls) of
+        'undefined' -> 'undefined';
+        {Call, _} -> Call
+    end.
+
+-spec queue_member_lookup(kz_term:ne_binary(), list()) ->
+          {kapps_call:call(), pos_integer()} | 'undefined'.
+queue_member_lookup(CallId, Calls) ->
+    queue_member_lookup(CallId, Calls, 1).
+
+-spec queue_member_lookup(kz_term:ne_binary(), list(), pos_integer()) ->
+          {kapps_call:call(), pos_integer()} | 'undefined'.
+queue_member_lookup(_, [], _) -> 'undefined';
+queue_member_lookup(CallId, [Call|Calls], Position) ->
+    case kapps_call:call_id(Call) of
+        CallId -> {Call, Position};
+        _ -> queue_member_lookup(CallId, Calls, Position + 1)
+    end.
+
 -spec publish_queue_member_add(kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) -> 'ok'.
 publish_queue_member_add(AccountId, QueueId, Call) ->
     Prop = [{<<"Account-ID">>, AccountId}
@@ -669,6 +696,16 @@ publish_queue_member_remove(AccountId, QueueId, CallId) ->
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     kapi_acdc_queue:publish_queue_member_remove(Prop).
+
+-spec publish_member_call_failure(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
+publish_member_call_failure(Q, AccountId, QueueId, CallId, Reason) ->
+    Prop = [{<<"Account-ID">>, AccountId}
+           ,{<<"Call-ID">>, CallId}
+           ,{<<"Failure-Reason">>, Reason}
+           ,{<<"Queue-ID">>, QueueId}
+            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],
+    catch kapi_acdc_queue:publish_member_call_failure(Q, Prop).
 
 %% Really sophisticated selection algorithm
 -spec pick_winner(pid(), kz_json:objects(), queue_strategy(), kz_term:api_binary()) ->
