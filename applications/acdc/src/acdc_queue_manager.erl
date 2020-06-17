@@ -528,7 +528,7 @@ handle_cast({'sync_with_agent', A}, #state{account_id=AccountId}=State) ->
     {'ok', Status} = acdc_agent_util:most_recent_status(AccountId, A),
     case acdc_agent_util:status_should_auto_start(Status) of
         'true' -> 'ok';
-        'false' -> gen_listener:cast(self(), {'agent_unavailable', A, 0})
+        'false' -> gen_listener:cast(self(), {'agent_unavailable', A})
     end,
     {'noreply', State};
 
