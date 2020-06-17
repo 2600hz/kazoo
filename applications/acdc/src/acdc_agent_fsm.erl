@@ -107,7 +107,6 @@
                ,member_call_id :: kz_term:api_binary()
                ,member_call_queue_id :: kz_term:api_binary()
                ,member_call_start :: kz_time:now() | 'undefined'
-               ,caller_exit_key = <<"#">> :: kz_term:ne_binary()
                ,queue_notifications :: kz_term:api_object()
 
                ,agent_call_id :: kz_term:api_binary()
@@ -184,8 +183,6 @@ call_event(ServerRef, <<"call_event">>, <<"LEG_DESTROYED">>, JObj) ->
     gen_statem:cast(ServerRef, {'leg_destroyed', call_id(JObj)});
 call_event(ServerRef, <<"call_event">>, <<"CHANNEL_ANSWER">>, JObj) ->
     gen_statem:cast(ServerRef, {'channel_answered', JObj});
-call_event(ServerRef, <<"call_event">>, <<"DTMF">>, EvtJObj) ->
-    gen_statem:cast(ServerRef, {'dtmf_pressed', kz_json:get_value(<<"DTMF-Digit">>, EvtJObj)});
 call_event(ServerRef, <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, JObj) ->
     maybe_send_execute_complete(ServerRef, kz_json:get_value(<<"Application-Name">>, JObj), JObj);
 call_event(ServerRef, <<"error">>, <<"dialplan">>, JObj) ->
@@ -201,6 +198,7 @@ call_event(ServerRef, <<"call_event">>, <<"CHANNEL_TRANSFEREE">>, JObj) ->
     Transferor = kz_call_event:other_leg_call_id(JObj),
     Transferee = kz_call_event:call_id(JObj),
     gen_statem:cast(ServerRef, {'channel_transferee', Transferor, Transferee});
+call_event(_, <<"call_event">>, <<"DTMF">>, _) -> 'ok';
 call_event(_, _C, _E, _) ->
     lager:info("Unhandled combo: ~s/~s", [_C, _E]).
 
@@ -570,7 +568,6 @@ ready('cast', {'member_connect_win', JObj, 'same_node'}, #state{agent_listener=A
     kz_util:put_callid(CallId),
 
     WrapupTimer = kz_json:get_integer_value(<<"Wrapup-Timeout">>, JObj, 0),
-    CallerExitKey = kz_json:get_value(<<"Caller-Exit-Key">>, JObj, <<"#">>),
     QueueId = kz_json:get_value(<<"Queue-ID">>, JObj),
 
     CDRUrl = cdr_url(JObj),
@@ -604,7 +601,6 @@ ready('cast', {'member_connect_win', JObj, 'same_node'}, #state{agent_listener=A
                                                  ,member_call_id=CallId
                                                  ,member_call_start=kz_time:now()
                                                  ,member_call_queue_id=QueueId
-                                                 ,caller_exit_key=CallerExitKey
                                                  ,endpoints=UpdatedEPs
                                                  ,queue_notifications=kz_json:get_value(<<"Notifications">>, JObj)
                                                  }}
@@ -620,7 +616,6 @@ ready('cast', {'member_connect_win', JObj, 'different_node'}, #state{agent_liste
     kz_util:put_callid(CallId),
 
     WrapupTimer = kz_json:get_integer_value(<<"Wrapup-Timeout">>, JObj, 0),
-    CallerExitKey = kz_json:get_value(<<"Caller-Exit-Key">>, JObj, <<"#">>),
     QueueId = kz_json:get_value(<<"Queue-ID">>, JObj),
 
     RecordingUrl = recording_url(JObj),
@@ -645,7 +640,6 @@ ready('cast', {'member_connect_win', JObj, 'different_node'}, #state{agent_liste
                                                  ,member_call_id=CallId
                                                  ,member_call_start=kz_time:now()
                                                  ,member_call_queue_id=QueueId
-                                                 ,caller_exit_key=CallerExitKey
                                                  ,endpoints=UpdatedEPs
                                                  ,queue_notifications=kz_json:get_value(<<"Notifications">>, JObj)
                                                  ,monitoring='true'
@@ -681,8 +675,6 @@ ready('cast', {'channel_unbridged', CallId}, #state{agent_listener=_AgentListene
     {'next_state', 'ready', State};
 ready('cast', {'leg_destroyed', CallId}, #state{agent_listener=_AgentListener}=State) ->
     lager:debug("channel unbridged: ~s", [CallId]),
-    {'next_state', 'ready', State};
-ready('cast', {'dtmf_pressed', _}, State) ->
     {'next_state', 'ready', State};
 ready('cast', {'originate_failed', _E}, State) ->
     {'next_state', 'ready', State};
@@ -817,19 +809,6 @@ ringing('cast', {'channel_bridged', MemberCallId}, #state{member_call_id=MemberC
 
     {'next_state', 'answered', State#state{connect_failures=0}};
 ringing('cast', {'channel_bridged', _CallId}, State) ->
-    {'next_state', 'ringing', State};
-ringing('cast', {'dtmf_pressed', DTMF}, #state{caller_exit_key=DTMF
-                                              ,agent_listener=AgentListener
-                                              ,agent_call_id=AgentCallId
-                                              }=State) when is_binary(DTMF) ->
-    lager:debug("caller exit key pressed: ~s", [DTMF]),
-    acdc_agent_listener:channel_hungup(AgentListener, AgentCallId),
-
-    acdc_agent_listener:presence_update(AgentListener, ?PRESENCE_GREEN),
-
-    apply_state_updates(clear_call(State, 'ready'));
-ringing('cast', {'dtmf_pressed', DTMF}, #state{caller_exit_key=_ExitKey}=State) ->
-    lager:debug("caller pressed ~s, exit key is ~s", [DTMF, _ExitKey]),
     {'next_state', 'ringing', State};
 ringing('cast', {'channel_answered', JObj}, #state{member_call_id=MemberCallId
                                                   ,agent_listener=AgentListener
@@ -1637,7 +1616,6 @@ clear_call(#state{statem_call_id=StateMCallId
                ,member_call_start = 'undefined'
                ,member_call_queue_id = 'undefined'
                ,agent_call_id = 'undefined'
-               ,caller_exit_key = <<"#">>
                ,queue_notifications = 'undefined'
                ,monitoring = 'false'
                }.

@@ -475,7 +475,7 @@ shared_call_id_v(JObj) -> shared_call_id_v(kz_json:to_proplist(JObj)).
 %% Member Connect Win
 %%------------------------------------------------------------------------------
 -define(MEMBER_CONNECT_WIN_HEADERS, [<<"Queue-ID">>, <<"Agent-ID">>, <<"Call">>, <<"Agent-Process-ID">>]).
--define(OPTIONAL_MEMBER_CONNECT_WIN_HEADERS, [<<"Ring-Timeout">>, <<"Caller-Exit-Key">>
+-define(OPTIONAL_MEMBER_CONNECT_WIN_HEADERS, [<<"Ring-Timeout">>
                                              ,<<"Wrapup-Timeout">>, <<"CDR-Url">>
                                              ,<<"Process-ID">>
                                              ,<<"Record-Caller">>, <<"Recording-URL">>

@@ -15,9 +15,6 @@
         "Call": {
             "type": "object"
         },
-        "Caller-Exit-Key": {
-            "type": "string"
-        },
         "Event-Category": {
             "enum": [
                 "member"
