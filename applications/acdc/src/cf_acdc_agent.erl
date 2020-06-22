@@ -150,14 +150,14 @@ logout_agent(Call, AgentId) ->
 logout_agent(Call, AgentId, Data) ->
     update_agent_status(Call, AgentId, Data, fun kapi_acdc_agent:publish_logout/1).
 
-pause_agent(Call, AgentId, Data, Timeout) when is_integer(Timeout) ->
+pause_agent(Call, AgentId, Data, Timeout) ->
     _ = play_agent_pause(Call),
     update_agent_status(Call, AgentId, Data, fun kapi_acdc_agent:publish_pause/1, Timeout).
 pause_agent(Call, AgentId, Data) ->
-    Timeout = kz_json:get_integer_value(<<"timeout">>
-                                       ,Data
-                                       ,kapps_config:get_integer(<<"acdc">>, <<"default_agent_pause_timeout">>, 600)
-                                       ),
+    Timeout = kz_json:get_value(<<"timeout">>
+                               ,Data
+                               ,kapps_config:get(<<"acdc">>, <<"default_agent_pause_timeout">>, 600)
+                               ),
     lager:info("agent ~s is pausing work for ~b s", [AgentId, Timeout]),
     pause_agent(Call, AgentId, Data, Timeout).
 
@@ -169,7 +169,7 @@ update_agent_status(Call, AgentId, Data, PubFun) ->
 update_agent_status(Call, AgentId, Data, PubFun, Timeout) ->
     send_new_status(Call, AgentId, Data, PubFun, Timeout).
 
--spec send_new_status(kapps_call:call(), kz_term:ne_binary(), kz_json:object(), kz_amqp_worker:publish_fun(), kz_term:api_integer()) -> 'ok'.
+-spec send_new_status(kapps_call:call(), kz_term:ne_binary(), kz_json:object(), kz_amqp_worker:publish_fun(), kz_term:api_integer() | kz_term:ne_binary()) -> 'ok'.
 send_new_status(Call, AgentId, Data, PubFun, Timeout) ->
     Update = props:filter_undefined(
                [{<<"Account-ID">>, kapps_call:account_id(Call)}
