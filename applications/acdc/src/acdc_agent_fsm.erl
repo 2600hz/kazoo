@@ -101,7 +101,7 @@
                ,wrapup_ref :: kz_term:api_reference()
 
                ,sync_ref :: kz_term:api_reference()
-               ,pause_ref :: kz_term:api_reference()
+               ,pause_ref :: kz_term:api_reference() | 'infinity'
 
                ,member_call :: kapps_call:call() | 'undefined'
                ,member_call_id :: kz_term:api_binary()
@@ -1578,6 +1578,7 @@ time_left(Ref) when is_reference(Ref) ->
     time_left(erlang:read_timer(Ref));
 time_left('false') -> 'undefined';
 time_left('undefined') -> 'undefined';
+time_left('infinity') -> 'infinity';
 time_left(Ms) when is_integer(Ms) -> Ms div 1000.
 
 -spec clear_call(state(), atom()) -> state().
@@ -1668,13 +1669,14 @@ hangup_call(#state{agent_listener=AgentListener
     maybe_notify(Ns, ?NOTIFY_HANGUP, State),
     wrapup_timer(State).
 
--spec maybe_stop_timer(kz_term:api_reference()) -> 'ok'.
+-spec maybe_stop_timer(kz_term:api_reference() | 'infinity') -> 'ok'.
 maybe_stop_timer('undefined') -> 'ok';
+maybe_stop_timer('infinity') -> 'ok';
 maybe_stop_timer(ConnRef) when is_reference(ConnRef) ->
     _ = erlang:cancel_timer(ConnRef),
     'ok'.
 
--spec maybe_stop_timer(kz_term:api_reference(), boolean()) -> 'ok'.
+-spec maybe_stop_timer(kz_term:api_reference() | 'infinity', boolean()) -> 'ok'.
 maybe_stop_timer(TimerRef, 'true') -> maybe_stop_timer(TimerRef);
 maybe_stop_timer(_, 'false') -> 'ok'.
 
@@ -1703,6 +1705,7 @@ outbound_hungup(#state{agent_listener=AgentListener
         _W ->
             case time_left(PRef) of
                 N when is_integer(N), N > 0 -> apply_state_updates(clear_call(State, 'paused'));
+                'infinity' -> apply_state_updates(clear_call(State, 'paused'));
                 _P ->
                     lager:debug("wrapup left: ~p pause left: ~p", [_W, _P]),
                     acdc_agent_listener:presence_update(AgentListener, ?PRESENCE_GREEN),
@@ -1947,6 +1950,7 @@ apply_state_updates(#state{agent_state_updates=Q
                            _W ->
                                case time_left(PRef) of
                                    N when is_integer(N), N > 0 -> 'paused';
+                                   'infinity' -> 'paused';
                                    _P -> 'ready'
                                end
                        end,
@@ -2025,8 +2029,13 @@ handle_resume(#state{agent_listener=AgentListener
 -spec handle_pause(timeout(), state()) -> kz_types:handle_fsm_ret(state()).
 handle_pause(Timeout, #state{agent_listener=AgentListener}=State) ->
     acdc_agent_listener:presence_update(AgentListener, ?PRESENCE_RED_FLASH),
-    Ref = start_pause_timer(Timeout),
-    State1 = State#state{pause_ref=Ref},
+    State1 = case Timeout of
+                 'infinity' ->
+                     State#state{pause_ref='infinity'};
+                 _ ->
+                     Ref = start_pause_timer(Timeout),
+                     State#state{pause_ref=Ref}
+             end,
     {'next_state', 'paused', State1}.
 
 -spec handle_end_wrapup(atom(), state()) -> kz_types:handle_fsm_ret(state()).

@@ -24,11 +24,12 @@
 wait_time(<<"paused">>, _) -> 'undefined';
 wait_time(_, JObj) -> kz_json:get_integer_value(<<"Wait-Time">>, JObj).
 
--spec pause_time(kz_term:ne_binary(), kz_json:object()) -> kz_term:api_integer().
+-spec pause_time(kz_term:ne_binary(), kz_json:object()) -> timeout() | 'undefined'.
 pause_time(<<"paused">>, JObj) ->
-    case kz_json:get_integer_value(<<"Pause-Time">>, JObj) of
-        'undefined' -> kz_json:get_integer_value(<<"Wait-Time">>, JObj);
-        PT -> PT
+    case kz_json:get_value(<<"Timeout">>, JObj) of
+        'undefined' -> 'undefined';
+        <<"infinity">> -> 'infinity';
+        Timeout -> kz_term:to_integer(Timeout)
     end;
 pause_time(_, _JObj) -> 'undefined'.
 
