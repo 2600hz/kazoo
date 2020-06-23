@@ -232,6 +232,8 @@ stats_resp_v(JObj) ->
                       ]).
 -define(AGENT_TYPES, []).
 
+-define(OPTIONAL_PAUSE_HEADERS, [<<"Alias">>]).
+
 -define(LOGIN_VALUES, [{<<"Event-Name">>, <<"login">>} | ?AGENT_VALUES]).
 -define(LOGOUT_VALUES, [{<<"Event-Name">>, <<"logout">>} | ?AGENT_VALUES]).
 -define(PAUSE_VALUES, [{<<"Event-Name">>, <<"pause">>} | ?AGENT_VALUES]).
@@ -315,7 +317,7 @@ logout_queue_v(JObj) ->
           {'error', string()}.
 pause(Props) when is_list(Props) ->
     case pause_v(Props) of
-        'true' -> kz_api:build_message(Props, ?AGENT_HEADERS, ?OPTIONAL_AGENT_HEADERS);
+        'true' -> kz_api:build_message(Props, ?AGENT_HEADERS, ?OPTIONAL_AGENT_HEADERS ++ ?OPTIONAL_PAUSE_HEADERS);
         'false' -> {'error', "Proplist failed validation for agent_pause"}
     end;
 pause(JObj) ->

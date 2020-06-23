@@ -14,7 +14,7 @@
         ,agent_connecting/3, agent_connecting/6
         ,agent_connected/3, agent_connected/6
         ,agent_wrapup/3
-        ,agent_paused/3
+        ,agent_paused/4
         ,agent_outbound/3
 
         ,handle_status_stat/2
@@ -167,16 +167,17 @@ agent_wrapup(AccountId, AgentId, WaitTime) ->
                        ,fun kapi_acdc_stats:publish_status_wrapup/1
                        ).
 
--spec agent_paused(kz_term:ne_binary(), kz_term:ne_binary(), timeout() | 'undefined') -> 'ok'.
-agent_paused(AccountId, AgentId, 'undefined') ->
+-spec agent_paused(kz_term:ne_binary(), kz_term:ne_binary(), timeout() | 'undefined', kz_term:api_binary()) -> 'ok'.
+agent_paused(AccountId, AgentId, 'undefined', _) ->
     lager:debug("undefined pause time for ~s(~s)", [AgentId, AccountId]);
-agent_paused(AccountId, AgentId, PauseTime) ->
+agent_paused(AccountId, AgentId, PauseTime, Alias) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
              ,{<<"Agent-ID">>, AgentId}
              ,{<<"Timestamp">>, kz_time:now_s()}
              ,{<<"Status">>, <<"paused">>}
              ,{<<"Pause-Time">>, PauseTime}
+             ,{<<"Pause-Alias">>, Alias}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     log_status_change(AccountId, Prop),
@@ -228,6 +229,7 @@ handle_status_stat(JObj, Props) ->
                                    ,callid=kz_json:get_value(<<"Call-ID">>, JObj)
                                    ,wait_time=acdc_stats_util:wait_time(EventName, JObj)
                                    ,pause_time=acdc_stats_util:pause_time(EventName, JObj)
+                                   ,pause_alias=kz_json:get_value(<<"Pause-Alias">>, JObj)
                                    ,caller_id_name=acdc_stats_util:caller_id_name(EventName, JObj)
                                    ,caller_id_number=acdc_stats_util:caller_id_number(EventName, JObj)
                                    ,queue_id=acdc_stats_util:queue_id(EventName, JObj)
@@ -421,6 +423,7 @@ status_stat_to_map(#status_stat{key=#status_stat_key{agent_id=AgentId
                                ,status=Status
                                ,wait_time=WT
                                ,pause_time=PT
+                               ,pause_alias=Alias
                                ,callid=CallId
                                ,caller_id_name=CIDName
                                ,caller_id_number=CIDNum
@@ -432,6 +435,7 @@ status_stat_to_map(#status_stat{key=#status_stat_key{agent_id=AgentId
      ,'status'           => Status
      ,'wait_time'        => WT
      ,'pause_time'       => PT
+     ,'pause_alias'      => Alias
      ,'call_id'          => CallId
      ,'caller_id_name'   => CIDName
      ,'caller_id_number' => CIDNum
@@ -447,6 +451,7 @@ status_stat_to_doc(#status_stat{key=#status_stat_key{account_id=AccountId
                                ,status=Status
                                ,wait_time=WT
                                ,pause_time=PT
+                               ,pause_alias=Alias
                                ,callid=CallId
                                ,caller_id_name=CIDName
                                ,caller_id_number=CIDNum
@@ -459,6 +464,7 @@ status_stat_to_doc(#status_stat{key=#status_stat_key{account_id=AccountId
            ,{<<"status">>, Status}
            ,{<<"wait_time">>, WT}
            ,{<<"pause_time">>, PT}
+           ,{<<"pause_alias">>, Alias}
            ,{<<"caller_id_name">>, CIDName}
            ,{<<"caller_id_number">>, CIDNum}
            ,{<<"queue_id">>, QueueId}

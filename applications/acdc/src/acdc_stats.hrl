@@ -62,6 +62,7 @@
 
                      ,wait_time :: kz_term:api_integer() | '_'
                      ,pause_time :: timeout() | 'undefined' | '_'
+                     ,pause_alias :: kz_term:api_binary() | '_'
                      ,callid :: kz_term:api_binary() | '_'
                      ,caller_id_name :: kz_term:api_binary() | '_'
                      ,caller_id_number :: kz_term:api_binary() | '_'

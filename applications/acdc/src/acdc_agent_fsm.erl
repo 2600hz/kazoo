@@ -23,7 +23,7 @@
         ,originate_resp/2, originate_started/2, originate_uuid/2
         ,originate_failed/2
         ,sync_req/2, sync_resp/2
-        ,pause/2
+        ,pause/3
         ,resume/1
         ,end_wrapup/1
 
@@ -102,6 +102,7 @@
 
                ,sync_ref :: kz_term:api_reference()
                ,pause_ref :: kz_term:api_reference() | 'infinity'
+               ,pause_alias :: kz_term:api_binary()
 
                ,member_call :: kapps_call:call() | 'undefined'
                ,member_call_id :: kz_term:api_binary()
@@ -269,9 +270,9 @@ sync_resp(ServerRef, JObj) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec pause(kz_types:server_ref(), timeout()) -> 'ok'.
-pause(ServerRef, Timeout) ->
-    gen_statem:cast(ServerRef, {'pause', Timeout}).
+-spec pause(kz_types:server_ref(), timeout(), kz_term:api_binary()) -> 'ok'.
+pause(ServerRef, Timeout, Alias) ->
+    gen_statem:cast(ServerRef, {'pause', Timeout, Alias}).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -1363,26 +1364,26 @@ handle_event({'resume'}=Event, StateName, #state{agent_state_updates=Queue}=Stat
     lager:debug("recv resume during ~p, delaying", [StateName]),
     NewQueue = [Event | Queue],
     {'next_state', StateName, State#state{agent_state_updates=NewQueue}};
-handle_event({'pause', Timeout}, 'ringing', #state{agent_listener=AgentListener
-                                                  ,account_id=AccountId
-                                                  ,agent_id=AgentId
-                                                  ,member_call_id=CallId
-                                                  ,member_call_queue_id=QueueId
-                                                  }=State) ->
+handle_event({'pause', Timeout, Alias}, 'ringing', #state{agent_listener=AgentListener
+                                                         ,account_id=AccountId
+                                                         ,agent_id=AgentId
+                                                         ,member_call_id=CallId
+                                                         ,member_call_queue_id=QueueId
+                                                         }=State) ->
     %% Give up the current ringing call
     acdc_agent_listener:hangup_call(AgentListener),
     lager:debug("stopping ringing agent in order to move to pause"),
     acdc_stats:call_missed(AccountId, QueueId, AgentId, CallId, <<"agent pausing">>),
     NewFSMState = clear_call(State, 'failed'),
     %% After clearing we are basically 'ready' state, pause from that state
-    handle_event({'pause', Timeout}, 'ready', NewFSMState);
-handle_event({'pause', Timeout}=Event, 'ready', #state{agent_state_updates=Queue}=State) ->
-    lager:debug("recv status update: pausing for up to ~b s", [Timeout]),
+    handle_event({'pause', Timeout, Alias}, 'ready', NewFSMState);
+handle_event({'pause', Timeout, _}=Event, 'ready', #state{agent_state_updates=Queue}=State) ->
+    lager:debug("recv status update: pausing for up to ~p s", [Timeout]),
     NewQueue = [Event | Queue],
     apply_state_updates(State#state{agent_state_updates=NewQueue});
-handle_event({'pause', Timeout}, 'paused', State) ->
-    handle_event({'pause', Timeout}, 'ready', State);
-handle_event({'pause', _}=Event, StateName, #state{agent_state_updates=Queue}=State) ->
+handle_event({'pause', Timeout, Alias}, 'paused', State) ->
+    handle_event({'pause', Timeout, Alias}, 'ready', State);
+handle_event({'pause', _, _}=Event, StateName, #state{agent_state_updates=Queue}=State) ->
     lager:debug("recv pause during ~p, delaying", [StateName]),
     NewQueue = [Event | Queue],
     {'next_state', StateName, State#state{agent_state_updates=NewQueue}};
@@ -1963,6 +1964,7 @@ apply_state_updates_fold({_, StateName, #state{account_id=AccountId
                                               ,agent_listener=AgentListener
                                               ,wrapup_ref=WRef
                                               ,pause_ref=PRef
+                                              ,pause_alias=Alias
                                               }}=Acc, []) ->
     lager:debug("resulting agent state ~s", [StateName]),
     case StateName of
@@ -1972,11 +1974,11 @@ apply_state_updates_fold({_, StateName, #state{account_id=AccountId
         'wrapup' -> acdc_agent_stats:agent_wrapup(AccountId, AgentId, time_left(WRef));
         'paused' ->
             acdc_agent_listener:send_agent_busy(AgentListener),
-            acdc_agent_stats:agent_paused(AccountId, AgentId, time_left(PRef))
+            acdc_agent_stats:agent_paused(AccountId, AgentId, time_left(PRef), Alias)
     end,
     Acc;
-apply_state_updates_fold({_, _, State}, [{'pause', Timeout}|Updates]) ->
-    apply_state_updates_fold(handle_pause(Timeout, State), Updates);
+apply_state_updates_fold({_, _, State}, [{'pause', Timeout, Alias}|Updates]) ->
+    apply_state_updates_fold(handle_pause(Timeout, Alias, State), Updates);
 apply_state_updates_fold({_, _, State}, [{'resume'}|Updates]) ->
     apply_state_updates_fold(handle_resume(State), Updates);
 apply_state_updates_fold({_, 'wrapup', State}, [{'end_wrapup'}|Updates]) ->
@@ -2026,15 +2028,17 @@ handle_resume(#state{agent_listener=AgentListener
     acdc_agent_listener:presence_update(AgentListener, ?PRESENCE_GREEN),
     {'next_state', 'ready', State#state{pause_ref='undefined'}}.
 
--spec handle_pause(timeout(), state()) -> kz_types:handle_fsm_ret(state()).
-handle_pause(Timeout, #state{agent_listener=AgentListener}=State) ->
+-spec handle_pause(timeout(), kz_term:api_binary(), state()) -> kz_types:handle_fsm_ret(state()).
+handle_pause(Timeout, Alias, #state{agent_listener=AgentListener}=State) ->
     acdc_agent_listener:presence_update(AgentListener, ?PRESENCE_RED_FLASH),
     State1 = case Timeout of
                  'infinity' ->
                      State#state{pause_ref='infinity'};
                  _ ->
                      Ref = start_pause_timer(Timeout),
-                     State#state{pause_ref=Ref}
+                     State#state{pause_ref=Ref
+                                ,pause_alias=Alias
+                                }
              end,
     {'next_state', 'paused', State1}.
 
