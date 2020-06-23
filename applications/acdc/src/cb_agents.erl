@@ -273,6 +273,7 @@ publish_update(Context, AgentId, PubFun) ->
                [{<<"Account-ID">>, cb_context:account_id(Context)}
                ,{<<"Agent-ID">>, AgentId}
                ,{<<"Time-Limit">>, cb_context:req_value(Context, <<"timeout">>)}
+               ,{<<"Alias">>, cb_context:req_value(Context, <<"alias">>)}
                ,{<<"Presence-ID">>, cb_context:req_value(Context, <<"presence_id">>)}
                ,{<<"Presence-State">>, cb_context:req_value(Context, <<"presence_state">>)}
                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
