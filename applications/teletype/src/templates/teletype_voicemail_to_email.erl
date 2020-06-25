@@ -27,6 +27,7 @@ id() ->
 macros() ->
     kz_json:from_list(
       [?MACRO_VALUE(<<"voicemail.vmbox_id">>, <<"voicemail_vmbox_id">>, <<"Voicemail Box Id">>, <<"Which voicemail box was the message left in">>)
+      ,?MACRO_VALUE(<<"voicemail.vmbox_name">>, <<"voicemail_vmbox_name">>, <<"Voicemail Box Name">>, <<"Name of the voicemail box were the message was left in">>)
       ,?MACRO_VALUE(<<"voicemail.msg_id">>, <<"voicemail_msg_id">>, <<"Voicemail Message ID">>, <<"Message Id of the voicemail">>)
       ,?MACRO_VALUE(<<"voicemail.transcription">>, <<"voicemail_transcription">>, <<"Voicemail Message Transcription">>, <<"Voicemail Message Transcription">>)
       ,?MACRO_VALUE(<<"voicemail.length">>, <<"voicemail_length">>, <<"Voicemail Length">>, <<"Length of the voicemail file (formatted in HH:MM:SS)">>)
