@@ -30,7 +30,7 @@ macros() ->
       ++ ?DEFAULT_CALL_MACROS
       ++ ?USER_MACROS
       ++ ?COMMON_TEMPLATE_MACROS
-      ).
+     ).
 
 -spec subject() -> kz_term:ne_binary().
 subject() -> <<"New voicemail from {{caller_id.name_number}}">>.
