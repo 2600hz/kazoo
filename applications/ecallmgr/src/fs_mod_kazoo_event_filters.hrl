@@ -162,7 +162,6 @@
         ,<<"variable_sip_call_id">>
         ,<<"variable_sip_h_Referred-By">>
         ,<<"variable_sip_h_X-AUTH-PORT">>
-        ,<<"variable_sip_h_User-To-User">>
         ,<<"variable_sip_loopback_req_uri">>
         ,<<"variable_sip_received_port">>
         ,<<"variable_sip_refer_to">>
@@ -353,6 +352,7 @@
         ,<<"variable_destination_number">>
         ,<<"variable_sip_h_Referred-By">>
         ,<<"variable_sip_h_X-AUTH-PORT">>
+        ,<<"variable_sip_h_User-To-User">>
         ,<<"variable_transfer_source">>
         ,<<"call-id">>
         ,<<"profile-name">>
