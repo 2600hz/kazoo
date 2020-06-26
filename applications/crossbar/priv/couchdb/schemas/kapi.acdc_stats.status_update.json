@@ -25,6 +25,9 @@
             "type": "string"
         },
         "Event-Name": {},
+        "Pause-Alias": {
+            "type": "string"
+        },
         "Pause-Time": {
             "type": "integer"
         },

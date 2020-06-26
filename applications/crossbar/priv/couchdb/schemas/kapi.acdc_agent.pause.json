@@ -9,6 +9,9 @@
         "Agent-ID": {
             "type": "string"
         },
+        "Alias": {
+            "type": "string"
+        },
         "Event-Category": {
             "enum": [
                 "agent"
