@@ -19,6 +19,11 @@
 
 -include("teletype.hrl").
 
+-ifdef(TEST).
+-export([build_voicemail_data/1
+        ]).
+-endif.
+
 -spec id() -> kz_term:ne_binary().
 id() ->
     <<"voicemail_to_email">>.
@@ -26,14 +31,57 @@ id() ->
 -spec macros() -> kz_json:object().
 macros() ->
     kz_json:from_list(
-      [?MACRO_VALUE(<<"voicemail.vmbox_id">>, <<"voicemail_vmbox_id">>, <<"Voicemail Box Id">>, <<"Which voicemail box was the message left in">>)
-      ,?MACRO_VALUE(<<"voicemail.vmbox_name">>, <<"voicemail_vmbox_name">>, <<"Voicemail Box Name">>, <<"Name of the voicemail box were the message was left in">>)
-      ,?MACRO_VALUE(<<"voicemail.msg_id">>, <<"voicemail_msg_id">>, <<"Voicemail Message ID">>, <<"Message Id of the voicemail">>)
-      ,?MACRO_VALUE(<<"voicemail.transcription">>, <<"voicemail_transcription">>, <<"Voicemail Message Transcription">>, <<"Voicemail Message Transcription">>)
-      ,?MACRO_VALUE(<<"voicemail.length">>, <<"voicemail_length">>, <<"Voicemail Length">>, <<"Length of the voicemail file (formatted in HH:MM:SS)">>)
-      ,?MACRO_VALUE(<<"voicemail.file_name">>, <<"voicemail_file_name">>, <<"Voicemail File Name">>, <<"Name of the voicemail file">>)
-      ,?MACRO_VALUE(<<"voicemail.file_type">>, <<"voicemail_file_type">>, <<"Voicemail File Type">>, <<"Type of the voicemail file">>)
-      ,?MACRO_VALUE(<<"voicemail.file_size">>, <<"voicemail_file_size">>, <<"Voicemail File Size">>, <<"Size of the voicemail file in bytes">>)
+      [?MACRO_VALUE(<<"voicemail.vmbox_id">>
+                   ,<<"voicemail_vmbox_id">>
+                   ,<<"Voicemail Box Id">>
+                   ,<<"Which voicemail box was the message left in">>
+                   )
+      ,?MACRO_VALUE(<<"voicemail.vmbox_name">>
+                   ,<<"voicemail_vmbox_name">>
+                   ,<<"Voicemail Box Name">>
+                   ,<<"Name of the voicemail box were the message was left in">>
+                   )
+      ,?MACRO_VALUE(<<"voicemail.vmbox_number">>
+                   ,<<"voicemail_vmbox_number">>
+                   ,<<"Voicemail Box Number">>
+                   ,<<"Number of the voicemail box were the message was left in">>
+                   )
+      ,?MACRO_VALUE(<<"voicemail.vmbox_include_message_on_notify">>
+                   ,<<"voicemail_vmbox_include_message_on_notify">>
+                   ,<<"Voicemail Box Include Message On Notify">>
+                   ,<<"Whether or not to include the attachment when sending a new voicemail to "
+                      "email notification">>
+                   )
+      ,?MACRO_VALUE(<<"voicemail.msg_id">>
+                   ,<<"voicemail_msg_id">>
+                   ,<<"Voicemail Message ID">>
+                   ,<<"Message Id of the voicemail">>
+                   )
+      ,?MACRO_VALUE(<<"voicemail.transcription">>
+                   ,<<"voicemail_transcription">>
+                   ,<<"Voicemail Message Transcription">>
+                   ,<<"Voicemail Message Transcription">>
+                   )
+      ,?MACRO_VALUE(<<"voicemail.length">>
+                   ,<<"voicemail_length">>
+                   ,<<"Voicemail Length">>
+                   ,<<"Length of the voicemail file (formatted in HH:MM:SS)">>
+                   )
+      ,?MACRO_VALUE(<<"voicemail.file_name">>
+                   ,<<"voicemail_file_name">>
+                   ,<<"Voicemail File Name">>
+                   ,<<"Name of the voicemail file">>
+                   )
+      ,?MACRO_VALUE(<<"voicemail.file_type">>
+                   ,<<"voicemail_file_type">>
+                   ,<<"Voicemail File Type">>
+                   ,<<"Type of the voicemail file">>
+                   )
+      ,?MACRO_VALUE(<<"voicemail.file_size">>
+                   ,<<"voicemail_file_size">>
+                   ,<<"Voicemail File Size">>
+                   ,<<"Size of the voicemail file in bytes">>
+                   )
        | ?DEFAULT_CALL_MACROS
        ++ ?USER_MACROS
        ++ ?COMMON_TEMPLATE_MACROS
