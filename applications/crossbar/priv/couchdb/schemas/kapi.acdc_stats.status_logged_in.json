@@ -30,6 +30,9 @@
             ],
             "type": "string"
         },
+        "Pause-Alias": {
+            "type": "string"
+        },
         "Pause-Time": {
             "type": "integer"
         },

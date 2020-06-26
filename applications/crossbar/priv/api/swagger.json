@@ -6974,6 +6974,9 @@
                 "Agent-ID": {
                     "type": "string"
                 },
+                "Alias": {
+                    "type": "string"
+                },
                 "Event-Category": {
                     "enum": [
                         "agent"
@@ -8278,6 +8281,9 @@
                     ],
                     "type": "string"
                 },
+                "Pause-Alias": {
+                    "type": "string"
+                },
                 "Pause-Time": {
                     "type": "integer"
                 },
@@ -8326,6 +8332,9 @@
                     "enum": [
                         "connecting"
                     ],
+                    "type": "string"
+                },
+                "Pause-Alias": {
                     "type": "string"
                 },
                 "Pause-Time": {
@@ -8402,6 +8411,9 @@
                     ],
                     "type": "string"
                 },
+                "Pause-Alias": {
+                    "type": "string"
+                },
                 "Pause-Time": {
                     "type": "integer"
                 },
@@ -8450,6 +8462,9 @@
                     "enum": [
                         "logged_out"
                     ],
+                    "type": "string"
+                },
+                "Pause-Alias": {
                     "type": "string"
                 },
                 "Pause-Time": {
@@ -8502,6 +8517,9 @@
                     ],
                     "type": "string"
                 },
+                "Pause-Alias": {
+                    "type": "string"
+                },
                 "Pause-Time": {
                     "type": "integer"
                 },
@@ -8550,6 +8568,9 @@
                     "enum": [
                         "paused"
                     ],
+                    "type": "string"
+                },
+                "Pause-Alias": {
                     "type": "string"
                 },
                 "Pause-Time": {
@@ -8602,6 +8623,9 @@
                     ],
                     "type": "string"
                 },
+                "Pause-Alias": {
+                    "type": "string"
+                },
                 "Pause-Time": {
                     "type": "integer"
                 },
@@ -8650,6 +8674,9 @@
                     "enum": [
                         "ready"
                     ],
+                    "type": "string"
+                },
+                "Pause-Alias": {
                     "type": "string"
                 },
                 "Pause-Time": {
@@ -8760,6 +8787,9 @@
                     "type": "string"
                 },
                 "Event-Name": {},
+                "Pause-Alias": {
+                    "type": "string"
+                },
                 "Pause-Time": {
                     "type": "integer"
                 },
@@ -8808,6 +8838,9 @@
                     "enum": [
                         "wrapup"
                     ],
+                    "type": "string"
+                },
+                "Pause-Alias": {
                     "type": "string"
                 },
                 "Pause-Time": {
