@@ -605,6 +605,7 @@ generic_call_event_props(Props) ->
     ,{<<"Timestamp">>, NormalizedFSTimestamp}
     ,{<<"To-Tag">>, props:get_value(<<"variable_sip_to_tag">>, Props)}
     ,{<<"Transfer-History">>, get_transfer_history(Props)}
+    ,{<<"User-To-User">>, props:get_value(<<"variable_sip_h_User-To-User">>, Props)}
      | callee_call_event_props(Props)
      ++ kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].

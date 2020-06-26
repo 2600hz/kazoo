@@ -194,6 +194,7 @@
         ,<<"variable_sip_to_uri">>
         ,<<"variable_sip_to_user">>
         ,<<"variable_sip_user_agent">>
+        ,<<"variable_sip_h_User-To-User">>
         ,<<"variable_sofia_profile_name">>
         ,<<"variable_sofia_profile_url">>
         ,<<"variable_switch_r_sdp">>
