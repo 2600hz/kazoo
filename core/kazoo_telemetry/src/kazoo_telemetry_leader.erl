@@ -42,7 +42,7 @@
 %%------------------------------------------------------------------------------
 -spec leader() -> node().
 leader() ->
-    kz_nodes:whapp_oldest_node(?TM_LEADER_APP).
+    kz_nodes:kztm_oldest_node().
 
 %%------------------------------------------------------------------------------
 %% @doc Starts the server

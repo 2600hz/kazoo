@@ -37,6 +37,7 @@
 -export([with_role/1, with_role/2]).
 -export([print_role/1]).
 -export([nodes/0]).
+-export([kztm_oldest_node/0]).
 
 -export([init/1
         ,handle_call/3
@@ -614,6 +615,7 @@ print_each_node_info(KV) ->
     print_node_info(KV).
 
 -spec print_node_info({kz_term:ne_binary(), kz_term:ne_binary() | integer()}) -> 'ok'.
+print_node_info({<<"kazoo_telemetry">>, _}) -> 'ok';
 print_node_info({K, ?NE_BINARY = V}) ->
     io:format("~s: ~s~n", [K, V]);
 print_node_info({K, V}) when is_integer(V) ->
@@ -1152,6 +1154,34 @@ notify_new(#kz_node{node=NodeName}=Node, Pids) ->
         ],
     'ok'.
 
+-spec kztm_oldest_node() -> oldest_whapp_node().
+kztm_oldest_node() ->
+    MatchSpec = [{#kz_node{node='$1'
+                          ,node_info='$2'
+                          ,_ = '_'
+                          }
+                 ,[]
+                 ,[{{'$1','$2'}}]
+                 }],
+    determine_kztm_oldest_node(MatchSpec).
+
+-spec determine_kztm_oldest_node(ets:match_spec()) -> oldest_whapp_node().
+determine_kztm_oldest_node(MatchSpec) ->
+    Results = ets:select(?MODULE, MatchSpec),
+    lists:foldl(fun determine_kztm_oldest_node_fold/2, 'undefined', Results).
+
+-spec determine_kztm_oldest_node_fold({node(), kz_term:api_object()}, oldest_whapp_node()) -> oldest_whapp_node().
+determine_kztm_oldest_node_fold({_Node, 'undefined'}, Acc) ->
+    Acc;
+determine_kztm_oldest_node_fold({Node, Info}, Acc) ->
+    NodeTs = kz_json:get_integer_value([<<"kazoo_telemetry">>, <<"Startup">>], Info, 'undefined'),
+    case Acc of
+        'undefined' when NodeTs =:= 'undefined' -> Acc;
+        'undefined' -> {Node, NodeTs};
+        {_, Startup} when NodeTs < Startup -> {Node, NodeTs};
+        _ -> Acc
+    end.
+
 -spec whapp_oldest_node(kz_term:text()) -> kz_term:api_integer().
 whapp_oldest_node(Whapp) ->
     whapp_oldest_node(Whapp, 'false').
@@ -1234,7 +1264,13 @@ maybe_add_zone(#kz_node{zone=Zone, broker=B}, #state{zones=Zones}=State) ->
 node_info() ->
     kz_json:from_list(pool_states()
                       ++ amqp_status()
+                      ++ app_status('kazoo_telemetry')
                      ).
+
+-spec app_status(atom()) -> [{kz_term:ne_binary(), kz_json:object()}].
+app_status(App) ->
+    WhappInfo = get_whapp_info(App),
+    [{kz_term:to_binary(App), whapp_info_to_json(WhappInfo)}].
 
 -spec amqp_status() -> [{kz_term:ne_binary(), kz_json:object()}].
 amqp_status() ->
