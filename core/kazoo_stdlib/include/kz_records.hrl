@@ -20,7 +20,7 @@
                  ,conferences = 0 :: non_neg_integer() | '_'
                  ,registrations = 0 :: non_neg_integer() | '_'
                  ,globals = [] :: kz_term:proplist() | '$1' | '_'
-                 ,node_info :: kz_term:api_object() | '_'
+                 ,node_info :: kz_term:api_object() | '$2' | '_'
                  ,roles = [] :: kz_term:proplist() | '$1' | '_'
                  }).
 

@@ -12,7 +12,6 @@
 
 -export([start/2
         ,stop/1
-        ,request/1
         ]).
 
 %%------------------------------------------------------------------------------
@@ -21,8 +20,6 @@
 %%------------------------------------------------------------------------------
 -spec start(application:start_type(), any()) -> kz_types:startapp_ret().
 start(_Type, _Args) ->
-    _ = kz_util:set_startup(),
-    _ = kz_nodes_bindings:bind('kazoo_telemetry'),
     kazoo_telemetry_sup:start_link().
 
 %%------------------------------------------------------------------------------
@@ -31,8 +28,4 @@ start(_Type, _Args) ->
 %%------------------------------------------------------------------------------
 -spec stop(any()) -> any().
 stop(_State) ->
-    _ = kz_nodes_bindings:unbind('kazoo_telemetry'),
     'ok'.
-
--spec request(kz_nodes:request_acc()) -> kz_nodes:request_acc().
-request(Acc) -> Acc.

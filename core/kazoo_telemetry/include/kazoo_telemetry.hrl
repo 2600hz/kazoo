@@ -10,7 +10,6 @@
 
 -define(TELEMETRY_CAT, <<"telemetry">>).
 -define(TM_LEADER_TICK, 60000).
--define(TM_LEADER_APP, <<"kazoo_telemetry">>).
 -define(TM_RESPONDERS, [<<"waveguide_responder">>]).
 
 -define(ANONYMIZE_CLUSTER
