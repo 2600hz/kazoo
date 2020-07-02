@@ -287,7 +287,7 @@ validate_number_ownership(AccountId, _CallflowId, {Doc, _Errors}=ValidateAcc) ->
           kazoo_documents:doc_validation_acc().
 maybe_validate_patterns(AccountId, CallflowId, {Doc, _Errors}=ValidateAcc) ->
     case kz_json:get_value(?KEY_PATTERNS, Doc, 'undefined') of
-        'patterns' ->
+        'undefined' ->
             lager:debug("callflow's ~p is not defined, skipping further pattern validation", [?KEY_PATTERNS]),
             ValidateAcc;
         [] ->
