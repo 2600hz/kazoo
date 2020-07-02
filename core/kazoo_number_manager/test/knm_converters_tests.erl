@@ -108,3 +108,34 @@ to_db_test_() ->
          ,{<<"1234">>, 'undefined'}
          ],
     [?_assertEqual(Db, knm_converters:to_db(N)) || {N, Db} <- Ns].
+
+%% HELP-15556: classifiers missing 'friendly_name' would be
+%% "corrected" into the accumulator object instead of the classifier
+%% settings
+available_classifiers_test_() ->
+    NoNameClassifier = {<<"noname">>, kz_json:from_list([{<<"regex">>, kz_binary:rand_hex(4)}])},
+
+    NameClassifier = {<<"name">>
+                     ,kz_json:from_list([{<<"friendly_name">>, kz_binary:rand_hex(4)}
+                                        ,{<<"regex">>, kz_binary:rand_hex(4)}
+                                        ])
+                     },
+    Tests = [NoNameClassifier
+            ,NameClassifier
+            ],
+
+    Corrected = knm_converters:available_classifiers(kz_json:from_list(Tests)),
+
+    [correct_correction(Test, Corrected) || Test <- Tests].
+
+correct_correction({ClassifierName, ClassifierSettings}
+                  ,CorrectedClassifiers
+                  ) ->
+
+    [?_assertEqual(kz_json:get_value(<<"friendly_name">>, ClassifierSettings, ClassifierName)
+                  ,kz_json:get_value([ClassifierName, <<"friendly_name">>], CorrectedClassifiers)
+                  )
+    ,?_assertEqual(kz_json:get_value(<<"regex">>, ClassifierSettings)
+                  ,kz_json:get_value([ClassifierName, <<"regex">>], CorrectedClassifiers)
+                  )
+    ].

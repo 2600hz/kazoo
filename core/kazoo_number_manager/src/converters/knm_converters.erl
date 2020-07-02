@@ -19,6 +19,10 @@
         ,default_converter/0
         ]).
 
+-ifdef(TEST).
+-export([available_classifiers/1]).
+-endif.
+
 -define(DEFAULT_CONVERTER_B, <<"regex">>).
 -define(DEFAULT_CONVERTERS, [?DEFAULT_CONVERTER_B]).
 
@@ -220,7 +224,11 @@ classify(Number) ->
 %%------------------------------------------------------------------------------
 -spec available_classifiers() -> kz_json:object().
 available_classifiers() ->
-    kz_json:foldl(fun correct_depreciated_classifiers/3, kz_json:new(), ?CLASSIFIERS).
+    available_classifiers(?CLASSIFIERS).
+
+-spec available_classifiers(kz_json:object()) -> kz_json:object().
+available_classifiers(Cs) ->
+    kz_json:foldl(fun correct_depreciated_classifiers/3, kz_json:new(), Cs).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -273,16 +281,16 @@ get_classifier_regex(JObj) ->
 %%------------------------------------------------------------------------------
 -spec correct_depreciated_classifiers(kz_json:key(), kz_json:json_term(), kz_json:object()) ->
                                                  kz_json:object().
-correct_depreciated_classifiers(Classifier, ?NE_BINARY=Regex, JObj) ->
-    J = kz_json:from_list([{<<"regex">>, Regex}
-                          ,{<<"friendly_name">>, Classifier}
-                          ]),
-    kz_json:set_value(Classifier, J, JObj);
-correct_depreciated_classifiers(Classifier, J, JObj) ->
-    case kz_json:get_value(<<"friendly_name">>, J) of
+correct_depreciated_classifiers(ClassifierName, <<Regex/binary>>, CorrectedClassifiers) ->
+    ClassifierSettings = kz_json:from_list([{<<"regex">>, Regex}
+                                           ,{<<"friendly_name">>, ClassifierName}
+                                           ]),
+    kz_json:set_value(ClassifierName, ClassifierSettings, CorrectedClassifiers);
+correct_depreciated_classifiers(ClassifierName, ClassifierSettings, CorrectedClassifiers) ->
+    case kz_json:get_value(<<"friendly_name">>, ClassifierSettings) of
         'undefined' ->
-            Updated = kz_json:set_value(<<"friendly_name">>, Classifier, JObj),
-            kz_json:set_value(Classifier, Updated, JObj);
+            UpdatedSettings = kz_json:set_value(<<"friendly_name">>, ClassifierName, ClassifierSettings),
+            kz_json:set_value(ClassifierName, UpdatedSettings, CorrectedClassifiers);
         _Else ->
-            kz_json:set_value(Classifier, J, JObj)
+            kz_json:set_value(ClassifierName, ClassifierSettings, CorrectedClassifiers)
     end.
