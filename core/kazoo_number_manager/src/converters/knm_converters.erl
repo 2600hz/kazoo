@@ -280,7 +280,7 @@ get_classifier_regex(JObj) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec correct_depreciated_classifiers(kz_json:key(), kz_json:json_term(), kz_json:object()) ->
-          kz_json:object().
+                                                 kz_json:object().
 correct_depreciated_classifiers(ClassifierName, <<Regex/binary>>, CorrectedClassifiers) ->
     ClassifierSettings = kz_json:from_list([{<<"regex">>, Regex}
                                            ,{<<"friendly_name">>, ClassifierName}
