@@ -217,6 +217,7 @@ handle_cast({'build_originate_args'}, #state{originate_req=JObj
                                             ,action = ?ORIGINATE_PARK
                                             ,fetch_id=FetchId
                                             ,dialstrings='undefined'
+                                            ,control_pid = CtrlPid
                                             }=State) ->
     case kz_json:is_true(<<"Originate-Immediate">>, JObj) of
         'true' -> gen_listener:cast(self(), {'originate_execute'});
@@ -225,7 +226,7 @@ handle_cast({'build_originate_args'}, #state{originate_req=JObj
     Endpoints = [update_endpoint(Endpoint, State)
                  || Endpoint <- kz_json:get_ne_value(<<"Endpoints">>, JObj, [])
                 ],
-    {'noreply', State#state{dialstrings=build_originate_args_from_endpoints(?ORIGINATE_PARK, Endpoints, JObj, FetchId)}};
+    {'noreply', State#state{dialstrings=build_originate_args_from_endpoints(?ORIGINATE_PARK, Endpoints, JObj, FetchId, CtrlPid)}};
 handle_cast({'build_originate_args'}, #state{originate_req=JObj
                                             ,action = Action
                                             ,app = ?ORIGINATE_EAVESDROP
@@ -496,35 +497,37 @@ get_eavesdrop_action(JObj) ->
     end.
 
 -spec build_originate_args(kz_term:ne_binary(), state(), kz_json:object(), kz_term:ne_binary()) -> kz_term:api_binary().
-build_originate_args(Action, State, JObj, FetchId) ->
+build_originate_args(Action, #state{control_pid=CtrlPid} = State, JObj, FetchId) ->
     case kz_json:get_value(<<"Endpoints">>, JObj, []) of
         [] ->
             lager:warning("no endpoints defined in originate request"),
             'undefined';
         [Endpoint] ->
             lager:debug("only one endpoint, don't create per-endpoint UUIDs"),
-            build_originate_args_from_endpoints(Action, [update_endpoint(Endpoint, State)], JObj, FetchId);
+            build_originate_args_from_endpoints(Action, [update_endpoint(Endpoint, State)], JObj, FetchId, CtrlPid);
         Endpoints ->
             lager:debug("multiple endpoints defined, assigning uuids to each"),
             UpdatedEndpoints = [update_endpoint(Endpoint, State) || Endpoint <- Endpoints],
-            build_originate_args_from_endpoints(Action, UpdatedEndpoints, JObj, FetchId)
+            build_originate_args_from_endpoints(Action, UpdatedEndpoints, JObj, FetchId, CtrlPid)
     end.
 
--spec build_originate_args_from_endpoints(kz_term:ne_binary(), kz_json:objects(), kz_json:object(), kz_term:ne_binary()) ->
+-spec build_originate_args_from_endpoints(kz_term:ne_binary(), kz_json:objects(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) ->
           kz_term:ne_binary().
-build_originate_args_from_endpoints(Action, Endpoints, JObj, FetchId) ->
+build_originate_args_from_endpoints(Action, Endpoints, JObj, FetchId, CtrlPid) ->
     lager:debug("building originate command arguments"),
     DialSeparator = ecallmgr_util:get_dial_separator(JObj, Endpoints),
 
     DialStrings = ecallmgr_util:build_bridge_string(Endpoints, DialSeparator),
 
     ChannelVars = get_channel_vars(JObj, FetchId),
+    CtrlQ = ecallmgr_call_control:queue_name(CtrlPid),
 
-    list_to_binary([ChannelVars, DialStrings, " ", Action]).
+    list_to_binary([ChannelVars, "[^^!Call-Control-Queue='", CtrlQ, "']", DialStrings, " ", Action]).
 
 -spec get_channel_vars(kz_json:object(), kz_term:ne_binary()) -> iolist().
 get_channel_vars(JObj, FetchId) ->
     InteractionId = kz_json:get_value([<<"Custom-Channel-Vars">>, <<?CALL_INTERACTION_ID>>], JObj, ?CALL_INTERACTION_DEFAULT),
+    
     CCVs = [{<<"Fetch-ID">>, FetchId}
            ,{<<"Ecallmgr-Node">>, kz_term:to_binary(node())}
            ,{<<?CALL_INTERACTION_ID>>, InteractionId}
