@@ -527,7 +527,7 @@ build_originate_args_from_endpoints(Action, Endpoints, JObj, FetchId, CtrlPid) -
 -spec get_channel_vars(kz_json:object(), kz_term:ne_binary()) -> iolist().
 get_channel_vars(JObj, FetchId) ->
     InteractionId = kz_json:get_value([<<"Custom-Channel-Vars">>, <<?CALL_INTERACTION_ID>>], JObj, ?CALL_INTERACTION_DEFAULT),
-    
+
     CCVs = [{<<"Fetch-ID">>, FetchId}
            ,{<<"Ecallmgr-Node">>, kz_term:to_binary(node())}
            ,{<<?CALL_INTERACTION_ID>>, InteractionId}
