@@ -54,7 +54,7 @@ init() ->
 
 init_bindings() ->
     Bindings = [?COMMAND(<<"{CONFERENCE_ID}">>)
-                ++ ?EVENT_BINDINGS(<<"{CONFERENCE_ID}">>, <<"{CALL_ID}">>)
+                | ?EVENT_BINDINGS(<<"{CONFERENCE_ID}">>, <<"{CALL_ID}">>)
                ],
     case kapps_config:set_default(?CONFIG_CAT, [<<"bindings">>, <<"conference">>], Bindings) of
         {'ok', _} -> lager:debug("initialized conference bindings");
