@@ -32,7 +32,7 @@
        ,<<"conference.event.",Event/binary,".", AccountId/binary, ".", ConferenceId/binary, ".", CallId/binary>>
        ).
 -define(BINDING(ConferenceId, CallId)
-       ,?BINDING(ConferenceId, CallId, <<"*">>)
+       ,<<"conference.event.", ConferenceId/binary, ".", CallId/binary>>
        ).
 -define(BINDING(ConferenceId, CallId, Event)
        ,<<"conference.event.", ConferenceId/binary, ".", CallId/binary, ".", Event/binary>>
@@ -90,8 +90,16 @@ bindings(_Context, #{account_id := _AccountId
         ,subscribed => Subscribed
         ,listeners => Listeners
         };
-bindings(Context, #{keys := [<<"event">>, ConferenceId, CallId]}=Map) ->
-    bindings(Context, Map#{keys => [<<"event">>, ConferenceId, CallId, ?ALL]});
+bindings(_Context, #{account_id := AccountId
+                    ,keys := [<<"event">>, ConferenceId, CallId]
+                    }=Map) ->
+    Requested = ?BINDING(ConferenceId, CallId),
+    Subscribed = [?ACCOUNT_BINDING(AccountId, ConferenceId, CallId)],
+    Listeners = [{'amqp', 'conference', event_binding_options(AccountId, ConferenceId, CallId, ?ALL)}],
+    Map#{requested => Requested
+        ,subscribed => Subscribed
+        ,listeners => Listeners
+        };
 bindings(_Context, #{account_id := AccountId
                     ,keys := [<<"event">>, ConferenceId, CallId, Event]
                     }=Map) ->
