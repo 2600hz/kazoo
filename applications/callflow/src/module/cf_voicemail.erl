@@ -44,6 +44,7 @@
 -define(KEY_ALLOW_FF_RW, <<"is_voicemail_ff_rw_enabled">>).
 -define(KEY_SEEK_DURATION, <<"seek_duration_ms">>).
 -define(MAX_INVALID_PIN_LOOPS, 3).
+-define(MAX_CONFIG_MENU_LOOPS, 3).
 -define(DEFAULT_SEEK_DURATION, 10 * ?MILLISECONDS_IN_SECOND).
 
 -define(MAILBOX_DEFAULT_SIZE
@@ -1265,24 +1266,26 @@ config_menu(Box, Call) ->
 config_menu(#mailbox{interdigit_timeout=Interdigit}=Box
            ,Call
            ,Loop
-           ) when Loop < 4 ->
-    lager:info("playing mailbox configuration menu"),
+           ) when Loop =< ?MAX_CONFIG_MENU_LOOPS ->
+    lager:info("playing mailbox configuration menu, try ~p", [Loop]),
     {'ok', _} = kapps_call_command:b_flush(Call),
     Prompt = config_prompt(Box),
     NoopId = kapps_call_command:prompt(Prompt, Call),
 
-    case kapps_call_command :collect_digits(?KEY_LENGTH
-                                           ,kapps_call_command:default_collect_timeout()
-                                           ,Interdigit
-                                           ,NoopId
-                                           ,Call
-                                           )
+    case kapps_call_command:collect_digits(?KEY_LENGTH
+                                          ,kapps_call_command:default_collect_timeout()
+                                          ,Interdigit
+                                          ,NoopId
+                                          ,Call
+                                          )
     of
         {'ok', Selection} ->
             handle_config_selection(Box, Call, Loop, Selection);
         {'error', _E} ->
             lager:info("failed to collect config menu selection: ~p", [_E])
-    end.
+    end;
+config_menu(_Box, _Call, Loop) when Loop > ?MAX_CONFIG_MENU_LOOPS ->
+    lager:debug("not config menu option selected after ~p tries", [Loop - 1]).
 
 -spec handle_config_selection(mailbox(), kapps_call:call(), pos_integer(), binary()) ->
           'ok' | mailbox() |
