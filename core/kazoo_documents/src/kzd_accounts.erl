@@ -856,8 +856,8 @@ notification_preference(JObj) ->
 
     case Pref of
         'undefined'    -> 'undefined';
-        <<"teletype">> -> <<"teletype">>;
-        _Default       -> <<"notify">>
+        <<"notify">>   -> <<"notify">>;
+        _Default       -> <<"teletype">>
     end.
 
 -spec notification_preference(doc(), list()) -> kz_term:api_binary().
