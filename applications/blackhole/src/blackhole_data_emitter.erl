@@ -10,6 +10,8 @@
 -export([event/4]).
 -export([reply/4]).
 
+-define(MAX_QUEUED_MESSAGES, kapps_config:get_integer(?CONFIG_CAT, <<"max_queued_messages">>, 50)).
+
 -spec event(map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 event(Binding, RK, Name, Data) ->
     #{subscribed_key := SubscribedKey
@@ -23,8 +25,7 @@ event(Binding, RK, Name, Data) ->
           ,{<<"routing_key">>, RK}
           ,{<<"data">>, Data}
           ],
-    SessionPid ! {'send_data', kz_json:from_list(Msg)},
-    'ok'.
+    maybe_send(SessionPid, kz_json:from_list(Msg)).
 
 -spec reply(pid(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 reply(SessionPid, RequestId, Status, Data) ->
@@ -34,5 +35,19 @@ reply(SessionPid, RequestId, Status, Data) ->
           ,{<<"status">>, Status}
           ,{<<"data">>, Data}
           ],
-    SessionPid ! {'send_data', kz_json:from_list(Msg)},
+    maybe_send(SessionPid, kz_json:from_list(Msg)).
+
+maybe_send(SessionPid, Data) ->
+    maybe_send(SessionPid, Data, process_info(SessionPid, ['message_queue_len'])).
+
+maybe_send(SessionPid, Data, [{'message_queue_len', QueueLen}]) ->
+    maybe_send(SessionPid, Data, QueueLen, ?MAX_QUEUED_MESSAGES);
+maybe_send(_SessionPid, _Data, 'undefined') ->
+    lager:info("failed to find session ~p, dropping data").
+
+maybe_send(SessionPid, _Data, QueueLen, MaxLen) when QueueLen > MaxLen ->
+    lager:error("~p queue length ~p (max: ~p), dropping event", [SessionPid, QueueLen, MaxLen]);
+maybe_send(SessionPid, Data, QueueLen, _MaxLen) ->
+    lager:info("~p queue length ~p (max: ~p)", [SessionPid, QueueLen, _MaxLen]),
+    SessionPid ! {'send_data', Data},
     'ok'.

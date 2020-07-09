@@ -16,6 +16,12 @@
 -define(SOCKET_PORT, kapps_config:get_integer(?APP_NAME, <<"port">>, 5555)).
 -define(SOCKET_ACCEPTORS, kapps_config:get_integer(?APP_NAME, <<"acceptors">>, 100)).
 
+-define(BASE_TRANSPORT_OPTIONS(IP, Workers)
+       ,[{'ip', IP}
+        ,{'num_acceptors', Workers}
+        ,{'send_timeout', kapps_config:get_integer(?CONFIG_CAT, <<"send_timeout_ms">>, 5 * ?MILLISECONDS_IN_SECOND)}
+        ]
+       ).
 -spec blackhole_routes() -> cowboy_router:routes().
 blackhole_routes() -> [{'_', paths_list()}].
 
@@ -60,10 +66,7 @@ maybe_start_plaintext(Dispatch, IP) ->
             try
                 lager:info("trying to bind to address ~s port ~b", [inet:ntoa(IP), Port]),
                 cowboy:start_clear('blackhole_socket_handler'
-                                  ,[{'ip', IP}
-                                   ,{'port', Port}
-                                   ,{'num_acceptors', Workers}
-                                   ]
+                                  ,[{'port', Port} | ?BASE_TRANSPORT_OPTIONS(IP, Workers)]
                                   ,#{'env' => #{'dispatch' => Dispatch
                                                ,'timeout' => ReqTimeout
                                                }
@@ -105,10 +108,7 @@ start_ssl(Dispatch, IP) ->
                            ]
                           ),
                 cowboy:start_tls('blackhole_socket_handler_ssl'
-                                ,[{'ip', IP}
-                                 ,{'num_acceptors', Workers}
-                                  | SSLOpts
-                                 ]
+                                ,?BASE_TRANSPORT_OPTIONS(IP, Workers) ++ SSLOpts
                                 ,#{'env' => #{'dispatch' => Dispatch
                                              ,'timeout' => ReqTimeout
                                              }
@@ -147,11 +147,17 @@ base_ssl_opts(RootDir) ->
     ,{'certfile', find_file(kapps_config:get_string(?CONFIG_CAT
                                                    ,<<"ssl_cert">>
                                                    ,filename:join([RootDir, <<"priv/ssl/blackhole.crt">>])
-                                                   ), RootDir)}
+                                                   )
+                           ,RootDir
+                           )
+     }
     ,{'keyfile', find_file(kapps_config:get_string(?CONFIG_CAT
                                                   ,<<"ssl_key">>
                                                   ,filename:join([RootDir, <<"priv/ssl/blackhole.key">>])
-                                                  ), RootDir)}
+                                                  )
+                          ,RootDir
+                          )
+     }
     ,{'password', kapps_config:get_string(?CONFIG_CAT, <<"ssl_password">>, <<>>)}
     ].
 
