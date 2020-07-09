@@ -15,7 +15,6 @@
 
 -callback macros(kz_json:object()) -> kz_term:proplist().
 
-
 -callback macros() -> kz_json:object().
 
 -callback subject() -> kz_term:ne_binary().
