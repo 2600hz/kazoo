@@ -17,7 +17,9 @@
 
 -define(TEMPLATE_MACROS
        ,kz_json:from_list(
-          ?PORT_REQUEST_MACROS
+          [?MACRO_VALUE(<<"account_tree.[ancestor_id].name">>, <<"account_ancestor_name">>, <<"Account ancestor name">>, <<"Account ancestor name">>)
+          ]
+          ++ ?PORT_REQUEST_MACROS
           ++ ?COMMON_TEMPLATE_MACROS
          )
        ).
