@@ -14,7 +14,25 @@
 
 -define(TEMPLATE_ID, <<"fax_outbound_smtp_error_to_email">>).
 
--define(TEMPLATE_MACROS, kz_json:from_list([])).
+-define(TEMPLATE_MACROS
+       ,kz_json:from_list(
+          [?MACRO_VALUE(<<"date.utc">>, <<"date_called_utc">>, <<"Date (UTC)">>, <<"When did change happen (UTC)">>)
+          ,?MACRO_VALUE(<<"date.local">>, <<"date_called_local">>, <<"Date (Local)">>, <<"When did change happen (Local time)">>)
+          ,?MACRO_VALUE(<<"date.timezone">>, <<"date_called_timezone">>, <<"Timezone">>, <<"Timezone">>)
+          ,?MACRO_VALUE(<<"date.timestamp">>, <<"date_called_timestamp">>, <<"Timestamp">>, <<"Timestamp">>)
+          ,?MACRO_VALUE(<<"fax.from">>, <<"fax_from">>, <<"Fax From Email">>, <<"Fax From Email">>)
+          ,?MACRO_VALUE(<<"fax.number">>, <<"fax_number">>, <<"Fax Number">>, <<"Fax Number">>)
+          ,?MACRO_VALUE(<<"fax.original_number">>, <<"fax_original_number">>, <<"Fax Original Number">>, <<"Originally dialed number">>)
+          ,?MACRO_VALUE(<<"fax.to">>, <<"fax_to">>, <<" Fax To">>, <<"Destination Fax Number">>)
+          ,?MACRO_VALUE(<<"fax.errors">>, <<"fax_errors">>, <<"Fax Errors">>, <<"Fax Errors">>)
+          ,?MACRO_VALUE(<<"fax.error">>, <<"fax_error">>, <<"Error Reason">>, <<"Error Reason">>)
+          ,?MACRO_VALUE(<<"faxbox.id">>, <<"faxbox_id">>, <<"FaxBox ID">>, <<"FaxBox ID">>)
+          ,?MACRO_VALUE(<<"faxbox.name">>, <<"faxbox_name">>, <<"FaxBox Name">>, <<"FaxBox Name">>)
+          ]
+          ++ ?USER_MACROS
+          ++ ?COMMON_TEMPLATE_MACROS
+         )
+       ).
 
 -define(TEMPLATE_SUBJECT, <<"Error Sending Fax">>).
 -define(TEMPLATE_CATEGORY, <<"fax">>).
