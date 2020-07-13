@@ -26,6 +26,9 @@
 -define(IS_PROVISIONING_ENABLED
        ,kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"enable_provisioning">>, 'true')
        ).
+-define(SHOULD_KEEP_BEST_EFFORT
+       ,kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"should_keep_best_effort">>, 'false')
+       ).
 
 %%% API
 
@@ -182,23 +185,35 @@ international_numbers(JObjs, Options) ->
 ugly_hack(Dialcode, Num) ->
     kz_binary:pad(<<Dialcode/binary, Num/binary>>, 9, <<"0">>).
 
+-spec search_kind(kind()) -> integer().
 search_kind('npa') -> 1;
 search_kind('region') -> 2;
 search_kind('tollfree') -> 3.
 
+-spec search_prefix(kind(), kz_term:ne_binary(), kz_term:api_ne_binary()) -> kz_json:json_proplist().
 search_prefix('tollfree', NPA, 'undefined') ->
-    [{<<"npa">>, NPA}];
+    [{<<"npa">>, NPA}
+    ,should_keep_best_effort()
+    ];
 search_prefix('tollfree', NPA, NXX) ->
     [{<<"nxx">>, NXX}
+    ,should_keep_best_effort()
      |search_prefix('tollfree', NPA, 'undefined')
     ];
 search_prefix('region', Country, _) ->
-    [{<<"country_iso">>, Country}];
+    [{<<"country_iso">>, Country}
+    ,should_keep_best_effort()
+    ];
 search_prefix('npa', NPA, 'undefined') ->
-    [{<<"npa">>, NPA}];
+    [{<<"npa">>, NPA}
+    ,should_keep_best_effort()
+    ];
 search_prefix('npa', NPA, NXX) ->
     [{<<"nxx">>, NXX}
+    ,should_keep_best_effort()
      |search_prefix('npa', NPA, 'undefined')
     ].
 
+-spec should_keep_best_effort() -> {kz_term:ne_binary(), boolean()}.
+should_keep_best_effort() -> {<<"best_effort">>, ?SHOULD_KEEP_BEST_EFFORT}.
 %%% End of Module

@@ -32,10 +32,6 @@
        ).
 -endif.
 
--define(SHOULD_KEEP_BEST_EFFORT
-       ,kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"should_keep_best_effort">>, 'false')
-       ).
-
 -define(SHOULD_FILTER_RATES
        ,kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"should_filter_rates">>, 'false')
        ).
@@ -142,9 +138,7 @@ http_options() ->
 rep({'ok', 200=Code, _Headers, <<"{",_/binary>>=Response}) ->
     ?DEBUG_APPEND("Response:~n~p~n~p~n~s~n", [Code, _Headers, Response]),
 
-    Routines = [fun(JObj) -> maybe_remove_best_effort(?SHOULD_KEEP_BEST_EFFORT, JObj) end
-               ,fun(JObj) -> maybe_filter_rates(?SHOULD_FILTER_RATES, JObj) end
-               ],
+    Routines = [fun(JObj) -> maybe_filter_rates(?SHOULD_FILTER_RATES, JObj) end],
 
     maybe_apply_limit(
       lists:foldl(fun(F, J) -> F(J) end, kz_json:decode(Response), Routines)
@@ -166,19 +160,6 @@ http_code(403) -> 'unauthorized';
 http_code(404) -> 'not_found';
 http_code(Code) when Code >= 500 -> 'server_error';
 http_code(_Code) -> 'empty_response'.
-
--spec maybe_remove_best_effort(boolean(), kz_json:object()) -> kz_json:object().
-maybe_remove_best_effort('true', JObj) -> JObj;
-maybe_remove_best_effort('false', JObj) ->
-    case kz_json:is_true(<<"any_best_effort">>, JObj) of
-        'false' -> JObj;
-        'true' ->
-            Results = [Result
-                       || Result <- kz_json:get_value(<<"result">>, JObj, []),
-                          'true' =/= kz_json:is_true(<<"best_effort">>, Result)
-                      ],
-            kz_json:set_value(<<"result">>, Results, JObj)
-    end.
 
 -spec maybe_filter_rates(boolean(), kz_json:object()) -> kz_json:object().
 maybe_filter_rates('false', JObj) -> JObj;
