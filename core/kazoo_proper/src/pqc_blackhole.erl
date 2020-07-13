@@ -125,7 +125,7 @@ seq_api() ->
     _ = test_crud_user_events(WSConn, API, AccountId),
 
     %% test unbinding for events
-    test_ws_unbind(API, WSConn, AccountId, SocketId, BindReq, Binding),
+    _ = test_ws_unbind(API, WSConn, AccountId, SocketId, BindReq, Binding),
 
     pqc_ws_client:close(WSConn),
 
