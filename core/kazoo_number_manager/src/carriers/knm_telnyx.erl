@@ -17,6 +17,7 @@
 -export([check_numbers/1]).
 
 -include("knm.hrl").
+-include("knm_telnyx.hrl").
 
 -define(MOD_CONFIG_CAT, <<(?KNM_CONFIG_CAT)/binary, ".telnyx">>).
 
@@ -25,6 +26,9 @@
        ).
 -define(IS_PROVISIONING_ENABLED
        ,kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"enable_provisioning">>, 'true')
+       ).
+-define(SHOULD_KEEP_BEST_EFFORT
+       ,kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"should_keep_best_effort">>, 'false')
        ).
 
 %%% API
@@ -65,23 +69,28 @@ check_numbers(_Numbers) -> {'error', 'not_implemented'}.
 %%------------------------------------------------------------------------------
 -spec find_numbers(kz_term:ne_binary(), pos_integer(), knm_search:options()) ->
           {'ok', knm_number:knm_numbers()}.
-find_numbers(<<"+1", Prefix:3/binary, _/binary>>, Quantity, Options)
-  when ?IS_US_TOLLFREE(Prefix) ->
-    Results = numbers('tollfree', Quantity, Prefix, 'undefined'),
+find_numbers(<<"+1", NPA:3/binary, _/binary>>=Num, Quantity, Options)
+  when ?IS_US_TOLLFREE(NPA) ->
+    Results = numbers('tollfree', Quantity, NPA, get_nxx(Num)),
     {'ok', numbers(Results, Options)};
 
 find_numbers(<<"+1", NPA:3/binary, _/binary>>=Num, Quantity, Options) ->
-    NXX = case byte_size(Num) >= 2+3+3 of
-              'true' -> binary:part(Num, 2+3, 3);
-              'false' -> 'undefined'
-          end,
-    Results = numbers('npa', Quantity, NPA, NXX),
+    Results = numbers('npa', Quantity, NPA, get_nxx(Num)),
     {'ok', numbers(Results, Options)};
 
 find_numbers(<<"+",_/binary>>=_InternationalNum, Quantity, Options) ->
     Country = knm_search:country(Options),
     Results = numbers('region', Quantity, Country, 'undefined'),
     {'ok', international_numbers(Results, Options)}.
+
+%%------------------------------------------------------------------------------
+%% @doc For a given Number, parse out the NXX value.
+%% Return `undefined' if the NXX value can not be parsed.
+%% @end
+%%------------------------------------------------------------------------------
+-spec get_nxx(kz_term:ne_binary()) -> kz_term:api_ne_binary().
+get_nxx(<<_PlusOneAreaCode:5/binary, NXX:3/binary, _/binary>>) -> NXX;
+get_nxx(_) -> 'undefined'.
 
 %%------------------------------------------------------------------------------
 %% @doc Acquire a given number from the carrier
@@ -174,19 +183,35 @@ international_numbers(JObjs, Options) ->
 ugly_hack(Dialcode, Num) ->
     kz_binary:pad(<<Dialcode/binary, Num/binary>>, 9, <<"0">>).
 
-search_kind('npa') -> 1;
-search_kind('region') -> 2;
-search_kind('tollfree') -> 3.
+-spec search_kind(kind()) -> integer().
+search_kind('npa') -> ?SEARCH_TYPE_NPA;
+search_kind('region') -> ?SEARCH_TYPE_INTERNATIONAL;
+search_kind('tollfree') -> ?SEARCH_TYPE_TOLEFREE.
 
-search_prefix('tollfree', Prefix, _) ->
-    [{<<"prefix">>, Prefix}];
+-spec search_prefix(kind(), kz_term:ne_binary(), kz_term:api_ne_binary()) -> kz_json:json_proplist().
+search_prefix('tollfree', NPA, 'undefined') ->
+    [{<<"npa">>, NPA}
+    ,should_keep_best_effort()
+    ];
+search_prefix('tollfree', NPA, NXX) ->
+    [{<<"nxx">>, NXX}
+    ,should_keep_best_effort()
+     |search_prefix('tollfree', NPA, 'undefined')
+    ];
 search_prefix('region', Country, _) ->
-    [{<<"country_iso">>, Country}];
+    [{<<"country_iso">>, Country}
+    ,should_keep_best_effort()
+    ];
 search_prefix('npa', NPA, 'undefined') ->
-    [{<<"npa">>, NPA}];
+    [{<<"npa">>, NPA}
+    ,should_keep_best_effort()
+    ];
 search_prefix('npa', NPA, NXX) ->
     [{<<"nxx">>, NXX}
+    ,should_keep_best_effort()
      |search_prefix('npa', NPA, 'undefined')
     ].
 
+-spec should_keep_best_effort() -> {kz_term:ne_binary(), boolean()}.
+should_keep_best_effort() -> {<<"best_effort">>, ?SHOULD_KEEP_BEST_EFFORT}.
 %%% End of Module
