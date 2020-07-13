@@ -62,13 +62,10 @@ req(Method, Path) ->
 
 -spec req(atom(), [nonempty_string()], kz_json:object()) -> kz_json:object().
 req('post', ["number_searches"], JObj) ->
-    case kz_json:get_value([<<"search_descriptor">>, <<"prefix">>], JObj) of
-        <<"800">> -> rep_fixture("telnyx_tollfree_search.json");
-        'undefined' ->
-            case kz_json:get_value([<<"search_descriptor">>, <<"country_iso">>], JObj) of
-                <<"GB">> -> rep_fixture("telnyx_international_search.json");
-                'undefined' -> rep_fixture("telnyx_npa_search.json")
-            end
+    case kz_json:get_integer_value([<<"search_type">>], JObj) of
+        1 -> rep_fixture("telnyx_npa_search.json");
+        2 -> rep_fixture("telnyx_international_search.json");
+        3 -> rep_fixture("telnyx_tollfree_search.json")
     end;
 req('post', ["e911_addresses"], Body) ->
     <<"301 MARINA BLVD">> = kz_json:get_value(<<"line_1">>, Body),
