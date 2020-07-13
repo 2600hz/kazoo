@@ -65,23 +65,31 @@ check_numbers(_Numbers) -> {'error', 'not_implemented'}.
 %%------------------------------------------------------------------------------
 -spec find_numbers(kz_term:ne_binary(), pos_integer(), knm_search:options()) ->
           {'ok', knm_number:knm_numbers()}.
-find_numbers(<<"+1", Prefix:3/binary, _/binary>>, Quantity, Options)
-  when ?IS_US_TOLLFREE(Prefix) ->
-    Results = numbers('tollfree', Quantity, Prefix, 'undefined'),
+find_numbers(<<"+1", NPA:3/binary, _/binary>>=Num, Quantity, Options)
+  when ?IS_US_TOLLFREE(NPA) ->
+    Results = numbers('tollfree', Quantity, NPA, get_nxx(Num)),
     {'ok', numbers(Results, Options)};
 
 find_numbers(<<"+1", NPA:3/binary, _/binary>>=Num, Quantity, Options) ->
-    NXX = case byte_size(Num) >= 2+3+3 of
-              'true' -> binary:part(Num, 2+3, 3);
-              'false' -> 'undefined'
-          end,
-    Results = numbers('npa', Quantity, NPA, NXX),
+    Results = numbers('npa', Quantity, NPA, get_nxx(Num)),
     {'ok', numbers(Results, Options)};
 
 find_numbers(<<"+",_/binary>>=_InternationalNum, Quantity, Options) ->
     Country = knm_search:country(Options),
     Results = numbers('region', Quantity, Country, 'undefined'),
     {'ok', international_numbers(Results, Options)}.
+
+%%------------------------------------------------------------------------------
+%% @doc For a given Number, parse out the NXX value.
+%% Return `undefined' if the NXX value can not be parsed.
+%% @end
+%%------------------------------------------------------------------------------
+-spec get_nxx(kz_term:ne_binary()) -> kz_term:ne_binary() | 'undefined'.
+get_nxx(Num) ->
+    case byte_size(Num) >= 2+3+3 of
+        'true' -> binary:part(Num, 2+3, 3);
+        'false' -> 'undefined'
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc Acquire a given number from the carrier
@@ -178,8 +186,12 @@ search_kind('npa') -> 1;
 search_kind('region') -> 2;
 search_kind('tollfree') -> 3.
 
-search_prefix('tollfree', Prefix, _) ->
-    [{<<"prefix">>, Prefix}];
+search_prefix('tollfree', NPA, 'undefined') ->
+    [{<<"npa">>, NPA}];
+search_prefix('tollfree', NPA, NXX) ->
+    [{<<"nxx">>, NXX}
+     |search_prefix('tollfree', NPA, 'undefined')
+    ];
 search_prefix('region', Country, _) ->
     [{<<"country_iso">>, Country}];
 search_prefix('npa', NPA, 'undefined') ->
