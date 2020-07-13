@@ -5,7 +5,9 @@
 %%%-----------------------------------------------------------------------------
 -module(pqc_cb_users).
 
--export([create/3]).
+-export([create/3
+        ,delete/3
+        ]).
 
 -export([user_doc/0]).
 
@@ -22,8 +24,22 @@ create(API, AccountId, User) ->
                            ,kz_json:encode(RequestEnvelope)
                            ).
 
+-spec delete(pqc_cb_api:state(), kz_term:ne_binary(), kz_term:ne_binary()) -> pqc_cb_api:response().
+delete(API, AccountId, <<UserId/binary>>) ->
+    URL = user_url(AccountId, UserId),
+    RequestHeaders = pqc_cb_api:request_headers(API),
+
+    pqc_cb_api:make_request([#{'response_codes' => [200]}]
+                           ,fun kz_http:delete/2
+                           ,URL
+                           ,RequestHeaders
+                           ).
+
 users_url(AccountId) ->
     string:join([pqc_cb_accounts:account_url(AccountId), "users"], "/").
+
+user_url(AccountId, UserId) ->
+    string:join([users_url(AccountId), kz_term:to_list(UserId)], "/").
 
 -spec user_doc() -> kzd_users:doc().
 user_doc() ->

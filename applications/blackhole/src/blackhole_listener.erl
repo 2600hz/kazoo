@@ -68,13 +68,15 @@ start_link() ->
 -spec handle_amqp_event(kz_json:object(), kz_term:proplist(), gen_listener:basic_deliver() | kz_term:ne_binary()) -> 'ok'.
 handle_amqp_event(EventJObj, _Props, ?MODULE_REQ_ROUTING_KEY) ->
     handle_module_req(EventJObj);
-handle_amqp_event(EventJObj, _Props, <<_/binary>> = RoutingKey) ->
+handle_amqp_event(EventJObj, _Props, <<RoutingKey/binary>>) ->
     Evt = kz_util:get_event_type(EventJObj),
     lager:debug("recv event ~p (~s)", [Evt, RoutingKey]),
     RK = <<"blackhole.event.", RoutingKey/binary>>,
-    {Time, Res} = timer:tc(blackhole_bindings, pmap, [RK, [RoutingKey, EventJObj]]),
+
+    StartTime = kz_time:start_time(),
+    Res = blackhole_bindings:pmap(RK, [RoutingKey, EventJObj]),
     lager:debug("delivered the event ~p (~s) to ~b subscriptions in ~b ms"
-               ,[Evt, RoutingKey, length(Res), Time div 1000]
+               ,[Evt, RoutingKey, length(Res), kz_time:elapsed_ms(StartTime)]
                );
 handle_amqp_event(EventJObj, Props, BasicDeliver) ->
     handle_amqp_event(EventJObj, Props, gen_listener:routing_key_used(BasicDeliver)).

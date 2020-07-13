@@ -22,7 +22,14 @@
           conn() |
           {'ws_upgrade_failed', any()}.
 connect(Host, Port) ->
-    {'ok', ConnPid} = gun:open(Host, Port, #{protocols => [http], retry => 0}),
+    connect(Host, Port, #{}).
+
+connect(Host, Port, Options) ->
+    GunOptions = maps:merge(#{protocols => ['http'], retry => 0}
+                           ,Options
+                           ),
+    lager:info("connecting with ~p", [GunOptions]),
+    {'ok', ConnPid} = gun:open(Host, Port, GunOptions),
     lager:info("started WS client(~p) to ~s:~p", [ConnPid, Host, Port]),
     {'ok', 'http'} = gun:await_up(ConnPid),
 
