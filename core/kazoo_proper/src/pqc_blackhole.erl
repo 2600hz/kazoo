@@ -122,7 +122,7 @@ seq_api() ->
     {SocketId, BindReq} = test_ws_api_listing(API, WSConn, AccountId, Binding),
 
     %% test receiving events over the ws
-    test_crud_user_events(WSConn, API, AccountId),
+    _ = test_crud_user_events(WSConn, API, AccountId),
 
     %% test unbinding for events
     test_ws_unbind(API, WSConn, AccountId, SocketId, BindReq, Binding),
