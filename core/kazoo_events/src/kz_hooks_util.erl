@@ -214,27 +214,26 @@ maybe_remove_binding_to_listener(ServerName, EventName) ->
 -spec handle_call_event(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_call_event(JObj, Props) ->
     'true' = kapi_call:event_v(JObj),
-    HookEvent = kz_json:get_value(<<"Event-Name">>, JObj),
-    AccountId = kz_json:get_value([<<"Custom-Channel-Vars">>
-                                  ,<<"Account-ID">>
-                                  ], JObj),
-    CallId = kz_json:get_value(<<"Call-ID">>, JObj),
+    HookEvent = kz_call_event:event_name(JObj),
+    AccountId = kz_call_event:account_id(JObj),
+    CallId = kz_call_event:call_id(JObj),
     kz_util:put_callid(CallId),
     handle_call_event(JObj, AccountId, HookEvent, CallId, props:get_is_true('rr', Props)).
 
 -spec handle_call_event(kz_json:object(), kz_term:api_binary(), kz_term:ne_binary(), kz_term:ne_binary(), boolean()) ->
           'ok'.
-handle_call_event(JObj, 'undefined', <<"CHANNEL_CREATE">>, CallId, RR) ->
+handle_call_event(JObj, 'undefined', <<"CHANNEL_CREATE">>=HookEvent, CallId, RR) ->
     lager:debug("event 'channel_create' had no account id"),
     case lookup_account_id(JObj) of
         {'error', _R} ->
             lager:debug("failed to determine account id for 'channel_create'", []);
         {'ok', AccountId} ->
             lager:debug("determined account id for 'channel_create' is ~s", [AccountId]),
-            J = kz_json:set_value([<<"Custom-Channel-Vars">>
-                                  ,<<"Account-ID">>
-                                  ], AccountId, JObj),
-            handle_call_event(J, AccountId, <<"CHANNEL_CREATE">>, CallId, RR)
+            J = kz_json:set_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>]
+                                 ,AccountId
+                                 ,JObj
+                                 ),
+            handle_call_event(J, AccountId, HookEvent, CallId, RR)
     end;
 handle_call_event(JObj, AccountId, HookEvent, _CallId, 'false') ->
     Evt = ?HOOK_EVT(AccountId, HookEvent, JObj),
@@ -263,6 +262,7 @@ lookup_account_id(JObj) ->
 fetch_account_id(Number) ->
     case knm_number:lookup_account(Number) of
         {'ok', AccountId, _} ->
+            lager:debug("associated number ~s with account ~s", [Number, AccountId]),
             CacheProps = [{'origin', {'db', knm_converters:to_db(Number), Number}}],
             kz_cache:store_local(?HOOKS_CACHE_NAME, cache_key_number(Number), AccountId, CacheProps),
             {'ok', AccountId};
