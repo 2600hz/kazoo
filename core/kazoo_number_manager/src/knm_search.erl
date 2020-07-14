@@ -239,9 +239,7 @@ first(Options) ->
               ,{'offset', 0}
               ,{'normalized_prefix', normalized_prefix(Options)}
               ],
-    Opts = lists:foldl(fun({Key, Value}, OptAcc) -> props:insert_value(Key, Value, OptAcc) end
-                      ,Options
-                      ,Setters),
+    Opts = lists:foldl(fun props:insert_value/2, Options, Setters),
     lists:foreach(fun(Carrier) -> search_spawn(Self, Carrier, Opts) end, Carriers),
     wait_for_search(length(Carriers)),
     gen_listener:call(?MODULE, {'first', Options}).
