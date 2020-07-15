@@ -82,7 +82,7 @@ stop_agent(AcctId, AgentId) ->
     case supervisor:terminate_child(?SERVER, Id) of
         'ok' ->
             lager:info("stopping agent ~s(~s)", [AgentId, AcctId]),
-            supervisor:delete_child(?SERVER, Id);
+            supervisor:restart_child(?SERVER, Id);
         E ->
             lager:info("no supervisor for agent ~s(~s) to stop", [AgentId, AcctId]),
             E
