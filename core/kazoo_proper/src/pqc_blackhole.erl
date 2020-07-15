@@ -124,6 +124,9 @@ seq_api() ->
     %% test receiving events over the ws
     _ = test_crud_user_events(WSConn, API, AccountId),
 
+    %% test receiving call events over the ws
+    _ = test_channel_create(WSConn, API, AccountId),
+
     %% test unbinding for events
     _ = test_ws_unbind(API, WSConn, AccountId, SocketId, BindReq, Binding),
 
@@ -247,7 +250,6 @@ test_crud_user_events(WSConn, API, AccountId) ->
     UserId = kz_json:get_ne_binary_value(<<"id">>, DeleteJObj).
 
 test_ws_unbind(API, WSConn, AccountId, SocketId, BindReq, Binding) ->
-
     UnbindReqId = kz_binary:rand_hex(4),
     UnbindReq = kz_json:set_values([{<<"action">>, <<"unsubscribe">>}
                                    ,{<<"request_id">>, UnbindReqId}
@@ -274,3 +276,54 @@ test_empty_active_connections(API, AccountId) ->
     EmptySockets = pqc_cb_websockets:summary(API, AccountId),
     lager:info("empty: ~s", [EmptySockets]),
     [] = kz_json:get_list_value(<<"data">>, kz_json:decode(EmptySockets)).
+
+test_channel_create(WSConn, #{auth_token := AuthToken}, AccountId) ->
+    BindReqId = kz_binary:rand_hex(4),
+    BindReq = kz_json:from_list([{<<"action">>, <<"subscribe">>}
+                                ,{<<"auth_token">>, AuthToken}
+                                ,{<<"request_id">>, BindReqId}
+                                ,{<<"data">>
+                                 ,kz_json:from_list([{<<"account_id">>, AccountId}
+                                                    ,{<<"binding">>, (Binding = <<"call.CHANNEL_CREATE.*">>)}
+                                                    ])
+                                 }
+                                ]),
+    _Send = pqc_ws_client:send(WSConn, kz_json:encode(BindReq)),
+    {'json', BindReplyJObj} = pqc_ws_client:recv(WSConn, 1000),
+    lager:info("bind reply: ~p", [BindReplyJObj]),
+    <<"reply">> = kz_json:get_ne_binary_value(<<"action">>, BindReplyJObj),
+    BindReqId = kz_json:get_ne_binary_value(<<"request_id">>, BindReplyJObj),
+    <<"success">> = kz_json:get_ne_binary_value(<<"status">>, BindReplyJObj),
+    Bindings = kz_json:get_list_value([<<"data">>, <<"subscribed">>], BindReplyJObj),
+    'true' = lists:member(Binding, Bindings),
+
+    CallId = kz_binary:rand_hex(4),
+    CallProps = [{<<"Event-Name">>, <<"CHANNEL_CREATE">>}
+                ,{<<"Call-ID">>, CallId}
+                ,{<<"variable_sip_req_uri">>, <<"request@domain.com">>}
+                ,{<<"variable_sip_to_uri">>, <<"to@domain.com">>}
+                ,{<<"variable_sip_from_uri">>, <<"from@domain.com">>}
+                ,{<<"Call-Direction">>, <<"inbound">>}
+                ,{<<"Custom-Channel-Vars">>, kz_json:from_list([{<<"Account-ID">>, AccountId}])}
+                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                ],
+    lager:info("publishing call event ~s", [CallId]),
+    ecallmgr_call_events:publish_event(CallProps),
+    {'json', CallEvent} = pqc_ws_client:recv(WSConn, 1000),
+    lager:info("call event: ~p", [CallEvent]),
+
+    UnbindReqId = kz_binary:rand_hex(4),
+    UnbindReq = kz_json:set_values([{<<"action">>, <<"unsubscribe">>}
+                                   ,{<<"request_id">>, UnbindReqId}
+                                   ]
+                                  ,BindReq
+                                  ),
+    _Send = pqc_ws_client:send(WSConn, kz_json:encode(UnbindReq)),
+
+    {'json', UnbindReplyJObj} = pqc_ws_client:recv(WSConn, 1000),
+    lager:info("unbind reply: ~p", [UnbindReplyJObj]),
+    <<"reply">> = kz_json:get_ne_binary_value(<<"action">>, UnbindReplyJObj),
+    UnbindReqId = kz_json:get_ne_binary_value(<<"request_id">>, UnbindReplyJObj),
+    <<"success">> = kz_json:get_ne_binary_value(<<"status">>, UnbindReplyJObj),
+    [Binding] = kz_json:get_list_value([<<"data">>, <<"unsubscribed">>], UnbindReplyJObj),
+    [_] = kz_json:get_list_value([<<"data">>, <<"subscribed">>], UnbindReplyJObj).

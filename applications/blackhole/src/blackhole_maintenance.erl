@@ -112,15 +112,17 @@ active_sessions_by_account(<<AccountId/binary>>) ->
 
 -spec print_sessions([bh_context:context()]) -> 'ok'.
 print_sessions([]) -> io:format("no active sessions~n");
+print_sessions({'error', 'not_found'}) -> io:format("no active sessions~n");
 print_sessions(Sessions) ->
     io:format("Active websocket connections:~n"),
-    io:format("~22s | ~10s | ~12s | ~32s~n", [<<"Peer">>, <<"Uptime">>, <<"PID">>, <<"Account-ID">>]),
+    io:format("~22s | ~10s | ~12s | ~32s | ~s~n", [<<"Peer">>, <<"Uptime">>, <<"PID">>, <<"Account-ID">>, <<"Bindings">>]),
     lists:foreach(fun print_session/1, Sessions).
 
 print_session(Context) ->
-    io:format("~22s | ~10s | ~12s | ~32s~n"
+    io:format("~22s | ~10s | ~12s | ~32s | ~s~n"
              ,[bh_context:websocket_session_id(Context)
               ,kz_time:pretty_print_elapsed_s(kz_time:elapsed_s(bh_context:timestamp(Context)))
               ,kz_term:to_binary(bh_context:websocket_pid(Context))
               ,bh_context:auth_account_id(Context)
+              ,bh_context:client_bindings(Context)
               ]).
