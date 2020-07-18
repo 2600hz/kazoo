@@ -235,11 +235,11 @@ first(Options) ->
     QID = query_id(Options),
     gen_listener:cast(?MODULE, {'reset_search', QID}),
     Self = self(),
-    Setters = [{'quantity', ?MAX_SEARCH}
-              ,{'offset', 0}
-              ,{'normalized_prefix', normalized_prefix(Options)}
-              ],
-    Opts = lists:foldl(fun props:insert_value/2, Options, Setters),
+    Defaults = [{'quantity', ?MAX_SEARCH}
+               ,{'offset', 0}
+               ,{'normalized_prefix', normalized_prefix(Options)}
+               ],
+    Opts = props:insert_values(Defaults, Options),
     lists:foreach(fun(Carrier) -> search_spawn(Self, Carrier, Opts) end, Carriers),
     wait_for_search(length(Carriers)),
     gen_listener:call(?MODULE, {'first', Options}).
