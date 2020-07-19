@@ -566,7 +566,7 @@ rm_aggregate_device(Db, Device) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_destination(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-          {kz_term:ne_binary(), kz_term:ne_binary()}.
+          {kz_term:api_binary(), kz_term:api_binary()}.
 get_destination(JObj, Cat, Key) ->
     case kapps_config:get(Cat, Key, <<"Request">>) of
         <<"To">> ->
@@ -576,7 +576,7 @@ get_destination(JObj, Cat, Key) ->
     end.
 
 -spec get_destination(kz_json:object(), kz_term:ne_binaries()) ->
-          {kz_term:ne_binary(), kz_term:ne_binary()}.
+          {kz_term:api_binary(), kz_term:api_binary()}.
 get_destination(JObj, [Key|Keys]) ->
     case maybe_split(Key, JObj) of
         [User,Realm] -> {User,Realm};
@@ -587,10 +587,11 @@ get_destination(JObj, []) ->
     ,kz_json:get_value(<<"To-Realm">>, JObj)
     }.
 
+-spec maybe_split(kz_json:get_key(), kz_json:object()) -> kz_term:api_binaries().
 maybe_split(Key, JObj) ->
     case kz_json:get_ne_binary_value(Key, JObj) of
-        undefined -> undefined;
-        <<"nouser@",_/binary>> -> undefined;
+        'undefined' -> 'undefined';
+        <<"nouser@",_/binary>> -> 'undefined';
         Bin -> binary:split(Bin, <<"@">>)
     end.
 
