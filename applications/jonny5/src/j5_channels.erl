@@ -901,7 +901,7 @@ call_cost(#channel{answered_timestamp=Timestamp}=Channel, Seconds) ->
 billing_jobj(BillingSeconds, Channel) ->
     kz_json:from_list([{<<"Billing-Seconds">>, BillingSeconds} | to_props(Channel)]).
 
--spec to_did_lookup(kz_json:object()) -> kz_term:ne_binary() | 'undefined'.
+-spec to_did_lookup(kz_json:object()) -> kz_term:api_ne_binary().
 to_did_lookup(JObj) ->
     case kz_json:get_first_defined(
            [<<"To">>
@@ -913,6 +913,7 @@ to_did_lookup(JObj) ->
           )
     of
         'undefined' -> 'undefined';
+        <<>> -> 'undefined';
         ToUri ->
             [H|_] = binary:split(ToUri, <<"@">>),
             knm_converters:normalize(H)
