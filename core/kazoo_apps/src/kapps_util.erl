@@ -587,7 +587,7 @@ get_destination(JObj, []) ->
     ,kz_json:get_value(<<"To-Realm">>, JObj)
     }.
 
--spec maybe_split(kz_term:ne_binary(), kz_json:object()) -> kz_term:api_binaries().
+-spec maybe_split(kz_json:get_key(), kz_json:object()) -> kz_term:api_binaries().
 maybe_split(Key, JObj) ->
     case kz_json:get_ne_binary_value(Key, JObj) of
         'undefined' -> 'undefined';
