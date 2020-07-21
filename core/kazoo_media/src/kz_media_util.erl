@@ -500,7 +500,11 @@ get_prompt(PromptId, Lang, AccountId, 'true') ->
             PromptId;
         'false' ->
             lager:debug("using account override for ~s in account ~s", [PromptId, AccountId]),
-            kz_binary:join([<<"prompt:/">>, AccountId, PromptId, Lang], <<"/">>)
+            maybe_prompt_path(PromptId
+                             ,Lang
+                             ,AccountId
+                             ,lookup_prompt(kz_util:format_account_db(AccountId), PromptId)
+                             )
     end;
 get_prompt(PromptId, Lang, _AccountId, 'false') ->
     case is_not_prompt(PromptId) of
@@ -511,6 +515,11 @@ get_prompt(PromptId, Lang, _AccountId, 'false') ->
             lager:debug("account overrides not enabled; ignoring account prompt for ~s", [PromptId]),
             kz_binary:join([<<"prompt:/">>, ?KZ_MEDIA_DB, PromptId, Lang], <<"/">>)
     end.
+
+maybe_prompt_path(PromptId, Lang, AccountId, {'error', 'not_found'}) ->
+    kz_binary:join([<<"prompt:/">>, AccountId, PromptId, Lang], <<"/">>);
+maybe_prompt_path(PromptId, _Lang, AccountId, {'ok', _}) ->
+    prompt_path(AccountId, PromptId).
 
 -spec is_not_prompt(kz_term:api_binary()) -> boolean().
 is_not_prompt('undefined') -> 'true';
