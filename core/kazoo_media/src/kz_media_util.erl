@@ -617,7 +617,7 @@ get_account_prompt(Name, Lang, AccountId, OriginalLang) ->
 
 -spec lookup_prompt(kz_term:ne_binary(), kz_term:ne_binary()) ->
           {'ok', kz_json:object()} |
-          {'error', 'not_found'}.
+          kz_datamgr:data_error().
 lookup_prompt(Db, Id) ->
     case kz_datamgr:open_cache_doc(Db, Id) of
         {'ok', Doc} ->
