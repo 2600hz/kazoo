@@ -36,11 +36,6 @@ macros() ->
       ,?MACRO_VALUE(<<"voicemail.file_type">>, <<"voicemail_file_type">>, <<"Voicemail File Type">>, <<"Type of the voicemail file">>)
       ,?MACRO_VALUE(<<"voicemail.file_size">>, <<"voicemail_file_size">>, <<"Voicemail File Size">>, <<"Size of the voicemail file in bytes">>)
       ,?MACRO_VALUE(<<"reason">>, <<"voicemail_delete_reason">>, <<"Voicemail Delete Reason">>, <<"Why the voicemail was deleted">>)
-      ,?MACRO_VALUE(<<"owner.first_name">>, <<"owner_first_name">>, <<"Owner First Name">>, <<"First name of the owner">>)
-      ,?MACRO_VALUE(<<"owner.last_name">>, <<"owner_last_name">>, <<"Owner Last Name">>, <<"Last name of the owner">>)
-      ,?MACRO_VALUE(<<"owner.email">>, <<"owner_email">>, <<"Owner Email">>, <<"Email of the owner">>)
-      ,?MACRO_VALUE(<<"owner.timezone">>, <<"owner_timezone">>, <<"Owner Timezone">>, <<"Timezone of the owner">>)
-      ,?MACRO_VALUE(<<"owner.username">>, <<"owner_username">>, <<"Owner Username">>, <<"Username of the owner">>)
        | ?DEFAULT_CALL_MACROS
        ++ ?USER_MACROS
        ++ ?COMMON_TEMPLATE_MACROS
@@ -272,7 +267,7 @@ build_template_data(DataJObj) ->
     [{<<"voicemail">>, build_voicemail_data(DataJObj)}
     ,{<<"account">>, teletype_util:account_params(DataJObj)}
     ,{<<"user">>, UserParams}
-    ,{<<"owner">>, UserParams}
+    ,{<<"owner">>, UserParams} %% backward compatibility
     ,{<<"reason">>, render_vm_delete_reason(DataJObj)}
      | teletype_util:build_call_data(DataJObj, Timezone)
     ].
