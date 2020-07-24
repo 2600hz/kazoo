@@ -27,6 +27,14 @@ id() -> <<"system_alert">>.
 macros() ->
     kz_json:from_list(
       [?MACRO_VALUE(<<"message">>, <<"message">>, <<"Message">>, <<"System message">>)
+      ,?MACRO_VALUE(<<"details.key_store">>, <<"details_key_store">>, <<"Details key store">>, <<"Details key store">>)
+      ,?MACRO_VALUE(<<"details.channel_vars">>, <<"details_channel_vars">>, <<"Details channel vars">>, <<"Details channel vars">>)
+      ,?MACRO_VALUE(<<"details.sip_headers">>, <<"details_sip_headers">>, <<"Details SIP headers">>, <<"Details SIP headers">>)
+      ,?MACRO_VALUE(<<"details.callflow">>, <<"details_callflow">>, <<"Details callflow">>, <<"Details callflow">>)
+      ,?MACRO_VALUE(<<"details.error_details">>, <<"details_error_details">>, <<"Details error details">>, <<"Details error details">>)
+      ,?MACRO_VALUE(<<"details.http_headers">>, <<"details_http_headers">>, <<"Details HTTP headers">>, <<"Details HTTP headers">>)
+      ,?MACRO_VALUE(<<"request.msg_id">>, <<"request_msg_id">>, <<"Request message ID">>, <<"Request message ID">>)
+      ,?MACRO_VALUE(<<"request.node">>, <<"request_node">>, <<"Request node">>, <<"Request node">>)
        | ?USER_MACROS
        ++ ?COMMON_TEMPLATE_MACROS
       ]).
