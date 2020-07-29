@@ -270,11 +270,10 @@ add_pvt_api_key(Context) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
-
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, AccountId) ->
     {'ok', Existing} = kzd_accounts:fetch(AccountId),
-    New = kz_json:merge(kz_doc:private_fields(Existing), cb_context:doc(Context)),
+    New = kz_json:merge(kz_doc:private_fields(Existing), maybe_import_enabled(Context, Existing)),
     case kzd_accounts:save(New) of
         {'ok', SavedAccount} ->
             Context1 = crossbar_doc:handle_datamgr_success(SavedAccount, Context),
@@ -515,48 +514,31 @@ get_parent_id_from_req(Context) ->
 
 -spec extra_validation(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 extra_validation(AccountId, Context) ->
-    Extra = [fun(_, C) -> maybe_import_enabled(C) end
-            ,fun disallow_direct_clients/2
-            ],
-    lists:foldl(fun(F, C) -> F(AccountId, C) end
-               ,Context
-               ,Extra
-               ).
+    disallow_direct_clients(AccountId, Context).
 
--spec maybe_import_enabled(cb_context:context()) ->
-          cb_context:context().
-maybe_import_enabled(Context) ->
+-spec maybe_import_enabled(cb_context:context(), kz_json:object()) ->
+          kz_json:object().
+maybe_import_enabled(Context, ExistingDoc) ->
     case cb_context:auth_account_id(Context) =:= cb_context:account_id(Context) of
         'true' ->
-            NewDoc = kz_json:delete_key(<<"enabled">>, cb_context:doc(Context)),
-            cb_context:set_doc(Context, NewDoc);
+            kz_json:delete_key(<<"enabled">>, cb_context:doc(Context));
         'false' ->
-            lager:debug("this should be success: ~p", [cb_context:resp_status(Context)]),
-            maybe_import_enabled(Context, cb_context:resp_status(Context))
+            AuthAccountId = cb_context:auth_account_id(Context),
+            Doc = cb_context:doc(Context),
+            Enabled = kz_json:is_true(<<"enabled">>, Doc, 'undefined'),
+            NewDoc = kz_json:delete_key(<<"enabled">>, Doc),
+            case lists:member(AuthAccountId, kzd_accounts:tree(ExistingDoc)) of
+                'false' -> NewDoc;
+                'true' ->
+                    lager:debug("importing enabled from req and it is set to: ~p", [Enabled]),
+                    import_enabled(NewDoc, Enabled)
+            end
     end.
 
--spec maybe_import_enabled(cb_context:context(), crossbar_status()) ->
-          cb_context:context().
-maybe_import_enabled(Context, 'success') ->
-    AuthAccountId = cb_context:auth_account_id(Context),
-    Doc = cb_context:doc(Context),
-    Enabled = kz_json:get_value(<<"enabled">>, Doc),
-    NewDoc = kz_json:delete_key(<<"enabled">>, Doc),
-    lager:debug("import enabled: ~p", [Enabled]),
-    case lists:member(AuthAccountId, kzd_accounts:tree(Doc)) of
-        'false' -> cb_context:set_doc(Context, NewDoc);
-        'true' -> maybe_import_enabled(Context, NewDoc, Enabled)
-    end.
-
--spec maybe_import_enabled(cb_context:context(), kz_json:object(), kz_term:api_binary()) ->
-          cb_context:context().
-maybe_import_enabled(Context, _, 'undefined') -> Context;
-maybe_import_enabled(Context, Doc, IsEnabled) ->
-    NewDoc = case kz_term:is_true(IsEnabled) of
-                 'true' -> kzd_accounts:enable(Doc);
-                 'false' -> kzd_accounts:disable(Doc)
-             end,
-    cb_context:set_doc(Context, NewDoc).
+-spec import_enabled(kz_json:object(), kz_term:api_boolean()) -> kz_json:object().
+import_enabled(Doc, 'undefined') -> Doc;
+import_enabled(Doc, 'true') -> kzd_accounts:enable(Doc);
+import_enabled(Doc, 'false') -> kzd_accounts:disable(Doc).
 
 -spec disallow_direct_clients(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 disallow_direct_clients(AccountId, Context) ->
