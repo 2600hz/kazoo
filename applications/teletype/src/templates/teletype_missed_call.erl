@@ -17,6 +17,8 @@
 -define(TEMPLATE_MACROS
        ,kz_json:from_list(
           [?MACRO_VALUE(<<"missed_call.reason">>, <<"missed_call_reason">>, <<"Missed Call Reason">>, <<"Reason why the call is terminated without been bridged or left a voicemail message">>)
+          ,?MACRO_VALUE(<<"missed_call.is_bridged">>, <<"missed_call_is_bridged">>, <<"Was it bridged">>, <<"Was it bridged">>)
+          ,?MACRO_VALUE(<<"missed_call.is_message_left">>, <<"missed_call_is_message_left">>, <<"Was a message left">>, <<"Was a voicemail message left">>)
            | ?DEFAULT_CALL_MACROS
            ++ ?USER_MACROS
            ++ ?COMMON_TEMPLATE_MACROS

@@ -53,8 +53,14 @@ macros() ->
       ,?MACRO_VALUE(<<"reseller.realm">>, <<"reseller_realm">>, <<"Reseller Account Realm">>, <<"Reseller Account Realm">>)
       ,?MACRO_VALUE(<<"reseller.language">>, <<"reseller_language">>, <<"Reseller Account Language">>, <<"Reseller Account Language">>)
       ,?MACRO_VALUE(<<"reseller.timezone">>, <<"reseller_timezone">>, <<"Reseller Account Timezone">>, <<"Reseller Account Timezone">>)
+      ,?MACRO_VALUE(<<"request.id">>, <<"request_id">>, <<"Request ID">>, <<"Request ID">>)
+      ,?MACRO_VALUE(<<"request.client_ip">>, <<"request_client_ip">>, <<"Request client IP">>, <<"Request client IP">>)
+      ,?MACRO_VALUE(<<"request.method">>, <<"request_method">>, <<"Request HTTP method">>, <<"Request HTTP method">>)
+      ,?MACRO_VALUE(<<"request.path">>, <<"request_path">>, <<"Request path (URL)">>, <<"Request path (URL)">>)
       ,?MACRO_VALUE(<<"timestamp.utc">>, <<"date_called_utc">>, <<"Date (UTC)">>, <<"When was the change happened (UTC)">>)
       ,?MACRO_VALUE(<<"timestamp.local">>, <<"date_called_local">>, <<"Date (Local)">>, <<"When was the changed happened (Local time)">>)
+      ,?MACRO_VALUE(<<"timestamp.timezone">>, <<"date_called_timezone">>, <<"Timestamp Timezone">>, <<"Timestamp Timezone">>)
+      ,?MACRO_VALUE(<<"timestamp.timestamp">>, <<"date_called_timestamp">>, <<"Timestamp">>, <<"Timestamp">>)
        | ?USER_MACROS
        ++ ?SYSTEM_MACROS
       ]).

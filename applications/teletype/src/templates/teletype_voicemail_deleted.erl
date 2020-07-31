@@ -27,6 +27,8 @@ id() ->
 macros() ->
     kz_json:from_list(
       [?MACRO_VALUE(<<"voicemail.vmbox_id">>, <<"voicemail_vmbox_id">>, <<"Voicemail Box Id">>, <<"Which voicemail box was the message left in">>)
+      ,?MACRO_VALUE(<<"voicemail.vmbox_name">>, <<"voicemail_vmbox_name">>, <<"Voicemail Box Name">>, <<"Voicemail Box Name">>)
+      ,?MACRO_VALUE(<<"voicemail.vmbox_number">>, <<"voicemail_vmbox_number">>, <<"Voicemail Box Number">>, <<"Voicemail Box Number">>)
       ,?MACRO_VALUE(<<"voicemail.msg_id">>, <<"voicemail_msg_id">>, <<"Voicemail Message ID">>, <<"Message Id of the voicemail">>)
       ,?MACRO_VALUE(<<"voicemail.transcription">>, <<"voicemail_transcription">>, <<"Voicemail Message Transcription">>, <<"Voicemail Message Transcription">>)
       ,?MACRO_VALUE(<<"voicemail.length">>, <<"voicemail_length">>, <<"Voicemail Length">>, <<"Length of the voicemail file (formatted in HH:MM:SS)">>)
@@ -260,11 +262,12 @@ get_extension(MediaJObj) ->
 
 -spec build_template_data(kz_json:object()) -> kz_term:proplist().
 build_template_data(DataJObj) ->
+    UserParams = teletype_util:user_params(kz_json:get_value(<<"user">>, DataJObj)),
     Timezone = kzd_voicemail_box:timezone(kz_json:get_value(<<"vmbox_doc">>, DataJObj)),
     [{<<"voicemail">>, build_voicemail_data(DataJObj)}
     ,{<<"account">>, teletype_util:account_params(DataJObj)}
-    ,{<<"user">>, teletype_util:user_params(kz_json:get_value(<<"user">>, DataJObj))}
-    ,{<<"owner">>, teletype_util:user_params(kz_json:get_value(<<"user">>, DataJObj))}
+    ,{<<"user">>, UserParams}
+    ,{<<"owner">>, UserParams} %% backward compatibility
     ,{<<"reason">>, render_vm_delete_reason(DataJObj)}
      | teletype_util:build_call_data(DataJObj, Timezone)
     ].
