@@ -32,13 +32,13 @@
 -define(CLASSIFIER_TOLLFREE_US,
         kz_json:from_list([{<<"regex">>, <<"^\\+1((?:800|88\\d|877|866|855|844|833|822)\\d{7})\$">>}
                           ,{<<"friendly_name">>, <<"US TollFree">>}
-                          ,{<<"pretty_print">>, <<"SS(###) ### - ####">>}
+                          ,{<<"pretty_print">>, ?PRETTY_PRINT_FORMAT_NANP}
                           ])).
 
 -define(CLASSIFIER_TOLL_US,
         kz_json:from_list([{<<"regex">>, <<"^\\+1(900\\d{7})\$">>}
                           ,{<<"friendly_name">>, <<"US Toll">>}
-                          ,{<<"pretty_print">>, <<"SS(###) ### - ####">>}
+                          ,{<<"pretty_print">>, ?PRETTY_PRINT_FORMAT_NANP}
                           ])).
 
 -define(CLASSIFIER_EMERGENCY,
@@ -50,13 +50,13 @@
 -define(CLASSIFIER_CARIBBEAN,
         kz_json:from_list([{<<"regex">>, <<"^\\+?1((?:684|264|268|242|246|441|284|345|767|809|829|849|473|671|876|664|670|787|939|869|758|784|721|868|649|340)\\d{7})\$">>}
                           ,{<<"friendly_name">>, <<"Caribbean">>}
-                          ,{<<"pretty_print">>, <<"SS(###) ### - ####">>}
+                          ,{<<"pretty_print">>, ?PRETTY_PRINT_FORMAT_NANP}
                           ])).
 
 -define(CLASSIFIER_DID_US,
         kz_json:from_list([{<<"regex">>, <<"^(\\+?1)?([2-9][0-9]{2}[2-9][0-9]{6})\$">>}
                           ,{<<"friendly_name">>, <<"US DID">>}
-                          ,{<<"pretty_print">>, <<"SS(###) ### - ####">>}
+                          ,{<<"pretty_print">>, ?PRETTY_PRINT_FORMAT_NANP}
                           ])).
 
 -define(CLASSIFIER_INTERNATIONAL,

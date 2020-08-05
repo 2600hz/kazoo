@@ -104,7 +104,7 @@ pretty_print_format(Num, [{Classification, Classifier}|Classifiers]) ->
 -spec maybe_use_us_default(kz_term:ne_binary()) -> kz_term:api_binary().
 maybe_use_us_default(<<"+1", _/binary>>) ->
     lager:debug("using US number default pretty print", []),
-    <<"SS(###) ### - ####">>;
+    ?PRETTY_PRINT_FORMAT_NANP;
 maybe_use_us_default(_) ->
     'undefined'.
 

@@ -931,7 +931,7 @@ build_name_and_number(Name, <<"unknown">>) ->
 build_name_and_number(Number, Number) ->
     Number;
 build_name_and_number(Name, Number) ->
-    <<Name/binary, "(", Number/binary, ")">>.
+    <<Name/binary, " (", Number/binary, ")">>.
 
 -spec build_date_called_data(kz_json:object(), kz_term:api_ne_binary()) -> kz_term:proplist().
 build_date_called_data(DataJObj, Timezone) ->

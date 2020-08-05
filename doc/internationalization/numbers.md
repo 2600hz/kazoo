@@ -108,7 +108,7 @@ This is a set of regexps to group numbers by type and are not used for routing. 
         "did_us":{
             "regex":"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$",
             "friendly_name":"US DID",
-            "pretty_print":"SS(###) ##### - ####"
+            "pretty_print":"SS(###) #####-####"
         },
         "international":{
             "regex":"^(011\\d*)$|^(00\\d*)$",
@@ -137,7 +137,7 @@ The following characters can be used in a pretty print string to manipulate the 
 
 If you want a literal '#', 'S', or '*', prefix it with a '\' (so '\#', '\S', and '\*')
 
-`SS(###) ##### - *` : this sample will convert numbers in the format of +14158867900 to (415) 886 - 7900
+`SS(###) #####-*` : this sample will convert numbers in the format of +14158867900 to (415) 886-7900
 
 ### Per-Account dial plans
 

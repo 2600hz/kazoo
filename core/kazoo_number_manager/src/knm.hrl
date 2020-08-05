@@ -64,6 +64,8 @@
        ,kapps_config:get_is_true(?KNM_CONFIG_CAT, <<"local_feature_override">>, 'false')
        ).
 
+-define(PRETTY_PRINT_FORMAT_NANP, <<"SS(###) ###-####">>).
+
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 -define(START_BLOCK, <<"+14158867900">>).
