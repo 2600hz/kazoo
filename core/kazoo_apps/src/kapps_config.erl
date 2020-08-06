@@ -1060,6 +1060,9 @@ fetch_category(Category, 'false') ->
         ,{{<<"callflow">>, [<<"voicemail">>, <<"vm_message_foraward_type">>]}
          ,{<<"callflow">>, [<<"voicemail">>, <<"vm_message_forward_type">>]}
          }
+        ,{{<<"callflow">>, [<<"voicemail">>, <<"vm_message_forward_type">>]}
+         ,{<<"voicemail">>, [<<"vm_message_forward_type">>]}
+         }
 
         ,{<<"whapps_controller">>, <<"kapps_controller">>}
 

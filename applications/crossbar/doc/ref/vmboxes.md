@@ -40,6 +40,7 @@ Key | Description | Type | Default | Required | Support Level
 `skip_instructions` | Determines if the instructions after the greeting and prior to composing a message should be played | `boolean()` | `false` | `false` | `supported`
 `timezone` | The default timezone | `string(5..32)` |   | `false` | `supported`
 `transcribe` | Transcribe voicemail using ASR engine | `boolean()` | `false` | `false` | `supported`
+`vm_message_forward_type` | Enable or disable the ability to prepend a message when forwarding a voicemail message | `string('only_forward' | 'prepend_forward')` | `only_forward` | `false` | `supported`
 
 ### notify.callback
 

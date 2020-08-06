@@ -102,11 +102,6 @@
                                         ,[?KEY_VOICEMAIL, ?KEY_SEEK_DURATION]
                                         ,?DEFAULT_SEEK_DURATION
                                         )).
--define(DEFAULT_FORWARD_TYPE
-       ,kapps_config:get_ne_binary(?CF_CONFIG_CAT
-                                  ,[?KEY_VOICEMAIL, <<"vm_message_forward_type">>]
-                                  ,<<"only_forward">>
-                                  )).
 
 -define(FORCE_REQUIRE_PIN
        ,kapps_config:get_is_true(?CF_CONFIG_CAT
@@ -1845,7 +1840,7 @@ get_mailbox_profile(Data, Call) ->
                          kz_json:is_true(<<"not_configurable">>, MailboxJObj, 'false')
                     ,account_db = AccountDb
                     ,media_extension = kzd_voicemail_box:media_extension(MailboxJObj)
-                    ,forward_type = ?DEFAULT_FORWARD_TYPE
+                    ,forward_type = kzd_voicemail_box:vm_message_forward_type(MailboxJObj)
                     ,oldest_message_first = kzd_vmboxes:oldest_message_first(MailboxJObj)
                     };
         {'error', R} ->

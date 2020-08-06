@@ -185,6 +185,16 @@
             "description": "Transcribe voicemail using ASR engine",
             "support_level": "supported",
             "type": "boolean"
+        },
+        "vm_message_forward_type": {
+            "default": "only_forward",
+            "description": "Enable or disable the ability to prepend a message when forwarding a voicemail message",
+            "enum": [
+                "only_forward",
+                "prepend_forward"
+            ],
+            "support_level": "supported",
+            "type": "string"
         }
     },
     "required": [

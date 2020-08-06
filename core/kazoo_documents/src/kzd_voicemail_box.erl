@@ -23,6 +23,7 @@
 
         ,set_notification_emails/2
         ,media_extension/1
+        ,vm_message_forward_type/1
         ]).
 
 -include("kz_documents.hrl").
@@ -44,15 +45,24 @@
 -define(KEY_SEEK_DURATION, <<"seek_duration_ms">>).
 -define(KEY_CHECK_IF_OWNER, <<"check_if_owner">>).
 -define(KEY_IS_SETUP, <<"is_setup">>).
+-define(KEY_VM_MESSAGE_FORWARD_TYPE, <<"vm_message_forward_type">>).
 
 -define(PVT_TYPE, <<"vmbox">>).
 -define(DEFAULT_SEEK_DURATION, 10000).
 
--define(ACCOUNT_VM_EXTENSION(AccountId),
-        kapps_account_config:get_global(AccountId
+-define(ACCOUNT_VM_EXTENSION(AccountId)
+       ,kapps_account_config:get_global(AccountId
                                        ,<<"callflow">>
                                        ,[<<"voicemail">>, <<"extension">>]
                                        ,<<"mp3">>
+                                       )
+       ).
+
+-define(ACCOUNT_VM_MESSAGE_FORWARD_TYPE(AccountId)
+       ,kapps_account_config:get_global(AccountId
+                                       ,<<"voicemail">>
+                                       ,?KEY_VM_MESSAGE_FORWARD_TYPE
+                                       ,<<"only_forward">>
                                        )
        ).
 
@@ -197,3 +207,8 @@ is_setup(Box, Default) ->
 media_extension(Box) ->
     AccountId = kz_doc:account_id(Box),
     kz_json:get_ne_binary_value(<<"media_extension">>, Box, ?ACCOUNT_VM_EXTENSION(AccountId)).
+
+-spec vm_message_forward_type(doc()) -> kz_term:ne_binary().
+vm_message_forward_type(Box) ->
+    AccountId = kz_doc:account_id(Box),
+    kz_json:get_ne_binary_value(?KEY_VM_MESSAGE_FORWARD_TYPE, Box, ?ACCOUNT_VM_MESSAGE_FORWARD_TYPE(AccountId)).

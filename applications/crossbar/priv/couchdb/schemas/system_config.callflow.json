@@ -197,15 +197,6 @@
                     "default": false,
                     "description": "send ampq message to notify about voicemail deletion",
                     "type": "boolean"
-                },
-                "vm_message_forward_type": {
-                    "default": "only_forward",
-                    "description": "Enable or disable the ability to prepend a message when forwarding a voicemail message",
-                    "enum": [
-                        "only_forward",
-                        "prepend_forward"
-                    ],
-                    "type": "string"
                 }
             },
             "type": "object"
