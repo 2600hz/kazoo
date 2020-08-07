@@ -37,9 +37,6 @@
         },
         "Queue-ID": {
             "type": "string"
-        },
-        "Time-Limit": {
-            "type": "integer"
         }
     },
     "required": [

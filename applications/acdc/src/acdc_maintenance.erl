@@ -474,16 +474,15 @@ agent_logout(AcctId, AgentId) ->
 
 -spec agent_pause(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 agent_pause(AcctId, AgentId) ->
-    Timeout = kapps_config:get_integer(?CONFIG_CAT, <<"default_agent_pause_timeout">>, 600),
-    agent_pause(AcctId, AgentId, Timeout).
+    agent_pause(AcctId, AgentId, ?DEFAULT_AGENT_PAUSE_TIMEOUT).
 
--spec agent_pause(kz_term:ne_binary(), kz_term:ne_binary(), pos_integer()) -> 'ok'.
+-spec agent_pause(kz_term:ne_binary(), kz_term:ne_binary(), pos_integer() | kz_term:ne_binary()) -> 'ok'.
 agent_pause(AcctId, AgentId, Timeout) ->
     kz_util:put_callid(?MODULE),
     Update = props:filter_undefined(
                [{<<"Account-ID">>, AcctId}
                ,{<<"Agent-ID">>, AgentId}
-               ,{<<"Timeout">>, kz_term:to_integer(Timeout)}
+               ,{<<"Time-Limit">>, Timeout}
                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                ]),
     _ = kz_amqp_worker:cast(Update, fun kapi_acdc_agent:publish_pause/1),
