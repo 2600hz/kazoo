@@ -24,6 +24,7 @@
         ,logout_agent/2
         ]).
 
+-include("acdc_config.hrl").
 -include_lib("callflow/src/callflow.hrl").
 
 %%------------------------------------------------------------------------------
@@ -154,11 +155,8 @@ pause_agent(Call, AgentId, Data, Timeout) ->
     _ = play_agent_pause(Call),
     update_agent_status(Call, AgentId, Data, fun kapi_acdc_agent:publish_pause/1, Timeout).
 pause_agent(Call, AgentId, Data) ->
-    Timeout = kz_json:get_value(<<"timeout">>
-                               ,Data
-                               ,kapps_config:get(<<"acdc">>, <<"default_agent_pause_timeout">>, 600)
-                               ),
-    lager:info("agent ~s is pausing work for ~b s", [AgentId, Timeout]),
+    Timeout = kz_json:get_value(<<"timeout">>, Data, ?DEFAULT_AGENT_PAUSE_TIMEOUT),
+    lager:info("agent ~s is pausing work for ~p s", [AgentId, Timeout]),
     pause_agent(Call, AgentId, Data, Timeout).
 
 resume_agent(Call, AgentId, Data) ->

@@ -6681,9 +6681,6 @@
                 },
                 "Queue-ID": {
                     "type": "string"
-                },
-                "Time-Limit": {
-                    "type": "integer"
                 }
             },
             "required": [
@@ -6729,9 +6726,6 @@
                 },
                 "Queue-ID": {
                     "type": "string"
-                },
-                "Time-Limit": {
-                    "type": "integer"
                 }
             },
             "required": [
@@ -6777,9 +6771,6 @@
                 },
                 "Queue-ID": {
                     "type": "string"
-                },
-                "Time-Limit": {
-                    "type": "integer"
                 }
             },
             "required": [
@@ -6853,9 +6844,6 @@
                 },
                 "Queue-ID": {
                     "type": "string"
-                },
-                "Time-Limit": {
-                    "type": "integer"
                 }
             },
             "required": [
@@ -6901,9 +6889,6 @@
                 },
                 "Queue-ID": {
                     "type": "string"
-                },
-                "Time-Limit": {
-                    "type": "integer"
                 }
             },
             "required": [
@@ -7057,9 +7042,6 @@
                 },
                 "Queue-ID": {
                     "type": "string"
-                },
-                "Time-Limit": {
-                    "type": "integer"
                 }
             },
             "required": [
@@ -7105,9 +7087,6 @@
                 },
                 "Queue-ID": {
                     "type": "string"
-                },
-                "Time-Limit": {
-                    "type": "integer"
                 }
             },
             "required": [
@@ -29446,7 +29425,12 @@
                 "default_agent_pause_timeout": {
                     "default": 600,
                     "description": "acdc default agent pause timeout",
-                    "type": "integer"
+                    "minimum": 0,
+                    "pattern": "infinity",
+                    "type": [
+                        "integer",
+                        "string"
+                    ]
                 },
                 "max_connect_failures": {
                     "default": 3,

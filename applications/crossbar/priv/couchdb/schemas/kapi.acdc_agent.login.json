@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "_id": "kapi.acdc_agent.end_wrapup",
-    "description": "AMQP API for acdc_agent.end_wrapup",
+    "_id": "kapi.acdc_agent.login",
+    "description": "AMQP API for acdc_agent.login",
     "properties": {
         "Account-ID": {
             "type": "string"
@@ -17,7 +17,7 @@
         },
         "Event-Name": {
             "enum": [
-                "end_wrapup"
+                "login"
             ],
             "type": "string"
         },
