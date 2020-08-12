@@ -26,7 +26,7 @@
 
         ,call_id/1, call_id/2
         ,account_id/1
-        ,server_id/1
+        ,server_id/1, server_id/2
         ,queue_id/1
         ,msg_id/1, msg_id/2
         ,msg_reply_id/1
@@ -76,11 +76,15 @@
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec server_id(kz_term:api_terms()) -> kz_term:api_binary().
-server_id(Props) when is_list(Props) ->
-    props:get_value(?KEY_SERVER_ID, Props);
-server_id(JObj) ->
-    kz_json:get_ne_binary_value(?KEY_SERVER_ID, JObj).
+-spec server_id(kz_term:api_terms()) -> kz_term:api_ne_binary().
+server_id(API) ->
+    server_id(API, 'undefined').
+
+-spec server_id(kz_term:api_terms(), Default) -> kz_term:ne_binary() | Default.
+server_id(Props, Default) when is_list(Props) ->
+    props:get_value(?KEY_SERVER_ID, Props, Default);
+server_id(JObj, Default) ->
+    kz_json:get_ne_binary_value(?KEY_SERVER_ID, JObj, Default).
 
 -spec queue_id(kz_term:api_terms()) -> kz_term:api_binary().
 queue_id(Props) when is_list(Props) ->

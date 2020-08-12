@@ -140,18 +140,6 @@ all_registered_rr() ->
 
 -spec maybe_add_hook(tuple()) -> 'true'.
 maybe_add_hook(Hook) ->
-    case gproc:lookup_pids(Hook) of
-        [] -> hook_it_up(Hook);
-        Pids -> maybe_add_hook(Hook, Pids)
-    end.
-
--spec maybe_add_hook(tuple(), kz_term:pids()) -> 'true'.
-maybe_add_hook(Hook, Pids) ->
-    lists:member(self(), Pids)
-        orelse hook_it_up(Hook).
-
--spec hook_it_up(tuple()) -> 'true'.
-hook_it_up(Hook) ->
     maybe_add_binding(Hook),
     'true' = gproc:reg(Hook).
 
@@ -180,15 +168,34 @@ maybe_add_binding_to_listener(ServerName, EventName) ->
 
 -spec maybe_remove_hook(tuple()) -> 'true'.
 maybe_remove_hook(Hook) ->
-    case gproc:lookup_pids(Hook) of
-        [] -> 'true';
-        _Pids -> unhook_it(Hook)
+    try gproc:unreg(Hook) of
+        'true' ->
+            lager:debug("unreg'd ~p from hook ~p", [self(), Hook]),
+            maybe_unbind_hook(Hook)
+    catch
+        'error':'badarg' ->
+            lager:debug("no hook reg for ~p: ~p", [self(), Hook]),
+            'true'
     end.
 
--spec unhook_it(tuple()) -> 'true'.
-unhook_it(Hook) ->
-    maybe_remove_binding(Hook),
-    'true' = gproc:unreg(Hook).
+maybe_unbind_hook(?HOOK_REG=Hook) ->
+    maybe_unbind_hook(Hook, Hook);
+maybe_unbind_hook(?HOOK_REG(_AccountId)=Hook) ->
+    maybe_unbind_hook(?HOOK_REG, Hook);
+maybe_unbind_hook(?HOOK_REG(_AccountId, CallEvent)=Hook) ->
+    maybe_unbind_hook(?HOOK_REG('_', CallEvent), Hook);
+maybe_unbind_hook(?HOOK_REG_RR=Hook) ->
+    maybe_unbind_hook(Hook, Hook);
+maybe_unbind_hook(?HOOK_REG_RR(_AccountId)=Hook) ->
+    maybe_unbind_hook(?HOOK_REG_RR, Hook);
+maybe_unbind_hook(?HOOK_REG_RR(_AccountId, CallEvent)=Hook) ->
+    maybe_unbind_hook(?HOOK_REG_RR('_', CallEvent), Hook).
+
+maybe_unbind_hook(SearchHook, Hook) ->
+    case gproc:lookup_pids(SearchHook) of
+        [] -> maybe_remove_binding(Hook);
+        _Pids -> 'true'
+    end.
 
 -spec maybe_remove_binding(tuple()) -> 'ok'.
 maybe_remove_binding(?HOOK_REG) ->
@@ -210,7 +217,8 @@ maybe_remove_binding_to_listener(ServerName) ->
 
 -spec maybe_remove_binding_to_listener(atom(), kz_term:ne_binary() | 'all') -> 'ok'.
 maybe_remove_binding_to_listener(ServerName, EventName) ->
-    gen_listener:cast(ServerName, {'maybe_remove_binding', EventName}).
+    lager:info("~p removing ~p", [ServerName, EventName]),
+    ServerName:maybe_remove_binding(EventName).
 
 -spec handle_call_event(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_call_event(JObj, Props) ->

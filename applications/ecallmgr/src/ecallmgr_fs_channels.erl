@@ -498,6 +498,8 @@ handle_cast({'gen_listener',{'created_queue', _QueueName}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
     {'noreply', State};
+handle_cast({'gen_listener', {'federators_consuming', _IsConsuming}}, State) ->
+    {'noreply', State};
 handle_cast(_Req, State) ->
     lager:debug("unhandled cast: ~p", [_Req]),
     {'noreply', State}.

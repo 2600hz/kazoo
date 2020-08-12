@@ -11,6 +11,8 @@
         ,add_binding/1, remove_binding/1
         ,add_bindings/1, remove_bindings/1
         ,flush/0
+
+        ,wait_until_consuming/1
         ]).
 
 -export([init/1
@@ -64,6 +66,10 @@ start_link() ->
                             ]
                            ,[]
                            ).
+
+-spec wait_until_consuming(timeout()) -> 'ok' | {'error', 'timeout'}.
+wait_until_consuming(Timeout) ->
+    gen_listener:wait_until_consuming(?SERVER, Timeout).
 
 -spec handle_amqp_event(kz_json:object(), kz_term:proplist(), gen_listener:basic_deliver() | kz_term:ne_binary()) -> 'ok'.
 handle_amqp_event(EventJObj, _Props, ?MODULE_REQ_ROUTING_KEY) ->
@@ -170,7 +176,8 @@ send_error_module_resp(EventJObj, Error) ->
     kapi_websockets:publish_module_resp(ServerId, Resp).
 
 -type bh_amqp_binding() :: {'amqp', atom(), kz_term:proplist()}.
--type bh_hook_binding() :: {'hook', kz_term:ne_binary()} | {'hook', kz_term:ne_binary(), kz_term:ne_binary()}.
+-type bh_hook_binding() :: {'hook', kz_term:ne_binary()} |
+                           {'hook', kz_term:ne_binary(), kz_term:ne_binary()}.
 -type bh_event_binding() :: bh_amqp_binding() | bh_hook_binding().
 -type bh_event_bindings() :: [bh_event_binding()].
 
@@ -200,7 +207,8 @@ remove_bindings(Bindings) ->
 %%------------------------------------------------------------------------------
 -spec init(list()) -> {'ok', state()}.
 init([]) ->
-    {'ok', #state{bindings=ets:new(bindings, [])}}.
+    kz_util:put_callid(?MODULE),
+    {'ok', #state{bindings=ets:new(?MODULE, [])}}.
 
 %%------------------------------------------------------------------------------
 %% @doc Handling call messages.
@@ -238,7 +246,7 @@ handle_cast({'gen_listener', {'created_queue', _QueueNAme}}, State) ->
 handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
     {'noreply', State};
 handle_cast('flush_bh_bindings', #state{bindings=ETS}=State) ->
-    ets:delete_all_objects(ETS),
+    flush_bh_bindings(ETS),
     {'noreply', State};
 handle_cast(_Msg, State) ->
     {'noreply', State}.
@@ -346,6 +354,14 @@ remove_bh_binding(_ETS, _Binding, _Key, _Else) ->
     lager:debug("listener still have ~b references, not removing binding for ~p"
                ,[_Else, _Binding]
                ).
+
+flush_bh_bindings(ETS) ->
+    ets:foldl(fun flush_bh_binding/2, ETS, ETS).
+
+flush_bh_binding({Key, _Counter}, ETS) ->
+    Binding = binary_to_term(base64:decode(Key)),
+    remove_bh_binding(ETS, Binding, Key, 0),
+    ETS.
 
 add_bh_binding({'hook', AccountId}) ->
     kz_hooks:register(AccountId);

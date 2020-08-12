@@ -446,6 +446,8 @@ handle_cast({'remove_capabilities', NodeName}, State) ->
 handle_cast({'rm_fs_node', NodeName}, State) ->
     _ = kz_util:spawn(fun maybe_rm_fs_node/2, [NodeName, State]),
     {'noreply', State};
+handle_cast({'gen_listener', {'federators_consuming', _IsConsuming}}, State) ->
+    {'noreply', State};
 handle_cast(_Cast, State) ->
     lager:debug("unhandled cast: ~p", [_Cast]),
     {'noreply', State, 'hibernate'}.

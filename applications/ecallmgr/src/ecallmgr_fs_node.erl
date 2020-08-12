@@ -351,6 +351,8 @@ handle_cast('sync_channels', #state{node=Node}=State) ->
                ],
     _ = ecallmgr_fs_channels:sync(Node, Channels),
     {'noreply', State};
+handle_cast({'gen_listener', {'federators_consuming', _IsConsuming}}, State) ->
+    {'noreply', State};
 handle_cast(_Req, State) ->
     lager:debug("unhandled cast: ~p", [_Req]),
     {'noreply', State}.

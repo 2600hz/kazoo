@@ -173,6 +173,8 @@ handle_cast({'gen_listener', {'created_queue', _Q}}, State) ->
 handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
     lager:debug("starting to consume: ~s", [_IsConsuming]),
     {'noreply', State};
+handle_cast({'gen_listener', {'federators_consuming', _IsConsuming}}, State) ->
+    {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.

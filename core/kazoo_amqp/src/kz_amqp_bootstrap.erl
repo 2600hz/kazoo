@@ -136,19 +136,19 @@ get_config() ->
 %% get_from_amqp() ->
 %%     [{'local', kz_config:get('amqp', 'uri', [?DEFAULT_AMQP_URI])}].
 
--spec get_zones() -> kz_term:proplist().
-get_zones() ->
-    case kz_config:get_section('zone') of
-        [] -> kz_config:get_section('amqp');
-        Zones -> Zones
-    end.
+-spec get_zones() -> kz_amqp_connections:configured_brokers().
+get_zones() -> kz_amqp_connections:configured_brokers().
 
 -spec get_from_zone(atom()) -> kz_term:proplist().
 get_from_zone(ZoneName) ->
     Zones = get_zones(),
     Props = dict:to_list(get_from_zone(ZoneName, Zones, dict:new())),
     case props:get_value('local', Props, []) of
-        [] -> [{'local', kz_config:get('amqp', 'uri', [?DEFAULT_AMQP_URI])}|Props];
+        [] ->
+            lager:info("no local zone configured, adding default AMQP"),
+            [{'local', kz_config:get('amqp', 'uri', [?DEFAULT_AMQP_URI])}
+             | Props
+            ];
         _Else -> Props
     end.
 

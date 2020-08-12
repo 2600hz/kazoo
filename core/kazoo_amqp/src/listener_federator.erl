@@ -63,9 +63,10 @@ stop(Pid) ->
 %%------------------------------------------------------------------------------
 -spec init([pid() | kz_term:ne_binary()]) -> {'ok', state()}.
 init([Parent, ParentCallId, Broker]=L) ->
-    lager:debug("federating listener ~p(~s) on broker ~s", L),
     _ = kz_amqp_channel:consumer_broker(Broker),
     Zone = kz_term:to_binary(kz_amqp_connections:broker_zone(Broker)),
+
+    lager:debug("federating listener ~p(~s) on broker ~s in zone ~s", L ++ [Zone]),
 
     CallId = kz_binary:join([ParentCallId, Zone], <<"-">>),
     kz_util:put_callid(CallId),
@@ -103,6 +104,11 @@ handle_cast({'gen_listener', {'is_consuming', 'true'}}
            ) ->
     gen_server:cast(Parent, {'federator_is_consuming', Broker, 'true'}),
     {'noreply', State};
+handle_cast({'gen_listener', {'is_consuming', 'false'}}
+           ,#state{broker=Broker}=State
+           ) ->
+    lager:info("no longer consuming on federator for broker ~s", [Broker]),
+    {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
@@ -132,7 +138,7 @@ handle_event(JObj, Props, #state{parent={Parent, _Ref}
                ),
     RemoteServerId = list_to_binary(["consumer://"
                                     ,Self, "/"
-                                    ,kz_json:get_ne_binary_value(<<"Server-ID">>, JObj, <<>>)
+                                    ,kz_api:server_id(JObj, <<>>)
                                     ]),
     gen_listener:federated_event(Parent
                                 ,kz_json:set_values([{<<"Server-ID">>, RemoteServerId}
@@ -169,4 +175,3 @@ code_change(_OldVsn, State, _Extra) ->
 %%%=============================================================================
 %%% Internal functions
 %%%=============================================================================
-

@@ -21,7 +21,9 @@
         ,code_change/3
         ]).
 
--export([broker/1]).
+-export([broker/1
+        ,zone/1
+        ]).
 
 -include("kz_amqp_util.hrl").
 -type state() :: kz_amqp_connection().
@@ -69,6 +71,10 @@ disconnect(Srv) ->
 -spec broker(kz_amqp_connections()) -> kz_term:ne_binary().
 broker(#kz_amqp_connections{broker=Broker}) ->
     Broker.
+
+-spec zone(kz_amqp_connections()) -> atom().
+zone(#kz_amqp_connections{zone=Zone}) ->
+    Zone.
 
 %%%=============================================================================
 %%% gen_server callbacks
@@ -187,8 +193,8 @@ handle_info({'DOWN', Ref, 'process', _Pid, _Reason}
                                ,broker=_Broker
                                }=Connection
            ) ->
-    lager:critical("connection to the AMQP broker ~s died: ~p"
-                  ,[_Broker, _Reason]
+    lager:critical("connection to the AMQP broker ~s (~p) died: ~p"
+                  ,[_Broker, _Pid, _Reason]
                   ),
     {'noreply', disconnected(Connection), 'hibernate'};
 handle_info({'connect', Timeout}
@@ -313,9 +319,7 @@ disconnected(#kz_amqp_connection{}=Connection, Timeout) ->
     lager:debug("reconnecting after ~p in ~p", [Timeout, Ref]),
     Connection#kz_amqp_connection{reconnect_ref=Ref}.
 
-shutdown(#kz_amqp_connection{connection=ConnectionPid
-                            }
-        ) ->
+shutdown(#kz_amqp_connection{connection=ConnectionPid}) ->
     shutdown_connection(ConnectionPid).
 
 shutdown_available('true') -> kz_amqp_connections:unavailable(self()).
