@@ -1,0 +1,30 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.acdc_agent.login_resp",
+    "description": "AMQP API for acdc_agent.login_resp",
+    "properties": {
+        "Event-Category": {
+            "enum": [
+                "agent"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "login_resp"
+            ],
+            "type": "string"
+        },
+        "Status": {
+            "enum": [
+                "success",
+                "failed"
+            ],
+            "type": "string"
+        }
+    },
+    "required": [
+        "Status"
+    ],
+    "type": "object"
+}

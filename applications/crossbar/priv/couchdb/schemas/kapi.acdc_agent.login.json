@@ -1,0 +1,47 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.acdc_agent.login",
+    "description": "AMQP API for acdc_agent.login",
+    "properties": {
+        "Account-ID": {
+            "type": "string"
+        },
+        "Agent-ID": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "agent"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "login"
+            ],
+            "type": "string"
+        },
+        "Presence-ID": {
+            "type": "string"
+        },
+        "Presence-State": {
+            "enum": [
+                "trying",
+                "online",
+                "offline",
+                "early",
+                "confirmed",
+                "terminated"
+            ],
+            "type": "string"
+        },
+        "Queue-ID": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Account-ID",
+        "Agent-ID"
+    ],
+    "type": "object"
+}
