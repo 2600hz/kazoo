@@ -104,6 +104,7 @@ js_design_doc() ->
     Kazoo = kz_json:from_list([{<<"view_map">>, [ViewMap]}]),
     Props = [{<<"_id">>, <<"_design/services">>}
             ,{<<"kazoo">>, Kazoo}
+            ,{<<"language">>, <<"javascript">>}
             ,{<<"views">>, kz_json:from_list(Views)}
             ],
     kz_json:from_list(Props).
@@ -150,7 +151,7 @@ js_quantify_map() ->
        "            emit(['users', doc.priv_level], 1);"
        "            if (doc.qubicle && doc.qubicle.enabled) {"
        "                if (doc.qubicle.recipient) {"
-       "                    emit(['qubicle', doc.qubicle.recipient.offering || 'basic' + '_recipient'], 1);"
+       "                    emit(['qubicle', (doc.qubicle.recipient.offering || 'basic') + '_recipient'], 1);"
        "                }"
        "            }"
        "            break;"
@@ -209,7 +210,7 @@ js_quantify_map() ->
       ,kazoo_number_manager_maintenance:generate_js_classifiers(FunMatchBlock),
        "            break;"
        "        case 'qubicle_queue':"
-       "            emit(['qubicle', doc.pvt_offering || 'basic' + '_queue'], 1);"
+       "            emit(['qubicle', (doc.pvt_offering || 'basic') + '_queue'], 1);"
        "            break;"
        "        case 'vmbox':"
        "            emit(['voicemails', 'mailbox'], 1);"
