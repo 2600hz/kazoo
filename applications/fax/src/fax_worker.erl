@@ -53,9 +53,9 @@
 
 -type release_ret() :: {kz_json:object(), kz_json:object()}.
 
--define(ORIGINATE_TIMEOUT, ?MILLISECONDS_IN_MINUTE).
--define(NEGOTIATE_TIMEOUT, ?MILLISECONDS_IN_MINUTE * 2).
--define(PAGE_TIMEOUT, ?MILLISECONDS_IN_MINUTE * 6).
+-define(ORIGINATE_TIMEOUT, ?MILLISECONDS_IN_MINUTE * 3).
+-define(NEGOTIATE_TIMEOUT, ?MILLISECONDS_IN_MINUTE * 3).
+-define(PAGE_TIMEOUT, ?MILLISECONDS_IN_MINUTE * 12).
 
 -define(BINDINGS(CallId), [{'self', []}
                           ,{'fax', [{'restrict_to', ['query_status']}]}
