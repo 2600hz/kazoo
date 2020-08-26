@@ -53,9 +53,9 @@
 
 -type release_ret() :: {kz_json:object(), kz_json:object()}.
 
--define(ORIGINATE_TIMEOUT, ?MILLISECONDS_IN_MINUTE).
+-define(ORIGINATE_TIMEOUT, ?MILLISECONDS_IN_MINUTE * 2).
 -define(NEGOTIATE_TIMEOUT, ?MILLISECONDS_IN_MINUTE * 2).
--define(PAGE_TIMEOUT, ?MILLISECONDS_IN_MINUTE * 6).
+-define(PAGE_TIMEOUT, ?MILLISECONDS_IN_MINUTE * 5).
 
 -define(BINDINGS(CallId), [{'self', []}
                           ,{'fax', [{'restrict_to', ['query_status']}]}
@@ -137,12 +137,13 @@ server_name(FaxJob) ->
 -spec handle_tx_resp(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_tx_resp(JObj, Props) ->
     Srv = props:get_value('server', Props),
-    gen_server:cast(Srv, {'tx_resp', kz_api:msg_id(JObj), JObj}).
+    JobId = props:get_value('job_id', Props),
+    gen_server:cast(Srv, {'tx_resp', JobId, JObj}).
 
 -spec handle_fax_event(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_fax_event(JObj, Props) ->
     Srv = props:get_value('server', Props),
-    JobId = kz_call_event:authorizing_id(JObj),
+    JobId = props:get_value('job_id', Props),
     Event = kz_call_event:application_event(JObj),
     gen_server:cast(Srv, {'fax_status', Event, JobId, JObj}).
 
@@ -150,7 +151,7 @@ handle_fax_event(JObj, Props) ->
 handle_job_status_query(JObj, Props) ->
     'true' = kapi_fax:query_status_v(JObj),
     Srv = props:get_value('server', Props),
-    JobId = kapi_fax:job_id(JObj),
+    JobId = props:get_value('job_id', Props),
     Queue = kz_api:server_id(JObj),
     MsgId = kz_api:msg_id(JObj),
     gen_server:cast(Srv, {'query_status', JobId, Queue, MsgId, JObj}).
@@ -399,8 +400,9 @@ handle_info(_Info, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_event(kz_json:object(), kz_term:proplist()) -> gen_listener:handle_event_return().
-handle_event(_JObj, _State) ->
-    {'reply', []}.
+handle_event(_JObj,  #state{job_id = JobId}) ->
+    kz_util:put_callid(JobId),
+    {'reply', [{'job_id', JobId}]}.
 
 %%------------------------------------------------------------------------------
 %% @doc This function is called by a `gen_server' when it is about to
