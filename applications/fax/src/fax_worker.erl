@@ -399,8 +399,17 @@ handle_info(_Info, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_event(kz_json:object(), kz_term:proplist()) -> gen_listener:handle_event_return().
-handle_event(_JObj, _State) ->
+handle_event(JObj, _State) ->
+    JobId = find_event_job_id(kz_api:event_name(JObj), JObj),
+    kz_util:put_callid(JobId),
     {'reply', []}.
+
+find_event_job_id(<<"CHANNEL_FAX_STATUS">>, JObj) ->
+    kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>], JObj);
+find_event_job_id(<<"offnet_resp">>, JObj) ->
+    kz_api:msg_id(JObj);
+find_event_job_id(_, JObj) ->
+    kz_api:msg_id(JObj).
 
 %%------------------------------------------------------------------------------
 %% @doc This function is called by a `gen_server' when it is about to
