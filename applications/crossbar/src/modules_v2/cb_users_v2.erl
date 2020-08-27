@@ -478,8 +478,14 @@ validate_request(UserId, Context) ->
     AccountId = cb_context:account_id(Context),
 
     case kzd_users:validate(AccountId, UserId, ReqJObj) of
+        {'true', UserJObj} when is_binary(UserId) ->
+            lager:debug("successfull validated user object update"),
+            %% NOTE: We need to load the current (unmodified) user document
+            %% into the cb_context KVS db_doc because billing uses that to
+            %% determine what changed and charge accordingly
+            cb_context:update_successfully_validated_request(load_user(UserId, Context), UserJObj);
         {'true', UserJObj} ->
-            lager:debug("successfull validated user object"),
+            lager:debug("successfull validated user object create"),
             cb_context:update_successfully_validated_request(Context, UserJObj);
         {'validation_errors', ValidationErrors} ->
             lager:info("validation errors on user"),
