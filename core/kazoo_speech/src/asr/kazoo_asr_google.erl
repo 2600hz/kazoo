@@ -140,4 +140,4 @@ handle_response({'ok', 200, _Headers, Content2}) ->
 handle_response({'ok', _Code, _Hdrs, Content2}) ->
     lager:debug("asr of media failed with code ~p", [_Code]),
     lager:debug("resp: ~s", [Content2]),
-    {'error', 'asr_provider_failure', kz_json:decode(Content2)}.
+    {'error', 'asr_provider_failure', Content2}.
