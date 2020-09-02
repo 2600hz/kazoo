@@ -35,7 +35,6 @@
 -define(ACCOUNTS_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".accounts">>).
 
 -define(AGG_VIEW_FILE, <<"views/accounts.json">>).
--define(AGG_VIEW_SUMMARY, <<"accounts/listing_by_id">>).
 -define(AGG_VIEW_PARENT, <<"accounts/listing_by_parent">>).
 -define(AGG_VIEW_CHILDREN, <<"accounts/listing_by_children">>).
 -define(AGG_VIEW_DESCENDANTS, <<"accounts/listing_by_descendants">>).
@@ -201,7 +200,7 @@ validate_account_path(Context, AccountId, ?DESCENDANTS, ?HTTP_GET) ->
 validate_account_path(Context, AccountId, ?SIBLINGS, ?HTTP_GET) ->
     load_siblings(AccountId, prepare_context('undefined', Context));
 validate_account_path(Context, AccountId, ?PARENTS, ?HTTP_GET) ->
-    load_parents(AccountId, prepare_context('undefined', Context));
+    load_account_tree(AccountId, prepare_context('undefined', Context));
 validate_account_path(Context, AccountId, ?RESELLER, ?HTTP_PUT) ->
     case cb_context:is_superduper_admin(Context) of
         'true' -> load_account(AccountId, prepare_context(AccountId, Context));
@@ -255,11 +254,7 @@ validate_account_path(Context, AccountId, ?MOVE, ?HTTP_POST) ->
             end
     end;
 validate_account_path(Context, AccountId, ?TREE, ?HTTP_GET) ->
-    Context1 = crossbar_doc:load(AccountId, prepare_context('undefined', Context), ?TYPE_CHECK_OPTION(?PVT_TYPE)),
-    case cb_context:resp_status(Context1) of
-        'success' -> load_account_tree(Context1);
-        _Else -> Context1
-    end.
+    load_account_tree(AccountId, Context).
 
 -spec add_pvt_api_key(cb_context:context()) -> cb_context:context().
 add_pvt_api_key(Context) ->
@@ -927,6 +922,18 @@ fix_start_key([_AccountId, [_|_]=Keys]) -> lists:last(Keys);
 fix_start_key([_AccountId, StartKey]) -> StartKey;
 fix_start_key([StartKey|_T]) -> StartKey.
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec load_account_tree(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
+load_account_tree(AccountId, Context) ->
+    Context1 = crossbar_doc:load(AccountId, prepare_context('undefined', Context), ?TYPE_CHECK_OPTION(?PVT_TYPE)),
+    case cb_context:resp_status(Context1) of
+        'success' -> load_account_tree(Context1);
+        _Else -> Context1
+    end.
+
 -spec load_account_tree(cb_context:context()) -> cb_context:context().
 load_account_tree(Context) ->
     Tree = get_authorized_account_tree(Context),
@@ -948,79 +955,12 @@ format_account_tree_results(Context, JObjs) ->
         [kz_json:from_list(
            [{<<"id">>, kz_doc:id(JObj)}
            ,{<<"name">>, kz_json:get_value([<<"doc">>, <<"name">>], JObj)}
+           ,{<<"realm">>, kz_json:get_value([<<"doc">>, <<"realm">>], JObj)}
+           ,{<<"flags">>, kz_json:get_value([<<"doc">>, <<"flags">>], JObj, [])}
            ])
          || JObj <- JObjs
         ],
     cb_context:set_resp_data(Context, RespData).
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec load_parents(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
-load_parents(AccountId, Context) ->
-    Context1 = crossbar_doc:load_view(?AGG_VIEW_SUMMARY
-                                     ,[]
-                                     ,cb_context:set_account_db(Context, ?KZ_ACCOUNTS_DB)
-                                     ),
-    case cb_context:resp_status(Context1) of
-        'success' -> load_parent_tree(AccountId, Context1);
-        _Status -> Context1
-    end.
-
--spec load_parent_tree(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
-load_parent_tree(AccountId, Context) ->
-    RespData = cb_context:resp_data(Context),
-    Tree = extract_tree(AccountId, RespData),
-    Parents = find_accounts_from_tree(Tree, RespData, Context),
-    RespEnv =
-        kz_json:set_value(<<"page_size">>
-                         ,length(Parents)
-                         ,cb_context:resp_envelope(Context)
-                         ),
-    cb_context:setters(Context
-                      ,[{fun cb_context:set_resp_data/2, Parents}
-                       ,{fun cb_context:set_resp_envelope/2, RespEnv}
-                       ]
-                      ).
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec extract_tree(kz_term:ne_binary(), kz_json:objects()) -> kz_term:ne_binaries().
-extract_tree(AccountId, JObjs) ->
-    JObj = kz_json:find_value(<<"id">>, AccountId, JObjs),
-    [_, Tree] = kz_json:get_value(<<"key">>, JObj),
-    lists:delete(AccountId, Tree).
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
-
--spec find_accounts_from_tree(kz_term:ne_binaries(), kz_json:objects(), cb_context:context()) -> kz_json:objects().
-find_accounts_from_tree(Tree, JObjs, Context) ->
-    AuthAccountId = cb_context:auth_account_id(Context),
-    find_accounts_from_tree(lists:reverse(Tree), JObjs, AuthAccountId, []).
-
--spec find_accounts_from_tree(kz_term:ne_binaries(), kz_json:objects(), kz_term:ne_binary(), kz_json:objects()) -> kz_json:objects().
-find_accounts_from_tree([], _, _, Acc) -> Acc;
-find_accounts_from_tree([AuthAccountId|_], JObjs, AuthAccountId, Acc) ->
-    JObj = kz_json:find_value(<<"id">>, AuthAccountId, JObjs),
-    Value = kz_json:get_value(<<"value">>, JObj),
-    [account_from_tree(Value)|Acc];
-find_accounts_from_tree([AccountId|Tree], JObjs, AuthAccountId, Acc) ->
-    JObj = kz_json:find_value(<<"id">>, AccountId, JObjs),
-    Value = kz_json:get_value(<<"value">>, JObj),
-    NewAcc = [account_from_tree(Value)|Acc],
-    find_accounts_from_tree(Tree, JObjs, AuthAccountId, NewAcc).
-
--spec account_from_tree(kz_json:object()) -> kz_json:object().
-account_from_tree(JObj) ->
-    kz_json:from_list([{<<"id">>, kz_doc:id(JObj)}
-                      ,{<<"name">>, kzd_accounts:name(JObj)}
-                      ]).
 
 %%------------------------------------------------------------------------------
 %% @doc Normalizes the results of a view.
