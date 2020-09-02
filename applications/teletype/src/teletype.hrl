@@ -213,7 +213,6 @@
         ,?MACRO_VALUE(<<"error.fax_info">>, <<"error_fax_info">>, <<"Fax Processor Error">>, <<"Fax Processor Error">>)
         ]).
 
-
 -define(DEFAULT_CALL_MACROS
        ,[?MACRO_VALUE(<<"call_id">>, <<"call_id">>, <<"Call ID">>, <<"Call ID of the caller">>)
          | ?CALLER_ID_MACROS
