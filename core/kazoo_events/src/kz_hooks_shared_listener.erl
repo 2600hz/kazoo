@@ -10,7 +10,9 @@
 
 -behaviour(gen_listener).
 
--export([start_link/0]).
+-export([start_link/0
+        ,maybe_add_binding/1
+        ]).
 -export([init/1
         ,handle_call/3
         ,handle_cast/2
@@ -69,6 +71,11 @@ start_link() ->
                            ,[]
                            ).
 
+-spec maybe_add_binding('all' | kz_term:ne_binary()) -> 'ok'.
+maybe_add_binding(EventName) ->
+    Events = gen_listener:call(?MODULE, 'current_events'),
+    maybe_add_binding(EventName, Events).
+
 %%%=============================================================================
 %%% gen_server callbacks
 %%%=============================================================================
@@ -88,6 +95,8 @@ init([]) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
+handle_call('current_events', _From, #state{call_events=Events}=State) ->
+    {'reply', Events, State};
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -176,3 +185,19 @@ code_change(_OldVsn, State, _Extra) ->
 %%%=============================================================================
 %%% Internal functions
 %%%=============================================================================
+maybe_add_binding('all', Events) ->
+    case [E || E <- ?ALL_EVENTS, not lists:member(E, Events)] of
+        [] -> Events;
+        Es ->
+            lager:debug("adding bindings for ~p", [Es]),
+            gen_listener:b_add_binding(?MODULE, ?CALL_BINDING(Es)),
+            Es ++ Events
+    end;
+maybe_add_binding(Event, Events) ->
+    case lists:member(Event, Events) of
+        'true' -> Events;
+        'false' ->
+            lager:debug("adding bindings for ~s", [Event]),
+            gen_listener:b_add_binding(?MODULE, ?CALL_BINDING([Event])),
+            [Event | Events]
+    end.
