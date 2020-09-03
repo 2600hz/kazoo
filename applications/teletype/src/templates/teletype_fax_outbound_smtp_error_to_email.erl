@@ -29,6 +29,7 @@
           ,?MACRO_VALUE(<<"faxbox.id">>, <<"faxbox_id">>, <<"FaxBox ID">>, <<"FaxBox ID">>)
           ,?MACRO_VALUE(<<"faxbox.name">>, <<"faxbox_name">>, <<"FaxBox Name">>, <<"FaxBox Name">>)
           ]
+          ++ ?FAX_OUTBOUND_MACROS
           ++ ?USER_MACROS
           ++ ?COMMON_TEMPLATE_MACROS
          )

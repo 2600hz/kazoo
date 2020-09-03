@@ -207,6 +207,10 @@
         ,?MACRO_VALUE(<<"fax.remote_station_id">>, <<"fax_remote_station_id">>, <<"Fax Remote Station ID">>, <<"Fax Remote Station ID">>)
         ]).
 
+-define(FAX_OUTBOUND_MACROS
+       ,[?MACRO_VALUE(<<"fax.subject">>, <<"subject">>, <<"Fax Subject">>, <<"Fax Subject">>)
+        ]).
+
 -define(FAX_ERROR_MACROS
        ,[?MACRO_VALUE(<<"fax.info">>, <<"fax_info">>, <<"Fax Info">>, <<"Fax Info">>)
         ,?MACRO_VALUE(<<"error.call_info">>, <<"error_call_info">>, <<"Fax Call Error">>, <<"Fax Call Error">>)

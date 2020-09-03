@@ -8,6 +8,7 @@ You sent a new fax document to {{callee_id.name_number}}{% if fax.box_name %} fr
 === Fax Details ===
 
 	Sender: {{caller_id.name_number}}
+	Subject: {{fax.subject}}
 	Callee: {{to.user}} (originally dialed number)
 	Received: {{date_called.local|date:"l, F j, Y \\a\\t H:i"}}{% if fax.total_pages %}
 	Total Pages: {{fax.total_pages}}{% endif %}{% if fax.media %}

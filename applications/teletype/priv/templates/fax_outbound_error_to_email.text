@@ -10,6 +10,7 @@ Here are some more details on what went wrong during transmission.
 === Sending Fax Failure Details ===
 
     Sender: {% if caller_id.name_number or fax.remote_station_id %}{% firstof caller_id.name_number fax.remote_station_id %}{% endif %}
+    Subject: {{fax.subject}}
     Callee: {{to.user}} (originally dialed number)
     Sent Date: {{date_called.local|date:"l, F j, Y \\a\\t H:i"}}
     Fax ID: {{fax.id}}

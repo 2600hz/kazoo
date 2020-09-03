@@ -6416,6 +6416,10 @@
                     "minimum": 0,
                     "type": "integer"
                 },
+                "subject": {
+                    "description": "The subject header in an email to fax message",
+                    "type": "string"
+                },
                 "to_name": {
                     "description": "The recipient name for the fax",
                     "type": "string"

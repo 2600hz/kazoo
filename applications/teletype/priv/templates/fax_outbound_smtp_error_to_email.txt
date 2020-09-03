@@ -10,6 +10,7 @@ Here are some more details on what went wrong during transmission.
 === Email to Fax Failure Details ===
 
     Sender: {{fax.from}}
+    Subject: {{fax.subject}}
     Destination Email Address: {{fax.to}}
     Original Destination Fax Number: {% firstof {{fax.original_number}} "Unknown" %} (originally dialed number)
     Destination Fax Number: {% firstof {{fax.number}} "Unknown" %}

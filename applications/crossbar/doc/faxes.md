@@ -37,6 +37,7 @@ Key | Description | Type | Default | Required | Support Level
 `notifications.sms` | SMS notifications | `object()` |   | `false` |  
 `notifications` | Status notifications | `object()` |   | `false` |  
 `retries` | The number of times to retry | `integer()` | `1` | `false` |  
+`subject` | The subject header in an email to fax message | `string()` |   | `false` |  
 `to_name` | The recipient name for the fax | `string()` |   | `false` |  
 `to_number` | The recipient number for the fax | `string()` |   | `true` |  
 `tx_result.error_message` | A description of any error that occurred | `string()` | "" | `false` |  

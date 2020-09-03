@@ -19,6 +19,7 @@
         ,to_name/1, to_name/2
         ,identity_number/1, identity_number/2
         ,identity_name/1, identity_name/2
+        ,subject/1, subject/2
         ,folder/1, folder/2
         ,document/1, document/2
         ,document_url/1
@@ -50,6 +51,7 @@
 -define(KEY_TX_RESULT, <<"tx_result">>).
 -define(KEY_PAGES, <<"pvt_pages">>).
 -define(KEY_SIZE, <<"pvt_size">>).
+-define(KEY_SUBJECT, <<"subject">>).
 -define(KEY_FROM_NAME, <<"from_name">>).
 -define(KEY_FROM_NUMBER, <<"from_number">>).
 -define(KEY_TO_NAME, <<"to_name">>).
@@ -217,6 +219,14 @@ size(FaxDoc) ->
 -spec size(doc(), Default) -> integer() | Default.
 size(FaxDoc, Default) ->
     kz_json:get_integer_value(?KEY_SIZE, FaxDoc, Default).
+
+-spec subject(doc()) -> kz_term:api_binary().
+subject(FaxDoc) ->
+    subject(FaxDoc, 'undefined').
+
+-spec subject(doc(), Default) -> kz_term:api_binary() | Default.
+subject(FaxDoc, Default) ->
+    kz_json:get_value(?KEY_SUBJECT, FaxDoc, Default).
 
 -spec pages(doc()) -> kz_term:api_integer().
 pages(FaxDoc) ->

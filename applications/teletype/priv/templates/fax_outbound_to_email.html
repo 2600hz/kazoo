@@ -53,6 +53,7 @@
                 <tr>
                     <td bgcolor="#ffffff" style="padding:20px;font-family:'Open Sans',sans-serif;color:#555555;">
                         <p style="font-family:'Open Sans', sans-serif;color:#555555;line-height:20px;margin:0 25px 10px;padding:0;"><b>Sender:</b>&nbsp;{{caller_id.name_number}}</p>
+                        <p style="font-family:'Open Sans', sans-serif;color:#555555;line-height:20px;margin:0 25px 10px;padding:0;"><b>Subject:</b>&nbsp;{{fax.subject}}</p>
                         <p style="font-family:'Open Sans', sans-serif;color:#555555;line-height:20px;margin:10px 25px;padding:0;"><b>Callee:</b>&nbsp;{{to.user}} (originally dialed number)</p>
                         <p style="font-family:'Open Sans', sans-serif;color:#555555;line-height:20px;margin:10px 25px;padding:0;"><b>Sent:</b>&nbsp;{{date_called.local|date:"l, F j, Y \\a\\t H:i"}}</p>{% if fax.total_pages %}
                         <p style="font-family:'Open Sans', sans-serif;color:#555555;line-height:20px;margin:10px 25px;padding:0;"><b>Total Pages:</b>&nbsp;{{fax.total_pages}}</p>{% endif %}{% if fax.media %}

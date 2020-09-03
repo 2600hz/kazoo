@@ -365,7 +365,7 @@ faxbox_log(#state{account_id=AccountId}=State) ->
               ]
              )
            ),
-    kazoo_modb:save_doc(AccountId, Doc),
+    _ = kazoo_modb:save_doc(AccountId, Doc),
     maybe_system_report(State).
 
 -spec error_doc() -> kz_term:ne_binary().
@@ -740,7 +740,8 @@ add_fax_document(#state{from=From
 %%------------------------------------------------------------------------------
 -spec process_message(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), kz_term:proplist(), binary() | mimemail:mimetuple(), state()) ->
           {'ok', state()}.
-process_message(<<"multipart">>, Multipart, _Headers, _Parameters, Body, #state{errors=Errors}=State) ->
+process_message(<<"multipart">>, Multipart, Headers, _Parameters, Body, #state{errors=Errors}=State) ->
+    NewState = maybe_get_subject(Headers, State),
     lager:debug("processing multipart/~s", [Multipart]),
     case Body of
         {Type, SubType, _HeadersPart, ParametersPart, BodyPart} ->
@@ -748,20 +749,31 @@ process_message(<<"multipart">>, Multipart, _Headers, _Parameters, Body, #state{
             maybe_process_part(<<Type/binary, "/", SubType/binary>>
                               ,ParametersPart
                               ,BodyPart
-                              ,State
+                              ,NewState
                               );
         [{Type, SubType, _HeadersPart, _ParametersPart, _BodyParts}|_OtherParts]=Parts ->
             lager:debug("processing multiple parts, first is ~s/~s", [Type, SubType]),
-            process_parts(Parts, State);
+            process_parts(Parts, NewState);
         A ->
             lager:debug("missed processing ~p", [A]),
-            {'ok', State#state{errors=[<<"invalid body">> | Errors]
-                              ,has_smtp_errors='true'
-                              }}
+            {'ok', NewState#state{errors=[<<"invalid body">> | Errors]
+                                 ,has_smtp_errors='true'
+                                 }}
     end;
 process_message(_Type, _SubType, _Headers, _Parameters, _Body, State) ->
     lager:debug("skipping ~s/~s",[_Type, _SubType]),
     {'ok', State}.
+
+-spec maybe_get_subject(kz_term:proplist(), state()) -> state().
+maybe_get_subject(Headers, #state{doc=Doc}=State) ->
+    case props:get_binary_value(<<"Subject">>, Headers) of
+        'undefined' ->
+            lager:debug("subject line not found"),
+            State;
+        Subject ->
+            lager:debug("found subject line ~p", [Subject]),
+            State#state{doc=kz_json:set_value(<<"subject">>, Subject, Doc)}
+    end.
 
 -spec process_parts([mimemail:mimetuple()], state()) -> {'ok', state()}.
 process_parts([], #state{filename='undefined'
@@ -987,4 +999,3 @@ maybe_add_faxbox_info(#state{faxbox=FaxBoxDoc}) ->
     ,{<<"FaxBox-Name">>, kzd_faxbox:name(FaxBoxDoc)}
     ,{<<"FaxBox-Timezone">>, kzd_fax_box:timezone(FaxBoxDoc)}
     ].
-
