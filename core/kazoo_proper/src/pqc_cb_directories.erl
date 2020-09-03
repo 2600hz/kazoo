@@ -60,6 +60,20 @@ seq() ->
     Model = initial_state(),
     API = pqc_kazoo_model:api(Model),
 
+    OldCost = kapps_config:get(<<"crossbar">>, <<"token_costs">>),
+    _ = kapps_config:set_default(<<"crossbar">>, <<"token_costs">>, 0),
+
+    Result = try seq(API)
+             catch E:R -> {E, R}
+             after
+                 kapps_config:set_default(<<"crossbar">>, <<"token_costs">>, OldCost)
+             end,
+    return_result(Result).
+
+return_result({E, R}) when is_function(E, 1) -> E(R);
+return_result(Result) -> Result.
+
+seq(API) ->
     AccountResp = pqc_cb_accounts:create_account(API, hd(?ACCOUNT_NAMES)),
     lager:info("created account: ~s", [AccountResp]),
 
