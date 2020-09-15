@@ -36,29 +36,19 @@ send_email(_, 'undefined', _) -> lager:debug("no email to send to");
 send_email(_, <<>>, _) -> lager:debug("empty email to send to");
 send_email(From, To, Email) ->
     Encoded = mimemail:encode(Email),
-    Relay = kz_term:to_list(kapps_config:get_ne_binary(<<"smtp_client">>, <<"relay">>, <<"localhost">>)),
-    Username = kz_term:to_list(kapps_config:get_binary(<<"smtp_client">>, <<"username">>, <<>>)),
-    Password = kz_term:to_list(kapps_config:get_binary(<<"smtp_client">>, <<"password">>, <<>>)),
-    Auth = kz_term:to_list(kapps_config:get_ne_binary(<<"smtp_client">>, <<"auth">>, <<"never">>)),
-    Port = kapps_config:get_integer(<<"smtp_client">>, <<"port">>, 25),
-
-    lager:debug("sending email to ~s from ~s via ~s", [To, From, Relay]),
     ReqId = get('callid'),
-
     Self = self(),
+    Options = smtp_options(),
 
-    gen_smtp_client:send({From, [To], Encoded}
-                        ,[{'relay', Relay}
-                         ,{'username', Username}
-                         ,{'password', Password}
-                         ,{'port', Port}
-                         ,{'auth', Auth}
-                         ]
-                        ,fun(X) ->
-                                 kz_util:put_callid(ReqId),
-                                 lager:debug("email relay responded: ~p, send to ~p", [X, Self]),
-                                 Self ! {'relay_response', X}
-                         end),
+    lager:debug("sending email to ~s from ~s with options ~p", [To, From, Options]),
+
+    _ = gen_smtp_client:send({From, [To], Encoded}
+                            ,Options
+                            ,fun(X) ->
+                                     kz_util:put_callid(ReqId),
+                                     lager:debug("email relay responded: ~p, send to ~p", [X, Self]),
+                                     Self ! {'relay_response', X}
+                             end),
     %% The callback will receive either `{ok, Receipt}' where Receipt is the SMTP server's receipt
     %% identifier,  `{error, Type, Message}' or `{exit, ExitReason}', as the single argument.
     receive
@@ -101,6 +91,40 @@ maybe_send_update([LastResp|_]=Responses, RespQ, MsgId) ->
             send_update(RespQ, MsgId, <<"failed">>, Reason)
     end.
 
+-spec smtp_options() -> kz_term:proplist().
+smtp_options() ->
+    Relay = kapps_config:get_string(<<"smtp_client">>, <<"relay">>, "localhost"),
+    Username = kapps_config:get_string(<<"smtp_client">>, <<"username">>, ""),
+    Password = kapps_config:get_string(<<"smtp_client">>, <<"password">>, ""),
+    Auth = kapps_config:get_binary(<<"smtp_client">>, <<"auth">>, <<"never">>),
+    Port = kapps_config:get_integer(<<"smtp_client">>, <<"port">>, 25),
+    Retries = kapps_config:get_integer(<<"smtp_client">>, <<"retries">>, 1),
+    NoMxLookups = kapps_config:get_is_true(<<"smtp_client">>, <<"no_mx_lookups">>, 'true'),
+    TLS = kapps_config:get_ne_binary(<<"smtp_client">>, <<"tls">>),
+    SSL = kapps_config:get_is_true(<<"smtp_client">>, <<"use_ssl">>, 'false'),
+
+    props:filter_empty(
+      [{'relay', Relay}
+      ,{'username', Username}
+      ,{'password', Password}
+      ,{'port', Port}
+      ,{'auth', smtp_auth_option(Auth)}
+      ,{'retries', Retries}
+      ,{'no_mx_lookups', NoMxLookups}
+      ,{'tls', smtp_tls_option(TLS)}
+      ,{'ssl', SSL}
+      ]).
+
+-spec smtp_auth_option(kz_term:ne_binary()) -> atom().
+smtp_auth_option(<<"if_available">>) ->
+    'if_available';
+smtp_auth_option(<<"always">>) -> 'always';
+smtp_auth_option(_) -> 'never'.
+
+-spec smtp_tls_option(kz_term:ne_binary()) -> atom().
+smtp_tls_option(<<"if_available">>) -> 'if_available';
+smtp_tls_option(<<"always">>) -> 'always';
+smtp_tls_option(_) -> 'never'.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -149,7 +173,8 @@ compile_default_subject_template(TemplateModule, Category) ->
     compile_default_template(TemplateModule, Category, 'default_subject_template').
 
 -spec compile_default_template(atom(), kz_term:ne_binary(), atom()) -> {'ok', atom()}.
-compile_default_template(TemplateModule, Category, Key) ->
+compile_default_template(TemplateModule, Category, KeyAtom) ->
+    Key = kz_term:to_binary(KeyAtom),
     Template = case kapps_config:get_ne_binary(Category, Key) of
                    'undefined' -> get_default_template(Category, Key);
                    Else -> Else
