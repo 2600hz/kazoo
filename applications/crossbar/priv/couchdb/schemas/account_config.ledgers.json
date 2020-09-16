@@ -1,6 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "account_config.ledgers",
+    "additionalProperties": false,
     "description": "Schema for ledgers account_config",
     "properties": {
         "registered_ledgers": {

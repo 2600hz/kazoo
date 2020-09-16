@@ -157,9 +157,6 @@ validate_v4_test_() ->
 get_schema() ->
     kz_json:decode(<<"{\"properties\":{\"caller_id\":{\"description\":\"The default caller ID parameters\",\"type\":\"object\",\"properties\":{ \"internal\":{\"description\":\"The default caller ID used when dialing internal extensions\",\"type\":\"object\",\"properties\":{\"name\":{\"name\":\"Called ID Internal Name\",\"description\":\"The caller id name for the object type\",\"type\":\"string\",\"maxLength\":30}}},\"external\":{\"description\":\"The default caller ID used when dialing external numbers\",\"type\":\"object\",\"properties\":{\"name\":{\"name\":\"Caller ID External Name\",\"description\":\"The caller id name for the object type\",\"type\":\"string\",\"maxLength\":15}}},\"emergency\":{\"description\":\"The caller ID used when external, internal, or emergency is not defined\",\"type\":\"object\",\"properties\":{\"name\":{\"name\":\"Caller ID Emergency Name\",\"description\":\"The caller id name for the object type\",\"type\":\"string\",\"maxLength\":15,\"default\":\"emer_default\"}}}},\"default\":{}}}}">>).
 
-get_schema_sms() ->
-    kz_json:decode(<<"{\"_id\":\"system_config.sms\",\"_rev\":\"3-0861f3d8db3f26883e3a69274aeb94bd\",\"$schema\":\"http://json-schema.org/draft-04/schema#\",\"description\":\"Schema for sms system_config\",\"properties\":{\"outbound\":{\"properties\":{\"options\":{\"properties\":{\"default\":{\"delivery_mode\":2,\"mandatory\":true},\"description\":\"sms options\",\"type\":\"object\"}}}}},\"required\":[\"outbound\"],\"type\":\"object\",\"id\":\"system_config.sms\"}">>).
-
 default_object_test() ->
     Schema = get_schema(),
     Default = kz_json_schema:default_object(Schema),
@@ -167,16 +164,6 @@ default_object_test() ->
                   ,Default
                   )
     ].
-
-flatten_sms_schema_test() ->
-    SMSSchema = get_schema_sms(),
-    Flat = kz_json_schema:flatten(SMSSchema),
-
-    JObj = kz_json:from_list_recursive([{<<"outbound">>, [{<<"options">>, [{<<"default">>, [{<<"delivery_mode">>,2},{<<"mandatory">>,true}]}]}]}
-                                       ,{[<<"outbound">>,<<"options">>,<<"description">>], <<"sms options">>}
-                                       ,{[<<"outbound">>,<<"options">>,<<"type">>],<<"object">>}
-                                       ]),
-    [?_assertEqual(Flat, JObj)].
 
 did_duplication_test() ->
     SrvA = kz_json:from_list([{<<"DIDs">>,kz_json:new()}
@@ -223,4 +210,111 @@ validate_regexp_test_() ->
     ,?_assertMatch({ok, _}, kz_json_schema:validate(SchemaJObj, JObj2))
     ,?_assertMatch({ok, _}, kz_json_schema:validate(SchemaJObj, JObj3))
     ,?_assertMatch({error,[{data_invalid,_, {external_error, Err}, _,[<<"item">>]}]} ,kz_json_schema:validate(SchemaJObj, JObj4))
+    ].
+
+filter_jobj_by_schema_test() ->
+    SchemaWithoutAdditionalPropertiesFalse =
+        kz_json:decode(
+          "{
+                \"$schema\": \"http://json-schema.org/draft-04/schema#\",
+                \"description\": \"Filter JObj test schema\",
+                \"properties\": {
+                    \"property1\": {
+                        \"description\": \"Property 1\",
+                        \"type\": \"string\"
+                    },\"property2\": {
+                        \"additionalProperties\": {
+                            \"properties\": {
+                                \"additionalProperty1\": {
+                                    \"description\": \"Additional Property 1\",
+                                    \"type\": \"string\"
+                                }
+                            },
+                            \"required\": [
+                                \"additionalProperty1\"
+                            ],
+                            \"type\": \"object\"
+                        },
+                        \"description\": \"Property 2\",
+                        \"type\": \"object\"
+                    },
+                    \"property3\": {
+                        \"description\": \"Property 3\",
+                        \"type\": \"array\"
+                    }
+                },
+                \"type\": \"object\"
+            }"
+        ),
+
+    SchemaWithAdditionalPropertiesFalse =
+        kz_json:decode(
+            "{
+                \"$schema\": \"http://json-schema.org/draft-04/schema#\",
+                \"description\": \"Filter JObj test schema\",
+                \"additionalProperties\": false,
+                \"properties\": {
+                    \"property1\": {
+                        \"description\": \"Property 1\",
+                        \"type\": \"string\"
+                    },
+                    \"property2\": {
+                        \"additionalProperties\": {
+                            \"additionalProperties\": false,
+                            \"properties\": {
+                                \"additionalProperty1\": {
+                                    \"description\": \"Additional Property 1\",
+                                    \"type\": \"string\"
+                                }
+                            },
+                            \"required\": [
+                                \"additionalProperty1\"
+                            ],
+                            \"type\": \"object\"
+                        },
+                        \"description\": \"Property 2\",
+                        \"type\": \"object\"
+                    },
+                    \"property3\": {
+                        \"description\": \"Property 3\",
+                        \"type\": \"array\"
+                    }
+                },
+                \"type\": \"object\"
+            }"
+        ),
+
+    JObj = kz_json:from_list_recursive([{<<"property1">>, <<"property1Value">>}
+                                       ,{<<"property2">>, [{<<"id12345678">>, [{<<"additionalProperty1">>, <<"additionalProperty1Value">>}
+                                                                              ,{<<"additionalProperty2">>, <<"additionalProperty2Value">>}
+                                                                              ]}
+                                                          ,{<<"id87654321">>, [{<<"additionalProperty1">>, <<"additionalProperty1Value">>}]}
+                                                          ,{<<"id_abcdefg">>, [{<<"additionalProperty2">>, <<"additionalProperty2Value">>}]}
+                                                          ]}
+                                       ,{<<"property3">>, <<"property3Value">>}
+                                       ,{<<"property4">>, <<"property4Value">>}
+                                       ]),
+
+    OutputJObjWithoutAdditionalPropertiesFalse =
+        kz_json:from_list_recursive([{<<"property1">>, <<"property1Value">>}
+                                    ,{<<"property2">>, [{<<"id12345678">>, [{<<"additionalProperty1">>, <<"additionalProperty1Value">>}
+                                                                           ,{<<"additionalProperty2">>, <<"additionalProperty2Value">>}
+                                                                           ]}
+                                                       ,{<<"id87654321">>, [{<<"additionalProperty1">>, <<"additionalProperty1Value">>}]}
+                                                       ]}
+                                    ,{<<"property4">>, <<"property4Value">>}
+                                    ]),
+
+    OutputJObjWithAdditionalPropertiesFalse =
+        kz_json:from_list_recursive([{<<"property1">>, <<"property1Value">>}
+                                    ,{<<"property2">>, [{<<"id12345678">>, [{<<"additionalProperty1">>, <<"additionalProperty1Value">>}]}
+                                                       ,{<<"id87654321">>, [{<<"additionalProperty1">>, <<"additionalProperty1Value">>}]}
+                                                       ]}
+                                    ]),
+
+    RespJObjWithoutAdditionalPropertiesFalse = kz_json_schema:filter(JObj, SchemaWithoutAdditionalPropertiesFalse),
+    RespJObjWithAdditionalPropertiesFalse = kz_json_schema:filter(JObj, SchemaWithAdditionalPropertiesFalse),
+
+    [?_assert(kz_json:are_equal(OutputJObjWithoutAdditionalPropertiesFalse, RespJObjWithoutAdditionalPropertiesFalse))
+    ,?_assert(kz_json:are_equal(OutputJObjWithAdditionalPropertiesFalse, RespJObjWithAdditionalPropertiesFalse))
     ].

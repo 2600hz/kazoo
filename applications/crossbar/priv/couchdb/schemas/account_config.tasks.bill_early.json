@@ -1,6 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "account_config.tasks.bill_early",
+    "additionalProperties": false,
     "description": "Schema for tasks.bill_early account_config",
     "properties": {
         "bill_early_enabled": {

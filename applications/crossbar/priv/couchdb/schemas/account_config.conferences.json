@@ -1,6 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "account_config.conferences",
+    "additionalProperties": false,
     "description": "Schema for conferences account_config",
     "properties": {
         "controls": {
@@ -8,6 +9,7 @@
                 "default": {
                     "description": "conferences controls default",
                     "items": {
+                        "additionalProperties": false,
                         "properties": {
                             "action": {
                                 "description": "what action to assign to the star-code",
@@ -25,6 +27,7 @@
                 "page": {
                     "description": "conferences controls page",
                     "items": {
+                        "additionalProperties": false,
                         "properties": {
                             "action": {
                                 "description": "what action to assign to the star-code",

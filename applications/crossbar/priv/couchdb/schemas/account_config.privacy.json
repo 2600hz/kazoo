@@ -1,6 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "account_config.privacy",
+    "additionalProperties": false,
     "description": "Schema for privacy account_config",
     "properties": {
         "block_anonymous_caller_id": {

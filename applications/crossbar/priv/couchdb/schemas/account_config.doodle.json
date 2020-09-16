@@ -1,6 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "account_config.doodle",
+    "additionalProperties": false,
     "description": "Schema for doodle account_config",
     "properties": {
         "api_preserve_caller_id": {
