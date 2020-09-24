@@ -15,6 +15,7 @@
 -export([handle_tx_resp/2
         ,handle_fax_event/2
         ,handle_job_status_query/2
+        ,maybe_move_doc/1
         ]).
 -export([init/1
         ,handle_call/3
@@ -677,6 +678,12 @@ maybe_notify(JObj, Resp, <<"failed">>) ->
     kapps_notify_publisher:cast(Message, fun kapi_notifications:publish_fax_outbound_error/1);
 maybe_notify(_JObj, _Resp, Status) ->
     lager:debug("notify status ~p not handled", [Status]).
+
+-spec maybe_move_doc(kz_json:object()) ->
+          {'ok', kz_json:object()} |
+          kz_datamgr:data_error().
+maybe_move_doc(JObj) ->
+    maybe_move_doc(JObj, kzd_fax:job_status(JObj)).
 
 -spec maybe_move_doc(kz_json:object(), kz_term:ne_binary()) ->
           {'ok', kz_json:object()} |
