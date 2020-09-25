@@ -235,11 +235,14 @@ matching_rate(Rate, <<"routes">>, RateReq) ->
              );
 
 matching_rate(Rate, <<"caller_id_numbers">>, RateReq) ->
-    FromDID = kapi_rate:from_did(RateReq),
-    E164 = knm_converters:normalize(FromDID),
-    lists:any(fun(Regex) -> re:run(E164, Regex) =/= 'nomatch' end
+    case kapi_rate:from_did(RateReq) of
+        'undefined' -> true;
+    FromDID ->
+        E164 = knm_converters:normalize(FromDID),
+        lists:any(fun(Regex) -> re:run(E164, Regex) =/= 'nomatch' end
              ,kzd_rates:caller_id_numbers(Rate, [<<".">>])
-             );
+             )
+    end;
 
 matching_rate(Rate, <<"ratedeck_id">>, RateReq) ->
     AccountId = kapi_rate:account_id(RateReq),
