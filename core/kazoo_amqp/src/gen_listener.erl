@@ -1212,7 +1212,9 @@ remove_binding(Binding, Props, Q) ->
         'error':'undef' ->
             erlang:error({'api_module_undefined', Wapi});
         'exit':{{'infrastructure_died', _Reason}, _Crash} ->
-            lager:info("AMQP disappeared: ~p", [_Reason])
+            lager:info("AMQP disappeared: ~p", [_Reason]);
+        'exit':{'shutdown', _Reason} ->
+            lager:info("failed to unbind: shutdown of ~p", [_Reason])
     end.
 
 -spec create_binding(kz_term:ne_binary(), kz_term:proplist(), kz_term:ne_binary()) -> any().
