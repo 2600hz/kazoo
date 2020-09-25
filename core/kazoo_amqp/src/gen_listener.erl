@@ -1210,7 +1210,9 @@ remove_binding(Binding, Props, Q) ->
     try (kz_term:to_atom(Wapi, 'true')):unbind_q(Q, Props)
     catch
         'error':'undef' ->
-            erlang:error({'api_module_undefined', Wapi})
+            erlang:error({'api_module_undefined', Wapi});
+        'exit':{{'infrastructure_died', _Reason}, _Crash} ->
+            lager:info("AMQP disappeared: ~p", [_Reason])
     end.
 
 -spec create_binding(kz_term:ne_binary(), kz_term:proplist(), kz_term:ne_binary()) -> any().
@@ -1342,11 +1344,8 @@ handle_rm_binding(Binding, Props, #state{queue=Q
                                         ,bindings=Bs
                                         }=State) ->
     KeepBs = [BP || BP <- Bs,
-                    maybe_remove_binding(BP
-                                        ,kz_term:to_binary(Binding)
-                                        ,Props
-                                        ,Q
-                                        )],
+                    maybe_remove_binding(BP, kz_term:to_binary(Binding), Props, Q)
+             ],
     maybe_remove_federated_binding(Binding, Props, State),
     State#state{bindings=KeepBs}.
 
