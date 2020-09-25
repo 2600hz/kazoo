@@ -194,7 +194,7 @@ seq_amqp_disconnect() ->
     cleanup(API),
     lager:info("FINISHED AMQP DISCONNECT").
 
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc Test that bindings remain after subscriber unbind
 %%
 
@@ -222,7 +222,7 @@ seq_amqp_disconnect() ->
 %% AccountId allowed for that subscriber.
 
 %% @end
-%%-----------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec seq_count_bindings() -> 'ok'.
 seq_count_bindings() ->
     Model = initial_state(),
