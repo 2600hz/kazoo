@@ -235,11 +235,7 @@ matching_rate(Rate, <<"routes">>, RateReq) ->
              );
 
 matching_rate(Rate, <<"caller_id_numbers">>, RateReq) ->
-    FromDID = kapi_rate:from_did(RateReq),
-    E164 = knm_converters:normalize(FromDID),
-    lists:any(fun(Regex) -> re:run(E164, Regex) =/= 'nomatch' end
-             ,kzd_rates:caller_id_numbers(Rate, [<<".">>])
-             );
+    matching_rate_on_caller_id(Rate, kapi_rate:from_did(RateReq));
 
 matching_rate(Rate, <<"ratedeck_id">>, RateReq) ->
     AccountId = kapi_rate:account_id(RateReq),
@@ -257,6 +253,13 @@ matching_rate(Rate, <<"version">>, _RateReq) ->
     kzd_rates:rate_version(Rate) =:= hotornot_config:rate_version();
 
 matching_rate(_Rate, _FilterType, _RateReq) -> 'false'.
+
+matching_rate_on_caller_id(_Rate, 'undefined') -> 'true';
+matching_rate_on_caller_id(Rate, FromDID) ->
+    E164 = knm_converters:normalize(FromDID),
+    lists:any(fun(Regex) -> re:run(E164, Regex) =/= 'nomatch' end
+             ,kzd_rates:caller_id_numbers(Rate, [<<".">>])
+             ).
 
 %% Return true if RateA has lower weight than RateB
 -spec sort_rate_by_weight(kzd_rates:doc(), kzd_rates:doc()) -> boolean().
