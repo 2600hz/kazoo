@@ -308,23 +308,29 @@ detect_ip_is_bindable({Family, IPAdress}) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec to_cidr(kz_term:ne_binary()) -> kz_term:ne_binary().
-to_cidr(IP) -> to_cidr(IP, <<"32">>).
+to_cidr(IP) ->
+    {Family, _} = detect_ip_family(IP),
+    case Family of
+        'inet' -> to_cidr(Family, IP, 32);
+        'inet6' -> to_cidr(Family, IP, 128)
+    end.
 
 -spec to_cidr(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
-to_cidr(IP, Prefix) when not is_binary(IP) ->
-    to_cidr(kz_term:to_binary(IP), Prefix);
-to_cidr(IP, Prefix) when not is_binary(Prefix) ->
-    to_cidr(IP, kz_term:to_binary(Prefix));
 to_cidr(IP, Prefix) ->
-    case is_ipv4(IP)
-        andalso kz_term:to_integer(Prefix) =< 32
-    of
-        'true' ->
-            lager:debug("adjusting ip from ~s to ~s/~s~n", [IP, IP, Prefix]),
-            <<IP/binary, "/", Prefix/binary>>;
-        'false' ->
-            IP
-    end.
+    {Family, _} = detect_ip_family(IP),
+    to_cidr(Family, IP, kz_term:to_integer(Prefix)).
+
+-spec to_cidr(atom(), kz_term:ne_binary(), integer()) -> kz_term:ne_binary().
+to_cidr('inet', IP, Prefix) when Prefix =< 32  ->
+    BinPrefix = kz_term:to_binary(Prefix),
+    lager:debug("adjusting ip from ~s to ~s/~s~n", [IP, IP, BinPrefix]),
+    <<IP/binary, "/", BinPrefix/binary>>;
+to_cidr('inet6', IP, Prefix) when Prefix =< 128  ->
+    BinPrefix = kz_term:to_binary(Prefix),
+    lager:debug("adjusting ip from ~s to ~s/~s~n", [IP, IP, BinPrefix]),
+    <<IP/binary, "/", BinPrefix/binary>>;
+to_cidr(_Family, IP, _Prefix) ->
+    IP.
 
 -spec verify_cidr(kz_term:text(), kz_term:text()) -> boolean().
 verify_cidr(IP, CIDR) when is_binary(IP) ->
