@@ -10,6 +10,7 @@
 -export([req/2, req/3]).
 
 -include("knm.hrl").
+-include("knm_telnyx.hrl").
 
 -define(MOD_CONFIG_CAT, <<(?KNM_CONFIG_CAT)/binary, ".telnyx">>).
 
@@ -41,10 +42,6 @@
 
 -define(DOMAIN, "api.telnyx.com").
 -define(URL(Path), "https://" ?DOMAIN "/origination/" ++ filename:join(Path)).
-
--define(SEARCH_TYPE_NPA, 1).
--define(SEARCH_TYPE_INTERNATIONAL, 2).
--define(SEARCH_TYPE_TOLEFREE, 3).
 
 %%------------------------------------------------------------------------------
 %% @doc Turns +13129677542 into %2B13129677542.

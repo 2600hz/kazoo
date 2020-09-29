@@ -17,6 +17,7 @@
 -export([check_numbers/1]).
 
 -include("knm.hrl").
+-include("knm_telnyx.hrl").
 
 -define(MOD_CONFIG_CAT, <<(?KNM_CONFIG_CAT)/binary, ".telnyx">>).
 
@@ -183,9 +184,9 @@ ugly_hack(Dialcode, Num) ->
     kz_binary:pad(<<Dialcode/binary, Num/binary>>, 9, <<"0">>).
 
 -spec search_kind(kind()) -> integer().
-search_kind('npa') -> 1;
-search_kind('region') -> 2;
-search_kind('tollfree') -> 3.
+search_kind('npa') -> ?SEARCH_TYPE_NPA;
+search_kind('region') -> ?SEARCH_TYPE_INTERNATIONAL;
+search_kind('tollfree') -> ?SEARCH_TYPE_TOLEFREE.
 
 -spec search_prefix(kind(), kz_term:ne_binary(), kz_term:api_ne_binary()) -> kz_json:json_proplist().
 search_prefix('tollfree', NPA, 'undefined') ->
