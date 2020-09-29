@@ -251,14 +251,16 @@ lookup_account_id(JObj) ->
     case kz_call_event:account_id(JObj) of
         'undefined' ->
             Number = get_inbound_destination(JObj),
-            case not kz_term:is_empty(Number)
-                andalso kz_cache:peek_local(?HOOKS_CACHE_NAME, cache_key_number(Number))
-            of
-                'false' -> {'error', 'not_found'};
-                {'ok', _AccountId}=Ok -> Ok;
-                {'error', 'not_found'} -> fetch_account_id(Number)
-            end;
+            lookup_account_id_by_number(Number, kz_term:is_empty(Number));
         Id -> {'ok', Id}
+    end.
+
+-spec lookup_account_id_by_number(kz_term:api_binary(), boolean()) -> {'ok', kz_term:ne_binary()} | {'error', any()}.
+lookup_account_id_by_number(_Number, 'true') -> {'error', 'not_found'};
+lookup_account_id_by_number(Number, 'false') ->
+    case kz_cache:peek_local(?HOOKS_CACHE_NAME, cache_key_number(Number)) of
+        {'ok', _AccountId}=Ok -> Ok;
+        {'error', 'not_found'} -> fetch_account_id(Number)
     end.
 
 -spec fetch_account_id(kz_term:ne_binary()) -> {'ok', kz_term:ne_binary()} | {'error', any()}.
