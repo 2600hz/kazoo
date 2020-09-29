@@ -87,12 +87,9 @@ find_numbers(<<"+",_/binary>>=_InternationalNum, Quantity, Options) ->
 %% Return `undefined' if the NXX value can not be parsed.
 %% @end
 %%------------------------------------------------------------------------------
--spec get_nxx(kz_term:ne_binary()) -> kz_term:ne_binary() | 'undefined'.
-get_nxx(Num) ->
-    case byte_size(Num) >= 2+3+3 of
-        'true' -> binary:part(Num, 2+3, 3);
-        'false' -> 'undefined'
-    end.
+-spec get_nxx(kz_term:ne_binary()) -> kz_term:api_ne_binary().
+get_nxx(<<_PlusOneAreaCode:5/binary, NXX:3/binary, _/binary>>) -> NXX;
+get_nxx(_) -> 'undefined'.
 
 %%------------------------------------------------------------------------------
 %% @doc Acquire a given number from the carrier

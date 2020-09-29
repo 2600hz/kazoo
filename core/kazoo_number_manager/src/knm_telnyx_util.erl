@@ -42,6 +42,10 @@
 -define(DOMAIN, "api.telnyx.com").
 -define(URL(Path), "https://" ?DOMAIN "/origination/" ++ filename:join(Path)).
 
+-define(SEARCH_TYPE_NPA, 1).
+-define(SEARCH_TYPE_INTERNATIONAL, 2).
+-define(SEARCH_TYPE_TOLEFREE, 3).
+
 %%------------------------------------------------------------------------------
 %% @doc Turns +13129677542 into %2B13129677542.
 %% @end
@@ -63,9 +67,9 @@ req(Method, Path) ->
 -spec req(atom(), [nonempty_string()], kz_json:object()) -> kz_json:object().
 req('post', ["number_searches"], JObj) ->
     case kz_json:get_integer_value([<<"search_type">>], JObj) of
-        1 -> rep_fixture("telnyx_npa_search.json");
-        2 -> rep_fixture("telnyx_international_search.json");
-        3 -> rep_fixture("telnyx_tollfree_search.json")
+        ?SEARCH_TYPE_NPA -> rep_fixture("telnyx_npa_search.json");
+        ?SEARCH_TYPE_INTERNATIONAL -> rep_fixture("telnyx_international_search.json");
+        ?SEARCH_TYPE_TOLEFREE -> rep_fixture("telnyx_tollfree_search.json")
     end;
 req('post', ["e911_addresses"], Body) ->
     <<"301 MARINA BLVD">> = kz_json:get_value(<<"line_1">>, Body),
@@ -135,7 +139,7 @@ http_options() ->
 rep({'ok', 200=Code, _Headers, <<"{",_/binary>>=Response}) ->
     ?DEBUG_APPEND("Response:~n~p~n~p~n~s~n", [Code, _Headers, Response]),
 
-    Routines = [fun(JObj) -> maybe_filter_rates(?SHOULD_FILTER_RATES, JObj) end],
+    Routines = [fun maybe_filter_rates/1],
 
     maybe_apply_limit(
       lists:foldl(fun(F, J) -> F(J) end, kz_json:decode(Response), Routines)
@@ -158,9 +162,12 @@ http_code(404) -> 'not_found';
 http_code(Code) when Code >= 500 -> 'server_error';
 http_code(_Code) -> 'empty_response'.
 
--spec maybe_filter_rates(boolean(), kz_json:object()) -> kz_json:object().
-maybe_filter_rates('false', JObj) -> JObj;
-maybe_filter_rates('true', JObj) ->
+-spec maybe_filter_rates(kz_json:object()) -> kz_json:object().
+maybe_filter_rates(JObj) -> maybe_filter_rates(JObj, ?SHOULD_FILTER_RATES).
+
+-spec maybe_filter_rates(kz_json:object(), boolean()) -> kz_json:object().
+maybe_filter_rates(JObj, 'false') -> JObj;
+maybe_filter_rates(JObj, 'true') ->
     UpfrontCost = kapps_config:get_float(?MOD_CONFIG_CAT, <<"upfront_cost">>, 1.0),
     MonthlyRecurringCost = kapps_config:get_float(?MOD_CONFIG_CAT, <<"monthly_recurring_cost">>, 1.0),
     Results = [Result
