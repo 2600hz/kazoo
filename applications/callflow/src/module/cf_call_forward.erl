@@ -22,7 +22,7 @@
 -define(MOD_CONFIG_CAT, <<(?CF_CONFIG_CAT)/binary, ".call_forward">>).
 -define(KEY_LENGTH, 1).
 
--define(MIN_CALLFWD_NUMBER_LENGTH, kapps_config:get_integer(?MOD_CONFIG_CAT, <<"min_callfwd_number_length">>, 3)).
+-define(MIN_CALLFWD_NUMBER_LENGTH, max(kapps_config:get_integer(?MOD_CONFIG_CAT, <<"min_callfwd_number_length">>, 3), 1)).
 -define(MAX_CALLFWD_NUMBER_LENGTH, kapps_config:get_integer(?MOD_CONFIG_CAT, <<"max_callfwd_number_length">>, 20)).
 -define(CALLFWD_NUMBER_TIMEOUT, kapps_config:get_integer(?MOD_CONFIG_CAT, <<"callfwd_number_timeout">>, 8000)).
 
