@@ -15,7 +15,6 @@
 -define(SERVER, ?MODULE).
 
 -define(CHILDREN, [?WORKER('kz_hooks_listener')
-                  ,?WORKER('kz_hooks_shared_listener')
                   ,?CACHE(?HOOKS_CACHE_NAME)
                   ]).
 
