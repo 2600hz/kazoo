@@ -300,7 +300,7 @@ validate-swagger:
 	@$(ROOT)/scripts/validate-swagger.sh
 
 validate-js:
-	@./scripts/validate-js.sh $(find {core,applications}/*/priv/**/* -name *.json)
+	@$(ROOT)/scripts/validate-js.sh $(shell find $(ROOT)/{core,applications}/*/priv/**/* -name *.json)
 
 sdks:
 	@$(ROOT)/scripts/make-swag.sh
