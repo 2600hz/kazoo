@@ -272,7 +272,7 @@ post(Context, AccountId) ->
     case kzd_accounts:save(New) of
         {'ok', SavedAccount} ->
             Context1 = crossbar_doc:handle_datamgr_success(SavedAccount, Context),
-            _NotifyPid = kz_util:spawn(fun notification_util:maybe_notify_account_change/2, [Existing, Context]),
+            _NotifyPid = kz_util:spawn(fun notification_util:maybe_notify_account_change/2, [Existing, Context1]),
             _ProvisionerPid = kz_util:spawn(fun provisioner_util:maybe_update_account/1, [Context1]),
 
             lager:debug("saved account doc, spawned workers for notification in ~p and provisioner in ~p"
