@@ -72,6 +72,10 @@ retry504s(Fun, Cnt) ->
             {'ok', kz_json:decode(Body)};
         {'error', {'bad_response',{204, _Headers, _Body}}} ->
             {'ok', kz_json:new()};
+        {'error', {'bad_response',{502, _Headers, _Body}}} ->
+            kazoo_stats:increment_counter(<<"bigcouch-502-error">>),
+            timer:sleep(100 * (Cnt+1)),
+            retry504s(Fun, Cnt+1);
         {'error', {'bad_response',{_Code, _Headers, _Body}}=Response} ->
             kazoo_stats:increment_counter(<<"bigcouch-other-error">>),
             lager:critical("response code ~b not expected : ~p", [_Code, _Body]),

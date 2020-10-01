@@ -160,6 +160,7 @@ table_def() ->
       ,{<<"memory-ets">>, 0}
       ,{<<"amqp-error">>, 0}
       ,{<<"amqp-request">>, 0}
+      ,{<<"bigcouch-502-error">>, 0}
       ,{<<"bigcouch-504-error">>, 0}
       ,{<<"bigcouch-other-error">>, 0}
       ,{<<"bigcouch-request">>, 0}
