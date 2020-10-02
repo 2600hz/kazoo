@@ -9,6 +9,7 @@ BASE_BRANCH := $(shell cat $(ROOT)/.base_branch)
 
 CHANGED ?= $(shell git --no-pager diff --name-only HEAD $(BASE_BRANCH) -- applications core scripts)
 CHANGED_SWAGGER := $(shell git --no-pager diff --name-only HEAD $(BASE_BRANCH) -- applications/crossbar/priv/api/swagger.json)
+CHANGED_JSON=$(filter %.json,$(CHANGED))
 
 # You can override this when calling make, e.g. make JOBS=1
 # to prevent parallel builds, or make JOBS="8".
@@ -300,7 +301,7 @@ validate-swagger:
 	@$(ROOT)/scripts/validate-swagger.sh
 
 validate-js:
-	@$(ROOT)/scripts/validate-js.sh $(shell find $(ROOT)/{core,applications}/*/priv/**/* -name *.json)
+	@$(ROOT)/scripts/validate-js.sh $(CHANGED_JS)
 
 sdks:
 	@$(ROOT)/scripts/make-swag.sh
