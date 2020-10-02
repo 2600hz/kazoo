@@ -185,13 +185,13 @@ validate_request(CallflowId, Context) ->
             lager:debug("successfully validated callflow object"),
             cb_context:update_successfully_validated_request(Context, CallflowJObj);
         {'validation_errors', ValidationErrors} ->
-            lager:error("validation errors on callflow"),
+            lager:warning("validation errors on callflow"),
             cb_context:add_doc_validation_errors(Context, ValidationErrors);
         {'system_error', Error} when is_atom(Error) ->
-            lager:error("system error validating callflow: ~p", [Error]),
+            lager:warning("system error validating callflow: ~p", [Error]),
             cb_context:add_system_error(Error, Context);
         {'system_error', {Error, Message}} ->
-            lager:error("system error validating callflow: ~p, ~p", [Error, Message]),
+            lager:warning("system error validating callflow: ~p, ~p", [Error, Message]),
             cb_context:add_system_error(Error, Message, Context)
     end.
 
