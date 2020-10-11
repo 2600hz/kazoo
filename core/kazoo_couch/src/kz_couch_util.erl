@@ -52,6 +52,10 @@ retry504s(_Fun, 3) ->
 retry504s(Fun, Cnt) ->
     kazoo_stats:increment_counter(<<"bigcouch-request">>),
     try Fun() of
+        {'error', {'http_error',502,_}} ->
+            kazoo_stats:increment_counter(<<"bigcouch-502-error">>),
+            timer:sleep(100 * (Cnt+1)),
+            retry504s(Fun, Cnt+1);
         {'error', {'ok', 504, _, _}} ->
             kazoo_stats:increment_counter(<<"bigcouch-504-error">>),
             timer:sleep(100 * (Cnt+1)),
@@ -376,6 +380,9 @@ connection_info(#server{url=Url}=Conn) ->
         {'error', {'conn_failed', {'error', 'ehostunreach'}}} ->
             lager:warning("connection to ~s failed: Host is unreachable", [Url]),
             {'error', 'ehostunreach'};
+        {'error', {'bad_response',{502, _Headers, _Body}}} ->
+            lager:warning("temporal connection failure to ~s", [Url]),
+            {'error', 'temporal_failure'};
         {'error', _E}=E ->
             lager:warning("connection to ~s failed: ~p", [Url, _E]),
             E
