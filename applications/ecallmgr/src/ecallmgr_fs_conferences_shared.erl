@@ -84,6 +84,8 @@ handle_call(_Req, _From, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
+handle_cast({'gen_listener', {'federators_consuming', _IsConsuming}}, State) ->
+    {'noreply', State};
 handle_cast(_Req, State) ->
     lager:debug("unhandled cast: ~p", [_Req]),
     {'noreply', State}.
@@ -464,7 +466,6 @@ start_call_handlers(Node, JObj, #outbound_dial{loopback_b=LoopbackB, b_leg=CallI
 
     get_control_queue(CtlPid).
 
-maybe_update_ecallmgr_node('undefined') -> 'ok';
 maybe_update_ecallmgr_node(Leg) ->
     case ecallmgr_fs_channel:fetch(Leg, 'record') of
         {'ok', #channel{node=Node}} ->

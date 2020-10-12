@@ -1250,7 +1250,13 @@ amqp_status() ->
 amqp_status_connection(Connection) ->
     Count = kz_amqp_assignments:channel_count(Connection),
     Broker = kz_amqp_connection:broker(Connection),
-    {Broker, kz_json:from_list([{<<"channel_count">>, Count}])}.
+    BrokerZone = kz_amqp_connection:zone(Connection),
+
+    {Broker
+    ,kz_json:from_list([{<<"channel_count">>, Count}
+                       ,{<<"zone">>, kz_term:to_binary(BrokerZone)}
+                       ])
+    }.
 
 -spec pool_states() -> kz_term:proplist().
 pool_states() ->

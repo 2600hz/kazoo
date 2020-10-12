@@ -54,7 +54,7 @@
 -export([queue_name/1
         ,bindings/1
         ,responders/1
-        ,is_consuming/1
+        ,is_consuming/1, wait_until_consuming/2
         ,routing_key_used/1
         ]).
 
@@ -91,6 +91,7 @@
 -export([add_binding/2, add_binding/3
         ,b_add_binding/2, b_add_binding/3
         ,rm_binding/2, rm_binding/3
+        ,b_rm_binding/2, b_rm_binding/3
         ]).
 
 -export([ack/2
@@ -125,6 +126,7 @@
 
 -record(state, {queue :: kz_term:api_binary()
                ,is_consuming = 'false' :: boolean()
+               ,consuming_requests = [] :: [{kz_term:pid_ref(), reference()}] % [{From, TRef}]
                ,responders = [] :: listener_utils:responders() %% {{EvtCat, EvtName}, Module}
                ,bindings = [] :: bindings() %% {authentication, [{key, value},...]}
                ,params = [] :: kz_term:proplist()
@@ -253,6 +255,11 @@ queue_name(Srv) -> gen_server:call(Srv, 'queue_name').
 -spec is_consuming(kz_types:server_ref()) -> boolean().
 is_consuming(Srv) -> gen_server:call(Srv, 'is_consuming').
 
+%% @doc block caller until gen_listener is consuming from the bound queue(s)
+-spec wait_until_consuming(kz_types:server_ref(), timeout()) -> 'ok' | {'error', 'timeout'}.
+wait_until_consuming(Srv, Timeout) ->
+    gen_server:call(Srv, {'wait_until_consuming', Timeout}, Timeout + ?MILLISECONDS_IN_SECOND).
+
 -spec responders(kz_types:server_ref()) -> listener_utils:responders().
 responders(Srv) -> gen_server:call(Srv, 'responders').
 
@@ -292,7 +299,7 @@ delayed_cast(Name, Request, Wait) when is_integer(Wait), Wait > 0 ->
            end),
     'ok'.
 
--spec reply(kz_term:pid_ref(), any()) -> no_return().
+-spec reply(kz_term:pid_ref(), any()) -> any().
 reply(From, Msg) -> gen_server:reply(From, Msg).
 
 -type server_name() :: {'global' | 'local', atom()} | pid().
@@ -392,6 +399,22 @@ rm_binding(Srv, {Binding, Props}) ->
 -spec rm_binding(kz_types:server_ref(), kz_term:ne_binary() | atom(), kz_term:proplist()) -> 'ok'.
 rm_binding(Srv, Binding, Props) ->
     gen_server:cast(Srv, {'rm_binding', kz_term:to_binary(Binding), Props}).
+
+-spec b_rm_binding(kz_types:server_ref(), binding() | kz_term:ne_binary() | atom()) -> 'ok'.
+b_rm_binding(Srv, {Binding, Props}) when is_list(Props)
+                                         ,(is_atom(Binding)
+                                           orelse is_binary(Binding)
+                                          ) ->
+    gen_server:call(Srv, {'rm_binding', kz_term:to_binary(Binding), Props});
+b_rm_binding(Srv, Binding) when is_binary(Binding)
+                                orelse is_atom(Binding) ->
+    gen_server:call(Srv, {'rm_binding', kz_term:to_binary(Binding), []}).
+
+-spec b_rm_binding(kz_types:server_ref(), kz_term:ne_binary() | atom(), kz_term:proplist()) -> 'ok'.
+b_rm_binding(Srv, Binding, Props) when is_binary(Binding)
+                                       orelse is_atom(Binding) ->
+    gen_server:call(Srv, {'rm_binding', kz_term:to_binary(Binding), Props}).
+
 
 -spec federated_event(kz_types:server_ref(), kz_json:object(), kz_term:proplist()) -> 'ok'.
 federated_event(Srv, JObj, Props) ->
@@ -503,6 +526,23 @@ handle_call({'add_binding', _Binding, _Props}=AddBinding, _From, State) ->
         {'noreply', State1} -> {'reply', 'ok', State1};
         {'stop', _Reason, _State1}=Stop -> Stop
     end;
+handle_call({'rm_binding', _Binding, _Props}=RmBinding, _From, State) ->
+    case handle_cast(RmBinding, State) of
+        {'noreply', State1} -> {'reply', 'ok', State1};
+        {'stop', _Reason, _State1}=Stop -> Stop
+    end;
+handle_call({'wait_until_consuming', _Timeout}, _From, #state{is_consuming='true'}=State) ->
+    lager:info("consuming from AMQP, telling ~p", [_From]),
+    {'reply', 'ok', State};
+handle_call({'wait_until_consuming', Timeout}
+           ,From
+           ,#state{is_consuming='false'
+                  ,consuming_requests=Requests
+                  }=State
+           ) ->
+    lager:info("waiting for consumption on AMQP for ~p(~p)", [From, Timeout]),
+    TRef = erlang:send_after(Timeout, self(), {'request_timeout', From}),
+    {'noreply', State#state{consuming_requests=[{From, TRef} | Requests]}};
 handle_call(Request, From, State) ->
     handle_module_call(Request, From, State).
 
@@ -628,12 +668,14 @@ handle_cast({'resume_consumers'}
          || {Q1, {_, P}} <- OtherQueues
         ],
     {'noreply', State};
-handle_cast({'federator_is_consuming', Broker, 'true'}, State) ->
+handle_cast({'federator_is_consuming', Broker, 'true'}
+           ,#state{waiting_federators=WaitingFederators}=State
+           ) ->
     Filter = fun(X) ->
                      kz_amqp_connections:broker_available_connections(X) > 0
              end,
 
-    Waiting = lists:filter(Filter, State#state.waiting_federators),
+    Waiting = lists:filter(Filter, WaitingFederators),
 
     case lists:subtract(Waiting, [Broker]) of
         [] ->
@@ -733,11 +775,17 @@ handle_info(#'basic.consume_ok'{consumer_tag=CTag}
     lager:debug("received consume ok (~s) for abandoned queue", [CTag]),
     {'noreply', State};
 handle_info(#'basic.consume_ok'{consumer_tag=CTag}
-           ,#state{consumer_tags=CTags}=State
+           ,#state{consumer_tags=CTags
+                  ,consuming_requests=Requests
+                  }=State
            ) ->
     lager:debug("received consume ok (~s) for queue : ~p", [CTag, CTags]),
     gen_server:cast(self(), {?MODULE, {'is_consuming', 'true'}}),
+
+    handle_consuming_requests(Requests),
+
     {'noreply', State#state{is_consuming='true'
+                           ,consuming_requests=[]
                            ,consumer_tags=[CTag | CTags]
                            }};
 handle_info(#'basic.cancel_ok'{consumer_tag=CTag}, #state{consumer_tags=CTags}=State) ->
@@ -770,6 +818,11 @@ handle_info(?CALLBACK_TIMEOUT_MSG, State) ->
     handle_callback_info('timeout', State);
 handle_info({'DOWN', Ref, 'process', Pid, Reason}, State) ->
     handle_down({Pid, Ref}, Reason, State);
+handle_info({'request_timeout', From}, #state{consuming_requests=Requests}=State) ->
+    lager:info("timed out waiting for request ~p", [From]),
+    _ = reply(From, {'error', 'timeout'}),
+    {'noreply', State#state{consuming_requests=lists:keydelete(From, 1, Requests)}};
+
 handle_info(Message, State) ->
     handle_callback_info(Message, State).
 
@@ -1157,7 +1210,11 @@ remove_binding(Binding, Props, Q) ->
     try (kz_term:to_atom(Wapi, 'true')):unbind_q(Q, Props)
     catch
         'error':'undef' ->
-            erlang:error({'api_module_undefined', Wapi})
+            erlang:error({'api_module_undefined', Wapi});
+        'exit':{{'infrastructure_died', _Reason}, _Crash} ->
+            lager:info("AMQP disappeared: ~p", [_Reason]);
+        'exit':{'shutdown', _Reason} ->
+            lager:info("failed to unbind: shutdown of ~p", [_Reason])
     end.
 
 -spec create_binding(kz_term:ne_binary(), kz_term:proplist(), kz_term:ne_binary()) -> any().
@@ -1289,11 +1346,8 @@ handle_rm_binding(Binding, Props, #state{queue=Q
                                         ,bindings=Bs
                                         }=State) ->
     KeepBs = [BP || BP <- Bs,
-                    maybe_remove_binding(BP
-                                        ,kz_term:to_binary(Binding)
-                                        ,Props
-                                        ,Q
-                                        )],
+                    maybe_remove_binding(BP, kz_term:to_binary(Binding), Props, Q)
+             ],
     maybe_remove_federated_binding(Binding, Props, State),
     State#state{bindings=KeepBs}.
 
@@ -1357,17 +1411,27 @@ update_federated_bindings(#state{}=State) ->
 update_federated_bindings(#state{bindings=[{Binding, _Props}|_]}=State, []) ->
     lager:debug("no federated brokers to connect to, skipping federating binding '~s'", [Binding]),
     State;
-update_federated_bindings(#state{bindings=[{Binding, Props}|_]
-                                ,federators=Fs
-                                }=State
+update_federated_bindings(#state{federators=ExistingFederators}=State
                          ,FederatedBrokers
                          ) ->
+    maybe_bind_to_federated_bindings(State
+                                    ,broker_connections(ExistingFederators, FederatedBrokers)
+                                    ).
+
+maybe_bind_to_federated_bindings(State, {_Existing, []}) ->
+    lager:debug("all active brokers have federators"),
+    State;
+maybe_bind_to_federated_bindings(#state{bindings=[{Binding, Props}|_]
+                                       ,federators=ExistingFederators
+                                       }=State
+                                ,{_ExistingBrokers, NewBrokers}
+                                ) ->
+    lager:debug("binding to brokers ~s", [kz_binary:join(NewBrokers)]),
     NonFederatedProps = props:delete('federate', Props),
-    {_Existing, New} = broker_connections(Fs, FederatedBrokers),
-    'ok' = update_existing_listeners_bindings(Fs, Binding, NonFederatedProps),
-    {'ok', NewListeners} = start_new_listeners(New, Binding, NonFederatedProps, State),
-    State#state{federators=NewListeners ++ Fs
-               ,waiting_federators=New ++ State#state.waiting_federators
+    'ok' = update_existing_listeners_bindings(ExistingFederators, Binding, NonFederatedProps),
+    {'ok', NewListeners} = start_new_listeners(NewBrokers, Binding, NonFederatedProps, State),
+    State#state{federators=NewListeners ++ ExistingFederators
+               ,waiting_federators=NewBrokers ++ State#state.waiting_federators
                }.
 
 -spec maybe_remove_federated_binding(binding(), kz_term:proplist(), state()) -> 'ok'.
@@ -1622,3 +1686,13 @@ maybe_gc(Heap, Max) when Heap > Max ->
     NewHeap = kz_term:words_to_bytes(NewHeapWords),
     lager:debug("new heap size ~p (delta ~p)", [NewHeap, Heap-NewHeap]);
 maybe_gc(_Heap, _Max) -> 'ok'.
+
+-spec handle_consuming_requests([{kz_term:pid_ref(), reference()}]) -> 'ok'.
+handle_consuming_requests(Requests) ->
+    _ = [reply_to_request(Request) || Request <- Requests],
+    'ok'.
+
+-spec reply_to_request({kz_term:pid_ref(), reference()}) -> 'ok'.
+reply_to_request({From, TRef}) ->
+    _ = reply(From, 'ok'),
+    'ok' = erlang:cancel_timer(TRef, [{'async', 'true'}, {'info', 'false'}]).

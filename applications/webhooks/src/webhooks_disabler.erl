@@ -166,7 +166,6 @@ disable_hook(AccountId, HookId) ->
     Update = kzd_webhook:disable_updates(<<"too many failed attempts">>),
     Updates = [{'update', Update}
               ,{'ensure_saved', 'true'}
-              ,{'should_create', 'false'}
               ],
     case kz_datamgr:update_doc(?KZ_WEBHOOKS_DB, HookId, Updates) of
         {'ok', _Updated} ->

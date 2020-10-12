@@ -117,6 +117,8 @@ handle_cast({'gen_listener',{'created_queue',Queue}}, State) ->
 handle_cast({'gen_listener',{'is_consuming',IsConsuming}}, State) ->
     gen_listener:cast(self(), 'send_sync'),
     {'noreply', State#state{consuming=IsConsuming}};
+handle_cast({'gen_listener', {'federators_consuming', _IsConsuming}}, State) ->
+    {'noreply', State};
 handle_cast('send_sync', #state{subs_pid=Pid, queue=Queue, consuming=IsConsuming} = State)
   when Pid =:= 'undefined'
        orelse Queue =:= 'undefined'
