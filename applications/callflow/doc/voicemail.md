@@ -91,3 +91,14 @@ For example, to monitor and check box 3456, the BLF key could be tied to `*98345
 
 !!! note
 If you want to do MWI subscriptions, you must configure the account or system to do so. In the `voicemail` system_config document (or the account's config doc), set `dialog_subscribed_mwi_prefix` to the prefix (in this above case, `*98` would be the value): `sup kapps_config set_default voicemail dialog_subscribed_mwi_prefix '*98'`.
+
+## System configs
+
+### Callback option
+
+When checking voicemails, it is possible for the caller to use the `callback` feature to have the system place a call to the caller ID number on the voicemail. While convenient, a compromised voicemail box can be used to initiate fraudulent calls.
+
+System administrators can toggle two configurations to manage this feature:
+
+1. `voicemail.should_disable_callback`: if set to `true` no callers will be able to use the callback feature
+2. `voicemail.should_disable_offnet_callback`: if set to `true`, the caller *must* be calling from an authorized device (not from outside the account).

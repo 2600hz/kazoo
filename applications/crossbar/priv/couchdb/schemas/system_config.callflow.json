@@ -188,6 +188,16 @@
                     "minimum": 0,
                     "type": "integer"
                 },
+                "should_disable_callback": {
+                    "default": false,
+                    "description": "If true, disallows callers to use voicemail callback feature",
+                    "type": "boolean"
+                },
+                "should_disable_offnet_callback": {
+                    "default": false,
+                    "description": "If true, requires caller to use an authorized device to use voicemail callback feature",
+                    "type": "boolean"
+                },
                 "transcribe_default": {
                     "default": false,
                     "description": "callflow voicemail transcribe_default",
