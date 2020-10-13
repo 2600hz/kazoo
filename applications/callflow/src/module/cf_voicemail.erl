@@ -24,11 +24,11 @@
 -module(cf_voicemail).
 -behaviour(gen_cf_action).
 
--include("callflow.hrl").
--include_lib("kazoo_stdlib/include/kazoo_json.hrl").
-
 -export([handle/2]).
 -export([new_message/4]).
+
+-include("callflow.hrl").
+-include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 
 -define(KEY_VOICEMAIL, <<"voicemail">>).
 -define(KEY_MAX_MESSAGE_COUNT, <<"max_message_count">>).
@@ -114,6 +114,18 @@
                                 ,[?KEY_VOICEMAIL, ?KEY_FORCE_REQUIRE_PIN]
                                 ,'false'
                                 )
+       ).
+-define(SHOULD_DISABLE_CALLBACK
+       ,kapps_config:is_true(?CF_CONFIG_CAT
+                            ,[?KEY_VOICEMAIL, <<"should_disable_callback">>]
+                            ,'false'
+                            )
+       ).
+-define(SHOULD_DISABLE_OFFNET_CALLBACK
+       ,kapps_config:is_true(?CF_CONFIG_CAT
+                            ,[?KEY_VOICEMAIL, <<"should_disable_offnet_callback">>]
+                            ,'false'
+                            )
        ).
 
 -define(DEFAULT_FIND_BOX_PROMPT, <<"vm-enter_id">>).
@@ -913,9 +925,14 @@ play_messages(Messages, Count, Box, Call) ->
 
 -spec play_messages(kz_json:objects(), kz_json:objects(), non_neg_integer(), mailbox(), kapps_call:call()) ->
           'ok' | 'complete'.
-play_messages([H|T]=Messages, PrevMessages, Count, #mailbox{seek_duration=SeekDuration, mailbox_id=BoxId}=Box, Call) ->
+play_messages([CurrentMessage|NextMessages]=Messages
+             ,PrevMessages
+             ,Count
+             ,#mailbox{seek_duration=SeekDuration, mailbox_id=BoxId}=Box
+             ,Call
+             ) ->
     AccountId = kapps_call:account_id(Call),
-    Message = kvm_message:media_url(AccountId, H),
+    Message = kvm_message:media_url(AccountId, CurrentMessage),
     lager:info("playing mailbox message ~p (~s)", [Count, Message]),
     Prompt = message_prompt(Messages, Message, Count, Box),
     case message_menu(Prompt, Box, Call) of
@@ -923,8 +940,8 @@ play_messages([H|T]=Messages, PrevMessages, Count, #mailbox{seek_duration=SeekDu
             lager:info("caller chose to save the message"),
             _ = kapps_call_command:flush(Call),
             _ = kapps_call_command:b_prompt(<<"vm-saved">>, Call),
-            {_, NMessage} = kvm_message:set_folder(?VM_FOLDER_SAVED, H, AccountId),
-            play_messages(T, [NMessage|PrevMessages], Count, Box, Call);
+            {_, SavedMessage} = kvm_message:set_folder(?VM_FOLDER_SAVED, CurrentMessage, AccountId),
+            play_messages(NextMessages, [SavedMessage|PrevMessages], Count, Box, Call);
         {'ok', 'prev'} ->
             lager:info("caller chose to listen to previous message"),
             _ = kapps_call_command:flush(Call),
@@ -937,16 +954,16 @@ play_messages([H|T]=Messages, PrevMessages, Count, #mailbox{seek_duration=SeekDu
             lager:info("caller chose to delete the message"),
             _ = kapps_call_command:flush(Call),
             _ = kapps_call_command:b_prompt(<<"vm-deleted">>, Call),
-            MessageId = kz_json:get_ne_binary_value(<<"media_id">>, H),
+            MessageId = kz_json:get_ne_binary_value(<<"media_id">>, CurrentMessage),
             JObj = hd(kz_json:get_list_value(<<"succeeded">>, kvm_messages:fetch(AccountId, [MessageId], BoxId))),
             kvm_util:publish_voicemail_deleted(BoxId, JObj, 'dtmf'),
-            _ = kvm_message:set_folder({?VM_FOLDER_DELETED, 'false'}, H, AccountId),
-            play_messages(T, PrevMessages, Count, Box, Call);
+            _ = kvm_message:set_folder({?VM_FOLDER_DELETED, 'false'}, CurrentMessage, AccountId),
+            play_messages(NextMessages, PrevMessages, Count, Box, Call);
         {'ok', 'return'} ->
             lager:info("caller chose to return to the main menu"),
             _ = kapps_call_command:flush(Call),
             _ = kapps_call_command:b_prompt(<<"vm-saved">>, Call),
-            _ = kvm_message:set_folder(?VM_FOLDER_SAVED, H, AccountId),
+            _ = kvm_message:set_folder(?VM_FOLDER_SAVED, CurrentMessage, AccountId),
             'complete';
         {'ok', 'replay'} ->
             lager:info("caller chose to replay"),
@@ -955,23 +972,12 @@ play_messages([H|T]=Messages, PrevMessages, Count, #mailbox{seek_duration=SeekDu
         {'ok', 'forward'} ->
             lager:info("caller chose to forward the message"),
             _ = kapps_call_command:flush(Call),
-            forward_message(H, Box, Call),
-            {_, NMessage} = kvm_message:set_folder(?VM_FOLDER_SAVED, H, AccountId),
+            forward_message(CurrentMessage, Box, Call),
+            {_, SavedMessage} = kvm_message:set_folder(?VM_FOLDER_SAVED, CurrentMessage, AccountId),
             _ = kapps_call_command:prompt(<<"vm-saved">>, Call),
-            play_messages(T, [NMessage|PrevMessages], Count, Box, Call);
+            play_messages(NextMessages, [SavedMessage|PrevMessages], Count, Box, Call);
         {'ok', 'callback'} ->
-            case kz_json:get_value(<<"caller_id_number">>,H) of
-                'undefined' ->
-                    lager:info("message not contains caller_id_number and we cannot callback"),
-                    _ = kapps_call_command:audio_macro([{'prompt', <<"vm-not_available">>}], Call),
-                    play_messages(Messages, PrevMessages, Count, Box, Call);
-                Number ->
-                    lager:info("caller chose to callback number ~s", [Number]),
-                    case maybe_branch_call(Call, Number, Box) of
-                        'ok' -> 'ok';
-                        _ -> play_messages(Messages, PrevMessages, Count, Box, Call)
-                    end
-            end;
+            maybe_handle_vm_callback(CurrentMessage, Messages, PrevMessages, Count, Box, Call);
         {'ok', 'rewind'} ->
             lager:info("caller chose to rewind 10 sec of the message"),
             _ = kapps_call_command:seek('rewind', SeekDuration, Call),
@@ -988,62 +994,115 @@ play_messages([], _, _, _, _) ->
     lager:info("all messages in folder played to caller"),
     'complete'.
 
--spec maybe_branch_call(kapps_call:call(), kz_term:ne_binary(), mailbox()) -> 'ok'| 'error'.
-maybe_branch_call(Call, Number, #mailbox{owner_id=OwnerId}) ->
-    EndpointId = case kapps_call:authorizing_id(Call) of
-                     'undefined' -> OwnerId;
-                     AuthorizingId -> AuthorizingId
-                 end,
-    case EndpointId =:= 'undefined'
-        andalso kz_endpoint:get(EndpointId, Call) of
+maybe_handle_vm_callback(CurrentMessage, Messages, PrevMessages, Count, Box, Call) ->
+    case ?SHOULD_DISABLE_CALLBACK of
+        'true' ->
+            lager:info("callback disabled by configuration"),
+            callback_not_available(Messages, PrevMessages, Count, Box, Call);
         'false' ->
+            handle_vm_callback(Messages, PrevMessages, Count, Box, Call
+                              ,kzd_vm_message_metadata:caller_id_number(CurrentMessage)
+                              )
+    end.
+
+handle_vm_callback(Messages, PrevMessages, Count, Box, Call, 'undefined') ->
+    lager:info("no caller_id_number on message"),
+    callback_not_available(Messages, PrevMessages, Count, Box, Call);
+handle_vm_callback(Messages, PrevMessages, Count, Box, Call, CallerIdNumber) ->
+    lager:info("caller chose to callback number ~s", [CallerIdNumber]),
+    case maybe_branch_call(Box, Call, CallerIdNumber) of
+        'ok' -> 'ok';
+        'error' -> play_messages(Messages, PrevMessages, Count, Box, Call)
+    end.
+
+callback_not_available(Messages, PrevMessages, Count, Box, Call) ->
+    _ = kapps_call_command:audio_macro([{'prompt', <<"vm-not_available">>}], Call),
+    play_messages(Messages, PrevMessages, Count, Box, Call).
+
+-spec maybe_branch_call(mailbox(), kapps_call:call(), kz_term:ne_binary()) ->
+          'ok' | 'error'.
+maybe_branch_call(Box, Call, CallerIdNumber) ->
+    maybe_branch_call(Box, Call, CallerIdNumber, kapps_call:authorizing_id(Call)).
+
+maybe_branch_call(#mailbox{owner_id='undefined'}, Call, CallerIdNumber, 'undefined') ->
+    case ?SHOULD_DISABLE_OFFNET_CALLBACK of
+        'true' ->
+            lager:info("offnet callback disabled on this system"),
+            unauthorized_callback(Call);
+        'false' ->
+            lager:info("no endpoint or user ID available, using account settings"),
             {'ok', AccountJObj} = kzd_accounts:fetch(kapps_call:account_id(Call)),
-            maybe_restrict_call(Number, Call, AccountJObj);
-        {'ok', JObj} -> maybe_restrict_call(Number, Call, JObj);
-        _ ->
-            lager:info("failed to find endpoint ~s", [EndpointId]),
-            _ = kapps_call_command:audio_macro([{'prompt', <<"cf-unauthorized_call">>}], Call),
-            'error'
+            maybe_restrict_call(CallerIdNumber, Call, AccountJObj)
+    end;
+maybe_branch_call(#mailbox{owner_id=OwnerId}, Call, CallerIdNumber, 'undefined') ->
+    case ?SHOULD_DISABLE_OFFNET_CALLBACK of
+        'true' ->
+            lager:info("offnet callback disabled on this system"),
+            unauthorized_callback(Call);
+        'false' ->
+            maybe_branch_to_endpoint(Call, CallerIdNumber, OwnerId)
+    end;
+maybe_branch_call(_Box, Call, CallerIdNumber, EndpointId) ->
+    maybe_branch_to_endpoint(Call, CallerIdNumber, EndpointId).
+
+maybe_branch_to_endpoint(Call, CallerIdNumber, EndpointId) ->
+    case kz_endpoint:get(EndpointId, Call) of
+        {'ok', Endpoint} ->
+            lager:info("using endpoint for endpoint ID ~s", [EndpointId]),
+            maybe_restrict_call(CallerIdNumber, Call, Endpoint);
+        {'error', _E} ->
+            lager:info("failed to find endpoint ~s: ~p", [EndpointId, _E]),
+            unauthorized_callback(Call)
     end.
 
--spec maybe_restrict_call( kz_term:ne_binary(), kapps_call:call(), kz_json:object()) -> 'ok' | 'error'.
-maybe_restrict_call(Number, Call, JObj) ->
-    case should_restrict_call(Number, Call, JObj) of
-        {'true', _} ->
-            _ = kapps_call_command:audio_macro([{'prompt', <<"cf-unauthorized_call">>}], Call),
-            'error';
-        {'false', NewNumber} -> maybe_exist_callflow(NewNumber, Call)
+unauthorized_callback(Call) ->
+    _ = kapps_call_command:audio_macro([{'prompt', <<"cf-unauthorized_call">>}], Call),
+    'error'.
+
+%% @doc Endpoint could be AccountDoc or Owner/AuthzId endpoint
+-spec maybe_restrict_call(kz_term:ne_binary(), kapps_call:call(), kz_json:object()) -> 'ok' | 'error'.
+maybe_restrict_call(CallerIdNumber, Call, Endpoint) ->
+    case should_restrict_call(CallerIdNumber, Call, Endpoint) of
+        {'true', _} -> unauthorized_callback(Call);
+        {'false', NormalizedNumber} -> maybe_branch_to_callflow(NormalizedNumber, Call)
     end.
 
--spec maybe_exist_callflow(kz_term:ne_binary(), kapps_call:call()) -> 'ok' | 'error'.
-maybe_exist_callflow(Number, Call) ->
+-spec maybe_branch_to_callflow(kz_term:ne_binary(), kapps_call:call()) -> 'ok' | 'error'.
+maybe_branch_to_callflow(CallerIdNumber, Call) ->
     AccountId = kapps_call:account_id(Call),
-    case cf_flow:lookup(Number, AccountId) of
+    case cf_flow:lookup(CallerIdNumber, AccountId) of
         {'ok', Flow, _NoMatch} ->
             Updates = [{fun kapps_call:set_request/2
-                       ,list_to_binary([Number, "@", kapps_call:request_realm(Call)])
+                       ,list_to_binary([CallerIdNumber, "@", kapps_call:request_realm(Call)])
                        }
-                      ,{fun kapps_call:set_to/2, list_to_binary([Number, "@", kapps_call:to_realm(Call)])}
+                      ,{fun kapps_call:set_to/2
+                       ,list_to_binary([CallerIdNumber, "@", kapps_call:to_realm(Call)])
+                       }
                       ],
             Call1 = cf_exe:update_call(kapps_call:exec(Updates, Call)),
             cf_exe:branch(kz_json:get_json_value(<<"flow">>, Flow), Call1);
         _ ->
-            lager:info("failed to find a callflow to satisfy ~s", [Number]),
+            lager:info("failed to find a callflow to satisfy ~s", [CallerIdNumber]),
             _ = kapps_call_command:audio_macro([{'prompt', <<"fault-can_not_be_completed_as_dialed">>}], Call),
             'error'
     end.
 
--spec should_restrict_call(kz_term:ne_binary(), kapps_call:call(), kz_json:object()) -> {boolean(), kz_term:ne_binary()}.
-should_restrict_call(Number, Call, JObj) ->
+%% @doc Endpoint could be AccountDoc or Owner/AuthzId endpoint
+-spec should_restrict_call(kz_term:ne_binary(), kapps_call:call(), kz_json:object()) ->
+          {boolean(), kz_term:ne_binary()}.
+should_restrict_call(CallerIdNumber, Call, Endpoint) ->
     AccountId = kapps_call:account_id(Call),
-    DialPlan = kz_json:get_json_value(<<"dial_plan">>, JObj, kz_json:new()),
-    NewNumber = knm_converters:normalize(Number, AccountId, DialPlan),
-    Classification = knm_converters:classify(NewNumber),
+    DialPlan = kz_json:get_json_value(<<"dial_plan">>, Endpoint, kz_json:new()),
+    NormalizedNumber = knm_converters:normalize(CallerIdNumber, AccountId, DialPlan),
+    Classification = knm_converters:classify(NormalizedNumber),
     lager:debug("classified number ~s as ~s, testing for call restrictions"
-               ,[Number, Classification]
+               ,[CallerIdNumber, Classification]
                ),
-    ShouldRestrict = kz_json:get_value([<<"call_restriction">>, Classification, <<"action">>], JObj) == <<"deny">>,
-    {ShouldRestrict, NewNumber}.
+    Restriction = kz_json:get_ne_binary_value([<<"call_restriction">>, Classification, <<"action">>], Endpoint),
+
+    {<<"deny">> =:= Restriction
+    ,NormalizedNumber
+    }.
 
 -spec play_next_message(kz_json:objects(), kz_json:objects(), non_neg_integer(), mailbox(), kapps_call:call()) ->
           'ok' | 'complete'.
