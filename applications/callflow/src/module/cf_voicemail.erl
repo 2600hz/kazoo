@@ -282,7 +282,7 @@ check_mailbox(#mailbox{is_setup='false'}=Box, 'true', Call, _) ->
     %% If this is the owner of the mailbox calling in and it is not setup then jump
     %% right to the setup wizard
     lager:info("caller is the owner of this mailbox, and it has not been setup yet"),
-    check_mailbox_menu(Box, Call);
+    main_menu(Box, Call);
 check_mailbox(#mailbox{announcement_only='true', require_pin='false'}=Box, 'true', Call, _) ->
     lager:info("caller is owner of announcement only mailbox, and requires no pin"),
     check_mailbox_menu(Box, Call);
@@ -323,7 +323,10 @@ check_mailbox(#mailbox{pin=Pin
     end.
 
 -spec check_mailbox_menu(mailbox(), kapps_call:call()) -> 'ok' | {'error', 'channel_hungup'}.
-check_mailbox_menu(#mailbox{announcement_only='true'}=Box, Call) -> config_menu(Box, Call);
+check_mailbox_menu(#mailbox{announcement_only='true'
+                           ,not_configurable='false'
+                           }=Box, Call) ->
+    config_menu(Box, Call);
 check_mailbox_menu(Box, Call) -> main_menu(Box, Call).
 
 %%------------------------------------------------------------------------------
