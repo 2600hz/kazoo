@@ -593,6 +593,8 @@ publish_fun(<<"transaction">>) ->
     fun kapi_notifications:publish_transaction/1;
 publish_fun(<<"transaction_failed">>) ->
     fun kapi_notifications:publish_transaction/1;
+publish_fun(<<"voicemail_deleted">>) ->
+    fun kapi_notifications:publish_voicemail_deleted/1;
 publish_fun(<<"voicemail_full">>) ->
     fun kapi_notifications:publish_voicemail_full/1;
 publish_fun(<<"voicemail_to_email">>) ->
