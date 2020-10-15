@@ -93,10 +93,10 @@ send_park(#ts_callflow_state{route_req_jobj=JObj
            ],
     lager:info("trunkstore knows how to route this call, sending park route response"),
     kz_amqp_worker:relay_to(Worker, self()),
-    kz_amqp_worker:cast(Resp
-                       ,fun(API) -> kapi_route:publish_resp(kz_api:server_id(JObj), API) end
-                       ,Worker
-                       ),
+    _ = kz_amqp_worker:cast(Resp
+                           ,fun(API) -> kapi_route:publish_resp(kz_api:server_id(JObj), API) end
+                           ,Worker
+                           ),
     wait_for_win(State, ?WAIT_FOR_WIN_TIMEOUT).
 
 -spec wait_for_win(state(), pos_integer()) -> {'won' | 'lost', state()}.
