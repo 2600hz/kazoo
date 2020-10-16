@@ -1220,7 +1220,7 @@ maybe_forward(AttachmentName, Message, SourceBoxId, DestinationBox, Call, Msg, {
     forward_message(AttachmentName, Length, Message, SourceBoxId, DestinationBox, Call).
 
 %%------------------------------------------------------------------------------
-%% @doc Starts a task to asynchronously forward a message to another vmbox and 
+%% @doc Starts a task to asynchronously forward a message to another vmbox and
 %% plays a confirmation of the operation.
 %% @end
 %%------------------------------------------------------------------------------
