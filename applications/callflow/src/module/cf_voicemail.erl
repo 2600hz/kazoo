@@ -1213,24 +1213,39 @@ maybe_forward(AttachmentName, Message, SourceBoxId, #mailbox{media_extension=Ext
         {'ok', 'record'} ->
             record_forward(tmp_file(Ext), Message, SourceBoxId, DestinationBox, Call);
         {'ok', _Selection} ->
-            cf_util:start_task(fun forward_message/6
-                              ,[AttachmentName, Length, Message, SourceBoxId, DestinationBox]
-                              , Call
-                              )
+            forward_message(AttachmentName, Length, Message, SourceBoxId, DestinationBox, Call)
     end;
 maybe_forward(AttachmentName, Message, SourceBoxId, DestinationBox, Call, Msg, {'error', _E}) ->
     Length = kz_json:get_integer_value(<<"Length">>, Msg, 0),
     forward_message(AttachmentName, Length, Message, SourceBoxId, DestinationBox, Call).
 
+%%------------------------------------------------------------------------------
+%% @doc Starts a task to asynchronously forward a message to another vmbox and 
+%% plays a confirmation of the operation.
+%% @end
+%%------------------------------------------------------------------------------
 -spec forward_message(kz_term:api_ne_binary(), non_neg_integer(), kz_json:object(), kz_term:ne_binary(), mailbox(), kapps_call:call()) -> 'ok'.
-forward_message(AttachmentName, Length, Message, SrcBoxId, #mailbox{mailbox_number=BoxNum
-                                                                   ,mailbox_id=BoxId
-                                                                   ,timezone=Timezone
-                                                                   ,owner_id=OwnerId
-                                                                   ,transcribe_voicemail=MaybeTranscribe
-                                                                   ,after_notify_action=Action
-                                                                   ,media_extension=Extension
-                                                                   }=DestBox, Call) ->
+forward_message(AttachmentName, Length, Message, SourceBoxId, DestinationBox, Call) ->
+    cf_util:start_task(fun forward_message_task/6
+                      ,[AttachmentName, Length, Message, SourceBoxId, DestinationBox]
+                      ,Call
+                      ),
+    _ = kapps_call_command:b_prompt(<<"vm-forward_confirmed">>, Call),
+    'ok'.
+
+%%------------------------------------------------------------------------------
+%% @doc Forwards a message to another vmbox.
+%% @end
+%%------------------------------------------------------------------------------
+-spec forward_message_task(kz_term:api_ne_binary(), non_neg_integer(), kz_json:object(), kz_term:ne_binary(), mailbox(), kapps_call:call()) -> 'ok'.
+forward_message_task(AttachmentName, Length, Message, SrcBoxId, #mailbox{mailbox_number=BoxNum
+                                                                        ,mailbox_id=BoxId
+                                                                        ,timezone=Timezone
+                                                                        ,owner_id=OwnerId
+                                                                        ,transcribe_voicemail=MaybeTranscribe
+                                                                        ,after_notify_action=Action
+                                                                        ,media_extension=Extension
+                                                                        }=DestBox, Call) ->
     NewMsgProps = props:filter_undefined(
                     [{<<"Box-Id">>, BoxId}
                     ,{<<"Owner-Id">>, OwnerId}
@@ -1245,8 +1260,7 @@ forward_message(AttachmentName, Length, Message, SrcBoxId, #mailbox{mailbox_numb
                     ]
                    ),
     case kvm_message:forward_message(Call, Message, SrcBoxId, NewMsgProps) of
-        {'ok', NewCall} ->
-            _ = kapps_call_command:b_prompt(<<"vm-forward_confirmed">>, NewCall),
+        {'ok', _} ->
             send_mwi_update(DestBox);
         {'error', _, _Msg} ->
             lager:warning("failed to save forwarded voice mail message recorded media : ~p", [_Msg])
