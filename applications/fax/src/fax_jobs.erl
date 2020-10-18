@@ -266,6 +266,8 @@ start_job(JobId, ToNumber, Job, #state{account_id=AccountId
     Payload = start_job_payload(AccountId, JobId, ToNumber, Queue),
     lager:debug("starting job: ~s for account id: ~s fax destination: ~s", [JobId, AccountId, ToNumber]),
     case kz_amqp_worker:call(Payload, fun kapi_fax:publish_start_job/1, fun validate_job_started/1) of
+        %% This timeout may cause a job to be re-serialized despite a later job start reply coming in
+        %% This will be handled by `remove_delayed_reply_job/2'
         {'error', 'timeout'} -> serialize_job(JobId, Job, State);
         {'ok', Reply} -> set_pending_job(JobId, kz_api:node(Reply), Job, ToNumber, State)
     end.
@@ -431,11 +433,9 @@ maybe_serialize(<<"not_found">> = Status, <<"acquire">> = Stage, JobId, AccountI
     lager:debug("dropping job ~s/~s from cache in stage ~s : ~s", [AccountId, JobId, Stage, Status]),
     #{pending := Pending
      ,numbers := Numbers
-     ,serialize := Serialize
      } = Jobs,
     Jobs#{pending => maps:remove(JobId, Pending)
          ,numbers => maps:remove(Number, Numbers)
-         ,serialize => Serialize
          };
 maybe_serialize(Status, Stage, JobId, AccountId, Number, Job, Jobs) ->
     lager:debug("serializing job ~s/~s into cache in stage ~s : ~s", [AccountId, JobId, Stage, Status]),
@@ -455,7 +455,7 @@ handle_job_error(JobId, AccountId, JObj, #{pending := Pending} = Jobs) ->
     case kz_maps:get([JobId, job], Pending, 'undefined') of
         'undefined' ->
             lager:warning("received error on account (~s) for a not pending job ~s (~s) : ~s", [AccountId, JobId, Stage, Status]),
-            Jobs;
+            maybe_remove_delayed_error_job(Status, Stage, JobId, Jobs);
         Job ->
             Number = knm_converters:normalize(number(Job), AccountId),
             lager:warning("received error for fax job ~s/~s/~s on stage ~p: ~p", [AccountId, JobId, Number, Stage, Status]),
@@ -464,7 +464,9 @@ handle_job_error(JobId, AccountId, JObj, #{pending := Pending} = Jobs) ->
 
 
 -spec handle_job_start(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), map()) -> map().
-handle_job_start(JobId, AccountId, JObj, #{pending := Pending
+handle_job_start(JobId, AccountId, JObj, #{distribute := Distribute
+                                          ,serialize := Serialize
+                                          ,pending := Pending
                                           ,running := Running
                                           } = Jobs) ->
     ServerId = kz_api:server_id(JObj),
@@ -473,7 +475,9 @@ handle_job_start(JobId, AccountId, JObj, #{pending := Pending
     case kz_maps:get([JobId, number], Pending, 'undefined') of
         'undefined' ->
             lager:warning("received job start on account (~s) for a not pending job ~s (~s) : ~s", [AccountId, JobId, Stage, Status]),
-            Jobs#{running => Running#{JobId => #{queue => ServerId
+            Jobs#{distribute => remove_delayed_reply_job(JobId, Distribute)
+                 ,serialize => remove_delayed_reply_job(JobId, Serialize)
+                 ,running => Running#{JobId => #{queue => ServerId
                                                 ,start => kz_time:now_ms()
                                                 }
                                      }
@@ -520,3 +524,36 @@ handle_job_end(JobId, AccountId, JObj, #{pending := Pending
                  ,running => maps:remove(JobId, Running)
                  }
     end.
+
+%%------------------------------------------------------------------------------
+%% @doc Remove `JobId' from serialized jobs if the error should be suppressed
+%% and the job start error reply arrived from the worker after the
+%% `kz_amqp_worker:call/3' publish timeout.
+%% @end
+%%------------------------------------------------------------------------------
+-spec maybe_remove_delayed_error_job(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), map()) -> map().
+maybe_remove_delayed_error_job(<<"not_found">>, <<"acquire">>, JobId, #{distribute := Distribute
+                                                                       ,serialize := Serialize
+                                                                       }=Jobs) ->
+    Jobs#{distribute => remove_delayed_reply_job(JobId, Distribute)
+         ,serialize => remove_delayed_reply_job(JobId, Serialize)
+         };
+maybe_remove_delayed_error_job(_, _, _, Jobs) -> Jobs.
+
+%%------------------------------------------------------------------------------
+%% @doc Remove `JobId' from serialized jobs in case the job start reply arrived
+%% from the worker after the `kz_amqp_worker:call/3' publish timeout. Avoids
+%% looping of jobs where the job start reply arrives while the job has been put
+%% back in the serialized list.
+%% @end
+%%------------------------------------------------------------------------------
+-spec remove_delayed_reply_job(kz_term:ne_binary(), kz_json:objects()) -> kz_json:objects().
+remove_delayed_reply_job(JobId, JobList) ->
+    lists:filter(fun(Job) ->
+                         case kz_doc:id(Job) =:= JobId of
+                             'true' ->
+                                 lager:debug("removed job ~s that received delayed start reply", [JobId]),
+                                 'false';
+                             'false' -> 'true'
+                         end
+                 end, JobList).
