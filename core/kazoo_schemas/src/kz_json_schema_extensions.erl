@@ -242,7 +242,9 @@ is_valid_scheme(_) -> 'false'.
 is_valid_ftp_url({'ok',{'ftp', _UserPass, Host, _Port, _FullPath,_Query}}) ->
     is_valid_host(kz_term:to_binary(Host));
 is_valid_ftp_url(<<URL/binary>>) ->
-    is_valid_ftp_url(http_uri:parse(kz_term:to_list(URL))).
+    is_valid_ftp_url(http_uri:parse(kz_term:to_list(URL)));
+is_valid_ftp_url(_URL) ->
+    'false'.
 
 -spec is_valid_host(kz_http_util:location()) -> boolean().
 is_valid_host(<<Host/binary>>) ->
