@@ -23,6 +23,7 @@ Key | Description | Type | Default | Required | Support Level
 `call_forward` | The device call forward parameters | `object()` |   | `false` |  
 `call_recording` | endpoint recording settings | [#/definitions/call_recording](#call_recording) |   | `false` |  
 `call_restriction` | Device level call restrictions for each available number classification | `object()` | `{}` | `false` |  
+`call_waiting` | Parameters for server-side call waiting | [#/definitions/call_waiting](#call_waiting) |   | `false` |  
 `caller_id` | The device caller ID parameters | [#/definitions/caller_id](#caller_id) |   | `false` |  
 `caller_id_options.outbound_privacy` | Determines what appears as caller id for offnet outbound calls. Values: full - hides name and number; name - hides only name; number - hides only number; none - hides nothing | `string('full' | 'name' | 'number' | 'none')` |   | `false` |  
 `caller_id_options` | custom properties for configuring caller_id | `object()` |   | `false` |  
@@ -103,6 +104,15 @@ Key | Description | Type | Default | Required | Support Level
 `offnet` | settings for calls from offnet networks | [#/definitions/call_recording.parameters](#call_recordingparameters) |   | `false` |  
 `onnet` | settings for calls from onnet networks | [#/definitions/call_recording.parameters](#call_recordingparameters) |   | `false` |  
 
+### call_waiting
+
+Parameters for server-side call waiting
+
+
+Key | Description | Type | Default | Required | Support Level
+--- | ----------- | ---- | ------- | -------- | -------------
+`enabled` | Determines if server side call waiting is enabled/disabled | `boolean()` |   | `false` |  
+
 ### caller_id
 
 Defines caller ID settings based on the type of call being made
@@ -152,8 +162,8 @@ Key | Description | Type | Default | Required | Support Level
 `fax_option` | Is T.38 Supported? | `boolean()` |   | `false` |  
 `ignore_early_media` | The option to determine if early media from the endpoint should always be ignored | `boolean()` |   | `false` |  
 `progress_timeout` | The progress timeout to apply to the endpoint (seconds) | `integer()` |   | `false` |  
-`video.codecs.[]` |   | `string('H261' | 'H263' | 'H264' | 'VP8')` |   | `false` |  
-`video.codecs` | A list of video codecs the endpoint supports | `array(string('H261' | 'H263' | 'H264' | 'VP8'))` | `[]` | `false` |  
+`video.codecs.[]` |   | `string('H261' | 'H263' | 'H264' | 'VP9' | 'VP8')` |   | `false` |  
+`video.codecs` | A list of video codecs the endpoint supports | `array(string('H261' | 'H263' | 'H264' | 'VP9' | 'VP8'))` | `[]` | `false` |  
 `video` | The video media parameters | `object()` | `{}` | `false` |  
 
 ### formatters

@@ -5029,6 +5029,7 @@
               - H261
               - H263
               - H264
+              - VP9
               - VP8
             'type': string
           'type': array
@@ -8061,6 +8062,7 @@
                 - H261
                 - H263
                 - H264
+                - VP9
                 - VP8
               'type': string
             'type': array
