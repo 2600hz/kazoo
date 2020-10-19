@@ -2,6 +2,12 @@
 
 This file will serve as a reference point for upcoming announcements, both of the temporal nature (this library will be deprecated in 6 months) and version-specific (upgrading from X to Y will require A, B, and C).
 
+# KAZOO master (5.x) is closed at the moment
+
+Development of KAZOO 5.x is currently closed to public commits as we prepare the infrastructure necessary for the app exchange. Once the infrastructure is ready, all developers - 2600Hz, partners, and open source community - will benefit from having the same build systems available, as well as a release channel from which folks can purchase those apps for use on any KAZOO cluster.
+
+Thanks for your patience! We're excited to show 5.0 off!
+
 ## Versions
 
 ### 5.0
