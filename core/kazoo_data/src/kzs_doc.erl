@@ -304,7 +304,7 @@ copy_doc(Src, Dst, CopySpec, CopyFun, Opts) ->
                      | [{Key, 'null'} || Key <- ?DELETE_KEYS]
                     ],
             DestinationDoc = kz_json:set_values(Props, SourceDoc),
-            Doc = copy_transform(Transform, SourceDoc, DestinationDoc),
+            Doc = kz_json:delete_key(<<"_attachments">>, copy_transform(Transform, SourceDoc, DestinationDoc)),
             case CopyFun(Dst, DestDbName, Doc, Options) of
                 {'ok', JObj} ->
                     Attachments = kz_doc:attachments(SourceDoc, kz_json:new()),
@@ -345,7 +345,18 @@ copy_attachments(Src, Dst, CopySpec, {[JObj | JObjs], [Key | Keys]}, Rev) ->
                     copy_attachments(Src, Dst, CopySpec, {JObjs, Keys}, kz_doc:revision(AttachmentDoc));
                 {'ok', AttachmentDoc, _Headers} ->
                     copy_attachments(Src, Dst, CopySpec, {JObjs, Keys}, kz_doc:revision(AttachmentDoc));
-                Error -> Error
+                {'error', 'conflict'}=Error ->
+                    case kzs_attachments:fetch_attachment(Dst, DestDbName, DestDocId, Key) of
+                        {'ok', Contents} ->
+                            case kz_datamgr:lookup_doc_rev(DestDbName, DestDocId) of
+                                {'ok', NewRev} ->
+                                    copy_attachments(Src, Dst, CopySpec, {JObjs, Keys}, NewRev);
+                                _Else -> Error
+                            end;
+                        _Else -> Error
+                    end;
+                Error ->
+                    Error
             end;
         Error -> Error
     end.
