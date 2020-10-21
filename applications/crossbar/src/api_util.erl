@@ -530,7 +530,7 @@ handle_max_filesize_exceeded(Context, Req1) ->
 decode_json_body(ReqBody, Req) ->
     try kz_json:unsafe_decode(ReqBody) of
         JObj ->
-            lager:debug("request has a json payload: ~s", [ReqBody]),
+            lager:debug("request has a json payload: ~s", [kz_log:redactor(ReqBody)]),
             {normalize_envelope_keys(JObj), Req}
     catch
         'throw':{'invalid_json',{'error',{ErrLine, ErrMsg}}, _JSON} ->
