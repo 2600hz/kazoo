@@ -68,7 +68,7 @@ caller_id_numbers(Doc) ->
 
 -spec caller_id_numbers(doc(), Default) -> binary() | Default.
 caller_id_numbers(Doc, Default) ->
-    kz_json:get_binary_value([<<"caller_id_numbers">>], Doc, Default).
+    kz_json:get_list_value([<<"caller_id_numbers">>], Doc, Default).
 
 -spec set_caller_id_numbers(doc(), binary()) -> doc().
 set_caller_id_numbers(Doc, CallerIdNumbers) ->
