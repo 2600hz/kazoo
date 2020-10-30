@@ -499,7 +499,7 @@ get_prompt(PromptId, Lang, AccountId, 'true') ->
             lager:debug("media ~s is not a prompt, leaving alone", [PromptId]),
             PromptId;
         'false' ->
-            lager:debug("using account override for ~s in account ~s", [PromptId, AccountId]),
+            lager:debug("trying to lookup override for prompt ~s in account ~s", [PromptId, AccountId]),
             maybe_prompt_path(PromptId
                              ,Lang
                              ,AccountId
@@ -519,9 +519,10 @@ get_prompt(PromptId, Lang, _AccountId, 'false') ->
 -spec maybe_prompt_path(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary(), {'ok', kz_json:object()} | kz_datamgr:data_error()) ->
           kz_term:api_ne_binary().
 maybe_prompt_path(PromptId, Lang, AccountId, {'error', _}=Err) ->
-    lager:debug("building default prompt path. Error looking up for prompt ~s: ~p", [PromptId, Err]),
+    lager:debug("building system prompt path, account ~s does not have custom prompt ~s: ~p ", [AccountId, PromptId, Err]),
     kz_binary:join([<<"prompt:/">>, AccountId, PromptId, Lang], <<"/">>);
 maybe_prompt_path(PromptId, _Lang, AccountId, {'ok', _}) ->
+    lager:debug("using account override for prompt ~s in account ~s ", [PromptId, AccountId]),
     prompt_path(AccountId, PromptId).
 
 -spec is_not_prompt(kz_term:api_binary()) -> boolean().
