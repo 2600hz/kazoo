@@ -314,11 +314,11 @@ to_csv(<<"caller_id_numbers">>, Doc) ->
     RegexList ->
         RE = "^\\^\\\\\\+\\?(.*)\\\.\\+\\$",
         try
-            <<":", ColonList/binary>> = 
-            lists:foldr(fun(X, Acc) -> 
+            <<":", ColonList/binary>> =
+            lists:foldr(fun(X, Acc) ->
                            {match, [Y]} = re:run(X, RE, [{capture, all_but_first, binary}]),
-                           <<$:, Y/binary, Acc/binary>> 
-                        end, 
+                           <<$:, Y/binary, Acc/binary>>
+                        end,
                         <<>>,
                         RegexList),
             ColonList
