@@ -1418,8 +1418,14 @@ update_federated_bindings(#state{federators=ExistingFederators}=State
                                     ,broker_connections(ExistingFederators, FederatedBrokers)
                                     ).
 
-maybe_bind_to_federated_bindings(State, {_Existing, []}) ->
+maybe_bind_to_federated_bindings(#state{bindings=[{Binding, Props}|_]
+                                       ,federators=ExistingFederators
+                                       }=State
+                                ,{_Existing, []}
+                                ) ->
     lager:debug("all active brokers have federators"),
+    NonFederatedProps = props:delete('federate', Props),
+    'ok' = update_existing_listeners_bindings(ExistingFederators, Binding, NonFederatedProps),
     State;
 maybe_bind_to_federated_bindings(#state{bindings=[{Binding, Props}|_]
                                        ,federators=ExistingFederators
