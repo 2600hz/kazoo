@@ -305,31 +305,28 @@ to_csv_row(Row) ->
     Doc = kz_json:get_json_value(<<"doc">>, Row),
     [to_csv(Key, Doc) || Key <- ?DOC_FIELDS].
 
--spec to_csv(kz_term:ne_binary(), kz_json:object()) -> kz_term:ne_binary().
+-spec to_csv(kz_term:ne_binary(), kz_json:object()) -> kz_term:ne_binary() | 'undefined'.
 % Convert list of regex's to  a ":" seperated binary string
 % e.g. [<<"^\\+?441.+$">>,<<"^\\+?442.+$">>,<<"^\\+?443.+$">>,<<"^\\+?447.+$">>] -> <<"441:442:443:447">>
 to_csv(<<"caller_id_numbers">>, Doc) ->
     case kzd_rates:caller_id_numbers(Doc) of
         'undefined' -> 'undefined';
-        RegexList ->
-        try
-            RE = "^\\^\\\\\\+\\?(.*)\\\.\\+\\$",
-            <<":", ColonList/binary>> =
-                lists:foldr(fun(X, Acc) ->
-                                 {match, [Y]} = re:run(X, RE, [{capture, all_but_first, binary}]),
-                                 <<$:, Y/binary, Acc/binary>>
-                            end,
-                            <<>>,
-                            RegexList),
-                ColonList
-        catch
-           E:R ->
-               lager:warning("caller_id_numbers filters not in expected format ~p:~p", [E, R]),
-               RegexList
-        end
+        RegexList -> kz_binary:join([convert_regex_to_caller_id(Regex) || Regex <- RegexList], <<":">>)
     end;
 to_csv(Key, Doc) ->
     kz_json:get_binary_value(Key, Doc).
+
+-spec convert_regex_to_caller_id(kz_term:ne_binary()) -> kz_term:ne_binary().
+convert_regex_to_caller_id(Regex) ->
+    try
+        RE = "^\\^\\\\\\+\\?(.*)\\\.\\+\\$",
+        {match,[Caller_id]} = re:run(Regex, RE, [{capture, all_but_first, binary}]),
+        Caller_id
+    catch
+        E:R ->
+            lager:warning("caller_id_numbers filter not in expected format ~p:~p", [E, R]),
+            Regex
+     end.
 
 -spec maybe_override_rate(kz_tasks:args()) -> kzd_rates:doc().
 maybe_override_rate(Args) ->
