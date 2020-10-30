@@ -311,20 +311,21 @@ to_csv_row(Row) ->
 to_csv(<<"caller_id_numbers">>, Doc) ->
     case kzd_rates:caller_id_numbers(Doc) of
         'undefined' -> 'undefined';
-    RegexList ->
-        RE = "^\\^\\\\\\+\\?(.*)\\\.\\+\\$",
+        RegexList ->
         try
+            RE = "^\\^\\\\\\+\\?(.*)\\\.\\+\\$",
             <<":", ColonList/binary>> =
-            lists:foldr(fun(X, Acc) ->
-                           {match, [Y]} = re:run(X, RE, [{capture, all_but_first, binary}]),
-                           <<$:, Y/binary, Acc/binary>>
-                        end,
-                        <<>>,
-                        RegexList),
-            ColonList
+                lists:foldr(fun(X, Acc) ->
+                                 {match, [Y]} = re:run(X, RE, [{capture, all_but_first, binary}]),
+                                 <<$:, Y/binary, Acc/binary>>
+                            end,
+                            <<>>,
+                            RegexList),
+                ColonList
         catch
-	   E:R -> lager:warning("caller_id_numbers filters not in expected format ~p:~p", [E, R]),
-           RegexList
+           E:R ->
+               lager:warning("caller_id_numbers filters not in expected format ~p:~p", [E, R]),
+               RegexList
         end
     end;
 to_csv(Key, Doc) ->
