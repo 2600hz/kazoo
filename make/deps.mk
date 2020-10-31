@@ -4,6 +4,7 @@ DEPS = amqp_client \
 	chatterbox \
 	couchbeam \
 	cowboy \
+	cowlib \
 	ecsv \
 	eflame \
 	eiconv \
@@ -21,6 +22,7 @@ DEPS = amqp_client \
 	gen_smtp \
 	getopt \
 	gproc \
+	gun \
 	hep \
 	horse \
 	inet_cidr \
@@ -33,6 +35,7 @@ DEPS = amqp_client \
 	plists \
 	poolboy \
 	proper \
+	ranch \
 	recon \
 	reloader \
 	syslog \
@@ -49,11 +52,17 @@ ifeq ($(CIRCLECI),true)
     DEPS += proper
 endif
 
+dep_ranch = git https://github.com/2600hz/erlang-ranch 1.7.1
+dep_cowboy = git https://github.com/2600hz/erlang-cowboy 2.8.0-OTP19
+dep_cowlib = git https://github.com/2600hz/erlang-cowlib 2600hz-2.9.1
+dep_gun = git https://github.com/2600hz/erlang-gun 2600hz-2.0.0-pre.3
+
+dep_apns = git https://github.com/2600hz/erlang-apns4erl.git 2600hz-2.4.2
+
+
 dep_amqp_client = hex 3.7.8
-dep_apns = git https://github.com/2600hz/erlang-apns4erl.git 2600hz-2.3.0 # tag from 2600hz branch
 dep_certifi = hex 0.3.0
 dep_chatterbox = hex 0.7.0
-dep_cowboy = git https://github.com/ninenines/cowboy 2.2.0
 dep_eflame = git https://github.com/slfritchie/eflame 7b0bb1a7e8c8482a59421a3a50ae69d49af59d52
 dep_eiconv = git https://github.com/zotonic/eiconv
 dep_escalus = git https://github.com/esl/escalus 0de0463c345a1ade6fccfb9aadad719b58a1cef5

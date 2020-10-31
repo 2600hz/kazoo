@@ -35,6 +35,9 @@
 -type media_value() :: {content_type(), non_neg_integer(), list()}.
 -type media_values() :: [media_value()].
 
+-type content_conversion_fun() :: atom().
+-type content_type_callbacks() :: [{content_type(), content_conversion_fun()}].
+
 -define(MEDIA_VALUE(Type, SubType, Weight, Options, Extensions)
        ,{{Type, SubType, Options}, Weight, Extensions}
        ).

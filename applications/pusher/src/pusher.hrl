@@ -19,5 +19,17 @@
 
 -type push_app() :: {kz_term:api_pid(), map()} | 'undefined'.
 
+-ifdef(OTP_RELEASE).
+%% >= OTP 21
+-define(CATCH(Type, Reason, Stacktrace), Type:Reason:Stacktrace).
+-define(LOGSTACK(Stacktrace), kz_util:log_stacktrace(Stacktrace)).
+-define(STACK(Stacktrace), Stacktrace).
+-else.
+%% =< OTP 20
+-define(CATCH(Type, Reason, Stacktrace), Type:Reason).
+-define(LOGSTACK(Stacktrace), kz_util:log_stacktrace()).
+-define(STACK(Stacktrace), erlang:get_stacktrace()).
+-endif.
+
 -define(PUSHER_HRL, 'true').
 -endif.

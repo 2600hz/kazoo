@@ -18,6 +18,7 @@
         ,get_http_verb/2
         ,get_auth_token/2
         ,get_pretty_print/2
+        ,get_content_type/1
         ,is_authentic/2, is_early_authentic/2
         ,is_permitted/2
         ,is_known_content_type/2

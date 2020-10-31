@@ -50,14 +50,33 @@ handle_cast({'push', JObj}, #state{tab=ETS}=State) ->
     maybe_send_push_notification(get_apns(TokenApp, ETS), JObj),
     {'noreply', State};
 handle_cast('stop', State) ->
-    {'stop', 'normal', State}.
+    {'stop', 'normal', State};
+handle_cast(_Msg, State) ->
+    lager:debug_unsafe("unhandled cast => ~p", [_Msg]),
+    {'ok', State}.
 
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
-handle_info(_Request, State) ->
+handle_info({'DOWN', Ref, 'process', Pid, Reason}, #state{tab=ETS}=State) ->
+    _ = case ets:lookup(ETS, Ref) of
+            [{Ref, App}] ->
+                lager:warning("received down message for ~s / ~p / ~p => ~p", [App, Pid, Ref, Reason]),
+                ets:delete(ETS, Ref),
+                ets:delete(ETS, App),
+                erlang:send_after(?MILLISECONDS_IN_SECOND * 5, self(), {'reload', App});
+            _ ->
+                lager:critical("app not found")
+        end,
+    {'noreply', State};
+handle_info({'reload', App}, #state{tab=ETS}=State) ->
+    _ = reload_apns(App, ETS),
+    {'noreply', State};
+handle_info(_Msg, State) ->
+    lager:debug_unsafe("unhandled message => ~p", [_Msg]),
     {'noreply', State}.
 
 -spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, #state{tab=ETS}) ->
+    apns:stop(),
     ets:delete(ETS),
     'ok'.
 
@@ -65,16 +84,35 @@ terminate(_Reason, #state{tab=ETS}) ->
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
--spec maybe_send_push_notification(push_app(), kz_json:object()) -> any().
+-spec join_headers(map()) -> binary().
+join_headers(Headers) ->
+    kz_binary:join([list_to_binary([kz_term:to_binary(K), "=", kz_term:to_binary(V)])
+                    || {K, V} <- maps:to_list(Headers)
+                   ]
+                  ,<<",">>
+                  ).
+
+-spec maybe_send_push_notification(push_app(), kz_json:object()) -> 'ok'.
 maybe_send_push_notification('undefined', _) -> 'ok';
 maybe_send_push_notification({Pid, ExtraHeaders}, JObj) ->
     TokenID = kz_json:get_value(<<"Token-ID">>, JObj),
     Topic = apns_topic(JObj),
     Headers = kz_maps:merge(#{apns_topic => Topic}, ExtraHeaders),
     Msg = build_payload(JObj),
-    lager:debug_unsafe("pushing topic ~s for token-id ~s : ~s", [Topic, TokenID, kz_json:encode(kz_json:from_map(Msg), ['pretty'])]),
-    {Result, _Props, _Ignore} = apns:push_notification(Pid, TokenID, Msg, Headers),
-    lager:debug("apns result for ~s : ~B", [Topic, Result]).
+    lager:debug_unsafe("pushing ~s for token-id ~s : ~s"
+                      ,[join_headers(Headers)
+                       ,TokenID
+                       ,kz_json:encode(kz_json:from_map(Msg), ['pretty'])
+                       ]
+                      ),
+    try
+        Result = apns:push_notification(Pid, TokenID, Msg, Headers),
+        lager:debug_unsafe("apns result for ~s : ~p", [Topic, Result])
+    catch
+        ?CATCH(Ex, Msg, _ST) ->
+            lager:error_unsafe("PUBLISH ERROR => ~p / ~p", [Ex, Msg]),
+            ?LOGSTACK(_ST)
+    end.
 
 -spec build_payload(kz_json:object()) -> map().
 build_payload(JObj) ->
@@ -86,6 +124,13 @@ map_key(K, V, JObj) ->
         'false' -> JObj;
         {_, Fun} when is_function(Fun, 2) -> Fun(V, JObj);
         {_, K1} -> kz_json:set_value(K1, V, JObj)
+    end.
+
+-spec reload_apns(kz_term:api_binary(), ets:tid()) -> 'ok' | reference().
+reload_apns(App, ETS) ->
+    case get_apns(App, ETS) of
+        'undefined' -> erlang:send_after(?MILLISECONDS_IN_SECOND * 5, self(), {'reload', App});
+        _Push -> 'ok'
     end.
 
 -spec get_apns(kz_term:api_binary(), ets:tid()) -> push_app().
@@ -119,20 +164,31 @@ maybe_load_apns(App, ETS, CertBin, Host, Headers) ->
     Connection = #{name => kz_term:to_atom(<<"apns_", App/binary>>, 'true')
                   ,apple_host => kz_term:to_list(Host)
                   ,apple_port => 443
+                  ,type => 'certdata'
                   ,certdata => Cert
                   ,keydata => Key
                   ,timeout => 10000
-                  ,type => 'certdata'
+                  ,options => #{transport => 'tls'
+                               ,trace => 'false'
+                               ,http2_opts => #{keepalive => ?MILLISECONDS_IN_MINUTE  * 15}
+                               }
                   },
-    case apns:connect(Connection) of
+    try apns:connect(Connection) of
         {'ok', Pid} ->
             ets:insert(ETS, {App, {Pid, Headers}}),
+            Ref = erlang:monitor('process', Pid),
+            ets:insert(ETS, {Ref, App}),
             {Pid, Headers};
         {'error', {'already_started', Pid}} ->
             apns:close_connection(Pid),
             maybe_load_apns(App, ETS, CertBin, Host, Headers);
         {'error', Reason} ->
-            lager:error("Error loading apns ~p", [Reason]),
+            lager:error("error loading apns ~p", [Reason]),
+            'undefined'
+    catch
+        ?CATCH(_Er, _Ex,_ST) ->
+            lager:error("error loading apns ~p / ~p", [_Er, _Ex]),
+            ?LOGSTACK(_ST),
             'undefined'
     end.
 
