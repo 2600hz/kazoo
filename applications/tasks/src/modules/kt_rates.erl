@@ -306,8 +306,8 @@ to_csv_row(Row) ->
     [to_csv(Key, Doc) || Key <- ?DOC_FIELDS].
 
 -spec to_csv(kz_term:ne_binary(), kz_json:object()) -> kz_term:ne_binary() | 'undefined'.
-% Convert list of regex's to  a ":" seperated binary string
-% e.g. [<<"^\\+?441.+$">>,<<"^\\+?442.+$">>,<<"^\\+?443.+$">>,<<"^\\+?447.+$">>] -> <<"441:442:443:447">>
+                                                % Convert list of regex's to  a ":" seperated binary string
+                                                % e.g. [<<"^\\+?441.+$">>,<<"^\\+?442.+$">>,<<"^\\+?443.+$">>,<<"^\\+?447.+$">>] -> <<"441:442:443:447">>
 to_csv(<<"caller_id_numbers">>, Doc) ->
     case kzd_rates:caller_id_numbers(Doc) of
         'undefined' -> 'undefined';
@@ -326,7 +326,7 @@ convert_regex_to_caller_id(Regex) ->
         E:R ->
             lager:warning("caller_id_numbers filter not in expected format ~p:~p", [E, R]),
             Regex
-     end.
+    end.
 
 -spec maybe_override_rate(kz_tasks:args()) -> kzd_rates:doc().
 maybe_override_rate(Args) ->
