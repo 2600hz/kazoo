@@ -36088,6 +36088,11 @@
                     "description": "The date that any recurrence should be calculated as starting on",
                     "type": "integer"
                 },
+                "end_date": {
+                    "default": 0,
+                    "description": "The date that the rule ends. Zero means no end date",
+                    "type": "integer"
+                },
                 "time_window_start": {
                     "description": "Seconds from the start of a day to consider this rule valid",
                     "maximum": 86400,

@@ -78,6 +78,12 @@
             "support_level": "supported",
             "type": "integer"
         },
+        "end_date": {
+            "default": 0,
+            "description": "The date that the rule ends. Zero means no end date",
+            "support_level": "supported",
+            "type": "integer"
+        },
         "time_window_start": {
             "description": "Seconds from the start of a day to consider this rule valid",
             "maximum": 86400,
