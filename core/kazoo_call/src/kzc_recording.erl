@@ -641,7 +641,6 @@ check_url_param(Param) ->
 handler_from_url(Url) ->
     case kz_http_util:urlsplit(Url) of
         {<<"ftp">>, _, _, _, _} -> 'kz_att_ftp';
-        {<<"ftps">>, _, _, _, _} -> 'kz_att_ftp';
         {<<"http">>, _, _, _, _} -> 'kz_att_http';
         {<<"https">>, _, _, _, _} -> 'kz_att_http';
         _ -> 'undefined'
