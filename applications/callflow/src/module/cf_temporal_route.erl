@@ -182,7 +182,7 @@ get_temporal_rules([{Route, Id}|Routes], LSec, AccountDb, TZ, Now, Rules) ->
 -spec check_end_date(non_neg_integer(), kz_term:ne_binary(), kz_time:datetime(), integer(), kzd_temporal_rules:doc()) -> 'future' | 'equal' | 'past'.
 check_end_date(LSec, TZ, Now, EndDateSeconds, RulesDoc) ->
     % TODO, this is an workaround since the from_gregorian_seconds function are crashing on low values such as zero
-    case EndDateSeconds of 
+    case EndDateSeconds of
         0 -> 'future';
         _ ->
             EndDate = kz_date:from_gregorian_seconds(kzd_temporal_rules:end_date(RulesDoc, LSec), TZ),
@@ -204,7 +204,7 @@ maybe_build_rule(Routes, LSec, AccountDb, TZ, Now, Rules, Id, RulesDoc) ->
             get_temporal_rules(Routes, LSec, AccountDb, TZ, Now, Rules);
         _ ->
             case check_end_date(LSec, TZ, Now, EndDateSeconds, RulesDoc) of
-            'future' -> 
+            'future' ->
                 get_temporal_rules(Routes, LSec, AccountDb, TZ, Now, [build_rule(Id, RulesDoc, StartDate, RuleName) | Rules]);
             'past' ->
                 lager:warning("rule ~p end_date is pass discarding", [RuleName]),

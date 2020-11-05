@@ -36045,6 +36045,11 @@
                     "description": "Whether the rule is enabled",
                     "type": "boolean"
                 },
+                "end_date": {
+                    "default": 0,
+                    "description": "The date that the rule ends. Zero means no end date",
+                    "type": "integer"
+                },
                 "flags": {
                     "description": "Flags set by external applications",
                     "items": {
@@ -36086,11 +36091,6 @@
                 "start_date": {
                     "default": 62586115200,
                     "description": "The date that any recurrence should be calculated as starting on",
-                    "type": "integer"
-                },
-                "end_date": {
-                    "default": 0,
-                    "description": "The date that the rule ends. Zero means no end date",
                     "type": "integer"
                 },
                 "time_window_start": {
