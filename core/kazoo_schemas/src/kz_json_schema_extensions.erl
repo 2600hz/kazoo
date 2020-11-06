@@ -239,12 +239,21 @@ is_valid_scheme(<<"http">>) -> 'true';
 is_valid_scheme(<<"https">>) -> 'true';
 is_valid_scheme(_) -> 'false'.
 
-is_valid_ftp_url({'ok',{'ftp', _UserPass, Host, _Port, _FullPath,_Query}}) ->
-    is_valid_host(kz_term:to_binary(Host));
+is_valid_ftp_url({'ok',{Scheme, _UserPass, Host, _Port, _FullPath,_Query}}) ->
+    lager:critical("checking scheme ~s",[Scheme]),
+    lists:all(fun is_valid_url_part/1
+             ,[{fun is_valid_ftp_scheme/1, Scheme}
+              ,{fun is_valid_host/1, kz_term:to_binary(Host)}
+              ]
+             );
 is_valid_ftp_url(<<URL/binary>>) ->
     is_valid_ftp_url(http_uri:parse(kz_term:to_list(URL)));
 is_valid_ftp_url(_URL) ->
     'false'.
+
+is_valid_ftp_scheme('ftp') -> 'true';
+is_valid_ftp_scheme('ftps') -> 'true';
+is_valid_ftp_scheme(_) -> 'false'.
 
 -spec is_valid_host(kz_http_util:location()) -> boolean().
 is_valid_host(<<Host/binary>>) ->
