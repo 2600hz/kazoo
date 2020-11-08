@@ -15,6 +15,7 @@ Key | Description | Type | Default | Required | Support Level
 `cycle` | The recurrence cycle for this rule | `string('date' | 'daily' | 'weekly' | 'monthly' | 'yearly')` |   | `true` | `supported`
 `days` | The recurrence days for this rule | `array(integer())` |   | `false` | `supported`
 `enabled` | Whether the rule is enabled | `boolean()` |   | `false` |  
+`end_date` | The date that the rule ends. Zero means no end date | `integer()` | `0` | `false` | `supported`
 `flags.[]` |   | `string()` |   | `false` | `supported`
 `flags` | Flags set by external applications | `array(string())` |   | `false` | `supported`
 `interval` | The recurrence interval for this rule | `integer()` | `1` | `false` | `supported`

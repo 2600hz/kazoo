@@ -179,17 +179,36 @@ get_temporal_rules([{Route, Id}|Routes], LSec, AccountDb, TZ, Now, Rules) ->
             maybe_build_rule(Routes, LSec, AccountDb, TZ, Now, Rules, Id, JObj)
     end.
 
+-spec check_end_date(non_neg_integer(), kz_term:ne_binary(), kz_time:datetime(), integer(), kzd_temporal_rules:doc()) -> 'future' | 'equal' | 'past'.
+check_end_date(LSec, TZ, Now, EndDateSeconds, RulesDoc) ->
+    % TODO, this is an workaround since the from_gregorian_seconds function are crashing on low values such as zero
+    case EndDateSeconds of
+        0 -> 'future';
+        _ ->
+            EndDate = kz_date:from_gregorian_seconds(kzd_temporal_rules:end_date(RulesDoc, LSec), TZ),
+            case kz_date:relative_difference(Now, {EndDate, {0,0,0}}) of
+            'past' -> 'past';
+            _ ->  'future'
+            end
+    end.
+
 -spec maybe_build_rule(routes(), non_neg_integer(), kz_term:ne_binary(), kz_term:ne_binary(), kz_time:datetime(), rules(), kz_term:ne_binary(), kzd_temporal_rules:doc()) -> rules().
 maybe_build_rule(Routes, LSec, AccountDb, TZ, Now, Rules, Id, RulesDoc) ->
     StartDate = kz_date:from_gregorian_seconds(kzd_temporal_rules:start_date(RulesDoc, LSec), TZ),
     RuleName = kzd_temporal_rules:name(RulesDoc, ?RULE_DEFAULT_NAME),
-
+    EndDateSeconds = kzd_temporal_rules:end_date(RulesDoc),
     case kz_date:relative_difference(Now, {StartDate, {0,0,0}}) of
         'future' ->
             lager:warning("rule ~p is in the future discarding", [RuleName]),
             get_temporal_rules(Routes, LSec, AccountDb, TZ, Now, Rules);
         _ ->
-            get_temporal_rules(Routes, LSec, AccountDb, TZ, Now, [build_rule(Id, RulesDoc, StartDate, RuleName) | Rules])
+                        case check_end_date(LSec, TZ, Now, EndDateSeconds, RulesDoc) of
+            'future' ->
+                get_temporal_rules(Routes, LSec, AccountDb, TZ, Now, [build_rule(Id, RulesDoc, StartDate, RuleName) | Rules]);
+            'past' ->
+                lager:warning("rule ~p end_date is pass discarding", [RuleName]),
+                get_temporal_rules(Routes, LSec, AccountDb, TZ, Now, Rules)
+            end
     end.
 
 -spec build_rule(kz_term:ne_binary(), kzd_temporal_rules:doc(), kz_time:date(), kz_term:ne_binary()) -> rule().
@@ -203,6 +222,7 @@ build_rule(Id, RulesDoc, StartDate, RuleName) ->
          ,name = RuleName
          ,ordinal = kzd_temporal_rules:ordinal(RulesDoc, ?RULE_DEFAULT_ORDINAL)
          ,start_date = StartDate
+         ,end_date = kzd_temporal_rules:end_date(RulesDoc)
          ,wdays = sort_wdays(kzd_temporal_rules:wdays(RulesDoc, ?RULE_DEFAULT_WDAYS))
          ,wtime_start = kzd_temporal_rules:time_window_start(RulesDoc, ?RULE_DEFAULT_WTIME_START)
          ,wtime_stop = kzd_temporal_rules:time_window_stop(RulesDoc, ?RULE_DEFAULT_WTIME_STOP)

@@ -29,6 +29,12 @@
             "description": "Whether the rule is enabled",
             "type": "boolean"
         },
+        "end_date": {
+            "default": 0,
+            "description": "The date that the rule ends. Zero means no end date",
+            "support_level": "supported",
+            "type": "integer"
+        },
         "flags": {
             "description": "Flags set by external applications",
             "items": {
