@@ -24,6 +24,7 @@
 -export([e911_locality/1, e911_locality/2, set_e911_locality/2]).
 -export([e911_location_id/1, e911_location_id/2, set_e911_location_id/2]).
 -export([e911_longitude/1, e911_longitude/2, set_e911_longitude/2]).
+-export([e911_notification_contact_emails/1, e911_notification_contact_emails/2, set_e911_notification_contact_emails/2]).
 -export([e911_plus_four/1, e911_plus_four/2, set_e911_plus_four/2]).
 -export([e911_postal_code/1, e911_postal_code/2, set_e911_postal_code/2]).
 -export([e911_region/1, e911_region/2, set_e911_region/2]).
@@ -271,6 +272,18 @@ e911_longitude(Doc, Default) ->
 -spec set_e911_longitude(doc(), binary()) -> doc().
 set_e911_longitude(Doc, E911Longitude) ->
     kz_json:set_value([<<"e911">>, <<"longitude">>], E911Longitude, Doc).
+
+-spec e911_notification_contact_emails(doc()) -> kz_term:ne_binaries().
+e911_notification_contact_emails(Doc) ->
+    e911_notification_contact_emails(Doc, []).
+
+-spec e911_notification_contact_emails(doc(), Default) -> kz_term:ne_binaries() | Default.
+e911_notification_contact_emails(Doc, Default) ->
+    kz_json:get_list_value([<<"e911">>, <<"notification_contact_emails">>], Doc, Default).
+
+-spec set_e911_notification_contact_emails(doc(), kz_term:ne_binaries()) -> doc().
+set_e911_notification_contact_emails(Doc, E911NotificationContactEmails) ->
+    kz_json:set_value([<<"e911">>, <<"notification_contact_emails">>], E911NotificationContactEmails, Doc).
 
 -spec e911_plus_four(doc()) -> kz_term:api_binary().
 e911_plus_four(Doc) ->

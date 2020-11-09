@@ -14,6 +14,9 @@ Example resource document:
        "rules": [
            "^\\+7(\\d{10})$"
        ],
+       "rules_test": [
+           "^\\+{0,1}(933)$"
+       ],
        "cid_rules": [
            "^(\\+749[59]\\d{7})$"
        ],
@@ -35,3 +38,9 @@ You can obviously add regexps for specific area codes, toll-free, E911, and inte
 ## CallerID number rules ("cid_rules" field)
 Like "rules" field, but capture groups don't modify outgoing CallerID number. If you want modify CallerID number - use "formatters".
 
+
+## ("rules_test" field)
+
+The `rules_test` object defines an array of regular expressions for test patterns of the given resource.
+
+For example, if the resource handles emergency routes in North America, defining `933` as a test route, will inform teletype this emergency call is a test and will be reflected as such in the notification.

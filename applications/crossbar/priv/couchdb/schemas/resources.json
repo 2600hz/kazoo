@@ -417,6 +417,14 @@
             },
             "type": "array"
         },
+        "rules_test": {
+            "default": [],
+            "description": "A list of regular expressions of which if matched denotes a test rule",
+            "items": {
+                "type": "string"
+            },
+            "type": "array"
+        },
         "weight_cost": {
             "default": 50,
             "description": "A value between 0 and 100 that determines the order of resources when multiple can be used",

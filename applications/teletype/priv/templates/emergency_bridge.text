@@ -1,0 +1,46 @@
+                Emergency {% if call.emergency_test_call %}Test{% endif %} Call Notification
+
+{% if call.owner_id %}{{call.user_first_name}} {{call.user_last_name}}{% else %}The device {{call.device_name}}{% endif %} has just placed an Emergency {% if call.emergency_test_call %}Test{% endif %} Call to {{call.emergency_to_did}} from Account {{account.name}}. Here are the emergency call details:
+
+=== Emergency {% if call.emergency_test_call %}Test{% endif %} Call Details ===
+
+    Call-ID: {{call.call_id}}
+
+    Emergency Service Address:
+        {% if call.emergency_address_street_1 %}
+        {{call.emergency_address_street_1}}
+        {{call.emergency_address_street_2}}
+        {{call.emergency_address_city}}, {{call.emergency_address_region}} {{call.emergency_address_postal_code}}
+        {% endif %}
+
+    Emergency Caller ID:
+        - Name: {{call.emergency_caller_id_name}}
+        - Number: {{call.emergency_caller_id_number}}
+
+
+    External Caller ID:
+        - Name: {{call.outbound_caller_id_name}}
+        - Number: {{call.outbound_caller_id_number}}
+
+    Device:
+        - Device ID: {{call.authorizing_id}}
+        - Device Name: {{call.device_name}}
+        {% if call.owner_id %}
+        - Owner Name: {{call.user_first_name}} {{call.user_last_name}} ({{call.owner_id}})
+        - Owner Email: {{call.user_email}}
+        {% endif %}
+
+
+Account Information
+
+    Account ID: {{account.id}}
+    Account Name: {{account.name}}
+    Account Realm: {{account.realm}}
+
+
+
+Sent from {{system.encoded_node}}
+
+
+
+

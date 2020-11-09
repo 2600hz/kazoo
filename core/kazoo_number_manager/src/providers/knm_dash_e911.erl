@@ -101,7 +101,8 @@ maybe_update_e911(N) ->
             N;
         'false' ->
             lager:debug("information has been changed: ~s", [kz_json:encode(E911)]),
-            NewE911 = maybe_update_e911(N, E911),
+            %% kz_json:merge/2 invoked to update "non address" fields like `notification_contact_emails`
+            NewE911 = kz_json:merge(E911, maybe_update_e911(N, E911)),
             lager:debug("using address ~p", [NewE911]),
             NewDoc = kz_json:set_value(?FEATURE_E911, NewE911, knm_phone_number:doc(PN)),
             NewPN = knm_phone_number:reset_doc(PN, NewDoc),

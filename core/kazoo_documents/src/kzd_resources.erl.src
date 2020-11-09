@@ -28,6 +28,7 @@
 -export([name/1, name/2, set_name/2]).
 -export([require_flags/1, require_flags/2, set_require_flags/2]).
 -export([rules/1, rules/2, set_rules/2]).
+-export([rules_test/1, rules_test/2, set_rules_test/2]).
 -export([weight_cost/1, weight_cost/2, set_weight_cost/2]).
 
 
@@ -305,6 +306,18 @@ rules(Doc, Default) ->
 -spec set_rules(doc(), kz_term:ne_binaries()) -> doc().
 set_rules(Doc, Rules) ->
     kz_json:set_value([<<"rules">>], Rules, Doc).
+
+-spec rules_test(doc()) -> kz_term:ne_binaries().
+rules_test(Doc) ->
+    rules_test(Doc, []).
+
+-spec rules_test(doc(), Default) -> kz_term:ne_binaries() | Default.
+rules_test(Doc, Default) ->
+    kz_json:get_list_value([<<"rules_test">>], Doc, Default).
+
+-spec set_rules_test(doc(), kz_term:ne_binaries()) -> doc().
+set_rules_test(Doc, RulesTest) ->
+    kz_json:set_value([<<"rules_test">>], RulesTest, Doc).
 
 -spec weight_cost(doc()) -> integer().
 weight_cost(Doc) ->
