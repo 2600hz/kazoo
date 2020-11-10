@@ -794,7 +794,7 @@ get_ne_json_value(Key, JObj, Default) ->
 filter(Pred, ?JSON_WRAPPER(Prop)) when is_function(Pred, 1) ->
     from_list([E || {_,_}=E <- Prop, Pred(E)]).
 
--spec filter(filter_pred(), object(), path()) -> object() | objects().
+-spec filter(filter_pred(), object(), get_key()) -> object() | objects().
 filter(Pred, ?JSON_WRAPPER(_)=JObj, Path) when is_list(Path),
                                                is_function(Pred, 1) ->
     Filtered = filter(Pred, get_json_value(Path, JObj)),
