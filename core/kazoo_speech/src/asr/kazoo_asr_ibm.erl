@@ -1,7 +1,6 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2018-2020, 2600Hz
-%%% @doc
-%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% @doc This Source Code Form is subject to the terms of the Mozilla Public
 %%% License, v. 2.0. If a copy of the MPL was not distributed with this
 %%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
 %%%
@@ -144,8 +143,7 @@ get_sentence(Alternative) ->
     kz_json:get_value(<<"transcript">>, Sentence).
 
 %%%-----------------------------------------------------------------------------
-%%% @doc
-%%% Set the asr key
+%%% @doc Set the asr key
 %%% @end
 %%%-----------------------------------------------------------------------------
 -spec set_api_key(kz_term:ne_binary()) -> 'ok'.
