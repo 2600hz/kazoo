@@ -60,8 +60,8 @@ encode_pid(Queue, Pid) ->
     list_to_binary(["pid://", kz_term:to_binary(Pid), "/", Queue]).
 
 -spec decode_pid(kz_term:ne_binary()) -> kz_term:api_pid().
-decode_pid(<<"pid://", Pid/binary>>) ->
-    case binary:split(Pid, <<"/">>) of
+decode_pid(<<"pid://", QPid/binary>>) ->
+    case binary:split(QPid, <<"/">>) of
         [Pid, _RK] -> kz_term:to_pid(Pid);
         _ -> 'undefined'
     end;
