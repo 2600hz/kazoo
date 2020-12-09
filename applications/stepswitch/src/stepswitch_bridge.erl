@@ -768,11 +768,21 @@ extract_e911_street_address_field(Doc, Key) ->
 
 -spec maybe_use_e911_legacy_value(kz_doc:doc(), kz_term:ne_binary()) -> kz_term:ne_binary() | 'undefined'.
 maybe_use_e911_legacy_value(Doc, <<"street_address">>) ->
-    <<(kzd_phone_numbers:e911_legacy_data_house_number(Doc))/binary
-     ," "
-     ,(kzd_phone_numbers:e911_legacy_data_streetname(Doc))/binary>>;
+    format_legacy_address(kzd_phone_numbers:e911_legacy_data_house_number(Doc)
+                         ,kzd_phone_numbers:e911_legacy_data_streetname(Doc)
+                         );
 maybe_use_e911_legacy_value(Doc, <<"street_address_extended">>) ->
     kzd_phone_numbers:e911_legacy_data_suite(Doc).
+
+-spec format_legacy_address(kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> kz_term:api_ne_binary().
+format_legacy_address('undefined', 'undefined') ->
+    'undefined';
+format_legacy_address('undefined', Street) ->
+    Street;
+format_legacy_address(House, 'undefined') ->
+    House;
+format_legacy_address(House, Street) ->
+    <<(House)/binary, " ", (Street)/binary>>.
 
 -spec set_emergency_user_meta(kapi_offnet_resource:req(), kz_term:proplist()) -> kz_term:proplist().
 set_emergency_user_meta(OffnetReq, Props) ->
