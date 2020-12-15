@@ -18,6 +18,7 @@
         ]).
 
 -include("kz_voicemail.hrl").
+-include("kazoo_media/include/kz_media.hrl").
 
 -export_type([vm_folder/0]).
 
@@ -785,12 +786,15 @@ prepend_forward_message(Call, ForwardId, Metadata, _SrcBoxId, Props) ->
     {'ok', _} = kz_media_util:synthesize_tone(OrigSampleRate, <<"440">>, <<"0.5">>, TonePath),
 
     lager:debug("joining prepend to original message"),
-    case kz_media_util:join_media_files([TmpPath, TonePath, OrigPath], [{sample_rate, OrigSampleRate}]) of
+    JoinFormat = ?NORMALIZATION_FORMAT,
+    JoinOptions = [{'sample_rate', OrigSampleRate}, {'to_format', JoinFormat}],
+    case kz_media_util:join_media_files([TmpPath, TonePath, OrigPath], JoinOptions) of
         {'ok', FileContents} ->
-            JoinFilename = <<(kz_binary:rand_hex(16))/binary, ".mp3">>,
+            JoinFilename = <<(kz_binary:rand_hex(16))/binary, ".", JoinFormat/binary>>,
+            FileProps = [{'content_type', kz_mime:from_extension(JoinFormat)}],
             _ = [kz_util:delete_file(F) || F <- [TmpPath, OrigPath, TonePath]],
             %%TODO: update forwarded doc with length and media_filename
-            try_put_fwd_attachment(AccountId, ForwardId, JoinFilename, FileContents, 3);
+            try_put_fwd_attachment(AccountId, ForwardId, JoinFilename, FileContents, FileProps, 3);
         {'error', _} ->
             _ = [kz_util:delete_file(F) || F <- [TmpPath, OrigPath, TonePath]],
             lager:warning("failed to join forward message media files"),
@@ -798,19 +802,19 @@ prepend_forward_message(Call, ForwardId, Metadata, _SrcBoxId, Props) ->
 
     end.
 
--spec try_put_fwd_attachment(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), iodata(), 1..3) -> db_ret().
-try_put_fwd_attachment(AccountId, ForwardId, _JoinFilename, _FileContents, 0) ->
+-spec try_put_fwd_attachment(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), iodata(), kz_term:proplist(), 1..3) -> db_ret().
+try_put_fwd_attachment(AccountId, ForwardId, _JoinFilename, _FileContents, _FileProps, 0) ->
     lager:error("max retries to save prepend forward voicemail attachment ~s in db ~s"
                ,[ForwardId, kvm_util:get_db(AccountId, ForwardId)]
                ),
     {'error', 'max_save_retries'};
-try_put_fwd_attachment(AccountId, ForwardId, JoinFilename, FileContents, Loop) ->
-    case kz_datamgr:put_attachment(kvm_util:get_db(AccountId, ForwardId), ForwardId, JoinFilename, FileContents) of
+try_put_fwd_attachment(AccountId, ForwardId, JoinFilename, FileContents, FileProps, Loop) ->
+    case kz_datamgr:put_attachment(kvm_util:get_db(AccountId, ForwardId), ForwardId, JoinFilename, FileContents, FileProps) of
         {'ok', _}=OK -> OK;
         {'error', 'conflict'} ->
-            try_put_fwd_attachment(AccountId, ForwardId, JoinFilename, FileContents, Loop - 1);
+            try_put_fwd_attachment(AccountId, ForwardId, JoinFilename, FileContents, FileProps, Loop - 1);
         {'error', 'timeout'} ->
-            try_put_fwd_attachment(AccountId, ForwardId, JoinFilename, FileContents, Loop - 1);
+            try_put_fwd_attachment(AccountId, ForwardId, JoinFilename, FileContents, FileProps, Loop - 1);
         {'error', _Reason}=Error ->
             lager:error("failed to save prepend forward voicemail message ~s in db ~s : ~p"
                        ,[ForwardId, kvm_util:get_db(AccountId, ForwardId), _Reason]),

@@ -1,6 +1,7 @@
 -ifndef(KZ_MEDIA_HRL).
 
 -define(CHUNKSIZE, 24576).
+-define(NORMALIZATION_FORMAT, kapps_config:get_ne_binary(<<"crossbar.media">>, <<"normalization_format">>, <<"mp3">>)).
 
 -record(media_file, {stream_url = <<>> :: binary()
                     ,contents = <<>> :: binary()
