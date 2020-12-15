@@ -23,8 +23,8 @@
 -define(IBM_ASR_KEY, kapps_config:get_binary(?IBM_CONFIG_CAT, <<"asr_api_key">>)).
 -define(IBM_ASR_PROFANITY_FILTER, kapps_config:get_is_true(?IBM_CONFIG_CAT, <<"asr_profanity_filter">>)).
 -define(IBM_ASR_MODEL, kapps_config:get_binary(?IBM_CONFIG_CAT, <<"asr_model">>, <<"en-US_NarrowbandModel">>)).
--define(IBM_ASR_PREFERRED_CONTENT_TYPE, <<"application/mpeg">>).
--define(IBM_ASR_ACCEPTED_CONTENT_TYPES, [<<"audio/mpeg">>]).
+-define(IBM_ASR_PREFERRED_CONTENT_TYPE, <<"audio/mpeg">>).
+-define(IBM_ASR_ACCEPTED_CONTENT_TYPES, [<<"audio/mpeg">>, <<"audio/wav">>]).
 
 %%%------------------------------------------------------------------------------
 %%% @doc Return true if IBM ASR is configured / available otherwise false.
