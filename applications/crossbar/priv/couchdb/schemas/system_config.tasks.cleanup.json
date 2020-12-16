@@ -1,0 +1,33 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "system_config.tasks.cleanup",
+    "description": "Schema for tasks.cleanup system_config",
+    "properties": {
+        "cleanup_dbs": {
+            "default": {
+                "classifications": [
+                    "account",
+                    "modb",
+                    "yodb",
+                    "ratedeck",
+                    "resource_selectors"
+                ],
+                "databases": [
+                    "alerts",
+                    "accounts",
+                    "system_config",
+                    "system_data",
+                    "functions",
+                    "system_media",
+                    "offnet",
+                    "port_requests",
+                    "sip_auth",
+                    "webhooks"
+                ]
+            },
+            "description": "tasks cleanup cleanup_dbs",
+            "type": "object"
+        }
+    },
+    "type": "object"
+}
