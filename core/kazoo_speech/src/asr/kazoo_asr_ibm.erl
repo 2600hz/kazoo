@@ -21,7 +21,7 @@
 -define(IBM_CONFIG_CAT, <<(?MOD_CONFIG_CAT)/binary, ".ibm">>).
 -define(IBM_ASR_URL, kapps_config:get_binary(?IBM_CONFIG_CAT, <<"asr_url">>)).
 -define(IBM_ASR_KEY, kapps_config:get_binary(?IBM_CONFIG_CAT, <<"asr_api_key">>)).
--define(IBM_ASR_PROFANITY_FILTER, kapps_config:get_is_true(?IBM_CONFIG_CAT, <<"asr_profanity_filter">>), 'true').
+-define(IBM_ASR_PROFANITY_FILTER, kapps_config:get_is_true(?IBM_CONFIG_CAT, <<"asr_profanity_filter">>, 'true')).
 -define(IBM_ASR_MODEL, kapps_config:get_binary(?IBM_CONFIG_CAT, <<"asr_model">>, <<"en-US_NarrowbandModel">>)).
 -define(IBM_ASR_SMART_FORMATTING, kapps_config:get_is_true(?IBM_CONFIG_CAT, <<"asr_smart_formatting">>, 'true')).
 -define(IBM_ASR_PREFERRED_CONTENT_TYPE, <<"audio/mpeg">>).
