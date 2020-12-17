@@ -24,8 +24,7 @@
         ,originate_execute/2
         ,originate_uuid/3
         ,outbound_call/2
-        ,send_agent_available/1
-        ,send_agent_busy/1
+        ,send_availability_update/2, send_availability_update/3
         ,send_sync_req/1
         ,send_sync_resp/3, send_sync_resp/4
         ,config/1, refresh_config/3
@@ -154,6 +153,9 @@
                     ,{{'acdc_agent_handler', 'handle_config_change'}
                      ,[{<<"configuration">>, <<"*">>}]
                      }
+                    ,{{'acdc_agent_handler', 'handle_queue_started_notif'}
+                     ,[{<<"queue">>, <<"started_notif">>}]
+                     }
                     ]).
 
 %%%=============================================================================
@@ -254,13 +256,13 @@ originate_uuid(Srv, UUID, CtlQ) ->
 outbound_call(Srv, CallId) ->
     gen_listener:cast(Srv, {'outbound_call', CallId}).
 
--spec send_agent_available(pid()) -> 'ok'.
-send_agent_available(Srv) ->
-    gen_listener:cast(Srv, 'send_agent_available').
+-spec send_availability_update(pid(), fsm_state_name()) -> 'ok'.
+send_availability_update(Srv, StateName) ->
+    gen_listener:cast(Srv, {'send_availability_update', StateName}).
 
--spec send_agent_busy(pid()) -> 'ok'.
-send_agent_busy(Srv) ->
-    gen_listener:cast(Srv, 'send_agent_busy').
+-spec send_availability_update(pid(), fsm_state_name(), kz_term:ne_binary()) -> 'ok'.
+send_availability_update(Srv, StateName, QueueId) ->
+    gen_listener:cast(Srv, {'send_availability_update', StateName, QueueId}).
 
 -spec send_sync_req(pid()) -> 'ok'.
 send_sync_req(Srv) -> gen_listener:cast(Srv, {'send_sync_req'}).
@@ -410,16 +412,14 @@ handle_cast({'fsm_started', FSMPid}, State) ->
 handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
     {'noreply', State#state{my_q=Q}, 'hibernate'};
 
-handle_cast({'add_acdc_queue', Q, StateName}, #state{agent_queues=Qs
-                                                    ,acct_id=AcctId
-                                                    ,agent_id=AgentId
-                                                    }=State) when is_binary(Q) ->
+handle_cast({'add_acdc_queue', Q, StateName}, #state{agent_queues=Qs}=State) when is_binary(Q) ->
     case lists:member(Q, Qs) of
         'true' ->
             lager:debug("queue ~s already added", [Q]),
+            do_send_availability_update(Q, StateName, State),
             {'noreply', State};
         'false' ->
-            add_queue_binding(AcctId, AgentId, Q, StateName),
+            add_queue_binding(Q, StateName, State),
             {'noreply', State#state{agent_queues=[Q|Qs]}}
     end;
 
@@ -445,11 +445,8 @@ handle_cast({'rm_acdc_queue', Q}, #state{agent_queues=Qs
             {'noreply', State}
     end;
 
-handle_cast('bind_to_member_reqs', #state{agent_queues=Qs
-                                         ,acct_id=AcctId
-                                         ,agent_id=AgentId
-                                         }=State) ->
-    _ = [add_queue_binding(AcctId, AgentId, Q, 'ready') || Q <- Qs],
+handle_cast('bind_to_member_reqs', #state{agent_queues=Qs}=State) ->
+    _ = [add_queue_binding(Q, 'ready', State) || Q <- Qs],
     {'noreply', State};
 
 handle_cast({'rebind_events', OldCallId, NewCallId}, State) ->
@@ -739,18 +736,12 @@ handle_cast({'outbound_call', CallId}, #state{agent_id=AgentId
     lager:debug("bound to agent's outbound call ~s", [CallId]),
     {'noreply', State#state{call=kapps_call:set_call_id(CallId, kapps_call:new())}, 'hibernate'};
 
-handle_cast('send_agent_available', #state{agent_id=AgentId
-                                          ,acct_id=AcctId
-                                          ,agent_queues=Qs
-                                          }=State) ->
-    [send_agent_available(AcctId, AgentId, QueueId) || QueueId <- Qs],
+handle_cast({'send_availability_update', StateName}, #state{agent_queues=Qs}=State) ->
+    [do_send_availability_update(QueueId, StateName, State) || QueueId <- Qs],
     {'noreply', State};
 
-handle_cast('send_agent_busy', #state{agent_id=AgentId
-                                     ,acct_id=AcctId
-                                     ,agent_queues=Qs
-                                     }=State) ->
-    [send_agent_busy(AcctId, AgentId, QueueId) || QueueId <- Qs],
+handle_cast({'send_availability_update', StateName, QueueId}, State) ->
+    do_send_availability_update(QueueId, StateName, State),
     {'noreply', State};
 
 handle_cast({'send_sync_req'}, #state{my_id=MyId
@@ -1093,9 +1084,11 @@ outbound_call_id(CallId, AgentId) when is_binary(CallId) ->
 outbound_call_id(Call, AgentId) ->
     outbound_call_id(kapps_call:call_id(Call), AgentId).
 
--spec add_queue_binding(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), fsm_state_name()) ->
+-spec add_queue_binding(kz_term:ne_binary(), fsm_state_name(), state()) ->
           'ok'.
-add_queue_binding(AcctId, AgentId, QueueId, StateName) ->
+add_queue_binding(QueueId, StateName, #state{agent_id=AgentId
+                                            ,acct_id=AcctId
+                                            }=State) ->
     lager:debug("adding queue binding for ~s", [QueueId]),
     Body = kz_json:from_list([{<<"agent_id">>, AgentId}
                              ,{<<"queue_id">>, QueueId}
@@ -1104,11 +1097,11 @@ add_queue_binding(AcctId, AgentId, QueueId, StateName) ->
     kz_edr:event(?APP_NAME, ?APP_VERSION, 'ok', 'info', Body, AcctId),
     gen_listener:add_binding(self()
                             ,'acdc_queue'
-                            ,[{'restrict_to', ['member_connect_req']}
+                            ,[{'restrict_to', ['member_connect_req', 'started_notif']}
                              ,{'queue_id', QueueId}
                              ,{'account_id', AcctId}
                              ]),
-    send_availability_update(AcctId, AgentId, QueueId, StateName).
+    do_send_availability_update(QueueId, StateName, State).
 
 -spec rm_queue_binding(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 rm_queue_binding(AcctId, AgentId, QueueId) ->
@@ -1120,17 +1113,20 @@ rm_queue_binding(AcctId, AgentId, QueueId) ->
     kz_edr:event(?APP_NAME, ?APP_VERSION, 'ok', 'info', Body, AcctId),
     gen_listener:rm_binding(self()
                            ,'acdc_queue'
-                           ,[{'restrict_to', ['member_connect_req']}
+                           ,[{'restrict_to', ['member_connect_req', 'started_notif']}
                             ,{'queue_id', QueueId}
                             ,{'account_id', AcctId}
                             ]),
     send_agent_unavailable(AcctId, AgentId, QueueId).
 
--spec send_availability_update(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), fsm_state_name()) ->
-          'ok'.
-send_availability_update(AcctId, AgentId, QueueId, 'ready') ->
+-spec do_send_availability_update(kz_term:ne_binary(), fsm_state_name(), state()) -> 'ok'.
+do_send_availability_update(QueueId, 'ready', #state{agent_id=AgentId
+                                                    ,acct_id=AcctId
+                                                    }) ->
     send_agent_available(AcctId, AgentId, QueueId);
-send_availability_update(AcctId, AgentId, QueueId, _) ->
+do_send_availability_update(QueueId, _, #state{agent_id=AgentId
+                                              ,acct_id=AcctId
+                                              }) ->
     send_agent_busy(AcctId, AgentId, QueueId).
 
 -spec send_agent_available(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
@@ -1238,7 +1234,7 @@ stop_agent_leg(ACallId, ACtrlQ) ->
     Command = [{<<"Application-Name">>, <<"hangup">>}
               ,{<<"Insert-At">>, <<"now">>}
               ,{<<"Call-ID">>, ACallId}
-               | kz_api:default_headers(<<>>, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | kz_api:default_headers(<<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
     lager:debug("sending hangup to ~s: ~s", [ACallId, ACtrlQ]),
     kapi_dialplan:publish_command(ACtrlQ, Command).

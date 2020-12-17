@@ -7751,6 +7751,36 @@
             ],
             "type": "object"
         },
+        "kapi.acdc_queue.started_notif": {
+            "description": "AMQP API for acdc_queue.started_notif",
+            "properties": {
+                "Account-ID": {
+                    "minLength": 1,
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "queue"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "started_notif"
+                    ],
+                    "type": "string"
+                },
+                "Queue-ID": {
+                    "minLength": 1,
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Account-ID",
+                "Queue-ID"
+            ],
+            "type": "object"
+        },
         "kapi.acdc_queue.sync_req": {
             "description": "AMQP API for acdc_queue.sync_req",
             "properties": {

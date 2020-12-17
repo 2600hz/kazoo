@@ -28,6 +28,7 @@
         ,end_wrapup/1
 
         ,add_acdc_queue/2, rm_acdc_queue/2
+        ,send_availability_update/2
         ,update_presence/3
         ,agent_logout/1
         ,refresh/2
@@ -307,6 +308,14 @@ add_acdc_queue(ServerRef, QueueId) ->
 -spec rm_acdc_queue(kz_types:server_ref(), kz_term:ne_binary()) -> 'ok'.
 rm_acdc_queue(ServerRef, QueueId) ->
     gen_statem:cast(ServerRef, {'rm_acdc_queue', QueueId}).
+
+%%------------------------------------------------------------------------------
+%% @doc Send an availability update
+%% @end
+%%------------------------------------------------------------------------------
+-spec send_availability_update(kz_types:server_ref(), kz_term:ne_binary()) -> 'ok'.
+send_availability_update(ServerRef, QueueId) ->
+    gen_statem:cast(ServerRef, {'send_availability_update', QueueId}).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -1398,6 +1407,9 @@ handle_event({'add_acdc_queue', QueueId}, StateName, #state{agent_listener=Agent
 handle_event({'rm_acdc_queue', QueueId}, StateName, #state{agent_listener=AgentListener}=State) ->
     acdc_agent_listener:rm_acdc_queue(AgentListener, QueueId),
     {'next_state', StateName, State};
+handle_event({'send_availability_update', QueueId}, StateName, #state{agent_listener=AgentListener}=State) ->
+    acdc_agent_listener:send_availability_update(AgentListener, StateName, QueueId),
+    {'next_state', StateName, State};
 handle_event({'update_presence', PresenceId, PresenceState}, 'ready', State) ->
     handle_presence_update(PresenceId, PresenceState, State),
     {'next_state', 'ready', State};
@@ -1967,14 +1979,11 @@ apply_state_updates_fold({_, StateName, #state{account_id=AccountId
                                               ,pause_alias=Alias
                                               }}=Acc, []) ->
     lager:debug("resulting agent state ~s", [StateName]),
+    acdc_agent_listener:send_availability_update(AgentListener, StateName),
     case StateName of
-        'ready' ->
-            acdc_agent_listener:send_agent_available(AgentListener),
-            acdc_agent_stats:agent_ready(AccountId, AgentId);
+        'ready' -> acdc_agent_stats:agent_ready(AccountId, AgentId);
         'wrapup' -> acdc_agent_stats:agent_wrapup(AccountId, AgentId, time_left(WRef));
-        'paused' ->
-            acdc_agent_listener:send_agent_busy(AgentListener),
-            acdc_agent_stats:agent_paused(AccountId, AgentId, time_left(PRef), Alias)
+        'paused' -> acdc_agent_stats:agent_paused(AccountId, AgentId, time_left(PRef), Alias)
     end,
     Acc;
 apply_state_updates_fold({_, _, State}, [{'pause', Timeout, Alias}|Updates]) ->
