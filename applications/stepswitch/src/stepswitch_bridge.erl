@@ -303,7 +303,6 @@ maybe_bridge(#state{endpoints=Endpoints
                    }=State) ->
     case contains_emergency_endpoints(Endpoints) of
         'true' ->
-            _ = send_emergency_bridge_notification(State),
             maybe_bridge_emergency(State);
         'false' ->
             Name = bridge_outbound_cid_name(OffnetReq),
@@ -349,6 +348,7 @@ maybe_deny_emergency_bridge(#state{resource_req=OffnetReq}=State, 'undefined', N
 maybe_deny_emergency_bridge(#state{control_queue=ControlQ
                                   ,endpoints=Endpoints
                                   }=State, Number, Name) ->
+    _ = send_emergency_bridge_notification(Number, State),
     UpdatedEndpoints = update_endpoints_emergency_cid(Endpoints, Number, Name),
     kapi_dialplan:publish_command(ControlQ
                                  ,build_bridge(State#state{endpoints=UpdatedEndpoints}, Number, Name, 'true')
@@ -681,11 +681,11 @@ send_deny_emergency_response(OffnetReq, ControlQ) ->
                                       ),
     kz_call_response:send(CallId, ControlQ, Code, Cause, Media).
 
--spec send_emergency_bridge_notification(state()) -> 'ok'.
-send_emergency_bridge_notification(#state{resource_req=OffnetReq}=State) ->
-    Setters = [{fun set_emergency_call_meta/2, State}
+-spec send_emergency_bridge_notification(kz_term:ne_binary(), state()) -> 'ok'.
+send_emergency_bridge_notification(Number, #state{resource_req=OffnetReq}=State) ->
+    Setters = [{fun set_emergency_call_meta/2, {Number, State}}
               ,{fun set_emergency_device_meta/2, OffnetReq}
-              ,{fun set_emergency_address_meta/2, OffnetReq}
+              ,{fun set_emergency_address_meta/2, {Number, OffnetReq}}
               ,{fun set_emergency_user_meta/2, OffnetReq}
               ,{fun set_default_headers/2, OffnetReq}
               ],
@@ -697,11 +697,11 @@ send_emergency_bridge_notification(#state{resource_req=OffnetReq}=State) ->
 set_default_headers(_OffnetReq, Props) ->
     Props ++ kz_api:default_headers(?APP_NAME, ?APP_VERSION).
 
--spec set_emergency_call_meta(state(), kz_term:proplist()) -> kz_term:proplist().
-set_emergency_call_meta(#state{resource_req=OffnetReq}=State, Props) ->
+-spec set_emergency_call_meta({kz_term:ne_binary(), state()}, kz_term:proplist()) -> kz_term:proplist().
+set_emergency_call_meta({Number, #state{resource_req=OffnetReq}=State}, Props) ->
     [{<<"Call-ID">>, kapi_offnet_resource:call_id(OffnetReq)}
     ,{<<"Account-ID">>, kapi_offnet_resource:account_id(OffnetReq)}
-    ,{?KEY_E_CALLER_ID_NUMBER, kapi_offnet_resource:emergency_caller_id_number(OffnetReq)}
+    ,{?KEY_E_CALLER_ID_NUMBER, Number}
     ,{?KEY_E_CALLER_ID_NAME, kapi_offnet_resource:emergency_caller_id_name(OffnetReq)}
     ,{?KEY_OUTBOUND_CALLER_ID_NUMBER, kapi_offnet_resource:outbound_caller_id_number(OffnetReq)}
     ,{?KEY_OUTBOUND_CALLER_ID_NAME, kapi_offnet_resource:outbound_caller_id_name(OffnetReq)}
@@ -723,10 +723,10 @@ set_emergency_device_meta(OffnetReq, Props) ->
      | Props
     ].
 
--spec set_emergency_address_meta(kapi_offnet_resource:req(), kz_term:proplist()) -> kz_term:proplist().
-set_emergency_address_meta(OffnetReq, Props) ->
+-spec set_emergency_address_meta({kz_term:ne_binary(), kapi_offnet_resource:req()}, kz_term:proplist()) -> kz_term:proplist().
+set_emergency_address_meta({Number, OffnetReq}, Props) ->
     AccountDB = kz_util:format_account_db(kapi_offnet_resource:account_id(OffnetReq)),
-    case kz_datamgr:open_doc(AccountDB, kapi_offnet_resource:emergency_caller_id_number(OffnetReq)) of
+    case kz_datamgr:open_doc(AccountDB, Number) of
         {'ok', Doc} ->
             [{<<"Emergency-Address-Street-1">>, extract_e911_street_address_field(Doc, <<"street_address">>)}
             ,{<<"Emergency-Address-Street-2">>,  extract_e911_street_address_field(Doc, <<"street_address_extended">>)}
