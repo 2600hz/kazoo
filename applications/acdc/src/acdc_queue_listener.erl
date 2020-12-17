@@ -29,9 +29,7 @@
         ,finish_member_call/1
         ,ignore_member_call/3
         ,cancel_member_call/2, cancel_member_call/3
-        ,send_sync_req/2
         ,config/1
-        ,send_sync_resp/4
 
         ,delivery/1
         ]).
@@ -88,9 +86,6 @@
                     ,{{'acdc_queue_handler', 'handle_member_retry'}
                      ,[{<<"member">>, <<"connect_retry">>}]
                      }
-                    ,{{'acdc_queue_handler', 'handle_sync_req'}
-                     ,[{<<"queue">>, <<"sync_req">>}]
-                     }
                     ]).
 
 %%%=============================================================================
@@ -104,12 +99,7 @@
 -spec start_link(pid(), pid(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_types:startlink_ret().
 start_link(WorkerSup, MgrPid, AccountId, QueueId) ->
     gen_listener:start_link(?SERVER
-                           ,[{'bindings', [{'acdc_queue', [{'restrict_to', ['sync_req']}
-                                                          ,{'account_id', AccountId}
-                                                          ,{'queue_id', QueueId}
-                                                          ]}
-                                           | ?BINDINGS
-                                          ]}
+                           ,[{'bindings', ?BINDINGS}
                             ,{'responders', ?RESPONDERS}
                             ]
                            ,[WorkerSup, MgrPid, AccountId, QueueId]
@@ -159,18 +149,10 @@ cancel_member_call(Srv, MemberCallJObj, Delivery) ->
 ignore_member_call(Srv, Call, Delivery) ->
     gen_listener:cast(Srv, {'ignore_member_call', Call, Delivery}).
 
--spec send_sync_req(pid(), kz_term:ne_binary()) -> 'ok'.
-send_sync_req(Srv, Type) ->
-    gen_listener:cast(Srv, {'send_sync_req', Type}).
-
 -spec config(pid()) ->
           {kz_term:ne_binary(), kz_term:ne_binary()}.
 config(Srv) ->
     gen_listener:call(Srv, 'config').
-
--spec send_sync_resp(pid(), atom(), any(), kz_json:object()) -> 'ok'.
-send_sync_resp(Srv, Strategy, StrategyState, ReqJObj) ->
-    gen_listener:cast(Srv, {'send_sync_resp', Strategy, StrategyState, ReqJObj}).
 
 -spec delivery(pid()) -> gen_listener:basic_deliver().
 delivery(Srv) ->
@@ -328,16 +310,6 @@ handle_cast({'cancel_member_call', _RejectJObj}, #state{queue_id=QueueId
 handle_cast({'cancel_member_call', _MemberCallJObj, Delivery}, #state{shared_pid=Pid}=State) ->
     lager:debug("can't handle the member_call, sending it back up"),
     acdc_queue_shared:nack(Pid, Delivery),
-    {'noreply', State};
-handle_cast({'send_sync_req', Type}, #state{my_q=MyQ
-                                           ,my_id=MyId
-                                           ,account_id=AccountId
-                                           ,queue_id=QueueId
-                                           }=State) ->
-    send_sync_req(MyQ, MyId, AccountId, QueueId, Type),
-    {'noreply', State};
-handle_cast({'send_sync_resp', Strategy, StrategyState, ReqJObj}, #state{my_id=Id}=State) ->
-    publish_sync_resp(Strategy, StrategyState, ReqJObj, Id),
     {'noreply', State};
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
     {'noreply', State};
@@ -505,29 +477,6 @@ publish_queue_member_remove(AccountId, QueueId, CallId) ->
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     kapi_acdc_queue:publish_queue_member_remove(Prop).
-
-send_sync_req(MyQ, MyId, AccountId, QueueId, Type) ->
-    Resp = props:filter_undefined(
-             [{<<"Account-ID">>, AccountId}
-             ,{<<"Queue-ID">>, QueueId}
-             ,{<<"Process-ID">>, MyId}
-             ,{<<"Current-Strategy">>, Type}
-             ,{<<"Server-ID">>, MyQ}
-              | kz_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
-             ]),
-    publish(Resp, fun kapi_acdc_queue:publish_sync_req/1).
-
-publish_sync_resp(Strategy, StrategyState, ReqJObj, Id) ->
-    Resp = props:filter_undefined(
-             [{<<"Account-ID">>, kz_json:get_value(<<"Account-ID">>, ReqJObj)}
-             ,{<<"Queue-ID">>, kz_json:get_value(<<"Queue-ID">>, ReqJObj)}
-             ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, ReqJObj)}
-             ,{<<"Current-Strategy">>, kz_term:to_binary(Strategy)}
-             ,{<<"Strategy-State">>, StrategyState}
-             ,{<<"Process-ID">>, Id}
-              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-             ]),
-    publish(kz_json:get_value(<<"Server-ID">>, ReqJObj), Resp, fun kapi_acdc_queue:publish_sync_resp/2).
 
 -spec maybe_nack(kapps_call:call(), gen_listener:basic_deliver(), pid()) -> boolean().
 maybe_nack(Call, Delivery, SharedPid) ->
