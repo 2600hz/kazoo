@@ -22,9 +22,9 @@
 %% Supervisor callbacks
 -export([init/1]).
 
--define(CHILDREN, [?SUPER('acdc_queue_workers_sup')
-                  ,?WORKER_ARGS('acdc_queue_manager', [self() | Args])
-                  ]).
+-define(CHILDREN(Args), [?SUPER('acdc_queue_workers_sup')
+                        ,?WORKER_ARGS('acdc_queue_manager', [self() | Args])
+                        ]).
 
 %%%=============================================================================
 %%% api functions
@@ -81,15 +81,15 @@ status(Supervisor) ->
 %% specifications.
 %% @end
 %%------------------------------------------------------------------------------
--spec init(list()) -> kz_types:sup_init_ret().
-init(Args) ->
+-spec init([kz_term:ne_binary(),...]) -> kz_types:sup_init_ret().
+init([_AcctId, _QueueId]=Args) ->
     RestartStrategy = 'one_for_all',
     MaxRestarts = 2,
     MaxSecondsBetweenRestarts = 2,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {'ok', {SupFlags, ?CHILDREN}}.
+    {'ok', {SupFlags, ?CHILDREN(Args)}}.
 
 %%%=============================================================================
 %%% Internal functions
