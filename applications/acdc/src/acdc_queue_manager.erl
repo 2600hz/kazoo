@@ -314,9 +314,7 @@ init(Super, AccountId, QueueId, QueueJObj) ->
 
     gen_listener:cast(self(), {'start_workers'}),
     Strategy = get_strategy(kz_json:get_value(<<"strategy">>, QueueJObj)),
-    StrategyState = create_strategy_state(Strategy, AccountDb, QueueId),
-
-    _ = update_strategy_state(self(), Strategy, StrategyState),
+    StrategyState = create_strategy_state(Strategy),
 
     lager:debug("queue mgr started for ~s", [QueueId]),
     {'ok', update_properties(QueueJObj, #state{account_id=AccountId
@@ -524,15 +522,18 @@ handle_cast({'reject_member_call', Call, JObj}, #state{account_id=AccountId
     publish_member_call_failure(Q, AccountId, QueueId, kapps_call:call_id(Call), <<"no agents">>),
     {'noreply', State};
 
-handle_cast({'sync_with_agent', A}, #state{account_id=AccountId}=State) ->
-    {'ok', Status} = acdc_agent_util:most_recent_status(AccountId, A),
-    case acdc_agent_util:status_should_auto_start(Status) of
-        'true' -> 'ok';
-        'false' -> gen_listener:cast(self(), {'agent_unavailable', A})
-    end,
+handle_cast({'gen_listener', {'created_queue', ?SECONDARY_QUEUE_NAME(QueueId)}}, #state{queue_id=QueueId}=State) ->
     {'noreply', State};
 
-handle_cast({'gen_listener', {'created_queue', _}}, State) ->
+handle_cast({'gen_listener', {'created_queue', _}}, #state{account_id=AccountId
+                                                          ,queue_id=QueueId
+                                                          }=State) ->
+    kapi_acdc_queue:publish_started_notif(
+      kz_json:from_list([{<<"Account-ID">>, AccountId}
+                        ,{<<"Queue-ID">>, QueueId}
+                         | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                        ])
+     ),
     {'noreply', State};
 
 handle_cast({'refresh', QueueJObj}, State) ->
@@ -855,55 +856,14 @@ get_strategy(<<"round_robin">>) -> 'rr';
 get_strategy(<<"most_idle">>) -> 'mi';
 get_strategy(_) -> 'rr'.
 
--spec create_strategy_state(queue_strategy(), kz_term:ne_binary(), kz_term:ne_binary()) -> strategy_state().
-create_strategy_state(Strategy, AcctDb, QueueId) ->
-    create_strategy_state(Strategy, #strategy_state{}, AcctDb, QueueId).
+-spec create_strategy_state(queue_strategy()) -> strategy_state().
+create_strategy_state(Strategy) ->
+    Agents = create_ss_agents(Strategy),
+    #strategy_state{agents=Agents}.
 
--spec create_strategy_state(queue_strategy(), strategy_state(), kz_term:ne_binary(), kz_term:ne_binary()) -> strategy_state().
-create_strategy_state('rr', #strategy_state{agents='undefined'}=SS, AcctDb, QueueId) ->
-    create_strategy_state('rr', SS#strategy_state{agents=queue:new()}, AcctDb, QueueId);
-create_strategy_state('rr', #strategy_state{agents=AgentQ}=SS, AcctDb, QueueId) ->
-    case acdc_util:agents_in_queue(AcctDb, QueueId) of
-        [] -> lager:debug("no agents around"), SS;
-        JObjs ->
-            Q = queue:from_list([Id || JObj <- JObjs,
-                                       not queue:member((Id = kz_doc:id(JObj)), AgentQ)
-                                ]),
-            Details = lists:foldl(fun(JObj, Acc) ->
-                                          dict:store(kz_doc:id(JObj), {1, 'undefined'}, Acc)
-                                  end, dict:new(), JObjs),
-            SS#strategy_state{agents=queue:join(AgentQ, Q)
-                             ,details=Details
-                             }
-    end;
-create_strategy_state('mi', #strategy_state{agents='undefined'}=SS, AcctDb, QueueId) ->
-    create_strategy_state('mi', SS#strategy_state{agents=[]}, AcctDb, QueueId);
-create_strategy_state('mi', #strategy_state{agents=AgentL}=SS, AcctDb, QueueId) ->
-    case acdc_util:agents_in_queue(AcctDb, QueueId) of
-        [] -> lager:debug("no agents around"), SS;
-        JObjs ->
-            AgentL1 = lists:foldl(fun(JObj, Acc) ->
-                                          Id = kz_doc:id(JObj),
-                                          case lists:member(Id, Acc) of
-                                              'true' -> Acc;
-                                              'false' -> [Id | Acc]
-                                          end
-                                  end, AgentL, JObjs),
-            Details = lists:foldl(fun(JObj, Acc) ->
-                                          dict:store(kz_doc:id(JObj), {1, 'undefined'}, Acc)
-                                  end, dict:new(), JObjs),
-            SS#strategy_state{agents=AgentL1
-                             ,details=Details
-                             }
-    end.
-
-update_strategy_state(Srv, 'rr', #strategy_state{agents=AgentQueue}) ->
-    L = queue:to_list(AgentQueue),
-    update_strategy_state(Srv, L);
-update_strategy_state(Srv, 'mi', #strategy_state{agents=AgentL}) ->
-    update_strategy_state(Srv, AgentL).
-update_strategy_state(Srv, L) ->
-    [gen_listener:cast(Srv, {'sync_with_agent', A}) || A <- L].
+-spec create_ss_agents(queue_strategy()) -> queue_strategy_state().
+create_ss_agents('rr') -> queue:new();
+create_ss_agents('mi') -> [].
 
 -spec call_position(kz_term:ne_binary(), [kapps_call:call()]) -> kz_term:api_integer().
 call_position(CallId, Calls) ->

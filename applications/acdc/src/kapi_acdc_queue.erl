@@ -22,6 +22,7 @@
         ,sync_req/1, sync_req_v/1
         ,sync_resp/1, sync_resp_v/1
         ,agent_change/1, agent_change_v/1
+        ,started_notif/1, started_notif_v/1
         ,queue_member_add/1, queue_member_add_v/1
         ,queue_member_remove/1, queue_member_remove_v/1
         ]).
@@ -51,6 +52,7 @@
         ,publish_sync_req/1, publish_sync_req/2
         ,publish_sync_resp/2, publish_sync_resp/3
         ,publish_agent_change/1, publish_agent_change/2
+        ,publish_started_notif/1, publish_started_notif/2
         ,publish_queue_member_add/1, publish_queue_member_add/2
         ,publish_queue_member_remove/1, publish_queue_member_remove/2
         ]).
@@ -513,6 +515,46 @@ agent_change_v(Prop) when is_list(Prop) ->
 agent_change_v(JObj) -> agent_change_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
+%% Event for announcing that a queue has been started so that agents that are
+%% members of the queue can inform the queue of their availability
+%%------------------------------------------------------------------------------
+-spec started_notif_routing_key(kz_term:api_terms()) -> kz_term:ne_binary().
+started_notif_routing_key(Prop) when is_list(Prop) ->
+    started_notif_routing_key(props:get_value(<<"Account-ID">>, Prop)
+                             ,props:get_value(<<"Queue-ID">>, Prop)
+                             );
+started_notif_routing_key(JObj) ->
+    started_notif_routing_key(kz_json:get_value(<<"Account-ID">>, JObj)
+                             ,kz_json:get_value(<<"Queue-ID">>, JObj)
+                             ).
+
+-spec started_notif_routing_key(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
+started_notif_routing_key(AccountId, QueueId) ->
+    <<"acdc.queue.started_notif.", AccountId/binary, ".", QueueId/binary>>.
+
+-define(STARTED_NOTIF_HEADERS, [<<"Account-ID">>, <<"Queue-ID">>]).
+-define(OPTIONAL_STARTED_NOTIF_HEADERS, []).
+-define(STARTED_NOTIF_VALUES, [{<<"Event-Category">>, <<"queue">>}
+                              ,{<<"Event-Name">>, <<"started_notif">>}
+                              ]).
+-define(STARTED_NOTIF_TYPES, [{<<"Account-ID">>, fun kz_term:is_ne_binary/1}
+                             ,{<<"Queue-ID">>, fun kz_term:is_ne_binary/1}
+                             ]).
+
+-spec started_notif(kz_term:api_terms()) ->
+          {'ok', iolist()} |
+          {'error', string()}.
+started_notif(Prop) when is_list(Prop) ->
+    case started_notif_v(Prop) of
+        'true' -> kz_api:build_message(Prop, ?STARTED_NOTIF_HEADERS, ?OPTIONAL_STARTED_NOTIF_HEADERS);
+        'false' -> {'error', "proplist failed validation for started_notif"}
+    end;
+started_notif(JObj) -> started_notif(kz_json:to_proplist(JObj)).
+
+-spec started_notif_v(kz_term:api_terms()) -> boolean().
+started_notif_v(Prop) when is_list(Prop) ->
+    kz_api:validate(Prop, ?STARTED_NOTIF_HEADERS, ?STARTED_NOTIF_VALUES, ?STARTED_NOTIF_TYPES);
+started_notif_v(JObj) -> started_notif_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
 %% Queue Position tracking
@@ -619,7 +661,8 @@ bind_q(Q, AcctId, QID, CallId, 'undefined') ->
     kz_amqp_util:bind_q_to_callmgr(Q, member_call_routing_key(AcctId, QID)),
     kz_amqp_util:bind_q_to_callmgr(Q, member_call_result_routing_key(AcctId, QID, CallId)),
     kz_amqp_util:bind_q_to_callmgr(Q, member_connect_req_routing_key(AcctId, QID)),
-    kz_amqp_util:bind_q_to_kapps(Q, queue_member_routing_key(AcctId, QID));
+    kz_amqp_util:bind_q_to_kapps(Q, queue_member_routing_key(AcctId, QID)),
+    kz_amqp_util:bind_q_to_kapps(Q, started_notif_routing_key(AcctId, QID));
 bind_q(Q, AcctId, QID, CallId, ['member_call'|T]) ->
     kz_amqp_util:bind_q_to_callmgr(Q, member_call_routing_key(AcctId, QID)),
     bind_q(Q, AcctId, QID, CallId, T);
@@ -638,6 +681,9 @@ bind_q(Q, AcctId, QID, CallId, ['agent_change'|T]) ->
 bind_q(Q, AcctId, QID, CallId, ['member_addremove'|T]) ->
     kz_amqp_util:bind_q_to_kapps(Q, queue_member_routing_key(AcctId, QID)),
     bind_q(Q, AcctId, QID, CallId, T);
+bind_q(Q, AcctId, QID, CallId, ['started_notif'|T]) ->
+    kz_amqp_util:bind_q_to_kapps(Q, started_notif_routing_key(AcctId, QID)),
+    bind_q(Q, AcctId, QID, CallId, T);
 bind_q(Q, AcctId, QID, CallId, [_|T]) -> bind_q(Q, AcctId, QID, CallId, T);
 bind_q(_, _, _, _, []) -> 'ok'.
 
@@ -655,7 +701,8 @@ unbind_q(Q, AcctId, QID, CallId, 'undefined') ->
     _ = kz_amqp_util:unbind_q_from_callmgr(Q, member_call_routing_key(AcctId, QID)),
     _ = kz_amqp_util:unbind_q_from_callmgr(Q, member_call_result_routing_key(AcctId, QID, CallId)),
     _ = kz_amqp_util:unbind_q_from_callmgr(Q, member_connect_req_routing_key(AcctId, QID)),
-    _ = kz_amqp_util:unbind_q_from_kapps(Q, queue_member_routing_key(AcctId, QID));
+    _ = kz_amqp_util:unbind_q_from_kapps(Q, queue_member_routing_key(AcctId, QID)),
+    _ = kz_amqp_util:unbind_q_from_kapps(Q, started_notif_routing_key(AcctId, QID));
 unbind_q(Q, AcctId, QID, CallId, ['member_call'|T]) ->
     _ = kz_amqp_util:unbind_q_from_callmgr(Q, member_call_routing_key(AcctId, QID)),
     unbind_q(Q, AcctId, QID, CallId, T);
@@ -673,6 +720,9 @@ unbind_q(Q, AcctId, QID, CallId, ['agent_change'|T]) ->
     unbind_q(Q, AcctId, QID, CallId, T);
 unbind_q(Q, AcctId, QID, CallId, ['member_addremove'|T]) ->
     _ = kz_amqp_util:unbind_q_from_kapps(Q, queue_member_routing_key(AcctId, QID)),
+    unbind_q(Q, AcctId, QID, CallId, T);
+unbind_q(Q, AcctId, QID, CallId, ['started_notif'|T]) ->
+    _ = kz_amqp_util:unbind_q_from_kapps(Q, started_notif_routing_key(AcctId, QID)),
     unbind_q(Q, AcctId, QID, CallId, T);
 unbind_q(Q, AcctId, QID, CallId, [_|T]) ->
     unbind_q(Q, AcctId, QID, CallId, T);
@@ -835,6 +885,19 @@ publish_agent_change(JObj) ->
 publish_agent_change(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?AGENT_CHANGE_VALUES, fun agent_change/1),
     kz_amqp_util:kapps_publish(agent_change_publish_key(API), Payload, ContentType).
+
+%%------------------------------------------------------------------------------
+%% Event for announcing that a queue has been started so that agents that are
+%% members of the queue can inform the queue of their availability
+%%------------------------------------------------------------------------------
+-spec publish_started_notif(kz_term:api_terms()) -> 'ok'.
+publish_started_notif(JObj) ->
+    publish_started_notif(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_started_notif(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
+publish_started_notif(API, ContentType) ->
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?STARTED_NOTIF_VALUES, fun started_notif/1),
+    kz_amqp_util:kapps_publish(started_notif_routing_key(API), Payload, ContentType).
 
 -spec publish_queue_member_add(kz_term:api_terms()) -> 'ok'.
 publish_queue_member_add(JObj) ->
