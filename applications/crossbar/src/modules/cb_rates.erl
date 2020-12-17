@@ -181,15 +181,37 @@ post(Context) ->
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _RateId) ->
-    crossbar_doc:save(Context).
+    try_save_conflict(crossbar_doc:save(Context)).
 
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
 patch(Context, _RateId) ->
-    crossbar_doc:save(Context).
+    try_save_conflict(crossbar_doc:save(Context)).
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
-    crossbar_doc:save(Context).
+    try_save_conflict(crossbar_doc:save(Context)).
+
+-spec try_save_conflict(cb_context:context()) -> cb_context:context().
+try_save_conflict(Context) ->
+    case cb_context:resp_status(Context) of
+        'success' -> Context;
+        _ ->
+            try_save_conflict(Context
+                             ,cb_context:resp_error_code(Context)
+                             ,cb_context:resp_error_msg(Context)
+                             )
+    end.
+
+-spec try_save_conflict(cb_context:context(), integer(), kz_term:api_ne_binary()) -> cb_context:context().
+try_save_conflict(Context, 409, <<"datastore_conflict">>) ->
+    %% if a rate was deleted allow to create it again on conflict
+    Doc = kz_doc:delete_revision(cb_context:doc(Context)),
+    DocId = kz_doc:id(Doc, kz_binary:rand_hex(16)),
+
+    lager:debug("saving rates ~s resulted in conflict, trying to update", [DocId]),
+    crossbar_doc:update(Context, DocId, kz_json:to_proplist(kz_json:flatten(Doc)));
+try_save_conflict(Context, _, _) ->
+    Context.
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _RateId) ->
