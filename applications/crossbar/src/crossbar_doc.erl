@@ -13,7 +13,7 @@
         ,load_view/3, load_view/4, load_view/5, load_view/6
         ,load_attachment/4, load_docs/2
         ,save/1, save/2, save/3
-        ,update/3, update/4
+        ,update/3, update/4, update/5
         ,delete/1, delete/2
         ,save_attachment/4, save_attachment/5
         ,delete_attachment/3
@@ -616,10 +616,17 @@ update(Context, DocId, Updates) ->
 -spec update(cb_context:context(), kz_json:key(), kz_json:flat_proplist(), kz_json:flat_proplist()) ->
           cb_context:context().
 update(Context, DocId, Updates, Creates) ->
-    UpdateOptions = [{'update', Updates}
-                    ,{'create', Creates}
-                    ,{'ensure_saved', 'true'}
-                    ],
+    update(Context, DocId, Updates, Creates, []).
+
+-spec update(cb_context:context(), kz_json:key(), kz_json:flat_proplist(), kz_json:flat_proplist(), kz_term:proplist()) ->
+          cb_context:context().
+update(Context, DocId, Updates, Creates, Options) ->
+    UpdateOptions =
+        props:set_values([{'update', Updates}
+                         ,{'create', Creates}
+                         ,{'ensure_saved', 'true'}
+                         ], Options
+                        ),
     case kz_datamgr:update_doc(cb_context:account_db(Context), DocId, UpdateOptions) of
         {'error', Error} ->
             handle_datamgr_errors(Error, DocId, Context);
