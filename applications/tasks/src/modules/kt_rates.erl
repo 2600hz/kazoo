@@ -571,7 +571,8 @@ maybe_generate_caller_id_numbers(_RateJObj, _CIDNumbers) ->
 
 -spec maybe_generate_routes(kzd_rates:doc()) -> kz_term:api_ne_binaries().
 maybe_generate_routes(RateJObj) ->
-    Routes = kzd_rates:routes(RateJObj),
+    %% don't change this to accessor, csv could be a binary not a list
+    Routes = kz_json:get_value(<<"routes">>, RateJObj),
     case kz_term:is_ne_binary(Routes) of
         'true' ->
             NewRoutes = try kz_json:unsafe_decode(Routes)
