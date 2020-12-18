@@ -13,13 +13,7 @@
             "type": "string"
         },
         "asr_profanity_filter": {
-            "default": true,
             "description": "speech ibm asr_profanity_filter",
-            "type": "boolean"
-        },
-        "asr_smart_formatting": {
-            "default": true,
-            "description": "speech ibm asr_smart_formatting",
             "type": "boolean"
         },
         "asr_url": {
