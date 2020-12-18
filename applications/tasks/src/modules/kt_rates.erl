@@ -315,22 +315,8 @@ to_csv_row(Row) ->
     Doc = kz_json:get_json_value(<<"doc">>, Row),
     [kz_json:get_binary_value(Key, Doc) || Key <- ?DOC_FIELDS].
 
--spec maybe_override_rate(kz_tasks:args()) -> kzd_rates:doc().
-maybe_override_rate(Args) ->
-    RateJObj = kzd_rates:from_map(Args),
-    Id = kz_doc:id(RateJObj),
-    Db = ratedeck_db(RateJObj),
-
-    case kz_datamgr:open_cache_doc(Db, Id) of
-        {'ok', ExistingJObj} ->
-            lager:debug("updating existing rate ~s(~s) in ~s", [Id, kz_doc:revision(ExistingJObj), Db]),
-            kz_json:merge(ExistingJObj, RateJObj);
-        {'error', 'not_found'} -> RateJObj
-    end.
-
 generate_row(Args, 'true') ->
-    RateJObj = maybe_override_rate(Args),
-    lager:debug("create rate for prefix ~p (~s)", [kzd_rates:prefix(RateJObj), kz_doc:id(RateJObj)]),
+    RateJObj = kzd_rates:from_map(Args),
     validate_row(RateJObj, ?DOC_FIELDS);
 generate_row(Args, 'false') ->
     validate_row(kzd_rates:from_map(Args), ?DOC_FIELDS).
@@ -367,18 +353,51 @@ validate_field(RateJObj, Key) ->
 
 -spec save_rates(kz_term:ne_binary(), kzd_rates:docs()) -> 'ok'.
 save_rates(Db, Rates) ->
-    case kz_datamgr:save_docs(Db, Rates) of
+    JObjs = maybe_override_rate(Db, Rates),
+    case kz_datamgr:save_docs(Db, JObjs) of
         {'ok', _Result} ->
             refresh_selectors_index(Db);
         {'error', 'not_found'} ->
             lager:debug("failed to find database ~s", [Db]),
             init_db(Db),
-            save_rates(Db, Rates);
-        %% Workaround, need to fix!
-        %% We assume that is everything ok and try to refresh index
+            case kz_datamgr:save_docs(Db, JObjs) of
+                {'ok', _} ->
+                    refresh_selectors_index(Db);
+                {'error', _Reason} ->
+                    lager:debug("failed to saved ~b rates to reatedeck ~s", [length(Rates), Db])
+            end;
         {'error', _Reason} ->
             lager:debug("failed to saved ~b rates to reatedeck ~s", [length(Rates), Db])
     end.
+
+-spec maybe_override_rate(kz_term:ne_binary(), kz_json:object()) -> kz_json:objects().
+maybe_override_rate(Db, Rates) ->
+    Ids = [kz_doc:id(JObj) || JObj <- Rates],
+    case kz_datamgr:open_docs(Db, Ids) of
+        {'ok', Result} ->
+            %% if a rate was soft-deleted allow to unsoft-deleted it
+            DbJObjs = maps:from_list(
+                        [{kz_doc:id(JObj), kz_json:delete_key(<<"pvt_deleted">>, kz_json:get_value(<<"doc">>, JObj))}
+                         || JObj <- Result,
+                            %% open_docs could include `null' as doc without even have `error' when the document is hard
+                            %% deleted
+                            kz_json:is_json_object(kz_json:get_value(<<"doc">>, JObj))
+                        ]
+                       ),
+            [kz_json:merge(maps:get(kz_doc:id(JObj), DbJObjs, kz_json:new()), update_pvt(Db, JObj))
+             || JObj <- Rates
+            ];
+        {'error', _Reason} ->
+            lager:debug("failed with error ~p to fetch and merge rates from ~s, hoping for the best on saving"
+                       ,[_Reason, Db]
+                       ),
+            Rates
+    end.
+
+-spec update_pvt(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
+update_pvt(Db, JObj0) ->
+    JObj = kz_json:set_value(<<"pvt_kt_rates_modified">>, kz_time:now_s(), JObj0),
+    kz_doc:set_account_db(kz_doc:update_pvt_parameters(JObj, 'undefined'), Db).
 
 -spec delete_rates(map()) -> 'ok'.
 delete_rates(Map) ->
