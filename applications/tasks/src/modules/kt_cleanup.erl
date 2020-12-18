@@ -114,6 +114,10 @@ do_cleanup(Db, View, Loop) ->
         {'ok', Result} ->
             delete_soft_deleted(Db, [build_id_rev(JObj) || JObj <- Result]),
             do_cleanup(Db, View, Loop - 1);
+        {'error', 'not_found'} ->
+            lager:debug("maintenance view not found in db ~s, refreshing", [Db]),
+            kapps_maintenance:refresh(Db),
+            do_cleanup(Db, View, Loop - 1);
         {'error', _E} ->
             lager:debug("failed to lookup soft-deleted tokens: ~p", [_E])
     end.
