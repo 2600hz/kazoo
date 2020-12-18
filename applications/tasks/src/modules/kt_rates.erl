@@ -2,6 +2,11 @@
 %%% @copyright (C) 2013-2020, 2600Hz
 %%% @doc
 %%% @author Sergey Korobkov
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kt_rates).
@@ -89,7 +94,7 @@ action(<<"delete">>) ->
     %% prefix is mandatory field
     Mandatory = [<<"prefix">>],
     Optional = ?DOC_FIELDS -- Mandatory,
-    [{<<"description">>, <<"Bulk-remove rates">>}
+    [{<<"description">>, <<"Bulk-remove rates where they match with all defined fields in CSV row">>}
     ,{<<"doc">>, <<"Delete rates from file">>}
     ,{<<"expected_content">>, <<"text/csv">>}
     ,{<<"mandatory">>, Mandatory}
@@ -146,12 +151,12 @@ export(_ExtraArgs, State) ->
             {Rows, 'stop'}
     end.
 
--spec import(kz_tasks:extra_args(), dict:dict() | kz_tasks:iterator(), kz_tasks:args()) -> kz_tasks:iterator().
+-spec import(kz_tasks:extra_args(), map() | kz_tasks:iterator(), kz_tasks:args()) -> kz_tasks:iterator().
 import(ExtraArgs, 'init', Args) ->
     case is_allowed(ExtraArgs) of
         'true' ->
             lager:info("import is allowed, continuing"),
-            import(ExtraArgs, dict:new(), Args);
+            import(ExtraArgs, #{}, Args);
         'false' ->
             lager:warning("rates importing is forbidden for account ~s, auth account ~s"
                          ,[maps:get('account_id', ExtraArgs)
@@ -160,24 +165,26 @@ import(ExtraArgs, 'init', Args) ->
                          ),
             {<<"task execution is forbidden">>, 'stop'}
     end;
-import(_ExtraArgs, Dict, Args) ->
-    Rate = generate_row(Args),
-    Db = kzd_ratedeck:format_ratedeck_db(kzd_rates:ratedeck_id(Rate, ?KZ_RATES_DB)),
+import(_ExtraArgs, Map, Args) ->
+    Rate = generate_row(Args, 'true'),
+    Db = ratedeck_db(Rate),
 
     BulkLimit = kz_datamgr:max_bulk_insert(),
 
-    case dict:find(Db, Dict) of
-        'error' ->
-            lager:debug("adding prefix ~p to ratedeck '~s'", [kzd_rates:prefix(Rate), Db]),
-            {'ok', dict:store(Db, {1, [Rate]}, Dict)};
-        {'ok', {BulkLimit, Rates}} ->
+    case maps:get(Db, Map, 'undefined') of
+        'undefined' ->
+            lager:debug("adding rate ~s (prefix ~p) to ratedeck '~s'"
+                       ,[kz_doc:id(Rate), kzd_rates:prefix(Rate), Db]
+                       ),
+            {'ok', Map#{Db => {1, [Rate]}}};
+        {BulkLimit, Rates} ->
             lager:info("saving ~b rates to '~s'", [BulkLimit, Db]),
             kz_datamgr:suppress_change_notice(),
             save_rates(Db, [Rate | Rates]),
             kz_datamgr:enable_change_notice(),
-            {'ok', dict:store(Db, {0, []}, Dict)};
-        {'ok', {Size, Rates}} ->
-            {'ok', dict:store(Db, {Size+1, [Rate | Rates]}, Dict)}
+            {'ok', Map#{Db => {0, []}}};
+        {Size, Rates} ->
+            {'ok', Map#{Db => {Size+1, [Rate | Rates]}}}
     end.
 
 -spec delete(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) -> kz_tasks:iterator().
@@ -185,11 +192,9 @@ delete(ExtraArgs, 'init', Args) ->
     kz_datamgr:suppress_change_notice(),
     case is_allowed(ExtraArgs) of
         'true' ->
-            State = [{'db', get_ratedeck_db(ExtraArgs)}
-                    ,{'limit', ?BULK_LIMIT}
+            State = [{'limit', ?BULK_LIMIT}
                     ,{'count', 0}
-                    ,{'keys', []}
-                    ,{'dict', dict:new()}
+                    ,{'map', #{}}
                     ],
             delete(ExtraArgs, State, Args);
         'false' ->
@@ -201,64 +206,69 @@ delete(ExtraArgs, 'init', Args) ->
             {<<"task execution is forbidden">>, 'stop'}
     end;
 delete(_ExtraArgs, State, Args) ->
-    Rate = kzd_rates:from_map(Args),
+    RateJObj = generate_row(Args, 'false'),
+    Db = ratedeck_db(RateJObj),
 
     Limit = props:get_value('limit', State),
     Count = props:get_value('count', State) + 1,
-    P = kzd_rates:prefix(Rate),
 
-    %% override account-ID from task props
-    Dict = dict:append(P, Rate, props:get_value('dict', State)),
-    Keys = [P | props:get_value('keys', State)],
+    Map = props:get_value('map', State),
+    NewMap = Map#{Db => [RateJObj | maps:get(Db, Map, [])]},
+
     case Count rem Limit of
         0 ->
-            Db = props:get_value('db', State),
-            delete_rates(Db, Keys, Dict),
-            {[], props:set_values([{'count', Count}
-                                  ,{'keys', []}
-                                  ,{'dict', dict:new()}
-                                  ]
-                                 ,State
-                                 )
+            delete_rates(NewMap),
+            {'ok'
+            ,props:set_values([{'count', Count}
+                              ,{'map', #{}}
+                              ]
+                             ,State
+                             )
             };
         _Rem ->
-            {[], props:set_values([{'count', Count}
-                                  ,{'keys', Keys}
-                                  ,{'dict', Dict}
-                                  ]
-                                 ,State
-                                 )
+            lager:debug("adding rate ~s (prefix ~p) to bulk delete list"
+                       ,[kz_doc:id(RateJObj), kzd_rates:prefix(RateJObj)]
+                       ),
+            {'ok'
+            ,props:set_values([{'count', Count}
+                              ,{'map', NewMap}
+                              ]
+                             ,State
+                             )
             }
     end.
 
 -spec finish(kz_term:ne_binary(), any()) -> any().
+finish(<<"import">>, 'init') ->
+    'ok';
 finish(<<"import">>, Dict) ->
-    _Size = dict:size(Dict),
+    _Size = maps:size(Dict),
     lager:info("importing ~p ratedeck~s", [_Size, maybe_plural(_Size)]),
-    _ = dict:map(fun import_rates_into_ratedeck/2, Dict);
-finish(<<"delete">>, State) ->
-    Db = props:get_value('db', State),
-    Keys = props:get_value('keys', State),
-    Dict = props:get_value('dict', State),
-    delete_rates(Db, Keys, Dict),
+    _ = maps:map(fun import_rates_into_ratedeck/2, Dict);
+finish(<<"delete">>, 'init') ->
     kz_datamgr:enable_change_notice(),
-    kzs_publish:publish_db(Db, <<"edited">>).
+    'ok';
+finish(<<"delete">>, State) ->
+    lager:debug("finishing delete"),
+    Map = props:get_value('map', State, #{}),
+    delete_rates(Map),
+    kz_datamgr:enable_change_notice(),
+    _ = [kzs_publish:publish_db(Db, <<"edited">>) || Db <- maps:keys(Map)],
+    'ok'.
 
 -spec import_rates_into_ratedeck(kz_term:ne_binary(), {non_neg_integer(), kz_json:objects()}) -> 'true'.
-import_rates_into_ratedeck(Ratedeck, {0, []}) ->
-    RatedeckDb = kzd_ratedeck:format_ratedeck_db(Ratedeck),
+import_rates_into_ratedeck(RatedeckDb, {0, []}) ->
     kz_datamgr:enable_change_notice(),
     lager:debug("importing into ratedeck '~s' complete", [RatedeckDb]),
     kzs_publish:publish_db(RatedeckDb, <<"edited">>);
-import_rates_into_ratedeck(Ratedeck, {_C, Rates}) ->
-    RatedeckDb = kzd_ratedeck:format_ratedeck_db(Ratedeck),
+import_rates_into_ratedeck(RatedeckDb, {_C, Rates}) ->
     lager:debug("importing ~p rate~s into ratedeck '~s'"
                ,[_C, maybe_plural(_C), RatedeckDb]
                ),
 
     kz_datamgr:suppress_change_notice(),
     save_rates(RatedeckDb, Rates),
-    import_rates_into_ratedeck(Ratedeck, {0, []}).
+    import_rates_into_ratedeck(RatedeckDb, {0, []}).
 
 -spec maybe_plural(pos_integer()) -> string().
 maybe_plural(1) -> "";
@@ -305,80 +315,154 @@ to_csv_row(Row) ->
     Doc = kz_json:get_json_value(<<"doc">>, Row),
     [kz_json:get_binary_value(Key, Doc) || Key <- ?DOC_FIELDS].
 
--spec maybe_override_rate(kz_tasks:args()) -> kzd_rates:doc().
-maybe_override_rate(Args) ->
+generate_row(Args, 'true') ->
     RateJObj = kzd_rates:from_map(Args),
-    Id = kz_doc:id(RateJObj),
-    Db = kzd_ratedeck:format_ratedeck_db(kzd_rates:ratedeck_id(RateJObj, ?KZ_RATES_DB)),
+    validate_row(RateJObj, ?DOC_FIELDS);
+generate_row(Args, 'false') ->
+    validate_row(kzd_rates:from_map(Args), ?DOC_FIELDS).
 
-    case kz_datamgr:open_cache_doc(Db, Id) of
-        {'ok', ExistingJObj} ->
-            lager:debug("updating existing rate ~s(~s) in ~s", [Id, kz_doc:revision(ExistingJObj), Db]),
-            kz_json:merge(ExistingJObj, RateJObj);
-        {'error', 'not_found'} -> RateJObj
+-spec validate_row(kzd_rates:doc(), kz_json:keys()) -> kzd_rates:doc().
+validate_row(RateJObj, [Key|Keys]) -> validate_row(validate_field(RateJObj, Key), Keys);
+validate_row(RateJObj, []) -> RateJObj.
+
+-spec validate_field(kzd_rates:doc(), kz_json:key()) -> kzd_rates:doc().
+validate_field(RateJObj, <<"rate_name">>) ->
+    Value = maybe_generate_name(RateJObj),
+    kzd_rates:set_rate_name(RateJObj, Value);
+validate_field(RateJObj, <<"weight">>) ->
+    Value = maybe_generate_weight(RateJObj),
+    kzd_rates:set_weight(RateJObj, Value);
+validate_field(RateJObj, <<"caller_id_numbers">>) ->
+    case maybe_generate_caller_id_numbers(RateJObj) of
+        'undefined' ->
+            kz_json:delete_key(<<"caller_id_numbers">>, RateJObj);
+        Value -> kzd_rates:set_caller_id_numbers(RateJObj, kz_binary:join(Value, <<":">>))
+    end;
+validate_field(RateJObj, <<"routes">>) ->
+    Value = maybe_generate_routes(RateJObj),
+    kzd_rates:set_routes(RateJObj, Value);
+validate_field(RateJObj, Key) ->
+    Getter = binary_to_atom(<<Key/binary>>, 'utf8'),
+    Setter = binary_to_atom(<<"set_", Key/binary>>, 'utf8'),
+    case kzd_rates:Getter(RateJObj) of
+        'undefined' ->
+            kz_json:delete_key(Key, RateJObj);
+        Value ->
+            kzd_rates:Setter(RateJObj, Value)
     end.
-
--spec generate_row(kz_tasks:args()) -> kzd_rates:doc().
-generate_row(Args) ->
-    RateJObj = maybe_override_rate(Args),
-    Prefix = kz_term:to_binary(kzd_rates:prefix(RateJObj)),
-    lager:debug("create rate for prefix ~s(~s)", [Prefix, kz_doc:id(RateJObj)]),
-
-    Update = props:filter_undefined(
-               [{fun kzd_rates:set_rate_name/2, maybe_generate_name(RateJObj)}
-               ,{fun kzd_rates:set_weight/2, maybe_generate_weight(RateJObj)}
-               ,{fun kzd_rates:set_caller_id_numbers/2, maybe_generate_caller_id_numbers(RateJObj)}
-               ]
-              ),
-    kz_json:set_values(Update, kzd_rates:set_default_route(RateJObj)).
 
 -spec save_rates(kz_term:ne_binary(), kzd_rates:docs()) -> 'ok'.
 save_rates(Db, Rates) ->
-    case kz_datamgr:save_docs(Db, Rates) of
+    JObjs = maybe_override_rate(Db, Rates),
+    case kz_datamgr:save_docs(Db, JObjs) of
         {'ok', _Result} ->
             refresh_selectors_index(Db);
         {'error', 'not_found'} ->
             lager:debug("failed to find database ~s", [Db]),
             init_db(Db),
-            save_rates(Db, Rates);
-        %% Workaround, need to fix!
-        %% We assume that is everything ok and try to refresh index
-        {'error', 'timeout'} -> refresh_selectors_index(Db)
+            case kz_datamgr:save_docs(Db, JObjs) of
+                {'ok', _} ->
+                    refresh_selectors_index(Db);
+                {'error', _Reason} ->
+                    lager:debug("failed to saved ~b rates to reatedeck ~s", [length(Rates), Db])
+            end;
+        {'error', _Reason} ->
+            lager:debug("failed to saved ~b rates to reatedeck ~s", [length(Rates), Db])
     end.
 
--spec delete_rates(kz_term:ne_binary(), list(), dict:dict()) -> 'ok'.
-delete_rates(Db, Keys, Dict) ->
+-spec maybe_override_rate(kz_term:ne_binary(), kz_json:object()) -> kz_json:objects().
+maybe_override_rate(Db, Rates) ->
+    Ids = [kz_doc:id(JObj) || JObj <- Rates],
+    case kz_datamgr:open_docs(Db, Ids) of
+        {'ok', Result} ->
+            %% if a rate was soft-deleted allow to unsoft-deleted it
+            DbJObjs = maps:from_list(
+                        [{kz_doc:id(JObj), kz_json:delete_key(<<"pvt_deleted">>, kz_json:get_value(<<"doc">>, JObj))}
+                         || JObj <- Result,
+                            %% open_docs could include `null' as doc without even have `error' when the document is hard
+                            %% deleted
+                            kz_json:is_json_object(kz_json:get_value(<<"doc">>, JObj))
+                        ]
+                       ),
+            [kz_json:merge(maps:get(kz_doc:id(JObj), DbJObjs, kz_json:new()), update_pvt(Db, JObj))
+             || JObj <- Rates
+            ];
+        {'error', _Reason} ->
+            lager:debug("failed with error ~p to fetch and merge rates from ~s, hoping for the best on saving"
+                       ,[_Reason, Db]
+                       ),
+            Rates
+    end.
+
+-spec update_pvt(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
+update_pvt(Db, JObj0) ->
+    JObj = kz_json:set_value(<<"pvt_kt_rates_modified">>, kz_time:now_s(), JObj0),
+    kz_doc:set_account_db(kz_doc:update_pvt_parameters(JObj, 'undefined'), Db).
+
+-spec delete_rates(map()) -> 'ok'.
+delete_rates(Map) ->
+    lager:debug("deleteing rates from ~b database(s)", [maps:size(Map)]),
+    maps:fold(fun delete_rates/3, 'ok', Map).
+
+-spec delete_rates(kz_term:ne_binary(), kz_json:objects(), 'ok') -> 'ok'.
+delete_rates(Db, JObjs, 'ok') ->
+    PrefixGrouped = group_by_prefix(JObjs),
+    Keys = maps:keys(PrefixGrouped),
     Options = [{'keys', Keys}
               ,'include_docs'
               ],
     case kz_datamgr:get_results(Db, ?RATES_VIEW, Options) of
-        {'ok', []} -> 'ok';
+        {'ok', []} ->
+            lager:debug("no requested rates were found in db ~s", [Db]);
         {'ok', Results} ->
-            Docs = lists:filtermap(fun(R) -> maybe_delete_rate(R, Dict) end, Results),
-            do_delete_rates(Db, Docs)
+            {NotFound, Docs} = lists:foldl(fun maybe_delete_rate/2
+                                          ,{PrefixGrouped, []}
+                                          ,Results
+                                          ),
+            delete_rates(Db, Docs),
+            maps:fold(fun log_not_found/3, 'ok', NotFound);
+        {'error', Reason} ->
+            lager:debug("failed to get results from db ~s: ~p", [Db, Reason])
     end.
 
--spec do_delete_rates(kz_term:ne_binary(), kz_json:objects()) -> 'ok'.
-do_delete_rates(_Db, []) -> 'ok';
-do_delete_rates(Db, Docs) ->
-    {Head, Rest} = case length(Docs) > ?BULK_LIMIT
-                       andalso lists:split(?BULK_LIMIT, Docs)
-                   of
-                       'false' -> {Docs, []};
-                       {H, T} -> {H, T}
-                   end,
-    case kz_datamgr:del_docs(Db, Head) of
-        {'ok', _} -> refresh_selectors_index(Db);
-        %% Workaround, need to fix!
-        %% We assume that is everything ok and try to refresh index
-        {'error', 'timeout'} -> refresh_selectors_index(Db)
-    end,
-    do_delete_rates(Db, Rest).
+-spec group_by_prefix(kz_json:objects()) -> map().
+group_by_prefix(JObjs) ->
+    lists:foldl(fun(JObj, Acc) ->
+                        Prefix = kzd_rates:prefix(JObj),
+                        Acc#{kz_term:to_integer(Prefix) => [JObj | maps:get(Prefix, Acc, [])]}
+                end
+               ,#{}
+               ,JObjs
+               ).
+
+-spec log_not_found(integer(), kz_json:object(), 'ok') -> 'ok'.
+log_not_found(_Prefix, JObjs, 'ok') ->
+    lists:foreach(fun log_not_found/1, JObjs).
+
+-spec log_not_found(kz_json:object()) -> 'ok'.
+log_not_found(JObj) ->
+    lager:debug("requested rate ~s (prefix: ~p) (id: ~s) was not found"
+               ,[kzd_rates:rate_name(JObj)
+                ,kzd_rates:prefix(JObj)
+                ,kz_doc:id(JObj)
+                ]
+               ).
+
+-spec delete_rates(kz_term:ne_binary(), kz_json:objects()) -> 'ok'.
+delete_rates(_, []) ->
+    lager:debug("nothing to delete");
+delete_rates(Db, Docs) ->
+    case kz_datamgr:del_docs(Db, Docs) of
+        {'ok', _} ->
+            lager:debug("deleted ~b rates from db ~s", [length(Docs), Db]);
+        {'error', Reason} ->
+            lager:debug("failed to delete ~b doc(s) from db ~s: ~p", [length(Docs), Db, Reason])
+    end.
 
 -spec refresh_selectors_index(kz_term:ne_binary()) -> 'ok'.
 refresh_selectors_index(Db) ->
-    {'ok', _} = kz_datamgr:all_docs(Db, [{'limit', 1}]),
-    {'ok', _} = kz_datamgr:get_results(Db, <<"rates/lookup">>, [{'limit', 1}]),
+    _ = kz_datamgr:all_docs(Db, [{'limit', 1}]),
+    _ = kz_datamgr:get_results(Db, ?RATES_VIEW, [{'limit', 1}]),
     'ok'.
 
 -spec init_db(kz_term:ne_binary()) -> 'ok'.
@@ -388,29 +472,37 @@ init_db(Db) ->
     _ = kapps_maintenance:refresh(Db),
     lager:info("initialized new ratedeck ~s", [Db]).
 
--spec maybe_delete_rate(kz_json:object(), dict:dict()) -> kz_json:object() | 'false'.
-maybe_delete_rate(JObj, Dict) ->
+-spec maybe_delete_rate(kz_json:object(), {map(), kz_json:objects()}) ->
+          {map(), kz_json:objects()}.
+maybe_delete_rate(JObj, {Map, Docs}) ->
     Prefix = kz_term:to_integer(kz_json:get_value(<<"key">>, JObj)),
     Doc = kz_json:get_value(<<"doc">>, JObj),
-    ReqRates = dict:fetch(Prefix, Dict),
+
+    ReqRates = maps:get(Prefix, Map),
+
     %% Delete docs only if its match with all defined fields in CSV row
-    case lists:any(fun(ReqRate) ->
-                           lists:all(fun({ReqKey, ReqValue}) ->
-                                             kz_json:get_value(ReqKey, Doc) =:= ReqValue
-                                     end
-                                    ,ReqRate
-                                    )
-                   end
-                  ,ReqRates
-                  )
-    of
-        'true' -> {'true', Doc};
-        'false' -> 'false'
+    case should_delete_rate(ReqRates, Doc)  of
+        {'true', NewReqRates} ->
+            {Map#{Prefix => NewReqRates}, [Doc | Docs]};
+        'false' ->
+            {Map, Docs}
     end.
 
--spec maybe_default(kz_currency:units(), kz_currency:units()) -> kz_currency:units().
-maybe_default(0, Default) -> Default;
-maybe_default(Value, _Default) -> Value.
+-spec should_delete_rate(kz_json:objects(), kz_json:object()) -> 'false' | {'true', kz_json:objects()}.
+should_delete_rate([], _) ->
+    'false';
+should_delete_rate([ReqRate | ReqRates], Doc) ->
+    case kz_json:all(fun({_, <<>>}) ->
+                             'true';
+                        ({ReqKey, ReqValue}) ->
+                             kz_json:get_value(ReqKey, Doc, <<>>) =:= ReqValue
+                     end
+                    ,ReqRate
+                    )
+    of
+        'true' -> {'true', ReqRates};
+        'false' -> should_delete_rate(ReqRates, Doc)
+    end.
 
 -spec maybe_generate_name(kzd_rates:doc()) -> kz_term:ne_binary().
 maybe_generate_name(RateJObj) ->
@@ -419,7 +511,7 @@ maybe_generate_name(RateJObj) ->
 -spec maybe_generate_name(kzd_rates:doc(), kz_term:api_ne_binary()) -> kz_term:ne_binary().
 maybe_generate_name(RateJObj, 'undefined') ->
     generate_name(kzd_rates:prefix(RateJObj)
-                 ,kzd_rates:iso_country_code(RateJObj)
+                 ,kzd_rates:iso_country_code(RateJObj, <<"XX">>)
                  ,kzd_rates:direction(RateJObj, [])
                  );
 maybe_generate_name(_RateJObj, Name) -> Name.
@@ -440,12 +532,12 @@ generate_name(Prefix, ISO, Directions) ->
 
 -spec maybe_generate_weight(kzd_rates:doc()) -> integer().
 maybe_generate_weight(RateJObj) ->
-    maybe_generate_weight(RateJObj, kzd_rates:weight(RateJObj, 'undefined')).
+    maybe_generate_weight(RateJObj, kzd_rates:weight(RateJObj)).
 
 -spec maybe_generate_weight(kzd_rates:doc(), kz_term:api_integer()) -> integer().
 maybe_generate_weight(RateJObj, 'undefined') ->
     generate_weight(kzd_rates:prefix(RateJObj)
-                   ,kzd_rates:rate_cost(RateJObj)
+                   ,kzd_rates:rate_cost(RateJObj, 0)
                    ,kzd_rates:private_cost(RateJObj)
                    );
 maybe_generate_weight(_RateJObj, Weight) -> kzd_rates:constrain_weight(Weight).
@@ -461,14 +553,56 @@ generate_weight(?NE_BINARY = Prefix, UnitCost, UnitIntCost) ->
     Weight = (byte_size(Prefix) * 10) - trunc(CostToUse * 100),
     kzd_rates:constrain_weight(Weight).
 
--spec maybe_generate_caller_id_numbers(kzd_rates:doc()) -> kz_term:ne_binaries()|'undefined'.
+-spec maybe_default(kz_currency:units(), kz_currency:units()) -> kz_currency:units().
+maybe_default(0, Default) -> Default;
+maybe_default(Value, _Default) -> Value.
+
+-spec maybe_generate_caller_id_numbers(kzd_rates:doc()) -> kz_term:api_ne_binaries().
 maybe_generate_caller_id_numbers(RateJObj) ->
-    maybe_generate_caller_id_numbers(RateJObj, kz_json:get_value(<<"caller_id_numbers">>, RateJObj)).
+    maybe_generate_caller_id_numbers(RateJObj, kzd_rates:caller_id_numbers(RateJObj)).
 
 -spec maybe_generate_caller_id_numbers(kzd_rates:doc(), kz_term:ne_binary()) -> kz_term:api_ne_binaries().
-maybe_generate_caller_id_numbers(_RateJObj, CID_Numbers)  when is_binary(CID_Numbers) ->
+maybe_generate_caller_id_numbers(_RateJObj, CIDNumbers)  when is_binary(CIDNumbers) ->
     lists:map(fun(X) -> <<"^\\+?", X/binary, ".+", ?DOLLAR_SIGN>> end
-             ,binary:split(CID_Numbers, <<":">>, ['global'])
+             ,binary:split(CIDNumbers, <<":">>, ['global'])
              );
-maybe_generate_caller_id_numbers(_RateJObj, _CID_Numbers) ->
+maybe_generate_caller_id_numbers(_RateJObj, _CIDNumbers) ->
     'undefined'.
+
+-spec maybe_generate_routes(kzd_rates:doc()) -> kz_term:api_ne_binaries().
+maybe_generate_routes(RateJObj) ->
+    %% don't change this to accessor, csv could be a binary not a list
+    Routes = kz_json:get_value(<<"routes">>, RateJObj),
+    case kz_term:is_ne_binary(Routes) of
+        'true' ->
+            NewRoutes = try kz_json:unsafe_decode(Routes)
+                        catch _:_ -> Routes
+                        end,
+            maybe_generate_routes(RateJObj, NewRoutes);
+        'false' ->
+            maybe_generate_routes(RateJObj, Routes)
+    end.
+
+-spec maybe_generate_routes(kzd_rates:doc(), binary() | [binary()] | any()) -> kz_term:api_ne_binaries().
+maybe_generate_routes(_RateJObj, Routes) when is_list(Routes) ->
+    [Route || Route <- Routes,
+              kz_term:is_ne_binary(Route)
+    ];
+maybe_generate_routes(RateJObj, Route) when is_binary(Route) ->
+    case kz_term:is_ne_binary(Route) of
+        'true' -> [Route];
+        'false' -> maybe_generate_routes(RateJObj, 'undefined')
+    end;
+maybe_generate_routes(RateJObj, _Routes) ->
+    lager:debug("no valid routes, generating default route using prefix"),
+    kz_json:get_value(<<"routes">>, kzd_rates:set_default_route(RateJObj)).
+
+-spec ratedeck_db(kzd_rates:doc()) -> kz_term:ne_binary().
+ratedeck_db(RateJObj) ->
+    RatedeckId = kzd_rates:ratedeck_id(RateJObj),
+    case kz_term:is_ne_binary(RatedeckId) of
+        'true' ->
+            kzd_ratedeck:format_ratedeck_db(RatedeckId);
+        'false' ->
+            ?KZ_RATES_DB
+    end.

@@ -933,7 +933,9 @@ save_docs(DbName, Docs, Options) when is_list(Docs) ->
           {'ok', kz_json:object()} |
           data_error().
 update_doc(DbName, Id, Options) ->
-    case open_doc(DbName, Id) of
+    DeleteKeys = ['update', 'extra_update', 'create', 'ensure_saved'],
+    OpenOptions = props:delete_keys(DeleteKeys, Options),
+    case open_doc(DbName, Id, OpenOptions) of
         {'error', 'not_found'} ->
             update_not_found(DbName, Id, Options);
         {'error', _}=E -> E;
