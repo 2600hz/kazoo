@@ -181,18 +181,23 @@ post(Context) ->
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _RateId) ->
-    try_save_conflict(crossbar_doc:save(Context)).
+    try_save_conflict(Context).
 
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
 patch(Context, _RateId) ->
-    try_save_conflict(crossbar_doc:save(Context)).
+    try_save_conflict(Context).
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
-    try_save_conflict(crossbar_doc:save(Context)).
+    try_save_conflict(Context).
 
 -spec try_save_conflict(cb_context:context()) -> cb_context:context().
-try_save_conflict(Context) ->
+try_save_conflict(C) ->
+    %% load_merge below will open the doc even if soft-deleted.
+    %% Since we want to allow re-save soft-deleted remove the key
+    %% from doc in case load_merge opened a soft-deleted doc.
+    Doc = kz_json:delete_key(<<"pvt_deleted">>, cb_context:doc(C)),
+    Context = crossbar_doc:save(cb_context:set_doc(C, Doc)),
     case cb_context:resp_status(Context) of
         'success' -> Context;
         _ ->

@@ -122,7 +122,7 @@ load(DocId, Context, Options, _RespStatus) when is_binary(DocId) ->
             handle_datamgr_errors(Error, DocId, Context);
         {'ok', JObj} ->
             case check_document_type(Context, JObj, Options) of
-                'true' -> handle_successful_load(Context, JObj);
+                'true' -> handle_successful_load(Context, JObj, Options);
                 'false' ->
                     ErrorCause = kz_json:from_list([{<<"cause">>, DocId}]),
                     cb_context:add_system_error('bad_identifier', ErrorCause, Context)
@@ -219,12 +219,17 @@ depluralize_resource_name(Name) ->
         Bin -> Bin
     end.
 
--spec handle_successful_load(cb_context:context(), kz_json:object()) -> cb_context:context().
-handle_successful_load(Context, JObj) ->
-    handle_successful_load(Context, JObj, kz_doc:is_soft_deleted(JObj)).
+-spec handle_successful_load(cb_context:context(), kz_json:object(), kz_term:proplist()) -> cb_context:context().
+handle_successful_load(Context, JObj, Options) ->
+    handle_successful_load(Context, JObj, kz_doc:is_soft_deleted(JObj), props:get_is_true('deleted', Options, 'false')).
 
--spec handle_successful_load(cb_context:context(), kz_json:object(), boolean()) -> cb_context:context().
-handle_successful_load(Context, JObj, 'true') ->
+-spec handle_successful_load(cb_context:context(), kz_json:object(), boolean(), boolean()) -> cb_context:context().
+handle_successful_load(Context, JObj, 'true', 'true') ->
+    lager:debug("loaded a soft-deleted doc ~s(~s) from ~s with explicitly set return soft-deleted option"
+               ,[kz_doc:id(JObj), kz_doc:revision(JObj), cb_context:account_db(Context)]
+               ),
+    cb_context:store(handle_datamgr_success(JObj, Context), 'db_doc', JObj);
+handle_successful_load(Context, JObj, 'true', 'false') ->
     lager:debug("doc ~s(~s) is soft-deleted, returning bad_identifier"
                ,[kz_doc:id(JObj), kz_doc:revision(JObj)]
                ),
@@ -232,7 +237,7 @@ handle_successful_load(Context, JObj, 'true') ->
                                ,kz_json:from_list([{<<"cause">>, kz_doc:id(JObj)}])
                                ,Context
                                );
-handle_successful_load(Context, JObj, 'false') ->
+handle_successful_load(Context, JObj, 'false', _) ->
     lager:debug("loaded doc ~s(~s) from ~s"
                ,[kz_doc:id(JObj), kz_doc:revision(JObj), cb_context:account_db(Context)]
                ),
@@ -1259,11 +1264,13 @@ extract_included_docs(Context, JObjs) ->
     lists:foldl(fun extract_included_docs_fold/2, {[], Context}, JObjs).
 
 extract_included_docs_fold(JObj, {Docs, Context}) ->
-    case kz_json:get_ne_value(<<"doc">>, JObj) of
-        'undefined' ->
+    Doc = kz_json:get_ne_value(<<"doc">>, JObj),
+    %% open_docs could return `null' if the doc is hard deleted
+    case kz_json:is_json_object(Doc) of
+        'false' ->
             Reason = kz_json:get_ne_value(<<"error">>, JObj),
             ID = kz_json:get_ne_value(<<"key">>, JObj),
             {Docs, handle_datamgr_errors(kz_term:to_atom(Reason, 'true'), ID, Context)};
-        Doc ->
+        'true' ->
             {[Doc|Docs], Context}
     end.
