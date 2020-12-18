@@ -159,6 +159,12 @@ load_callflow_summary(Context) ->
 %%------------------------------------------------------------------------------
 -spec load_callflow(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_callflow(CallflowId, Context) ->
+    load_callflow(CallflowId, Context, 'true').
+
+-spec load_callflow(kz_term:ne_binary(), cb_context:context(), boolean()) -> cb_context:context().
+load_callflow(CallflowId, Context, 'false') ->
+    crossbar_doc:load(CallflowId, Context, ?TYPE_CHECK_OPTION(kzd_callflows:type()));
+load_callflow(CallflowId, Context, 'true') ->
     Context1 = crossbar_doc:load(CallflowId, Context, ?TYPE_CHECK_OPTION(kzd_callflow:type())),
     case cb_context:resp_status(Context1) of
         'success' ->
@@ -177,7 +183,20 @@ load_callflow(CallflowId, Context) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec validate_request(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
+validate_request('undefined', Context) ->
+     validate_callflow_request('undefined', Context);
 validate_request(CallflowId, Context) ->
+    %% load for type check, store db_doc and properly updating services
+     Context1 = load_callflow(CallflowId, Context, 'false'),
+     case cb_context:resp_status(Context1) of
+         'success' ->
+             validate_callflow_request(CallflowId, Context1);
+         _ ->
+             Context1
+     end.
+
+ -spec validate_callflow_request(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
+ validate_callflow_request(CallflowId, Context) ->
     ReqJObj = cb_context:req_data(Context),
     AccountId = cb_context:account_id(Context),
     case kzd_callflows:validate(AccountId, CallflowId, ReqJObj) of
