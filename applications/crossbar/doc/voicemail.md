@@ -68,7 +68,7 @@ Key | Description | Type | Default | Required | Support Level
 
 
 
-## Fetch
+## Fetch all voicemail boxes for an account
 
 > GET /v2/accounts/{ACCOUNT_ID}/vmboxes
 
@@ -139,63 +139,12 @@ curl -v -X PUT \
 }
 ```
 
-## list all voicemail messages on an account
+## Fetch a voicemail box
 
-> GET /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages
+> GET /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}
 
 ```shell
 curl -v -X GET \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages?paginate=true
-```
-
-**Response**
-
-```json
-{
-    "auth_token": "{AUTH_TOKEN}",
-    "data": [
-        {
-            "0e820108c0f4ca391500f3be1b02bdfa": {
-                "timestamp": 63630058722,
-                "from": "1001@aeac33.sip.2600hz.com",
-                "to": "1000@aeac33.sip.2600hz.com",
-                "caller_id_number": "1001",
-                "caller_id_name": "userb userb",
-                "call_id": "79959ZDNmM2I5ZTliMzA0NzA4N2FjNjlmODA5OWVkZjUxZWU",
-                "folder": "new",
-                "length": 3140,
-                "media_id": "201605-6aadef09f6fcf5fd8bcdfca312e923ba"
-            }
-        },
-        {
-            "0e820108c0f4ca391500f3be1b02bdfa": {
-                "timestamp": 63630058413,
-                "from": "1002@aeac33.sip.2600hz.com",
-                "to": "1000@aeac33.sip.2600hz.com",
-                "caller_id_number": "1002",
-                "caller_id_name": "userd userd",
-                "call_id": "79959MmNiMmJiMTIxODhjZjk0ZDhmOGNkMjJkN2MwNGQyNWY",
-                "folder": "new",
-                "length": 5500,
-                "media_id": "201605-f0c3c16551a5ff7b5753a381892e2e01"
-            }
-        }
-    ],
-    "next_start_key": [],
-    "page_size": 50,
-    "revision": "{REVERSION}",
-    "request_id": "{REQUEST_ID}",
-    "status": "success"
-}
-```
-
-## Remove a voicemail box
-
-> DELETE /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}
-
-```shell
-curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}
 ```
@@ -229,13 +178,15 @@ curl -v -X DELETE \
 }
 ```
 
-## Fetch a voicemail box
+## Change a voicemail box
 
-> GET /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}
+> POST /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}
 
 ```shell
-curl -v -X GET \
+curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H "Content-Type: application/json" \
+    -d '{"data": {"name": "VMBox 0", "require_pin": true, "is_setup": false, "pin": "0000", "mailbox": "3000", "timezone": "America/Los_Angeles", "check_if_owner": true, "delete_after_notify": false, "not_configurable": false, "notify_email_addresses": [], "save_after_notify": false, "skip_greeting": false, "skip_instructions": false, "owner_id": "f1d98a5df729f95cd208ee9430e3b21b", "media":{}}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}
 ```
 
@@ -309,16 +260,14 @@ curl -v -X PATCH \
 }
 ```
 
-## Change a voicemail box's settings
+## Remove a voicemail box
 
-> POST /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}
 
 ```shell
-curl -v -X POST \
+curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -H "Content-Type: application/json" \
-    -d '{"data": {"name": "VMBox 0", "require_pin": true, "is_setup": false, "pin": "0000", "mailbox": "3000", "timezone": "America/Los_Angeles", "check_if_owner": true, "delete_after_notify": false, "not_configurable": false, "notify_email_addresses": [], "save_after_notify": false, "skip_greeting": false, "skip_instructions": false, "owner_id": "f1d98a5df729f95cd208ee9430e3b21b", "media":{}}}' \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}
 ```
 
 **Response**
@@ -350,96 +299,21 @@ curl -v -X POST \
 }
 ```
 
-## Create a new voicemail message
+## Fetch all voicemail messages for an account
 
-There are two methods for creating a new voicemail message - they differ in how you attach the media file.
-
-In the first method, you can create a voicemail document first in one request and then put the media file into the document with a second request using `/messages/{VM_MSG_ID}` API endpoint.
-
-> PUT /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages
+> GET /v2/accounts/{ACCOUNT_ID}/vmboxes/messages
 
 ```shell
-curl -v -X PUT \
+curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -d {"data":{"caller_id_name":"someone","caller_id_number":"6001","folder":"new","from":"someone@farfaraway.com"}} \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages
-```
-
-**Response**
-
-```json
-{
-    "auth_token": "{AUTH_TOKEN}",
-    "data": {
-            "timestamp": 63630058722,
-            "from": "someone@farfaraway.com",
-            "to": "1000@sip.somewhere.com",
-            "caller_id_number": "6001",
-            "caller_id_name": "someone",
-            "call_id": "79959ZDNmM2I5ZTliMzA0NzA4N2FjNjlmODA5OWVkZjUxZWU",
-            "folder": "new",
-            "length": 3140,
-            "media_id": "201605-fadnew0mf6fcfgfd8bcdfca312e924bq"
-    },
-    "revision": "{REVISION}",
-    "request_id": "{REQUEST_ID}",
-    "status": "success"
-}
-```
-
-And then you can use PUT method on `/messages/201605-fadnew0mf6fcfgfd8bcdfca312e924bq` to add the media to file (see PUT method for a message below).
-
-In the second method, you can use a single PUT request and send a multipart content-type to add both the JSON metadata about the message and the media file itself, in a single request.
-
-```shell
-curl -v -X PUT \
-     -H "Content-Type: multipart/mixed" \
-     -F "content=@message.json; type=application/json" \
-     -F "content=@voice.mp3; type=audio/mp3" \
-     -H 'X-Auth-Token: {AUTH_TOKEN}' \
-     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/messages
-```
-
-The response is same as above.
-
-## Remove all or a list of messages from a voicemail box
-
-> DELETE /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages
-
-Deleting all message is easy, just use `DELETE` method on message API endpoint to delete all account's messages.
-
-Optional payload for deleting a group of messages:
-
-* One can apply a filter to delete all messages in a particular folder(e.g. new or saved) by adding a query string `?folder=saved` to the URL or set it in the payload as `{"data": {"folder": "saved"}}`
-* Or providing an array of message ids, e.g `{"data": {"messages": [MSG_ID1, MSG_ID2, ...]}}`.
-
-!!! note
-    If you didn't move voicemail messages to the new format already, messages that are in old format will be moved to the new MODB format, which will cause their message id to change to the new format.
-
-```shell
-curl -v -X DELETE \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages
-```
-
-**Response**
-
-```json
-{
-    "auth_token": "{AUTH_TOKEN}",
-    "data": {
-        "succeeded": ["201605-6aadef09f6fcf5fd8bcdfca312e923ba"],
-        "failed": [{"201605-49be0985ea3a33046f8073083517d27b":"not_found"}]
-    },
-    "revision": "{REVISION}",
-    "request_id": "{REQUEST_ID}",
-    "status": "success"
-}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/messages
 ```
 
 ## Fetch all messages for a voicemail box
 
 > GET /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages
+
+Without pagination:
 
 ```shell
 curl -v -X GET \
@@ -482,7 +356,108 @@ curl -v -X GET \
 }
 ```
 
-## Change a list of messages
+With pagination:
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages?paginate=true
+```
+
+**Response**
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": [
+        {
+            "0e820108c0f4ca391500f3be1b02bdfa": {
+                "timestamp": 63630058722,
+                "from": "1001@aeac33.sip.2600hz.com",
+                "to": "1000@aeac33.sip.2600hz.com",
+                "caller_id_number": "1001",
+                "caller_id_name": "userb userb",
+                "call_id": "79959ZDNmM2I5ZTliMzA0NzA4N2FjNjlmODA5OWVkZjUxZWU",
+                "folder": "new",
+                "length": 3140,
+                "media_id": "201605-6aadef09f6fcf5fd8bcdfca312e923ba"
+            }
+        },
+        {
+            "0e820108c0f4ca391500f3be1b02bdfa": {
+                "timestamp": 63630058413,
+                "from": "1002@aeac33.sip.2600hz.com",
+                "to": "1000@aeac33.sip.2600hz.com",
+                "caller_id_number": "1002",
+                "caller_id_name": "userd userd",
+                "call_id": "79959MmNiMmJiMTIxODhjZjk0ZDhmOGNkMjJkN2MwNGQyNWY",
+                "folder": "new",
+                "length": 5500,
+                "media_id": "201605-f0c3c16551a5ff7b5753a381892e2e01"
+            }
+        }
+    ],
+    "next_start_key": [],
+    "page_size": 50,
+    "revision": "{REVERSION}",
+    "request_id": "{REQUEST_ID}",
+    "status": "success"
+}
+```
+
+## Create a new voicemail message
+
+> PUT /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages
+
+There are two methods for creating a new voicemail message - they differ in how you attach the media file.
+
+In the first method, you can create a voicemail document first in one request and then put the media file into the document with a second request using `/messages/{VM_MSG_ID}` API endpoint.
+
+```shell
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d {"data":{"caller_id_name":"someone","caller_id_number":"6001","folder":"new","from":"1001@aeac33.sip.2600hz.com"}} \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages
+```
+
+**Response**
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+            "timestamp": 63630058722,
+            "from": "1001@aeac33.sip.2600hz.com",
+            "to": "1000@aeac33.sip.2600hz.com",
+            "caller_id_number": "1001",
+            "caller_id_name": "userb userb",
+            "call_id": "79959ZDNmM2I5ZTliMzA0NzA4N2FjNjlmODA5OWVkZjUxZWU",
+            "folder": "new",
+            "length": 3140,
+            "media_id": "201605-fadnew0mf6fcfgfd8bcdfca312e924bq"
+    },
+    "revision": "{REVISION}",
+    "request_id": "{REQUEST_ID}",
+    "status": "success"
+}
+```
+
+And then you can use PUT method on `/messages/201605-fadnew0mf6fcfgfd8bcdfca312e924bq` to add the media to file (see PUT method for a message below).
+
+In the second method, you can use a single PUT request and send a multipart content-type to add both the JSON metadata about the message and the media file itself, in a single request.
+
+```shell
+curl -v -X PUT \
+     -H "Content-Type: multipart/mixed" \
+     -F "content=@message.json; type=application/json" \
+     -F "content=@voice.mp3; type=audio/mp3" \
+     -H 'X-Auth-Token: {AUTH_TOKEN}' \
+     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/messages
+```
+
+The response is same as above.
+
+## Change a list of voicemail messages
 
 > POST /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages
 
@@ -520,25 +495,16 @@ curl -v -X POST \
 }
 ```
 
+## Remove all voicemail messages from a voicemail box
 
-## Fetch the raw audio of a list of messages as a ZIP file
+> DELETE /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages
 
-> POST /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/raw
+Deleting all message is easy, just use `DELETE` method on message API endpoint to delete all account's messages.
 
-You can provide a list of voicemail message ID in the payload and get raw audio of them in a single ZIP file.
+Optional payload for deleting a group of messages:
 
-```shell
-curl -v -X POST \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -H "Content-Type: application/json" \
-    -H "Accept: application/zip" \
-    -d '{"data": {"messages": ["MSG_ID1", "MSG_ID2", "MSG_ID3"]}}' \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/raw
-```
-
-## Remove a message from the voicemail box
-
-> DELETE /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/{VM_MSG_ID}
+* One can apply a filter to delete all messages in a particular folder(e.g. new or saved) by adding a query string `?folder=saved` to the URL or set it in the payload as `{"data": {"folder": "saved"}}`
+* Or providing an array of message ids, e.g `{"data": {"messages": [MSG_ID1, MSG_ID2, ...]}}`.
 
 !!! note
     If you didn't move voicemail messages to the new format already, messages that are in old format will be moved to the new MODB format, which will cause their message id to change to the new format.
@@ -546,7 +512,7 @@ curl -v -X POST \
 ```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/201605-6aadef09f6fcf5fd8bcdfca312e923ba
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages
 ```
 
 **Response**
@@ -555,19 +521,8 @@ curl -v -X DELETE \
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
-        "timestamp": 63630058722,
-        "from": "1001@aeac33.sip.2600hz.com",
-        "to": "1000@aeac33.sip.2600hz.com",
-        "caller_id_number": "1001",
-        "caller_id_name": "userb userb",
-        "call_id": "79959ZDNmM2I5ZTliMzA0NzA4N2FjNjlmODA5OWVkZjUxZWU",
-        "folder": "new",
-        "length": 3140,
-        "media_id": "201605-6aadef09f6fcf5fd8bcdfca312e923ba",
-        "transcription": {
-            "result": "success",
-            "text": "This is a test of the voicemail transcription."
-        }
+        "succeeded": ["201605-6aadef09f6fcf5fd8bcdfca312e923ba"],
+        "failed": [{"201605-49be0985ea3a33046f8073083517d27b":"not_found"}]
     },
     "revision": "{REVISION}",
     "request_id": "{REQUEST_ID}",
@@ -575,14 +530,14 @@ curl -v -X DELETE \
 }
 ```
 
-## Fetch a message from the voicemail box
+## Fetch a single voicemail message
 
 > GET /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/{VM_MSG_ID}
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/201605-6aadef09f6fcf5fd8bcdfca312e923ba
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/{VM_MSG_ID}
 ```
 
 !!! note
@@ -614,7 +569,7 @@ curl -v -X GET \
 }
 ```
 
-## Change a message
+## Change a single voicemail message
 
 * **Change the folder of a message:** set the folder that message should move to (e.g. new or saved) by adding a query string `?folder=saved` to the URL or set it in the payload as `{"data": {"folder": "saved"}}`.
 
@@ -631,7 +586,7 @@ curl -v -X GET \
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -d '{"data": {"folder": "saved"}}' \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/201605-6aadef09f6fcf5fd8bcdfca312e923ba
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/{VM_MSG_ID}
 ```
 
 **Response**
@@ -660,7 +615,61 @@ curl -v -X POST \
 }
 ```
 
-## Fetch the raw audio of the message
+## Remove a single voicemail message
+
+> DELETE /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/{VM_MSG_ID}
+
+!!! note
+    If you didn't move voicemail messages to the new format already, messages that are in old format will be moved to the new MODB format, which will cause their message id to change to the new format.
+
+```shell
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/{VM_MSG_ID}
+```
+
+**Response**
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "timestamp": 63630058722,
+        "from": "1001@aeac33.sip.2600hz.com",
+        "to": "1000@aeac33.sip.2600hz.com",
+        "caller_id_number": "1001",
+        "caller_id_name": "userb userb",
+        "call_id": "79959ZDNmM2I5ZTliMzA0NzA4N2FjNjlmODA5OWVkZjUxZWU",
+        "folder": "new",
+        "length": 3140,
+        "media_id": "201605-6aadef09f6fcf5fd8bcdfca312e923ba",
+        "transcription": {
+            "result": "success",
+            "text": "This is a test of the voicemail transcription."
+        }
+    },
+    "revision": "{REVISION}",
+    "request_id": "{REQUEST_ID}",
+    "status": "success"
+}
+```
+
+## Fetch the raw audio of a list of voicemail messages as a ZIP file
+
+> POST /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/raw
+
+You can provide a list of voicemail message ID in the payload and get raw audio of them in a single ZIP file.
+
+```shell
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H "Content-Type: application/json" \
+    -H "Accept: application/zip" \
+    -d '{"data": {"messages": ["MSG_ID1", "MSG_ID2", "MSG_ID3"]}}' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/raw
+```
+
+## Fetch the raw audio for a voicemail message
 
 > GET /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/{VM_MSG_ID}/raw
 
@@ -670,10 +679,10 @@ curl -v -X POST \
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/201605-6aadef09f6fcf5fd8bcdfca312e923ba/raw
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/{VM_MSG_ID}/raw
 ```
 
-## Add a new voicemail media file to a message
+## Create the raw audio for a voicemail message
 
 If you added a message based on the first method mentioned above (using PUT method on `/messages`), you can use this to upload the media file for the created message.
 
@@ -687,7 +696,7 @@ curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: multipart/mixed" \
     -F "content=@voice.mp3; type=audio/mp3" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/201605-fadnew0mf6fcfgfd8bcdfca312e924bq/raw
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/{VM_MSG_ID}/raw
 ```
 
 **Response**
@@ -697,10 +706,10 @@ curl -v -X PUT \
     "auth_token": "{AUTH_TOKEN}",
     "data": {
             "timestamp": 63630058722,
-            "from": "someone@farfaraway.com",
-            "to": "1000@sip.somewhere.com",
-            "caller_id_number": "6001",
-            "caller_id_name": "someone",
+            "from": "1001@aeac33.sip.2600hz.com",
+            "to": "1000@aeac33.sip.2600hz.com",
+            "caller_id_number": "1001",
+            "caller_id_name": "userb userb",
             "call_id": "79959ZDNmM2I5ZTliMzA0NzA4N2FjNjlmODA5OWVkZjUxZWU",
             "folder": "new",
             "length": 3140,
