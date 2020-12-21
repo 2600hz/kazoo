@@ -411,7 +411,7 @@ curl -v -X GET \
 
 There are two methods for creating a new voicemail message - they differ in how you attach the media file.
 
-In the first method, you can create a voicemail document first in one request and then put the media file into the document with a second request using `/messages/{VM_MSG_ID}` API endpoint.
+In the first method, you can create a voicemail document first in one request and then put the media file into the document with a second request using [`/messages/{VM_MSG_ID}/raw`](create-the-raw-audio-for-a-voicemail-message) API endpoint.
 
 ```shell
 curl -v -X PUT \
@@ -442,7 +442,7 @@ curl -v -X PUT \
 }
 ```
 
-And then you can use PUT method on `/messages/201605-fadnew0mf6fcfgfd8bcdfca312e924bq` to add the media to file (see PUT method for a message below).
+And then you can use PUT method on the [`/messages/{VM_MSG_ID}/raw`](create-the-raw-audio-for-a-voicemail-message) API endpoint to add the media to file (see PUT method for a message below).
 
 In the second method, you can use a single PUT request and send a multipart content-type to add both the JSON metadata about the message and the media file itself, in a single request.
 
