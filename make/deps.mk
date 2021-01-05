@@ -55,7 +55,7 @@ endif
 dep_ranch = git https://github.com/2600hz/erlang-ranch 1.7.1
 dep_cowboy = git https://github.com/2600hz/erlang-cowboy 2.8.0-OTP19
 dep_cowlib = git https://github.com/2600hz/erlang-cowlib 2600hz-2.9.1
-dep_gun = git https://github.com/2600hz/erlang-gun 2600hz-2.0.0-pre.3
+dep_gun = git https://github.com/2600hz/erlang-gun 2600hz-2.0.0-pre.3-4.3
 
 dep_apns = git https://github.com/2600hz/erlang-apns4erl.git 2600hz-2.4.2
 
