@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2017-2020, 2600Hz
+%%% @copyright (C) 2017-2021, 2600Hz
 %%% @doc Module to authenticate a user with a multi factor provider.
 %%% @author Hesaam Farhang
 %%% @end
