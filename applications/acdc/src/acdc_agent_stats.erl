@@ -10,7 +10,6 @@
 -export([agent_ready/2
         ,agent_logged_in/2
         ,agent_logged_out/2
-        ,agent_pending_logged_out/2
         ,agent_connecting/3, agent_connecting/6
         ,agent_connected/3, agent_connected/6
         ,agent_wrapup/3
@@ -89,21 +88,6 @@ agent_logged_out(AccountId, AgentId) ->
     log_status_change(AccountId, Prop),
     kz_amqp_worker:cast(Prop
                        ,fun kapi_acdc_stats:publish_status_logged_out/1
-                       ).
-
--spec agent_pending_logged_out(kz_term:ne_binary(), kz_term:ne_binary()) ->
-          'ok'.
-agent_pending_logged_out(AccountId, AgentId) ->
-    Prop = props:filter_undefined(
-             [{<<"Account-ID">>, AccountId}
-             ,{<<"Agent-ID">>, AgentId}
-             ,{<<"Timestamp">>, kz_time:now_s()}
-             ,{<<"Status">>, <<"pending_logged_out">>}
-              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-             ]),
-    log_status_change(AccountId, Prop),
-    kz_amqp_worker:cast(Prop
-                       ,fun kapi_acdc_stats:publish_status_pending_logged_out/1
                        ).
 
 -spec agent_connecting(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
@@ -206,7 +190,6 @@ handle_status_stat(JObj, Props) ->
                  <<"ready">> -> kapi_acdc_stats:status_ready_v(JObj);
                  <<"logged_in">> -> kapi_acdc_stats:status_logged_in_v(JObj);
                  <<"logged_out">> -> kapi_acdc_stats:status_logged_out_v(JObj);
-                 <<"pending_logged_out">> -> kapi_acdc_stats:status_pending_logged_out_v(JObj);
                  <<"connecting">> -> kapi_acdc_stats:status_connecting_v(JObj);
                  <<"connected">> -> kapi_acdc_stats:status_connected_v(JObj);
                  <<"wrapup">> -> kapi_acdc_stats:status_wrapup_v(JObj);
