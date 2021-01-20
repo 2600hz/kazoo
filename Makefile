@@ -9,7 +9,7 @@ BASE_BRANCH := $(shell cat $(ROOT)/.base_branch)
 
 CHANGED ?= $(shell git --no-pager diff --name-only HEAD $(BASE_BRANCH) -- applications core scripts)
 CHANGED_SWAGGER := $(shell git --no-pager diff --name-only HEAD $(BASE_BRANCH) -- applications/crossbar/priv/api/swagger.json)
-CHANGED_ERLANG=$(filter %.erl %.beam,$(CHANGED))
+CHANGED_ERLANG=$(filter %.erl %.beam %/ebin,$(CHANGED))
 CHANGED_JSON=$(filter %.json,$(CHANGED))
 
 # You can override this when calling make, e.g. make JOBS=1
