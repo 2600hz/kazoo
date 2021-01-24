@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 import sys
@@ -11,20 +11,27 @@ import re
 design_pattern = re.compile('^_design/')
 
 if len(sys.argv) < 2:
-    print 'Usage: ' + sys.argv[0] + ' file.json+'
+    print('Usage: ' + sys.argv[0] + ' file.json+')
     exit(0)
+
+def should_exclude_serverless_function(value):
+    if value.startswith('function_') or value.startswith('functions'):
+        return False
+    else:
+        return True
 
 def fmap(F, data):
     if isinstance(data, dict):
-        for key, value in data.iteritems():
+        for key, value in data.items():
             fmap(F, (key,value))
     elif isinstance(data, tuple):
         (key, value) = data
-        if isinstance(value, basestring):
-            if value.startswith('function'):
+        if isinstance(value, str):
+            if value.startswith('function') and should_exclude_serverless_function(value):
                 F(data)
         elif isinstance(value, list) and len(value) > 0 \
-             and isinstance(value[0], basestring) and value[0].startswith('function'):
+             and isinstance(value[0], str) and value[0].startswith('function') \
+             and should_exclude_serverless_function(value[0]):
             F(data)
         else:
             fmap(F, value)
@@ -34,10 +41,11 @@ def fmap(F, data):
     elif isinstance(data, int):
         pass
 
-def couchjs((field, js)):
-    JS = ''.join(js) + '\n'
+def couchjs(field_js):
+    (field, js) = field_js
+    JS = ''.join(js).replace('function', 'function arent_you_funny_couch', 1) + '\n'
     if 'Object.keys' in JS:
-        print field, 'contains "Object.keys" which is not available until ECMA2015'
+        print(field, 'contains "Object.keys" which is not available until ECMA2015')
         exit(1)
     TMP = '_'
     with open(TMP, 'w') as wd:
@@ -51,19 +59,19 @@ def couchjs((field, js)):
                 print_field_js(field, js)
                 exit(1)
         except Exception as e:
-            print 'failed running: ', couchjs, TMP
+            print('failed running: ', couchjs, TMP)
             raise e
         finally:
             os.remove(TMP)
 
 def print_field_js(field, js):
-    print 'Key:', field
-    print 'Code:'
+    print('Key:', field)
+    print('Code:')
     if list == type(js):
         for line in js:
-            print line
+            print(line)
     else:
-        print js
+        print(js)
 
 def basename2(file_name):
     ## http://stackoverflow.com/a/678242/1418165
@@ -77,8 +85,8 @@ def check_name(file_name, JSON_name):
     fname = fname.split('-')[-1]
     jname = JSON_name.split('/')[-1]
     if fname != jname:
-        print 'File name {} does not match _id field!'.format(file_name)
-        print '\t', fname, u' ≠ ', jname
+        print('{}:1: filename does not match _id field!'.format(file_name))
+        print('\t', fname, ' ≠ ', jname)
         exit(1)
 
 def get_app_cat_index(filename, exploded):
@@ -88,7 +96,7 @@ def get_app_cat_index(filename, exploded):
         except ValueError:
             pass
     if appcat is None:
-        print 'file {} is not in kazoo core or applications'.format(filename)
+        print('file {} is not in kazoo core or applications'.format(filename))
         exit(1)
     return appcat
 
@@ -107,27 +115,27 @@ def get_view_destinations(filename, data, app_name, view_name, all_view_destinat
     if 'kazoo' in data:
         kazoo_obj = data['kazoo']
     else:
-        print 'kazoo object is missing from view {}'.format(filename)
+        print('kazoo object is missing from view {}'.format(filename))
         exit(1)
 
     if 'view_map' in kazoo_obj:
         view_map = kazoo_obj['view_map']
         if not isinstance(view_map, list) or len(view_map) <= 0:
-            print 'kazoo.view_map should be a non empty list of object in file {}'.format(filename)
+            print('kazoo.view_map should be a non empty list of object in file {}'.format(filename))
             exit(1)
     else:
-        print 'view_map list is missing from view definition kazoo object {}'.format(filename)
+        print('view_map list is missing from view definition kazoo object {}'.format(filename))
         exit(1)
 
     for obj in view_map:
         if 'database' in obj and 'classification' in obj:
-            print 'can not have both database and classification defined on same object in {}'.format(filename)
+            print('can not have both database and classification defined on same object in {}'.format(filename))
             exit(1)
         if 'database' in obj:
             db = obj['database']
             dbname_viewname = '{}-{}'.format(db, view_name)
             if dbname_viewname in all_view_destinations:
-                print 'view {} in db {} has same name as view {}'.format(filename, db, all_view_destinations[dbname_viewname])
+                print('view {} in db {} has same name as view {}'.format(filename, db, all_view_destinations[dbname_viewname]))
                 exit(1)
             view_destinations.append(db)
             all_view_destinations['{}-{}'.format(db, view_name)] = filename
@@ -135,7 +143,7 @@ def get_view_destinations(filename, data, app_name, view_name, all_view_destinat
             classification = obj['classification']
             class_viewname = '{}-{}'.format(classification, view_name)
             if class_viewname in all_view_destinations:
-                print 'view {} in db {} has same classification as view {}'.format(filename, classification, all_view_destinations[class_viewname])
+                print('view {} in db {} has same classification as view {}'.format(filename, classification, all_view_destinations[class_viewname]))
                 exit(1)
             view_destinations.append(classification)
             all_view_destinations['{}-{}'.format(classification, view_name)] = filename
@@ -156,7 +164,7 @@ def kz_check_views_destination(data, filename, exploded, view_definition_ids, al
         view_name = data['_id'].split('/')[-1]
         view_destinations = get_view_destinations(filename, data, app_name, view_name, all_view_destinations)
         if len(view_destinations) < 1:
-            print 'no database or classification is defined for {}'.format(filename)
+            print('no database or classification is defined for {}'.format(filename))
             exit(1)
         elif len(view_destinations) == 1:
             view_def_id = '{}-{}-{}'.format(view_destinations[0], app_name, view_name)
@@ -164,10 +172,10 @@ def kz_check_views_destination(data, filename, exploded, view_definition_ids, al
             view_def_id = 'multi_db-{}-{}'.format(app_name, view_name)
 
         if view_def_id is None:
-            print 'can not find destination of the view {}'.format(filename)
+            print('can not find destination of the view {}'.format(filename))
             exit(1)
         if view_def_id in view_definition_ids:
-            print 'view {}({}) has same system_data db id of view {}'.format(view_def_id, filename, view_definition_ids[view_def_id])
+            print('view {}({}) has same system_data db id of view {}'.format(view_def_id, filename, view_definition_ids[view_def_id]))
             exit(1)
         view_definition_ids[view_def_id] = filename
 
@@ -178,15 +186,17 @@ def main():
     all_view_destinations = {}
     for fn in sys.argv[1:]:
         if not os.path.isfile(fn):
-            print 'not a file: {}'.format(fn);
+            print('not a file: {}'.format(fn));
             continue
         if not fn.endswith('.json'):
-            print 'not a JSON file: {}'.format(fn);
+            print('not a JSON file: {}'.format(fn));
             continue
         exploded = fn.split(os.sep)
         if not 'couchdb' in exploded:
             continue
         if 'fixtures' in exploded:
+            continue
+        if 'schemas' in exploded:
             continue
         if 'swagger.json' in exploded:
             continue
@@ -197,14 +207,14 @@ def main():
                 fmap(couchjs, data)
                 kz_check_views_destination(data, fn, exploded, view_definition_ids, all_view_destinations)
             except Exception as e:
-                print 'failed to process {}'.format(fn)
-                print e
+                print('failed to process {}'.format(fn))
+                print(e)
                 global exit_code
                 exit_code=1
     print(':: Listing of which view belongs to which database:')
-    print(json.dumps(all_view_destinations, sort_keys=True, indent=4))
+    print((json.dumps(all_view_destinations, sort_keys=True, indent=4)))
     print(':: Listing doc_id of view definitions in system_data database')
-    print(json.dumps(view_definition_ids, sort_keys=True, indent=4))
+    print((json.dumps(view_definition_ids, sort_keys=True, indent=4)))
 
 main()
 exit(exit_code)
