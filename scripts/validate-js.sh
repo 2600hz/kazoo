@@ -21,10 +21,10 @@ def fmap(F, data):
     elif isinstance(data, tuple):
         (key, value) = data
         if isinstance(value, basestring):
-            if value.startswith('function'):
+            if value.startswith('function('):
                 F(data)
         elif isinstance(value, list) and len(value) > 0 \
-             and isinstance(value[0], basestring) and value[0].startswith('function'):
+             and isinstance(value[0], basestring) and value[0].startswith('function('):
             F(data)
         else:
             fmap(F, value)
