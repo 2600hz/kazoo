@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2018-2020, 2600Hz
+%%% @copyright (C) 2018-2021, 2600Hz
 %%% @doc Kazoo document accessors builder.
 %%% @author James Aimonetti
 %%% @end
