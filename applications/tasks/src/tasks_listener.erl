@@ -28,6 +28,9 @@
 
 -record(state, {}).
 -type state() :: #state{}.
+-define(QUEUE_NAME, <<"tasks_listener">>).
+-define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
+-define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
 -define(BINDINGS, [{'self', []}
                   ,{'tasks', []}
@@ -60,6 +63,9 @@ start_link() ->
     gen_listener:start_link(?SERVER
                            ,[{'bindings', ?BINDINGS}
                             ,{'responders', ?RESPONDERS}
+                            ,{'queue_name', ?QUEUE_NAME}
+                            ,{'queue_options', ?QUEUE_OPTIONS}
+                            ,{'consume_options', ?CONSUME_OPTIONS}
                             ]
                            ,[]
                            ).
