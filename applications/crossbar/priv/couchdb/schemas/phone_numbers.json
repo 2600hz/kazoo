@@ -93,6 +93,7 @@
                     "default": [],
                     "description": "A list of email addresses to receive notification when this number places an emergency call",
                     "items": {
+                        "format": "email",
                         "type": "string"
                     },
                     "type": "array"
