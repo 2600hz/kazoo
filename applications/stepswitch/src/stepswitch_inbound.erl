@@ -309,7 +309,7 @@ get_blacklists(AccountId) ->
             lager:error("could not open account doc ~s : ~p", [AccountId, _R]),
             E;
         {'ok', Doc} ->
-            case kz_json:get_value(<<"blacklists">>, Doc, []) of
+            case kzd_accounts:blacklists(Doc, []) of
                 [] -> {'error', 'undefined'};
                 [_|_]=Blacklists-> {'ok', Blacklists};
                 _ -> {'error', 'miss_configured'}
