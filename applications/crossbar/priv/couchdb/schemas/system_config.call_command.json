@@ -38,6 +38,11 @@
             "description": "call_command interdigit timeout",
             "type": "integer"
         },
+        "max_wait_ms": {
+            "default": 86400000,
+            "description": "call_command max_wait_ms",
+            "type": "integer"
+        },
         "message_timeout": {
             "default": 5000,
             "description": "call_command message timeout",
