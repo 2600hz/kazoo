@@ -607,21 +607,14 @@ kazoo_var_to_fs_var({<<"Custom-SIP-Headers">>, SIPJObj}, Vars) ->
     kz_json:foldl(fun sip_headers_fold/3, Vars, SIPJObj);
 
 kazoo_var_to_fs_var({<<"To-User">>, Username}, Vars) ->
-    [list_to_binary([?CHANNEL_VAR_PREFIX, "Username"
-                    ,"='", kz_term:to_list(Username), "'"
-                    ])
-     | Vars
-    ];
+    Prefix = [?CHANNEL_VAR_PREFIX, "Username"],
+    [encode_fs_val(Prefix, Username) | Vars];
 kazoo_var_to_fs_var({<<"To-Realm">>, Realm}, Vars) ->
-    [list_to_binary([?CHANNEL_VAR_PREFIX, "Realm"
-                    ,"='", kz_term:to_list(Realm), "'"
-                    ])
-     | Vars
-    ];
+    Prefix = [?CHANNEL_VAR_PREFIX, "Realm"],
+    [encode_fs_val(Prefix, Realm) | Vars];
 kazoo_var_to_fs_var({<<"To-URI">>, ToURI}, Vars) ->
-    [<<"sip_invite_to_uri=<", ToURI/binary, ">">>
-         | Vars
-    ];
+    Val = <<"<", ToURI/binary, ">">>,
+    [encode_fs_val("sip_invite_to_uri", Val) | Vars];
 
 kazoo_var_to_fs_var({<<"Caller-ID-Type">>, <<"from">>}, Vars) ->
     [ <<"sip_cid_type=none">> | Vars];
@@ -631,12 +624,11 @@ kazoo_var_to_fs_var({<<"Caller-ID-Type">>, <<"pid">>}, Vars) ->
     [ <<"sip_cid_type=pid">> | Vars];
 
 kazoo_var_to_fs_var({<<"origination_uuid">> = K, UUID}, Vars) ->
-    [ <<K/binary, "=", UUID/binary>> | Vars];
+    [encode_fs_val(K, UUID) | Vars];
 
 kazoo_var_to_fs_var({<<"Hold-Media">>, Media}, Vars) ->
     MediaPath = ecallmgr_util:moh_media_path(Media, 'extant', get('callid'), kz_json:new()),
-    [list_to_binary(["hold_music=", MediaPath])
-     | Vars];
+    [encode_fs_val("hold_music", MediaPath) | Vars];
 
 kazoo_var_to_fs_var({<<"Codecs">>, []}, Vars) ->
     Vars;
@@ -646,9 +638,8 @@ kazoo_var_to_fs_var({<<"Codecs">>, Cs}, Vars) ->
                  not kz_term:is_empty(C)
              ],
     CodecStr = string:join(Codecs, ":"),
-    [list_to_binary(["absolute_codec_string='^^:", CodecStr, "'"])
-     |Vars
-    ];
+    Val = ["^^:", CodecStr],
+    [encode_fs_val("absolute_codec_string", Val) | Vars];
 
 %% SPECIAL CASE: Timeout must be larger than zero
 kazoo_var_to_fs_var({<<"Timeout">>, V}, Vars) ->
@@ -662,29 +653,27 @@ kazoo_var_to_fs_var({<<"Timeout">>, V}, Vars) ->
     end;
 
 kazoo_var_to_fs_var({<<"Forward-IP">>, <<"sip:", _/binary>>=V}, Vars) ->
-    [ list_to_binary(["sip_route_uri='", V, "'"]) | Vars];
+    [encode_fs_val("sip_route_uri", V) | Vars];
 
 kazoo_var_to_fs_var({<<"Forward-IP">>, V}, Vars) ->
     kazoo_var_to_fs_var({<<"Forward-IP">>, <<"sip:", V/binary>>}, Vars);
 
 kazoo_var_to_fs_var({<<"Enable-T38-Gateway">>, Direction}, Vars) ->
-    [<<"execute_on_answer='t38_gateway ", Direction/binary, "'">> | Vars];
+    Val = <<"t38_gateway ", Direction/binary>>,
+    [encode_fs_val("execute_on_answer", Val) | Vars];
 
 kazoo_var_to_fs_var({<<"Confirm-File">>, V}, Vars) ->
-    [list_to_binary(["group_confirm_file='"
-                    ,kz_term:to_list(ecallmgr_util:media_path(V, 'extant', get('callid'), kz_json:new()))
-                    ,"'"
-                    ]) | Vars];
+    Val = ecallmgr_util:media_path(V, 'extant', get('callid'), kz_json:new()),
+    [encode_fs_val("group_confirm_file", Val) | Vars];
 
 kazoo_var_to_fs_var({<<"SIP-Invite-Parameters">>, V}, Vars) ->
-    [list_to_binary(["sip_invite_params='", kz_util:iolist_join(<<";">>, V), "'"]) | Vars];
+    Val = kz_util:iolist_join(<<";">>, V),
+    [encode_fs_val("sip_invite_params", Val) | Vars];
 
 kazoo_var_to_fs_var({<<"Participant-Flags">>, [_|_]=Flags}, Vars) ->
-    [list_to_binary(["conference_member_flags="
-                    ,"'^^!", participant_flags_to_var(Flags), "'"
-                    ])
-     | Vars
-    ];
+    ParticipantFlags = participant_flags_to_var(Flags),
+    Val = <<"^^!", ParticipantFlags/binary>>,
+    [encode_fs_val("conference_member_flags", Val) | Vars];
 
 kazoo_var_to_fs_var({AMQPHeader, V}, Vars) ->
     case lists:keyfind(AMQPHeader, 1, ?SPECIAL_CHANNEL_VARS) of
@@ -711,7 +700,9 @@ participant_flag_to_var(Flag) -> Flag.
 sip_headers_fold(<<"Diversions">>, Vs, Vars0) ->
     diversion_headers_fold(Vs, Vars0);
 sip_headers_fold(K, V, Vars0) ->
-    [list_to_binary(["sip_h_", K, "=", maybe_expand_macro(kz_term:to_binary(V))]) | Vars0].
+    Prefix = ["sip_h_", K],
+    Val = maybe_expand_macro(kz_term:to_binary(V)),
+    [encode_fs_val(Prefix, Val) | Vars0].
 
 -define(DEFAULT_EXPANDABLE_MACROS
        ,kz_json:from_list([{<<"{caller_id_name}">>, <<"${caller_id_name}">>}
@@ -733,26 +724,22 @@ diversion_headers_fold(Vs, Vars0) ->
 -spec diversion_header_fold(kz_term:ne_binary(), iolist()) -> iolist().
 diversion_header_fold(<<_/binary>> = V, Vars0) ->
     lager:debug("setting diversion ~s on the channel", [V]),
-    [list_to_binary(["sip_h_Diversion=", V]) | Vars0].
+    [encode_fs_val("sip_h_Diversion", V) | Vars0].
 
 -spec kazoo_var_to_fs_var_fold(kz_json:path(), kz_json:json_term(), iolist()) -> iolist().
 kazoo_var_to_fs_var_fold(<<"Force-Fax">>, Direction, Acc) ->
-    [<<"execute_on_answer='t38_gateway ", Direction/binary, "'">>|Acc];
+    Val = <<"t38_gateway ", Direction/binary>>,
+    [encode_fs_val("execute_on_answer", Val) | Acc];
 kazoo_var_to_fs_var_fold(<<"Channel-Actions">>, Actions, Acc) ->
     [Actions |Acc];
 kazoo_var_to_fs_var_fold(K, V, Acc) ->
     case lists:keyfind(K, 1, ?SPECIAL_CHANNEL_VARS) of
         'false' ->
-            [list_to_binary([?CHANNEL_VAR_PREFIX, kz_term:to_list(K)
-                            ,"='", kz_term:to_list(V), "'"
-                            ])
-             | Acc];
-        {_, <<"group_confirm_file">>} ->
-            [list_to_binary(["group_confirm_file='"
-                            ,kz_term:to_list(ecallmgr_util:media_path(V, 'extant', get('callid'), kz_json:new()))
-                            ,"'"
-                            ])
-             | Acc];
+            Prefix = [?CHANNEL_VAR_PREFIX, kz_term:to_list(K)],
+            [encode_fs_val(Prefix, V) | Acc];
+        {_, <<"group_confirm_file">>=Prefix} ->
+            Val = ecallmgr_util:media_path(V, 'extant', get('callid'), kz_json:new()),
+            [encode_fs_val(Prefix, Val) | Acc];
         {_, Prefix} ->
             Val = ecallmgr_util:maybe_sanitize_fs_value(K, V),
             [encode_fs_val(Prefix, Val) | Acc]
@@ -760,9 +747,9 @@ kazoo_var_to_fs_var_fold(K, V, Acc) ->
 
 -spec kazoo_cavs_to_fs_vars_fold(kz_json:key(), kz_json:json_term(), iolist()) -> iolist().
 kazoo_cavs_to_fs_vars_fold(K, V, Acc) ->
-    [list_to_binary([?APPLICATION_VAR_PREFIX, kz_term:to_list(K), "='", kz_term:to_list(V), "'"])
-     | Acc
-    ].
+    Prefix = [?APPLICATION_VAR_PREFIX, kz_term:to_list(K)],
+    Val = kz_term:to_list(V),
+    [encode_fs_val(Prefix, Val) | Acc].
 
 -spec codec_mappings(kz_term:ne_binary()) -> kz_term:ne_binary().
 codec_mappings(<<"G722_32">>) ->
@@ -776,6 +763,12 @@ codec_mappings(<<"CELT_48">>) ->
 codec_mappings(Codec) ->
     Codec.
 
+%%------------------------------------------------------------------------------
+%% @doc Encode the value and return a binary string with the prefix, a equal
+%% sign and the value wraped in single quotes.
+%% @end
+%%------------------------------------------------------------------------------
+-spec encode_fs_val(kz_term:text(), kz_term:text()) -> kz_term:ne_binary().
 encode_fs_val(Prefix, V) ->
     list_to_binary([Prefix, "='", escape(V, $\'), "'"]).
 
