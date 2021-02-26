@@ -49,6 +49,8 @@ curl -v -X GET \
 
 ## Update limits for a given account
 
+Only allowed for **Master**, **Reseller**, and **SuperDuperAdmin** accounts.
+
 > POST /v2/accounts/{ACCOUNT_ID}/limits
 
 ```shell
