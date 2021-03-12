@@ -14,7 +14,7 @@
                 "function(doc) {",
                 "  if (doc.pvt_type != 'vmbox' || doc.pvt_deleted) return;",
                 "  var messges_count = doc.messages ? doc.messages.length || 0 : 0;",
-                "  emit(doc.name, {",
+                "  emit(doc._id, {",
                 "    id: doc._id,",
                 "    name: doc.name,",
                 "    mailbox: doc.mailbox,",
