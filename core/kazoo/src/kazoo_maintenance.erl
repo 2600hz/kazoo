@@ -21,7 +21,7 @@
         ,etop/0
 
         ,ets_info/0
-        ,mem_info/0
+        ,mem_info/0, mem_info/1
         ]).
 
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
@@ -235,9 +235,67 @@ log_table({Name, Mem}, Filename) ->
 
 -spec mem_info() -> 'ok'.
 mem_info() ->
+    mem_info(10).
+
+-spec mem_info(kz_term:ne_binary() | pos_integer()) -> 'ok'.
+mem_info(TopN) ->
     io:format(" VM Memory Info:~n"),
     [print_memory_type(Info) || Info <- erlang:memory()],
+    print_app_mem_info(TopN, app_mem_info()),
     'ok'.
+
+-spec print_app_mem_info(kz_term:ne_binary() | pos_integer(), map()) -> 'ok'.
+print_app_mem_info(<<"full">>, Info) ->
+    Sorted = lists:reverse(lists:keysort(2, maps:to_list(Info))),
+    print_app_mem_info(Sorted);
+print_app_mem_info(Top, Info) ->
+    TopN = kz_term:to_integer(Top),
+    Sorted = lists:reverse(lists:keysort(2, maps:to_list(Info))),
+    {TopL, _} = lists:split(TopN, Sorted),
+    print_app_mem_info(TopL).
+
+%% @doc [{AppName, TotalHeap}]
+-spec print_app_mem_info([{atom(), integer()}]) -> 'ok'.
+print_app_mem_info(Sorted) ->
+    io:format("~n App Memory Info:~n"),
+    [io:format("  ~p: ~s~n", [App, kz_util:pretty_print_bytes(Mem, 'truncated')])
+     || {App, Mem} <- Sorted
+    ],
+    io:format("~n").
+
+app_mem_info() ->
+    lists:foldl(fun add_mem_info/2, #{}, processes()).
+
+add_mem_info(Pid, Acc) ->
+    case process_info(Pid, ['dictionary']) of
+        'undefined' -> Acc;
+        [{'dictionary', Dict}] ->
+            add_mem_info(Pid, Acc, props:get_value('application', Dict), Dict)
+    end.
+
+add_mem_info(_Pid, Acc, 'unknown', _Dict) ->
+    Acc;
+add_mem_info(Pid, Acc, 'undefined', Dict) ->
+    Default = default_init_call(Pid),
+    {M, _, _} = props:get_value('$initial_call', Dict, Default),
+    case application:get_application(M) of
+        'undefined' -> Acc;
+        {'ok', App} ->
+            add_mem_info(Pid, Acc, App, Dict)
+    end;
+add_mem_info(Pid, Acc, App, _Dict) ->
+    case process_info(Pid, ['total_heap_size']) of
+        'undefined' -> Acc;
+        [{'total_heap_size', Heap}] ->
+            AppUsage = maps:get(App, Acc, 0),
+            maps:put(App, AppUsage + Heap, Acc)
+    end.
+
+default_init_call(Pid) ->
+    case process_info(Pid, ['initial_call']) of
+        'undefined' -> 'unknown';
+        [{'initial_call', MFA}] -> MFA
+    end.
 
 -spec print_memory_type({erlang:memory_type(), integer()}) -> 'ok'.
 print_memory_type({Type, Size}) ->
