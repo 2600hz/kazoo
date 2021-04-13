@@ -217,6 +217,10 @@ waiting('state_timeout', 'wakeup', State) ->
 %%------------------------------------------------------------------------------
 -spec create_alert(non_neg_integer()) -> 'ok'.
 create_alert(Days) ->
+    create_alert(Days, kapps_alert:enabled()).
+
+-spec create_alert(non_neg_integer(), boolean()) -> 'ok'.
+create_alert(Days, 'true') ->
     DaysBin = integer_to_binary(Days),
     case kapps_util:get_master_account_id() of
         {'ok', AccountId} ->
@@ -236,5 +240,6 @@ create_alert(Days) ->
             {'ok', _} = kapps_alert:save(AlertJObj),
             'ok';
         _ -> 'ok'
-    end.
-
+    end;
+create_alert(_Days, 'false') ->
+    lager:debug("alerts are disabled, not creating alert").
