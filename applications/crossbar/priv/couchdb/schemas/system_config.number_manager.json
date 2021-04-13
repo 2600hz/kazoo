@@ -38,7 +38,7 @@
                 "emergency": {
                     "emergency": true,
                     "friendly_name": "Emergency Dispatcher",
-                    "regex": "^(911|922|933|833|811|711|999)$"
+                    "regex": "^(911|922|933|988|833|811|711|999)$"
                 },
                 "international": {
                     "friendly_name": "International",
