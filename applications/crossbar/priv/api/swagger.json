@@ -3561,7 +3561,8 @@
                     "description": "Whether to start or stop the recording",
                     "enum": [
                         "start",
-                        "stop"
+                        "stop",
+                        "start_on_b_leg"
                     ],
                     "type": "string"
                 },
@@ -6997,14 +6998,12 @@
                 "Event-Category": {
                     "enum": [
                         "agent"
-                    ],
-                    "type": "string"
+                    ]
                 },
                 "Event-Name": {
                     "enum": [
                         "login"
-                    ],
-                    "type": "string"
+                    ]
                 },
                 "Presence-ID": {
                     "type": "string"
@@ -7045,14 +7044,12 @@
                 "Event-Category": {
                     "enum": [
                         "agent"
-                    ],
-                    "type": "string"
+                    ]
                 },
                 "Event-Name": {
                     "enum": [
                         "login_queue"
-                    ],
-                    "type": "string"
+                    ]
                 },
                 "Presence-ID": {
                     "type": "string"
@@ -7087,19 +7084,17 @@
                 "Event-Category": {
                     "enum": [
                         "agent"
-                    ],
-                    "type": "string"
+                    ]
                 },
                 "Event-Name": {
                     "enum": [
                         "login_resp"
-                    ],
-                    "type": "string"
+                    ]
                 },
                 "Status": {
                     "enum": [
-                        "success",
-                        "failed"
+                        "failed",
+                        "success"
                     ],
                     "type": "string"
                 }
@@ -7121,14 +7116,12 @@
                 "Event-Category": {
                     "enum": [
                         "agent"
-                    ],
-                    "type": "string"
+                    ]
                 },
                 "Event-Name": {
                     "enum": [
                         "logout"
-                    ],
-                    "type": "string"
+                    ]
                 },
                 "Presence-ID": {
                     "type": "string"
@@ -7169,14 +7162,12 @@
                 "Event-Category": {
                     "enum": [
                         "agent"
-                    ],
-                    "type": "string"
+                    ]
                 },
                 "Event-Name": {
                     "enum": [
                         "logout_queue"
-                    ],
-                    "type": "string"
+                    ]
                 },
                 "Presence-ID": {
                     "type": "string"
