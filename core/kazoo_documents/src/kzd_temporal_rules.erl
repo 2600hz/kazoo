@@ -15,6 +15,7 @@
 -export([name/1, name/2, set_name/2]).
 -export([ordinal/1, ordinal/2, set_ordinal/2]).
 -export([start_date/1, start_date/2, set_start_date/2]).
+-export([end_date/1, end_date/2, set_end_date/2]).
 -export([time_window_start/1, time_window_start/2, set_time_window_start/2]).
 -export([time_window_stop/1, time_window_stop/2, set_time_window_stop/2]).
 -export([wdays/1, wdays/2, set_wdays/2]).
@@ -144,6 +145,18 @@ start_date(Doc, Default) ->
 -spec set_start_date(doc(), integer()) -> doc().
 set_start_date(Doc, StartDate) ->
     kz_json:set_value([<<"start_date">>], StartDate, Doc).
+
+-spec end_date(doc()) -> integer().
+end_date(Doc) ->
+    end_date(Doc, 0).
+
+-spec end_date(doc(), Default) -> integer() | Default.
+end_date(Doc, Default) ->
+    kz_json:get_integer_value([<<"end_date">>], Doc, Default).
+
+-spec set_end_date(doc(), integer()) -> doc().
+set_end_date(Doc, EndDate) ->
+    kz_json:set_value([<<"end_date">>], EndDate, Doc).
 
 -spec time_window_start(doc()) -> integer().
 time_window_start(Doc) ->

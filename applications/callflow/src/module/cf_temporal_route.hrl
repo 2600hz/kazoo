@@ -36,6 +36,7 @@
 -define(RULE_DEFAULT_ORDINAL, <<"first">>).
 -define(RULE_DEFAULT_MONTH, 1).
 -define(RULE_DEFAULT_START_DATE, {2011,1,1}).
+-define(RULE_DEFAULT_END_DATE, {0,0,0}).
 -define(RULE_DEFAULT_WTIME_START, 0).
 -define(RULE_DEFAULT_WTIME_STOP, ?SECONDS_IN_DAY).
 
@@ -51,6 +52,7 @@
               ,ordinal = ?RULE_DEFAULT_ORDINAL :: ordinal()
               ,month = ?RULE_DEFAULT_MONTH :: kz_time:month()
               ,start_date = ?RULE_DEFAULT_START_DATE :: kz_time:date()
+              ,end_date = ?RULE_DEFAULT_END_DATE :: kz_time:date()
               ,wtime_start = ?RULE_DEFAULT_WTIME_START :: non_neg_integer()
               ,wtime_stop = ?RULE_DEFAULT_WTIME_STOP :: non_neg_integer()
               }).
