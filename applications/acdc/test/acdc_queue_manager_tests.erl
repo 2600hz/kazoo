@@ -18,17 +18,29 @@
 %%% =====
 
 %%------------------------------------------------------------------------------
-%% @doc
+%% @doc Test the reported count of agents when the "most idle" strategy state is
+%% empty.
 %% @end
 %%------------------------------------------------------------------------------
-ss_size_empty_test_() ->
-    SS = #strategy_state{agents=[]},
-    [?_assertEqual(0, acdc_queue_manager:ss_size(SS, 'free'))
-    ,?_assertEqual(0, acdc_queue_manager:ss_size(SS, 'logged_in'))].
+agent_count_0_agents_test_() ->
+    State = #state{strategy='mi'
+                  ,strategy_state=#strategy_state{agents=[]}
+                  },
+    [?_assertEqual(0, acdc_queue_manager:assignable_agent_count(State))
+    ,?_assertEqual(0, acdc_queue_manager:agent_count(State))].
 
-ss_size_one_busy_test_() ->
-    SS = #strategy_state{agents=[]},
-    SS1 = acdc_queue_manager:update_strategy_with_agent('mi', SS, ?AGENT_ID, 'add', 'undefined'),
-    SS2 = acdc_queue_manager:update_strategy_with_agent('mi', SS1, ?AGENT_ID, 'remove', 'busy'),
-    [?_assertEqual(0, acdc_queue_manager:ss_size(SS2, 'free'))
-    ,?_assertEqual(1, acdc_queue_manager:ss_size(SS2, 'logged_in'))].
+%%------------------------------------------------------------------------------
+%% @doc Test the reported count of agents when the "most idle" strategy state
+%% has an agent added and then flagged as busy.
+%% @end
+%%------------------------------------------------------------------------------
+agent_count_1_busy_agent_test_() ->
+    State = #state{strategy='mi'
+                  ,strategy_state=#strategy_state{agents=[]}
+                  },
+    SS1 = acdc_queue_manager:update_strategy_with_agent(State, ?AGENT_ID, 'available'),
+    State1 = State#state{strategy_state=SS1},
+    SS2 = acdc_queue_manager:update_strategy_with_agent(State1, ?AGENT_ID, 'busy'),
+    State2 = State1#state{strategy_state=SS2},
+    [?_assertEqual(0, acdc_queue_manager:assignable_agent_count(State2))
+    ,?_assertEqual(1, acdc_queue_manager:agent_count(State2))].
