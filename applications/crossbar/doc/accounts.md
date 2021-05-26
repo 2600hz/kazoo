@@ -675,6 +675,8 @@ curl -v -X PUT \
 
 An account can only be moved by a "superduper_admin" or  if enabled by anyone above the desired account.
 
+**NOTE**: Kazoo does NOT support moving accounts between reseller accounts.
+
 You can enable that feature by editing the document `crossbar.accounts` in your `system_config` database and set the value to `tree`.
 
 Key | Value | Description
