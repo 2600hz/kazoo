@@ -716,6 +716,9 @@ prepare_app(Target, Node, UUID, JObj) ->
           {'error', kz_term:ne_binary()}.
 prepare_app_via_amqp(Node, UUID, JObj, TargetCallId) ->
     case get_channel_status(TargetCallId) of
+        {'ok', []} ->
+            lager:debug("querying for channels for ~s is empty", [TargetCallId]),
+            {'error', <<"failed to find target callid ", TargetCallId/binary>>};
         {'ok', JObjs} ->
             lager:debug("got response to channel query, checking if ~s is active.", [TargetCallId]),
             case prepare_app_status_filter(JObjs) of
