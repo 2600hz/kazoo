@@ -115,10 +115,9 @@ fields(_Settings) -> kz_att_util:default_format_url_fields().
                     ,gen_attachment:att_name()
                     ) -> kz_term:ne_binary().
 attachment_url(HandlerProps, DbName, DocId, AName) ->
-    BaseUrlParam = kz_json:get_ne_binary_value(<<"url">>, HandlerProps),
     HProps = handler_props_map(HandlerProps),
+    BaseUrl = maps:get('url', HProps),
 
-    BaseUrl = kz_binary:strip_right(BaseUrlParam, $/),
     ClientSegment = kz_att_util:format_url(HProps, {DbName, DocId, AName}, fields(HProps)),
     Separator = base_separator(BaseUrl),
 
