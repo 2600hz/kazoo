@@ -107,6 +107,11 @@
             },
             "type": "object"
         },
+        "create_caller_id_name_if_undefined": {
+            "description": "Create the users caller id name from the first and last name fields if no caller id is defined",
+            "support_level": "supported",
+            "type": "boolean"
+        },
         "dial_plan": {
             "$ref": "dialplans",
             "description": "A list of rules used to modify dialed numbers"
