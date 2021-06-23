@@ -136,6 +136,7 @@
         ,mask_recording/1, mask_recording/2
         ,unmask_recording/1, unmask_recording/2
         ,stop_recording/1
+        ,should_skip_feature_calls_recording/2
         ]).
 
 -export([is_recording/1, set_is_recording/2]).
@@ -1607,6 +1608,22 @@ get_recordings(Call) ->
     case kvs_fetch(?RECORDINGS_KEY, Call) of
         'undefined' -> queue:new();
         Q -> Q
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc Check if we should record calls to feature codes.
+%% First, we check if the callee number starts with * and then check
+%% if the `record_feature_code_calls' param is set.
+%% If the call is a feature call and record feature code calls is false,
+%% then we skip the call recording.
+%% @end
+%%------------------------------------------------------------------------------
+-spec should_skip_feature_calls_recording(call(), kz_term:api_object()) -> boolean().
+should_skip_feature_calls_recording(Call, Data) ->
+    try binary:first(request_user(Call)) == $*
+            andalso not kz_json:is_true(<<"record_feature_code_calls">>, Data, 'true')
+    catch
+        _:_ -> 'false'
     end.
 
 -spec inception_type(call()) -> kz_term:ne_binary().
