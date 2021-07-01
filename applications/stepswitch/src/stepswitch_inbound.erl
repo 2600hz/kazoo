@@ -227,7 +227,7 @@ block_call_routines(JObj) ->
                ],
     lists:any(fun(Routine) -> block_call_routine(Routine, JObj, Blacklist) end, Routines).
 
--type block_call_fun() :: fun((kz_json:object()) -> boolean()).
+-type block_call_fun() :: fun((kz_json:object(), kz_term:api_object()) -> boolean()).
 -type block_call_resp() :: {kz_term:ne_binary(), kz_term:ne_binary()}.
 -type block_call_arg() :: {block_call_fun(), block_call_resp()}.
 
