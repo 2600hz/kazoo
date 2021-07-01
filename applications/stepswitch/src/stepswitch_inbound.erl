@@ -293,11 +293,13 @@ transition_port_in(NumberProps, _JObj) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec is_blacklisted(kz_json:object(), kz_term:api_object()) -> boolean().
-is_blacklisted(_, 'undefined') -> 'false';
+is_blacklisted(_, 'undefined') ->
+    'false';
 is_blacklisted(JObj, _Blacklist) ->
     Number = kz_json:get_value(<<"Caller-ID-Number">>, JObj),
     Normalized = knm_converters:normalize(Number),
-    lager:info("~s(~s) is blacklisted", [Number, Normalized]).
+    lager:info("~s(~s) is blacklisted", [Number, Normalized]),
+    'true'.
 
 -spec get_blacklists(kz_term:ne_binary()) ->
           {'ok', kz_term:ne_binaries()} |
@@ -330,7 +332,7 @@ get_blacklist(JObj, AccountId, Blacklists) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
 
     ViewOptions = [{'key', Normalized}
-                  |'include_docs'
+                  ,'include_docs'
                   ],
     case kz_datamgr:get_results(AccountDb, <<"blacklists/listing_by_number">>, ViewOptions) of
         {'ok', []} -> 'undefined';
