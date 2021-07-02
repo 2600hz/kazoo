@@ -30,7 +30,7 @@ clean-generated:
 $(GEN_FILE):
 	wget -qO $@ $(GEN_URL)
 
-$(GEN_ERL): clean-generated $(GEN_FILE) $(GEN_ERL_SRC)
+$(GEN_ERL): $(GEN_FILE) $(GEN_ERL_SRC)
 	@head -n `grep -n '%% GENERATED' $(GEN_ERL_SRC) | cut -d: -f1` $(GEN_ERL_SRC) > $(GEN_ERL)
 	@echo 'from_extension(Ext) when not is_binary(Ext) -> from_extension(kz_term:to_lower_binary(Ext));' >> $(GEN_ERL)
 	@echo 'from_extension(<<$$., Ext/binary>>) -> from_extension(kz_term:to_lower_binary(Ext));' >> $(GEN_ERL)
