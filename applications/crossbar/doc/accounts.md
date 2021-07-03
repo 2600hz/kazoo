@@ -83,6 +83,7 @@ Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
 `enabled` | is recording enabled | `boolean()` |   | `false` |  
 `format` | What format to store the recording on disk | `string('mp3' | 'wav')` |   | `false` |  
+`record_feature_code_calls` | Record calls to feature codes | `boolean()` | `true` | `false` |  
 `record_min_sec` | The minimum length, in seconds, the recording must be to be considered successful. Otherwise it is deleted | `integer()` |   | `false` |  
 `record_on_answer` | Recording should start on answer | `boolean()` |   | `false` |  
 `record_on_bridge` | Recording should start on bridge | `boolean()` |   | `false` |  
