@@ -1031,7 +1031,7 @@ add_system_error(Error, Props, Context) when is_list(Props) ->
     JObj = kz_json:from_list(Props),
     add_system_error(Error, JObj, Context);
 add_system_error('bad_identifier'=Error, JObj, Context) ->
-    J = kz_json:set_value(<<"message">>, <<"bad identifier">>, JObj),
+    J = kz_json:insert_value(<<"message">>, <<"bad identifier">>, JObj),
     build_system_error(404, Error, J, Context);
 add_system_error('not_found', JObj, Context) ->
     add_system_error('bad_identifier', JObj, Context);
@@ -1039,29 +1039,24 @@ add_system_error('invalid_bulk_type'=Error, JObj, Context) ->
     %% TODO: JObj is expected to have a type key!!
     Type = kz_json:get_value(<<"type">>, JObj),
     Message = <<"bulk operations do not support documents of type ", (kz_term:to_binary(Type))/binary>>,
-    J = kz_json:set_value(<<"message">>, Message, JObj),
+    J = kz_json:insert_value(<<"message">>, Message, JObj),
     build_system_error(400, Error, J, Context);
 add_system_error('forbidden'=Error, JObj, Context) ->
-    J = kz_json:set_value(<<"message">>, <<"forbidden">>, JObj),
+    J = kz_json:insert_value(<<"message">>, <<"forbidden">>, JObj),
     build_system_error(403, Error, J, Context);
 add_system_error('timeout'=Error, JObj, Context) ->
-    J = kz_json:set_value(<<"message">>, <<"timeout">>, JObj),
+    J = kz_json:insert_value(<<"message">>, <<"timeout">>, JObj),
     build_system_error(500, Error, J, Context);
 add_system_error('invalid_method'=Error, JObj, Context) ->
-    J = kz_json:set_value(<<"message">>, <<"invalid method">>, JObj),
+    J = kz_json:insert_value(<<"message">>, <<"invalid method">>, JObj),
     build_system_error(405, Error, J, Context);
 add_system_error('bad_gateway'=Error, JObj, Context) ->
     build_system_error(502, Error, JObj, Context);
 add_system_error('multiple_choice'=Error, JObj, Context) ->
     build_system_error(400, Error, JObj, Context);
 add_system_error(Error, JObj, Context) ->
-    case kz_json:get_ne_value(<<"message">>, JObj) of
-        'undefined' ->
-            J = kz_json:set_value(<<"message">>, <<"unknown failure">>, JObj),
-            build_system_error(500, Error, J, Context);
-        _Else ->
-            build_system_error(500, Error, JObj, Context)
-    end.
+    J = kz_json:insert_value(<<"message">>, <<"unknown failure">>, JObj),
+    build_system_error(500, Error, J, Context).
 
 -spec add_system_error(integer(), atom() | kz_term:ne_binary(), kz_term:ne_binary() | kz_json:object(), context()) -> context().
 add_system_error(Code, Error, JObj, Context) ->
