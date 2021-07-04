@@ -56,16 +56,11 @@ maybe_add_device_defaults(JObj) ->
 
 -spec maybe_set_line_defaults(kz_json:object()) -> kz_json:object().
 maybe_set_line_defaults(LineJObj) ->
-    kz_json:expand(
-      kz_json:from_list(
-        [case KV of
-             {[<<"advanced">>, <<"expire">>], 'undefined'} -> {Path, 360};
-             {[<<"advanced">>, <<"srtp">>], 'undefined'} -> {Path, 'false'};
-             {[<<"basic">>, <<"enabled">>], 'undefined'} -> {Path, 'true'};
-             _ -> KV
-         end
-         || {Path,_}=KV <- kz_json:to_proplist(kz_json:flatten(LineJObj))
-        ])).
+    Defaults = [{[<<"advanced">>, <<"expire">>], 360}
+               ,{[<<"advanced">>, <<"srtp">>], 'false'}
+               ,{[<<"basic">>, <<"enabled">>], 'true'}
+               ],
+    kz_json:insert_values(Defaults, LineJObj).
 
 -spec device_settings(kz_json:object()) -> kz_json:object().
 device_settings(JObj) ->

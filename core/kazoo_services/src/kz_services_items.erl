@@ -30,9 +30,9 @@
         ,difference_list/2
         ]).
 
--opaque items() :: [kz_services_item:item()].
+-type items() :: [kz_services_item:item()].
 -type fold_fun() :: fun((kz_services_item:item(), Acc) -> Acc).
--type difference_routine() :: {kz_term:ne_binary(), fun((any(), any()) -> any())}.
+-type difference_routine() :: {kz_json:get_key(), fun((any(), any()) -> any())}.
 -type difference_routines() :: [difference_routine()].
 -export_type([items/0
              ,fold_fun/0
