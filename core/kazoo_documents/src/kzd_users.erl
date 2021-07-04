@@ -21,6 +21,7 @@
 -export([caller_id/1, caller_id/2, set_caller_id/2]).
 -export([contact_list/1, contact_list/2, set_contact_list/2]).
 -export([contact_list_exclude/1, contact_list_exclude/2, set_contact_list_exclude/2]).
+-export([create_caller_id_name_if_undefined/1, create_caller_id_name_if_undefined/2, set_create_caller_id_name_if_undefined/2]).
 -export([dial_plan/1, dial_plan/2, set_dial_plan/2]).
 -export([directories/1, directories/2, set_directories/2]).
 -export([do_not_disturb/1, do_not_disturb/2, set_do_not_disturb/2]).
@@ -278,6 +279,18 @@ contact_list_exclude(Doc, Default) ->
 -spec set_contact_list_exclude(doc(), boolean()) -> doc().
 set_contact_list_exclude(Doc, ContactListExclude) ->
     kz_json:set_value([<<"contact_list">>, <<"exclude">>], ContactListExclude, Doc).
+
+-spec create_caller_id_name_if_undefined(doc()) -> kz_term:api_boolean().
+create_caller_id_name_if_undefined(Doc) ->
+    create_caller_id_name_if_undefined(Doc, 'undefined').
+
+-spec create_caller_id_name_if_undefined(doc(), Default) -> boolean() | Default.
+create_caller_id_name_if_undefined(Doc, Default) ->
+    kz_json:get_boolean_value([<<"create_caller_id_name_if_undefined">>], Doc, Default).
+
+-spec set_create_caller_id_name_if_undefined(doc(), boolean()) -> doc().
+set_create_caller_id_name_if_undefined(Doc, CreateCallerIdNameIfUndefined) ->
+    kz_json:set_value([<<"create_caller_id_name_if_undefined">>], CreateCallerIdNameIfUndefined, Doc).
 
 -spec dial_plan(doc()) -> kz_term:api_object().
 dial_plan(Doc) ->
