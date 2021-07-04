@@ -1,6 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "account_config.call_command",
+    "additionalProperties": false,
     "description": "Schema for call_command account_config",
     "properties": {
         "unknown_cid_name": {

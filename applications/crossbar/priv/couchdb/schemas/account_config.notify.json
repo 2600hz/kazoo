@@ -1,6 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "account_config.notify",
+    "additionalProperties": false,
     "description": "Schema for notify account_config",
     "properties": {
         "notify_persist_exceptions": {

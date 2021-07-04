@@ -1,6 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "account_config.callflow",
+    "additionalProperties": false,
     "description": "Schema for callflow account_config",
     "properties": {
         "dialog_subscribed_mwi_prefix": {

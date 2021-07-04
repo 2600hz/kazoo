@@ -1,6 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "account_config.webhooks",
+    "additionalProperties": false,
     "description": "Schema for webhooks account_config",
     "properties": {
         "attempt_failure_count": {

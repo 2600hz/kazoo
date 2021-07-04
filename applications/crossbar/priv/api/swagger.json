@@ -74,6 +74,7 @@
                         "default": {
                             "description": "conferences controls default",
                             "items": {
+                                "additionalProperties": false,
                                 "properties": {
                                     "action": {
                                         "description": "what action to assign to the star-code",
@@ -91,6 +92,7 @@
                         "page": {
                             "description": "conferences controls page",
                             "items": {
+                                "additionalProperties": false,
                                 "properties": {
                                     "action": {
                                         "description": "what action to assign to the star-code",

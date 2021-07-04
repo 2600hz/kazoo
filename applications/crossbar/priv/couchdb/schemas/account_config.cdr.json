@@ -1,6 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "account_config.cdr",
+    "additionalProperties": false,
     "description": "Schema for cdr account_config",
     "properties": {
         "ignore_loopback_bowout": {
