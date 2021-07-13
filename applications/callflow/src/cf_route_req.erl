@@ -188,7 +188,7 @@ send_route_response(Flow, RouteReq, Call) ->
              ,{<<"Custom-Channel-Vars">>, CCVs}
              ,{<<"Custom-Application-Vars">>, kapps_call:custom_application_vars(Call)}
              ,{<<"Context">>, kapps_call:context(Call)}
-             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     ServerId = kz_api:server_id(RouteReq),
     Publisher = fun(P) -> kapi_route:publish_resp(ServerId, P) end,
