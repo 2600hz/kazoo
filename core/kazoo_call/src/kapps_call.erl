@@ -1620,11 +1620,16 @@ get_recordings(Call) ->
 %%------------------------------------------------------------------------------
 -spec should_skip_feature_calls_recording(call(), kz_term:api_object()) -> boolean().
 should_skip_feature_calls_recording(Call, Data) ->
-    try binary:first(request_user(Call)) == $*
-            andalso not kz_json:is_true(<<"record_feature_code_calls">>, Data, 'true')
-    catch
-        _:_ -> 'false'
-    end.
+        is_feature_call(request_user(Call))
+                andalso not should_record_feature_code_calls(Data).
+
+-spec is_feature_call(kz_term:ne_binary()) -> boolean().
+is_feature_call(<<"*", _/binary>>) -> 'true';
+is_feature_call(_) -> 'false'.
+
+-spec should_record_feature_code_calls(kz_term:api_object()) -> boolean().
+should_record_feature_code_calls(Data) ->
+        kz_json:is_true(<<"record_feature_code_calls">>, Data, 'true').
 
 -spec inception_type(call()) -> kz_term:ne_binary().
 inception_type(#kapps_call{inception='undefined'}) -> <<"onnet">>;
