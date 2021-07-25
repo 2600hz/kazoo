@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2020, 2600Hz
+%%% @copyright (C) 2011-2021, 2600Hz
 %%% @doc CDR
 %%% Read only access to CDR docs
 %%%
@@ -62,6 +62,7 @@
         ,{<<"billing_seconds">>, fun col_billing_seconds/3}
         ,{<<"timestamp">>, fun col_timestamp/3}
         ,{<<"hangup_cause">>, fun col_hangup_cause/3}
+        ,{<<"disposition">>, fun col_disposition/3}
         ,{<<"other_leg_call_id">>, fun col_other_leg_call_id/3}
         ,{<<"owner_id">>, fun col_owner_id/3}
         ,{<<"to">>, fun col_to/3}
@@ -515,6 +516,7 @@ col_duration_seconds(JObj, _Timestamp, _Context) -> kzd_cdrs:duration_seconds(JO
 col_billing_seconds(JObj, _Timestamp, _Context) -> kzd_cdrs:billing_seconds(JObj, <<>>).
 col_timestamp(_JObj, Timestamp, _Context) -> kz_term:to_binary(Timestamp).
 col_hangup_cause(JObj, _Timestamp, _Context) -> kzd_cdrs:hangup_cause(JObj, <<>>).
+col_disposition(JObj, _Timestamp, _Context) -> kzd_cdrs:disposition(JObj, <<>>).
 col_other_leg_call_id(JObj, _Timestamp, _Context) -> kzd_cdrs:other_leg_call_id(JObj, <<>>).
 col_owner_id(JObj, _Timestamp, _Context) -> kz_json:get_value([?KEY_CCV, <<"owner_id">>], JObj, <<>>).
 col_to(JObj, _Timestamp, _Context) -> kzd_cdrs:to(JObj, <<>>).

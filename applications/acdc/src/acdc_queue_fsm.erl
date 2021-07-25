@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2020, 2600Hz
+%%% @copyright (C) 2012-2021, 2600Hz
 %%% @doc Controls how a queue process progresses a member_call
 %%% @author James Aimonetti
 %%% @end
@@ -313,7 +313,7 @@ connect_req('cast', {'member_call_cancel', JObj}, State) ->
 connect_req('cast', {'agent_resp', Resp}, #state{connect_resps=CRs
                                                 ,manager_proc=MgrSrv
                                                 }=State) ->
-    Agents = acdc_queue_manager:current_agents(MgrSrv),
+    Agents = acdc_queue_manager:agents(MgrSrv),
     Resps = [Resp | CRs],
     State1 = State#state{connect_resps=Resps},
     case have_agents_responded(Resps, Agents) of
@@ -757,7 +757,7 @@ maybe_abort_connect_req(OnContinue, CallbackArgs, #state{listener_proc=ListenerS
                                                         ,queue_id=QueueId
                                                         ,member_call=Call
                                                         }=State) ->
-    case acdc_queue_manager:are_agents_available(MgrSrv) of
+    case acdc_queue_manager:has_agents(MgrSrv) of
         'true' -> apply(OnContinue, CallbackArgs ++ [State]);
         'false' ->
             lager:debug("all agents have left the queue, failing call"),

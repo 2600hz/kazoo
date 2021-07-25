@@ -89,6 +89,15 @@
                     "description": "The e911 provisioning system calculated service address longitude",
                     "type": "string"
                 },
+                "notification_contact_emails": {
+                    "default": [],
+                    "description": "A list of email addresses to receive notification when this number places an emergency call",
+                    "items": {
+                        "format": "email",
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
                 "plus_four": {
                     "description": "The extended zip/postal code where the number is in service",
                     "type": "string"

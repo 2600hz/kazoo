@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2020, 2600Hz
+%%% @copyright (C) 2011-2021, 2600Hz
 %%% @doc Notification messages, like voicemail left.
 %%% @author James Aimonetti
 %%% @author Karl Anderson
@@ -110,6 +110,7 @@
 
          %% Register notifications
         ,publish_denied_emergency_bridge/1, publish_denied_emergency_bridge/2
+        ,emergency_bridge/1, emergency_bridge_v/1, publish_emergency_bridge/1, publish_emergency_bridge/2
 
          %% SIP notifications
         ,publish_deregister/1, publish_deregister/2
@@ -829,6 +830,47 @@ denied_emergency_bridge_definition() ->
                     ,types = []
                     }.
 
+-spec emergency_bridge_definition() -> kapi_definition:api().
+emergency_bridge_definition() ->
+    EventName = <<"emergency_bridge">>,
+    #kapi_definition{name = EventName
+                    ,friendly_name = <<"Emergency Call Placed">>
+                    ,description = <<"This event is triggered when a call to an number classified as emergency is placed">>
+                    ,build_fun = fun emergency_bridge/1
+                    ,validate_fun = fun emergency_bridge_v/1
+                    ,publish_fun = fun publish_emergency_bridge/1
+                    ,binding = ?BINDING_STRING(<<"registration">>, <<"emergency_bridge">>)
+                    ,restrict_to = 'emergency_bridge'
+                    ,required_headers = [<<"Account-ID">>
+                                        ,<<"Call-ID">>
+                                        ]
+                    ,optional_headers = [<<"Account-Name">>
+                                        ,<<"Authorizing-ID">>
+                                        ,<<"Device-Name">>
+                                        ,<<"Emergency-To-DID">>
+                                        ,<<"Emergency-Test-Call">>
+                                        ,<<"Emergency-Caller-ID-Name">>
+                                        ,<<"Emergency-Caller-ID-Number">>
+                                        ,<<"Emergency-Address-Street-1">>
+                                        ,<<"Emergency-Address-Street-2">>
+                                        ,<<"Emergency-Address-City">>
+                                        ,<<"Emergency-Address-Region">>
+                                        ,<<"Emergency-Address-Postal-Code">>
+                                        ,<<"Emergency-Address-Latitude">>
+                                        ,<<"Emergency-Address-Longitude">>
+                                        ,<<"Emergency-Notfication-Contact-Emails">>
+                                        ,<<"Outbound-Caller-ID-Name">>
+                                        ,<<"Outbound-Caller-ID-Number">>
+                                        ,<<"Owner-ID">>
+                                        ,<<"User-First-Name">>
+                                        ,<<"User-Last-Name">>
+                                        ,<<"User-Email">>
+                                             | ?DEFAULT_OPTIONAL_HEADERS
+                                        ]
+                    ,values = ?NOTIFY_VALUES(EventName)
+                    ,types = []
+                    }.
+
 
 %%%=============================================================================
 %%% SIP Notifications Definitions
@@ -1323,6 +1365,7 @@ api_definitions() ->
     ,port_unconfirmed_definition()
     ,ported_definition()
     ,denied_emergency_bridge_definition()
+    ,emergency_bridge_definition()
     ,deregister_definition()
     ,first_occurrence_definition()
     ,missed_call_definition()
@@ -1397,6 +1440,8 @@ api_definition(<<"ported">>) ->
     ported_definition();
 api_definition(<<"denied_emergency_bridge">>) ->
     denied_emergency_bridge_definition();
+api_definition(<<"emergency_bridge">>) ->
+    emergency_bridge_definition();
 api_definition(<<"deregister">>) ->
     deregister_definition();
 api_definition(<<"first_occurrence">>) ->
@@ -2239,6 +2284,31 @@ publish_denied_emergency_bridge(API, ContentType) ->
                     } = denied_emergency_bridge_definition(),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun denied_emergency_bridge/1),
     kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
+
+%%------------------------------------------------------------------------------
+%% @doc Takes proplist, creates JSON string and publish it on AMQP.
+%% @end
+%%------------------------------------------------------------------------------
+-spec emergency_bridge(kz_term:api_terms()) -> api_formatter_return().
+emergency_bridge(Prop) ->
+    build_message(Prop, emergency_bridge_definition()).
+
+-spec emergency_bridge_v(kz_term:api_terms()) -> boolean().
+emergency_bridge_v(Prop) ->
+    validate(Prop, emergency_bridge_definition()).
+
+-spec publish_emergency_bridge(kz_term:api_terms()) -> 'ok'.
+publish_emergency_bridge(JObj) ->
+    publish_emergency_bridge(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_emergency_bridge(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
+publish_emergency_bridge(API, ContentType) ->
+    Definition = emergency_bridge_definition(),
+    {'ok', Payload} = kz_api:prepare_api_payload(API
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:notifications_publish(kapi_definition:binding(Definition), Payload, ContentType).
 
 
 %%%=============================================================================

@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2020, 2600Hz
+%%% @copyright (C) 2011-2021, 2600Hz
 %%% @doc Trie LRU.
 %%% ```
 %%% (Words * Bytes/Word) div (Prefixes) ~= Bytes per Prefix

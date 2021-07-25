@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2020, 2600Hz
+%%% @copyright (C) 2010-2021, 2600Hz
 %%% @doc
 %%% @author Peter Defebvre
 %%% @end
@@ -42,7 +42,7 @@
                           ])).
 
 -define(CLASSIFIER_EMERGENCY,
-        kz_json:from_list([{<<"regex">>, <<"^(911|922|933|833|811|711|999)\$">>}
+        kz_json:from_list([{<<"regex">>, <<"^(911|922|933|988|833|811|711|999)\$">>}
                           ,{<<"emergency">>, 'true'}
                           ,{<<"friendly_name">>, <<"Emergency Dispatcher">>}
                           ])).

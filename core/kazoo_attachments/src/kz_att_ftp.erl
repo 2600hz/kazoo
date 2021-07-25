@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2017-2020, 2600Hz
+%%% @copyright (C) 2017-2021, 2600Hz
 %%% @doc Simple URL Storage for attachments.
 %%% @author Luis Azedo
 %%% @end
@@ -82,14 +82,14 @@ fetch_attachment(HandlerProps, DbName, DocId, AName) ->
           'ok' | {'error', binary(), binary() | atom() | term()}.
 send_request(Url, Contents) ->
     case http_uri:parse(kz_term:to_list(Url)) of
-        {'ok',{'ftp', UserPass, Host, Port, FullPath,_Query}} ->
-            send_request(Host, Port, UserPass, FullPath, Contents);
+        {'ok',{Scheme, UserPass, Host, Port, FullPath,_Query}} ->
+            send_request(Scheme, Host, Port, UserPass, FullPath, Contents);
         _ -> {'error', <<"error parsing url: ", Url/binary>>}
     end.
 
--spec send_request(string(), integer(), string(), string(), binary()) ->
+-spec send_request(string(), string(), integer(), string(), string(), binary()) ->
           'ok' | {'error', binary() | atom() | term()}.
-send_request(Host, Port, UserPass, FullPath, Contents) ->
+send_request(Scheme, Host, Port, UserPass, FullPath, Contents) ->
     {User, Pass} = case string:tokens(UserPass, ":") of
                        [U, P] -> {U, P};
                        _ -> ftp_anonymous_user_pass()
@@ -97,8 +97,7 @@ send_request(Host, Port, UserPass, FullPath, Contents) ->
     Dir = filename:dirname(FullPath),
     File = filename:basename(FullPath),
     try
-        Options = [{'port', Port}],
-        case ftp:open(Host, Options) of
+        case ftp:open(Host, get_options(Scheme, Port)) of
             {'ok', Pid} ->
                 Routines = [fun() -> ftp:user(Pid, User, Pass) end
                            ,fun() -> ftp:type(Pid, 'binary') end
@@ -118,6 +117,13 @@ send_request(Host, Port, UserPass, FullPath, Contents) ->
             lager:debug("error ~p / ~p sending file ~s to ~s", [_Exc, Err, FullPath, Host]),
             {'error', Err}
     end.
+
+get_options('ftp', Port) ->
+    [{'port', Port}];
+get_options('ftps', Port) ->
+    [{'port', Port}
+    ,{'tls', []}
+    ].
 
 -spec ftp_cmds(list()) -> 'ok' | {'error', any()}.
 ftp_cmds([]) -> 'ok';

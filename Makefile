@@ -9,6 +9,7 @@ BASE_BRANCH := $(shell cat $(ROOT)/.base_branch)
 
 CHANGED ?= $(shell git --no-pager diff --name-only HEAD $(BASE_BRANCH) -- applications core scripts)
 CHANGED_SWAGGER := $(shell git --no-pager diff --name-only HEAD $(BASE_BRANCH) -- applications/crossbar/priv/api/swagger.json)
+CHANGED_ERLANG=$(filter %.erl %.beam %/ebin,$(CHANGED))
 CHANGED_JSON=$(filter %.json,$(CHANGED))
 
 # You can override this when calling make, e.g. make JOBS=1
@@ -191,7 +192,7 @@ dialyze-hard: dialyze-it-changed
 dialyze-it: $(PLT)
 	@ERL_LIBS=deps:core:applications $(if $(DEBUG),time -v) $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt $(CHECK_DIALYZER_OPTS) $(strip $(filter %.beam %.erl %/ebin,$(TO_DIALYZE)))
 
-dialyze-it-changed: export TO_DIALYZE = $(CHANGED)
+dialyze-it-changed: export TO_DIALYZE = $(CHANGED_ERLANG)
 dialyze-it-changed: $(PLT)
 	@if [ -n "$(TO_DIALYZE)" ]; then \
 		echo "dialyzing changes against $(BASE_BRANCH) ..." ; \

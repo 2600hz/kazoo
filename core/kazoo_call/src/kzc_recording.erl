@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2020, 2600Hz
+%%% @copyright (C) 2012-2021, 2600Hz
 %%% @doc Handles starting/stopping a call recording.
 %%%
 %%% Callflow action Data:
@@ -45,6 +45,7 @@
 -define(SERVER, ?MODULE).
 -define(RECORDING_TIMER_EXPIRED, 'recording_timer_expired').
 -define(RECORDING_STOP_TIMER_EXPIRED, 'recording_stop_timer_expired').
+-define(RECORDING_STOP_TIMER_EXPIRED_MS, 30 * ?MILLISECONDS_IN_SECOND).
 
 -type media_directory() :: file:filename_all().
 -type media_name() :: file:filename_all().
@@ -733,7 +734,7 @@ start_recording_timer(TimeLimit) ->
 -spec start_recording_stop_timer() -> reference().
 start_recording_stop_timer() ->
     lager:debug("starting timer while waiting for RECORD_STOP"),
-    erlang:start_timer(5 * ?MILLISECONDS_IN_SECOND
+    erlang:start_timer(?RECORDING_STOP_TIMER_EXPIRED_MS
                       ,self()
                       ,?RECORDING_STOP_TIMER_EXPIRED
                       ).

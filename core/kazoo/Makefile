@@ -36,11 +36,12 @@ $(GEN_ERL): $(GEN_FILE) $(GEN_ERL_SRC)
 	@echo 'from_extension(<<$$., Ext/binary>>) -> from_extension(kz_term:to_lower_binary(Ext));' >> $(GEN_ERL)
 	@cat $(GEN_FILE) \
 		| grep -v ^# \
-		| awk '{for (i=2; i<=NF; i++) if ($$i != "") { \
+		| awk '{for (i=2; i<=NF; i++) if ($$i != "" && $$i != "wav") { \
 			print "from_extension(<<\"" $$i "\">>) -> <<\"" $$1 "\">>;"}}' \
 		| sort -u -t' ' -k1,1 \
 		>> $(GEN_ERL)
 	@echo 'from_extension(<<"pem">>) -> <<"application/x-pem-file">>;' >> $(GEN_ERL)
+	@echo 'from_extension(<<"wav">>) -> <<"audio/wav">>;' >> $(GEN_ERL)
 	@echo 'from_extension(_) -> <<"application/octet-stream">>.' >> $(GEN_ERL)
 	@echo >> $(GEN_ERL)
 	@echo '-spec to_extensions(binary()) -> [binary()].' >> $(GEN_ERL)

@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2020, 2600Hz
+%%% @copyright (C) 2012-2021, 2600Hz
 %%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -44,8 +44,6 @@
 -define(NORMALIZE_EXE, kapps_config:get_binary(?CONFIG_CAT, <<"normalize_executable">>, <<"sox">>)).
 -define(NORMALIZE_SOURCE_ARGS, kapps_config:get_binary(?CONFIG_CAT, <<"normalize_source_args">>, <<>>)).
 -define(NORMALIZE_DEST_ARGS, kapps_config:get_binary(?CONFIG_CAT, <<"normalize_destination_args">>, <<"-r 8000">>)).
-
--define(NORMALIZATION_FORMAT, kapps_config:get_ne_binary(<<"crossbar.media">>, <<"normalization_format">>, <<"mp3">>)).
 
 -define(USE_ACCOUNT_OVERRIDES, kapps_config:get_is_true(?CONFIG_CAT, <<"support_account_overrides">>, 'true')).
 

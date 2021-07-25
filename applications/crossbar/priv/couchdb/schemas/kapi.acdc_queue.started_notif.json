@@ -1,12 +1,10 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "_id": "kapi.acdc_queue.sync_resp",
-    "description": "AMQP API for acdc_queue.sync_resp",
+    "_id": "kapi.acdc_queue.started_notif",
+    "description": "AMQP API for acdc_queue.started_notif",
     "properties": {
         "Account-ID": {
-            "type": "string"
-        },
-        "Current-Strategy": {
+            "minLength": 1,
             "type": "string"
         },
         "Event-Category": {
@@ -17,23 +15,17 @@
         },
         "Event-Name": {
             "enum": [
-                "sync_resp"
+                "started_notif"
             ],
             "type": "string"
         },
-        "Process-ID": {
-            "type": "string"
-        },
         "Queue-ID": {
-            "type": "string"
-        },
-        "Strategy-State": {
+            "minLength": 1,
             "type": "string"
         }
     },
     "required": [
         "Account-ID",
-        "Current-Strategy",
         "Queue-ID"
     ],
     "type": "object"

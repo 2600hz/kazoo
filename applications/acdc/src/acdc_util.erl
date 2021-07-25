@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2020, 2600Hz
+%%% @copyright (C) 2012-2021, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
 %%% @end
@@ -20,6 +20,7 @@
         ,caller_id/1
         ,hangup_cause/1
         ,max_priority/2
+        ,queue_remove/2
         ]).
 
 -include("acdc.hrl").
@@ -167,3 +168,14 @@ max_priority(AccountDb, QueueId) ->
 -spec max_priority(kz_json:object()) -> kz_term:api_integer().
 max_priority(QueueJObj) ->
     kz_json:get_integer_value(<<"max_priority">>, QueueJObj).
+
+%%------------------------------------------------------------------------------
+%% @doc Remove `Term' from `Queue', returning a tuple where the 1st element is
+%% true if `Term' was found and removed and the 2nd element is the updated
+%% queue.
+%% @end
+%%------------------------------------------------------------------------------
+-spec queue_remove(any(), queue:queue()) -> {boolean(), queue:queue()}.
+queue_remove(Term, Queue) ->
+    Queue1 = queue:filter(fun(Elem) -> Elem =/= Term end, Queue),
+    {Queue1 =/= Queue, Queue1}.

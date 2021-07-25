@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2020, 2600Hz
+%%% @copyright (C) 2012-2021, 2600Hz
 %%% @doc Helpers for manipulating the `#cb_context{}' record.
 %%% @author James Aimonetti
 %%% @end
@@ -1101,7 +1101,7 @@ add_validation_error(Property, Code, Message, Context) ->
                                          )
                                        ),
     ErrorsJObj = validation_errors(Context),
-    Context#cb_context{validation_errors=kz_json:merge_jobjs(ErrorJObj, ErrorsJObj)
+    Context#cb_context{validation_errors=kz_json:merge(ErrorJObj, ErrorsJObj)
                       ,resp_status='error'
                       ,resp_error_code=ErrorCode
                       ,resp_data=kz_json:new()

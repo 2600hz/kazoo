@@ -6,19 +6,28 @@
                 "classification": "account"
             },
             {
+                "classification": "acdc"
+            },
+            {
+                "classification": "aggregate"
+            },
+            {
                 "classification": "modb"
             },
             {
-                "database": "accounts"
+                "classification": "yodb"
             },
             {
-                "database": "sip_auth"
+                "classification": "numbers"
             },
             {
-                "database": "system_config"
+                "classification": "ratedeck"
             },
             {
-                "database": "system_data"
+                "classification": "resource_selectors"
+            },
+            {
+                "classification": "system"
             }
         ]
     },
@@ -41,7 +50,16 @@
             "reduce": "_count"
         },
         "soft_deletes": {
-            "map": "function(doc) { if(doc.pvt_deleted) { emit(doc.pvt_type, null); } }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_deleted) {",
+                "    emit(doc.pvt_type, {",
+                "      'id': doc._id,",
+                "      '_rev': doc._rev",
+                "    });",
+                "  }",
+                "}"
+            ]
         }
     }
 }

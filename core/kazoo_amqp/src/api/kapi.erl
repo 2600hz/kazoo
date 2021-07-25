@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2020, 2600Hz
+%%% @copyright (C) 2010-2021, 2600Hz
 %%% @doc Kazoo API Helpers.
 %%% Most API functions take a proplist, filter it against required headers
 %%% and optional headers, and return either the JSON string if all
@@ -60,8 +60,8 @@ encode_pid(Queue, Pid) ->
     list_to_binary(["pid://", kz_term:to_binary(Pid), "/", Queue]).
 
 -spec decode_pid(kz_term:ne_binary()) -> kz_term:api_pid().
-decode_pid(<<"pid://", Pid/binary>>) ->
-    case binary:split(Pid, <<"/">>) of
+decode_pid(<<"pid://", QPid/binary>>) ->
+    case binary:split(QPid, <<"/">>) of
         [Pid, _RK] -> kz_term:to_pid(Pid);
         _ -> 'undefined'
     end;

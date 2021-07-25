@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2020, 2600Hz
+%%% @copyright (C) 2012-2021, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
 %%% @end
@@ -24,6 +24,7 @@
                   ,?SUPER('acdc_queues_sup')
                   ,?SUPER('acdc_stats_sup')
                   ,?SUPER('acdc_announcements_sup')
+                  ,?SUPER('acdc_queue_manager_diag_sup')
                   ,?WORKER('acdc_agent_manager')
                   ,?WORKER('acdc_init')
                   ,?WORKER('acdc_listener')
@@ -51,7 +52,7 @@ start_link() ->
 %%------------------------------------------------------------------------------
 -spec init(any()) -> kz_types:sup_init_ret().
 init([]) ->
-    kz_util:set_startup(),
+    _ = kz_util:set_startup(),
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,

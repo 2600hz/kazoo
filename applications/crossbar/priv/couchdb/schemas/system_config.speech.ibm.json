@@ -1,0 +1,31 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "system_config.speech.ibm",
+    "description": "Schema for speech.ibm system_config",
+    "properties": {
+        "asr_api_key": {
+            "description": "speech ibm asr_api_key",
+            "type": "string"
+        },
+        "asr_model": {
+            "default": "en-US_NarrowbandModel",
+            "description": "speech ibm asr_model",
+            "type": "string"
+        },
+        "asr_profanity_filter": {
+            "default": true,
+            "description": "speech ibm asr_profanity_filter",
+            "type": "boolean"
+        },
+        "asr_smart_formatting": {
+            "default": true,
+            "description": "speech ibm asr_smart_formatting",
+            "type": "boolean"
+        },
+        "asr_url": {
+            "description": "speech ibm asr_url",
+            "type": "string"
+        }
+    },
+    "type": "object"
+}

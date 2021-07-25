@@ -39,7 +39,9 @@ If you supply a URL in the `data` portion of the callflow, Kazoo will send an HT
 If you omit the URL, there are a couple options for storage:
 
 * Check `system_config/media` for the `store_recordings` boolean()
-    * If `false`, no storage will occur
+    * If `false`
+        * If you have configured a [storage plan](https://docs.2600hz.com/supported/applications/crossbar/doc/storage/) for call recordings then store recording using that storage plan
+        * Otherwise, no storage will occur
     * If `true`, check `system_config/media` for `third_party_bigcouch_host`
         * If `undefined`, store to the Kazoo BigCouch cluster
         * If defined, send the recording to the configured URL

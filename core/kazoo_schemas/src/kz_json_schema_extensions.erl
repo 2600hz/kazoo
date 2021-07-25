@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2014-2020, 2600Hz
+%%% @copyright (C) 2014-2021, 2600Hz
 %%% @doc Module for extending schema validation
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -239,12 +239,21 @@ is_valid_scheme(<<"http">>) -> 'true';
 is_valid_scheme(<<"https">>) -> 'true';
 is_valid_scheme(_) -> 'false'.
 
-is_valid_ftp_url({'ok',{'ftp', _UserPass, Host, _Port, _FullPath,_Query}}) ->
+is_valid_ftp_url({'ok',{'ftp', _UserPass, Host, _Port, _FullPath, _Query}}) ->
     is_valid_host(kz_term:to_binary(Host));
+is_valid_ftp_url({'ok',{'ftps', UserPass, Host, _Port, _FullPath, _Query}}) ->
+    lists:all(fun is_valid_url_part/1
+             ,[{fun is_valid_ftp_userpass/1, string:tokens(UserPass, ":")}
+              ,{fun is_valid_host/1, kz_term:to_binary(Host)}
+              ]
+             );
 is_valid_ftp_url(<<URL/binary>>) ->
     is_valid_ftp_url(http_uri:parse(kz_term:to_list(URL)));
 is_valid_ftp_url(_URL) ->
     'false'.
+
+is_valid_ftp_userpass([_User, _Pass]) -> 'true';
+is_valid_ftp_userpass(_) -> 'false'.
 
 -spec is_valid_host(kz_http_util:location()) -> boolean().
 is_valid_host(<<Host/binary>>) ->

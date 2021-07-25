@@ -1,11 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2020, 2600Hz
+%%% @copyright (C) 2010-2021, 2600Hz
 %%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kzd_accounts).
 
 -export([new/0]).
+-export([blacklists/1, blacklists/2, set_blacklists/2]).
 -export([call_recording/1, call_recording/2, set_call_recording/2]).
 -export([call_recording_account/1, call_recording_account/2, set_call_recording_account/2]).
 -export([call_recording_endpoint/1, call_recording_endpoint/2, set_call_recording_endpoint/2]).
@@ -139,6 +140,18 @@
 -spec new() -> doc().
 new() ->
     kz_doc:set_type(kz_json_schema:default_object(?SCHEMA), type()).
+
+-spec blacklists(doc()) -> kz_term:api_ne_binaries().
+blacklists(Doc) ->
+    blacklists(Doc, 'undefined').
+
+-spec blacklists(doc(), Default) -> kz_term:ne_binaries() | Default.
+blacklists(Doc, Default) ->
+    kz_json:get_list_value([<<"blacklists">>], Doc, Default).
+
+-spec set_blacklists(doc(), kz_term:ne_binaries()) -> doc().
+set_blacklists(Doc, Blacklists) ->
+    kz_json:set_value([<<"blacklists">>], Blacklists, Doc).
 
 -spec call_recording(doc()) -> kz_term:api_object().
 call_recording(Doc) ->

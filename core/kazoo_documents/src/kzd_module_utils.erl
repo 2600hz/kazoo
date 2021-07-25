@@ -66,7 +66,7 @@ validate_schema(<<Schema/binary>>, {Doc, ValidationErrors}, OnSuccess) ->
         {'ok', SchemaJObj} -> validate_schema(SchemaJObj, {Doc, ValidationErrors}, OnSuccess);
         {'error', 'not_found'} when SchemaRequired ->
             lager:error("~s schema not found and is required", [Schema]),
-            throw({'system_error', <<"schema '", Schema/binary, "' not found.">>});
+            throw({'system_error', {'datastore_fault', <<"schema '", Schema/binary, "' not found.">>}});
         {'error', 'not_found'} ->
             lager:error("~s schema not found, assuming schema validation passed, continuing anyway", [Schema]),
             validate_schema_passed({Doc, ValidationErrors}, OnSuccess)
@@ -90,7 +90,7 @@ validate_schema(SchemaJObj, {Doc, ValidationErrors}, OnSuccess) ->
         ?STACKTRACE('error', 'function_clause', ST)
         lager:error("function clause failure"),
         kz_util:log_stacktrace(ST),
-        throw({'system_error', <<"schema validation failed to run on the server">>})
+        throw({'system_error', {'function_clause', <<"function clause failure - schema validation failed to run on the server">>}})
         end.
 
 %%------------------------------------------------------------------------------

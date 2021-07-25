@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2020, 2600Hz
+%%% @copyright (C) 2012-2021, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
 %%% @end
@@ -62,7 +62,7 @@ status(Supervisor) ->
     ?PRINT("  Manager: ~p", [Manager]),
 
     ?PRINT("    Known Agents:"),
-    _ = case acdc_queue_manager:status(Manager) of
+    _ = case acdc_queue_manager:agents(Manager) of
             [] -> ?PRINT("      NONE");
             As -> [?PRINT("      ~s", [A]) || A <- As]
         end,

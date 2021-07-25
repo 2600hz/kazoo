@@ -337,10 +337,10 @@ dedupe() {
 replace_types() {
     local MODULE="$1"
     local GREP_PATTERN="$2"
-    local SED_PATTERN="$3"
+    local PERL_PATTERN="$3"
     local REPLACE_TO="$4"
-    for FILE in `grep -Elr --include=*.erl --include=*.hrl --include=*.escript --exclude="$MODULE.erl" "$GREP_PATTERN" "$ROOT"/{core,applications,scripts}`; do
-        sed -ri "s/$SED_PATTERN/$REPLACE_TO/g" "$FILE"
+    for FILE in `grep -Plr --include=*.erl --include=*.hrl --include=*.escript --exclude="$MODULE.erl" "$GREP_PATTERN" "$ROOT"/{core,applications,scripts}`; do
+        perl -pi -e "s/$PERL_PATTERN/$REPLACE_TO/g" "$FILE"
     done
 }
 
@@ -350,18 +350,18 @@ change_to_module_type() {
 
     local TYPES="$(echo -n ${TYPES_ARR[@]} | sed -r 's/ +/\|/g; s/\|*$//g')"
 
-    local GREP_PATTERN="(:{0}(:{2})|([ ,([{>]))($TYPES) *\\("
-    local SED_PATTERN="(:{0}(:{2})|([ ,([{>]))($TYPES)(\(\)|\(([a-zA-Z_]|\[\])+\(?\))"
+    local GREP_PATTERN="(:{0}(:{2})|([ ,([{>]))(?<!\-spec )($TYPES) *\("
+    local PERL_PATTERN="(:{0}(:{2})|([ ,([{>]))(?<!\-spec )($TYPES)(\(\)|\(([a-zA-Z_]|\[\])+\(?\))"
     local REPLACE_TO="\1$MODULE:\4\5"
 
-    replace_types "$MODULE" "$GREP_PATTERN" "$SED_PATTERN" "$REPLACE_TO"
+    replace_types "$MODULE" "$GREP_PATTERN" "$PERL_PATTERN" "$REPLACE_TO"
 }
 
 change_kz_timeout() {
     local GREP_PATTERN="kz_timeout"
-    local SED_PATTERN="kz_timeout"
+    local PERL_PATTERN="kz_timeout"
 
-    replace_types "kz_types" "$GREP_PATTERN" "$SED_PATTERN" "timeout"
+    replace_types "kz_types" "$GREP_PATTERN" "$PERL_PATTERN" "timeout"
 }
 
 removing_kz_prefix_from_types() {
@@ -372,10 +372,10 @@ removing_kz_prefix_from_types() {
     WITHOUT_K="$(echo -n $K_TYPES | sed 's/kz_//g')"
 
     local GREP_PATTERN="$MODULE:$K_TYPES"
-    local SED_PATTERN="$MODULE:kz_($WITHOUT_K)"
+    local PERL_PATTERN="$MODULE:kz_($WITHOUT_K)"
     local REPLACE_TO="$MODULE:\1"
 
-    replace_types "$MODULE" "$GREP_PATTERN" "$SED_PATTERN" "$REPLACE_TO"
+    replace_types "$MODULE" "$GREP_PATTERN" "$PERL_PATTERN" "$REPLACE_TO"
 }
 
 kz_type_modules() {

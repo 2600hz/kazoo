@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2016-2020, 2600Hz
+%%% @copyright (C) 2016-2021, 2600Hz
 %%% @doc Run tasks scheduled by kz_tasks.
 %%% @author Pierre Fenoll
 %%% @end

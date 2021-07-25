@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2020, 2600Hz
+%%% @copyright (C) 2012-2021, 2600Hz
 %%% @doc Handlers for various call events, acdc events, etc
 %%% @author James Aimonetti
 %%% @author Daniel Finke
@@ -19,6 +19,7 @@
         ,handle_agent_message/2
         ,handle_config_change/2
         ,handle_presence_probe/2
+        ,handle_queue_started_notif/2
         ]).
 
 -include("acdc.hrl").
@@ -490,3 +491,16 @@ maybe_update_presence(Sup, JObj, PresenceState) ->
     APid = acdc_agent_sup:listener(Sup),
     acdc_agent_listener:maybe_update_presence_id(APid, presence_id(JObj)),
     acdc_agent_listener:presence_update(APid, presence_state(JObj, PresenceState)).
+
+%%------------------------------------------------------------------------------
+%% @doc When a queue this agent is bound to (a member of) is started, handle the
+%% notif by sending an availability update to the queue so it knows the
+%% availability state of this agent for taking calls.
+%% @end
+%%------------------------------------------------------------------------------
+-spec handle_queue_started_notif(kz_json:object(), kz_term:proplist()) -> 'ok'.
+handle_queue_started_notif(JObj, Props) ->
+    'true' = kapi_acdc_queue:started_notif_v(JObj),
+    FSM = props:get_value('fsm_pid', Props),
+    QueueId = kz_json:get_ne_binary_value(<<"Queue-ID">>, JObj),
+    acdc_agent_fsm:send_availability_update(FSM, QueueId).

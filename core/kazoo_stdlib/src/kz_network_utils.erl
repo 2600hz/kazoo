@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2020, 2600Hz
+%%% @copyright (C) 2010-2021, 2600Hz
 %%% @doc Various utilities - a veritable cornucopia.
 %%% @author James Aimonetti
 %%% @author Karl Anderson
@@ -212,7 +212,7 @@ detect_ip_family(IP) ->
         case inet:parse_ipv6strict_address(IP) of
             {'ok', IPv6} -> {'inet6', IPv6};
             {'error', 'einval'} ->
-                case inet:parse_ipv4_address(IP) of
+                case inet:parse_ipv4strict_address(IP) of
                     {'ok', IPv4} -> {'inet', IPv4};
                     {'error', 'einval'}=Error -> Error
                 end

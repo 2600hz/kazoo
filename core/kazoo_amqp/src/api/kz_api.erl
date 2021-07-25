@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2020, 2600Hz
+%%% @copyright (C) 2010-2021, 2600Hz
 %%% @doc Kazoo API Helpers.
 %%% Most API functions take a proplist, filter it against required headers
 %%% and optional headers, and return either the JSON string if all
@@ -182,7 +182,7 @@ reply_to(JObj) ->
 default_headers(AppName, AppVsn) ->
     default_headers('undefined', AppName, AppVsn).
 
--spec default_headers(kz_term:api_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:proplist().
+-spec default_headers(kz_term:api_ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:proplist().
 default_headers(ServerID, AppName, AppVsn) ->
     [{?KEY_SERVER_ID, ServerID}
     ,{?KEY_APP_NAME, AppName}
@@ -190,11 +190,11 @@ default_headers(ServerID, AppName, AppVsn) ->
     ,{?KEY_NODE, kz_term:to_binary(node())}
     ].
 
--spec default_headers(kz_term:api_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:proplist().
+-spec default_headers(kz_term:api_ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:proplist().
 default_headers(EvtCat, EvtName, AppName, AppVsn) ->
-    default_headers(<<>>, EvtCat, EvtName, AppName, AppVsn).
+    default_headers('undefined', EvtCat, EvtName, AppName, AppVsn).
 
--spec default_headers(kz_term:api_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:proplist().
+-spec default_headers(kz_term:api_ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:proplist().
 default_headers(ServerID, EvtCat, EvtName, AppName, AppVsn) ->
     [{?KEY_SERVER_ID, ServerID}
     ,{?KEY_EVENT_CATEGORY, EvtCat}
@@ -205,8 +205,6 @@ default_headers(ServerID, EvtCat, EvtName, AppName, AppVsn) ->
     ].
 
 -spec default_headers_v(kz_term:api_terms()) -> boolean().
-
-
 default_headers_v(Props) when is_list(Props) ->
     Filtered = props:filter_empty(Props),
     lists:all(fun(K) -> default_header_v(K, Filtered) end, ?DEFAULT_HEADERS);

@@ -77,6 +77,8 @@ Key | Description | Type | Default | Required | Support Level
 `require_flags` | When set to true this resource is ignored if the request does not specify outbound flags | `boolean()` |   | `false` |  
 `rules.[]` |   | `string()` |   | `false` |  
 `rules` | A list of regular expressions of which one must match for the rule to be eligible, they can optionally contain capture groups | `array(string())` | `[]` | `false` |  
+`rules_test.[]` |   | `string()` |   | `false` |  
+`rules_test` | A list of regular expressions of which if matched denotes a test rule | `array(string())` | `[]` | `false` |  
 `weight_cost` | A value between 0 and 100 that determines the order of resources when multiple can be used | `integer()` | `50` | `false` |  
 
 ### custom_sip_headers

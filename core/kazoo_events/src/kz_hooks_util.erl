@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2017-2020, 2600Hz
+%%% @copyright (C) 2017-2021, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
 %%% @end
@@ -141,7 +141,8 @@ all_registered_rr() ->
 -spec maybe_add_hook(tuple()) -> 'true'.
 maybe_add_hook(Hook) ->
     maybe_add_binding(Hook),
-    'true' = gproc:reg(Hook).
+    _ = gproc:ensure_reg(Hook),
+    'true'.
 
 -spec maybe_add_binding(tuple()) -> 'ok'.
 maybe_add_binding(?HOOK_REG) ->

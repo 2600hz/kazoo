@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2020-, 2600Hz
+%%% @copyright (C) 2021-, 2600Hz
 %%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -223,7 +223,7 @@ ledgers_in_row({_MetaPos, _SourceIdPos}, 'eof', []) -> 'true';
 ledgers_in_row({_MetaPos, _SourceIdPos}, 'eof', _Ledgers) ->
     lager:info("failed to find ledgers ~p", [_Ledgers]),
     'false';
-ledgers_in_row({MetaPos, SourceIdPos}, {[], Rows}, Ledgers) ->
+ledgers_in_row({MetaPos, SourceIdPos}, {['undefined'], Rows}, Ledgers) ->
     ledgers_in_row({MetaPos, SourceIdPos}, kz_csv:take_row(Rows), Ledgers);
 ledgers_in_row({MetaPos, SourceIdPos}, {Row, Rows}, Ledgers) ->
     %% remove ledger matching Row

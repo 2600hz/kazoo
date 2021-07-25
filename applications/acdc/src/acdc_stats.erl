@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2020, 2600Hz
+%%% @copyright (C) 2012-2021, 2600Hz
 %%% @doc Collector of stats
 %%% @author James Aimonetti
 %%% @author Sponsored by GTNetwork LLC, Implemented by SIPLABS LLC
@@ -278,7 +278,6 @@ call_table_opts() ->
                      ,[{<<"acdc_status_stat">>, <<"ready">>}
                       ,{<<"acdc_status_stat">>, <<"logged_in">>}
                       ,{<<"acdc_status_stat">>, <<"logged_out">>}
-                      ,{<<"acdc_status_stat">>, <<"pending_logged_out">>}
                       ,{<<"acdc_status_stat">>, <<"connecting">>}
                       ,{<<"acdc_status_stat">>, <<"connected">>}
                       ,{<<"acdc_status_stat">>, <<"wrapup">>}

@@ -342,6 +342,7 @@ pages:
     - 'applications/stepswitch/doc/README.md'
     - 'applications/stepswitch/doc/resource_selectors.md'
     - 'applications/stepswitch/doc/rules.md'
+    - 'applications/stepswitch/doc/emergency.md'
   - 'Sysconf':
     - 'applications/sysconf/doc/README.md'
   - 'Tasks':

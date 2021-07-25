@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2018-2020, 2600Hz
+%%% @copyright (C) 2018-2021, 2600Hz
 %%% @doc
 %%% @author Sergey Safarov <s.safarov@gmail.com>, Sponsored by Audian
 %%% This Source Code Form is subject to the terms of the Mozilla Public

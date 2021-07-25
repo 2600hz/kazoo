@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2020, 2600Hz
+%%% @copyright (C) 2012-2021, 2600Hz
 %%% @doc Upload a rate deck, query rates for a given DID
 %%% @author James Aimonetti
 %%% @end
@@ -181,15 +181,42 @@ post(Context) ->
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _RateId) ->
-    crossbar_doc:save(Context).
+    try_save_conflict(Context).
 
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
 patch(Context, _RateId) ->
-    crossbar_doc:save(Context).
+    try_save_conflict(Context).
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
-    crossbar_doc:save(Context).
+    try_save_conflict(Context).
+
+-spec try_save_conflict(cb_context:context()) -> cb_context:context().
+try_save_conflict(C) ->
+    %% load_merge below will open the doc even if soft-deleted.
+    %% Since we want to allow re-save soft-deleted remove the key
+    %% from doc in case load_merge opened a soft-deleted doc.
+    Doc = kz_json:delete_key(<<"pvt_deleted">>, cb_context:doc(C)),
+    Context = crossbar_doc:save(cb_context:set_doc(C, Doc)),
+    case cb_context:resp_status(Context) of
+        'success' -> Context;
+        _ ->
+            try_save_conflict(Context
+                             ,cb_context:resp_error_code(Context)
+                             ,cb_context:resp_error_msg(Context)
+                             )
+    end.
+
+-spec try_save_conflict(cb_context:context(), integer(), kz_term:api_ne_binary()) -> cb_context:context().
+try_save_conflict(Context, 409, <<"datastore_conflict">>) ->
+    %% if a rate was deleted allow to create it again on conflict
+    Doc = kz_json:delete_key(<<"pvt_deleted">>, kz_doc:delete_revision(cb_context:doc(Context))),
+    DocId = kz_doc:id(Doc, kz_binary:rand_hex(16)),
+
+    lager:debug("saving rates ~s resulted in conflict, trying to update", [DocId]),
+    crossbar_doc:update(Context, DocId, kz_json:to_proplist(kz_json:flatten(Doc)), [], [{'deleted', 'true'}]);
+try_save_conflict(Context, _, _) ->
+    Context.
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _RateId) ->
@@ -262,7 +289,8 @@ on_successful_validation('undefined', Context) ->
                      ),
     cb_context:set_doc(Context, Doc);
 on_successful_validation(Id, Context) ->
-    crossbar_doc:load_merge(Id, Context, ?TYPE_CHECK_OPTION(<<"rate">>)).
+    %% if a rate was deleted allow to create it again on conflict
+    crossbar_doc:load_merge(Id, Context, [{'deleted', 'true'} | ?TYPE_CHECK_OPTION(<<"rate">>)]).
 
 -spec ensure_routes_set(kz_json:object()) -> kz_json:object().
 ensure_routes_set(Rate) ->
@@ -332,7 +360,7 @@ upload_csv(Context) ->
     Now = kz_time:now(),
     {'ok', {Count, Rates}} = process_upload_file(Context),
     lager:debug("trying to save ~b rates (took ~b ms to process)", [Count, kz_time:elapsed_ms(Now)]),
-    _  = crossbar_doc:save(cb_context:set_doc(Context, Rates), [{'publish_doc', 'false'}]),
+    save_rates(Context, Rates),
     lager:debug("it took ~b ms to process and save ~b rates", [kz_time:elapsed_ms(Now), Count]).
 
 -spec process_upload_file(cb_context:context()) ->
@@ -390,7 +418,7 @@ process_row(Context, Row, Count, JObjs, BulkInsert) ->
             andalso (Count rem BulkInsert) =:= 0 of
             'false' -> JObjs;
             'true' ->
-                _Pid = save_processed_rates(cb_context:set_doc(Context, JObjs), Count),
+                _Pid = save_processed_rates(Context, JObjs),
                 []
         end,
     process_row(Row, {Count, J}).
@@ -527,15 +555,42 @@ get_row_direction([_|_]) ->
 strip_quotes(Bin) ->
     binary:replace(Bin, [<<"\"">>, <<"\'">>], <<>>, ['global']).
 
--spec save_processed_rates(cb_context:context(), integer()) -> pid().
-save_processed_rates(Context, Count) ->
+-spec save_processed_rates(cb_context:context(), kz_json:objects()) -> pid().
+save_processed_rates(Context, JObjs) ->
     kz_util:spawn(
       fun() ->
-              Now = kz_time:now(),
               _ = cb_context:put_reqid(Context),
-              _ = crossbar_doc:save(Context, [{'publish_doc', 'false'}]),
-              lager:debug("saved up to ~b docs (took ~b ms)", [Count, kz_time:elapsed_ms(Now)])
+              Now = kz_time:now(),
+              save_rates(Context, JObjs),
+              lager:debug("saved up to ~b docs (took ~b ms)", [length(JObjs), kz_time:elapsed_ms(Now)])
       end).
+
+-spec save_rates(cb_context:context(), kz_json:objects()) -> 'ok'.
+save_rates(Context, Rates) ->
+    JObjs = maybe_merge_docs(Context, Rates),
+    _ = crossbar_doc:save(cb_context:set_doc(Context, JObjs), [{'publish_doc', 'false'}]),
+    'ok'.
+
+maybe_merge_docs(Context, Rates) ->
+    Ids = [kz_doc:id(JObj) || JObj <- Rates],
+    case kz_datamgr:open_docs(cb_context:account_db(Context), Ids) of
+        {'ok', Result} ->
+            %% if a rate was deleted allow to re-save it again
+            DbJObjs = maps:from_list(
+                        [{kz_doc:id(JObj), kz_json:delete_key(<<"pvt_deleted">>, kz_json:get_value(<<"doc">>, JObj))}
+                         || JObj <- Result,
+                            kz_json:is_json_object(kz_json:get_value(<<"doc">>, JObj))
+                        ]
+                       ),
+            [kz_json:merge(maps:get(kz_doc:id(JObj), DbJObjs, kz_json:new()), JObj)
+             || JObj <- Rates
+            ];
+        {'error', _Reason} ->
+            lager:debug("failed with error ~p to fetch and merge rates from ~s, hoping for the best on saving"
+                       ,[_Reason, cb_context:account_db(Context)]
+                       ),
+            Rates
+    end.
 
 -spec rate_for_number(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 rate_for_number(Phonenumber, Context) ->

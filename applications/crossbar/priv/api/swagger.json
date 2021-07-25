@@ -443,6 +443,14 @@
         "accounts": {
             "description": "Accounts represent tenants or customers on the system. Each account represents an individual dataset or sandbox that only one tenant can access. The data set is architecturally independent from other tenants.",
             "properties": {
+                "blacklists": {
+                    "description": "A list blacklist ids that apply to the account",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array",
+                    "uniqueItems": true
+                },
                 "call_recording": {
                     "additionalProperties": false,
                     "description": "call recording configuration",
@@ -7751,10 +7759,11 @@
             ],
             "type": "object"
         },
-        "kapi.acdc_queue.sync_req": {
-            "description": "AMQP API for acdc_queue.sync_req",
+        "kapi.acdc_queue.started_notif": {
+            "description": "AMQP API for acdc_queue.started_notif",
             "properties": {
                 "Account-ID": {
+                    "minLength": 1,
                     "type": "string"
                 },
                 "Event-Category": {
@@ -7765,57 +7774,17 @@
                 },
                 "Event-Name": {
                     "enum": [
-                        "sync_req"
+                        "started_notif"
                     ],
                     "type": "string"
                 },
-                "Process-ID": {
-                    "type": "string"
-                },
                 "Queue-ID": {
+                    "minLength": 1,
                     "type": "string"
                 }
             },
             "required": [
                 "Account-ID",
-                "Queue-ID"
-            ],
-            "type": "object"
-        },
-        "kapi.acdc_queue.sync_resp": {
-            "description": "AMQP API for acdc_queue.sync_resp",
-            "properties": {
-                "Account-ID": {
-                    "type": "string"
-                },
-                "Current-Strategy": {
-                    "type": "string"
-                },
-                "Event-Category": {
-                    "enum": [
-                        "queue"
-                    ],
-                    "type": "string"
-                },
-                "Event-Name": {
-                    "enum": [
-                        "sync_resp"
-                    ],
-                    "type": "string"
-                },
-                "Process-ID": {
-                    "type": "string"
-                },
-                "Queue-ID": {
-                    "type": "string"
-                },
-                "Strategy-State": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "Account-ID",
-                "Current-Strategy",
                 "Queue-ID"
             ],
             "type": "object"
@@ -8550,59 +8519,6 @@
                 "Event-Name": {
                     "enum": [
                         "paused"
-                    ],
-                    "type": "string"
-                },
-                "Pause-Alias": {
-                    "type": "string"
-                },
-                "Pause-Time": {
-                    "type": "integer"
-                },
-                "Queue-ID": {
-                    "type": "string"
-                },
-                "Timestamp": {
-                    "type": "string"
-                },
-                "Wait-Time": {
-                    "type": "integer"
-                }
-            },
-            "required": [
-                "Account-ID",
-                "Agent-ID",
-                "Timestamp"
-            ],
-            "type": "object"
-        },
-        "kapi.acdc_stats.status_pending_logged_out": {
-            "description": "AMQP API for acdc_stats.status_pending_logged_out",
-            "properties": {
-                "Account-ID": {
-                    "type": "string"
-                },
-                "Agent-ID": {
-                    "type": "string"
-                },
-                "Call-ID": {
-                    "type": "string"
-                },
-                "Caller-ID-Name": {
-                    "type": "string"
-                },
-                "Caller-ID-Number": {
-                    "type": "string"
-                },
-                "Event-Category": {
-                    "enum": [
-                        "acdc_status_stat"
-                    ],
-                    "type": "string"
-                },
-                "Event-Name": {
-                    "enum": [
-                        "pending_logged_out"
                     ],
                     "type": "string"
                 },
@@ -17807,6 +17723,139 @@
             ],
             "type": "object"
         },
+        "kapi.notifications.emergency_bridge": {
+            "description": "AMQP API for notifications.emergency_bridge",
+            "properties": {
+                "Account-DB": {
+                    "type": "string"
+                },
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Account-Name": {
+                    "type": "string"
+                },
+                "Attachment-URL": {
+                    "type": "string"
+                },
+                "Authorizing-ID": {
+                    "type": "string"
+                },
+                "Bcc": {
+                    "type": "string"
+                },
+                "Call-ID": {
+                    "type": "string"
+                },
+                "Cc": {
+                    "type": "string"
+                },
+                "Device-ID": {
+                    "type": "string"
+                },
+                "Device-Name": {
+                    "type": "string"
+                },
+                "Device-Owner-ID": {
+                    "type": "string"
+                },
+                "Emergency-Address-City": {
+                    "type": "string"
+                },
+                "Emergency-Address-Latitude": {
+                    "type": "string"
+                },
+                "Emergency-Address-Longitude": {
+                    "type": "string"
+                },
+                "Emergency-Address-Postal-Code": {
+                    "type": "string"
+                },
+                "Emergency-Address-Region": {
+                    "type": "string"
+                },
+                "Emergency-Address-Street-1": {
+                    "type": "string"
+                },
+                "Emergency-Address-Street-2": {
+                    "type": "string"
+                },
+                "Emergency-Caller-ID-Name": {
+                    "type": "string"
+                },
+                "Emergency-Caller-ID-Number": {
+                    "type": "string"
+                },
+                "Emergency-Notfication-Contact-Emails": {
+                    "type": "string"
+                },
+                "Emergency-Test-Call": {
+                    "type": "string"
+                },
+                "Emergency-To-DID": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "notification"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "emergency_bridge"
+                    ],
+                    "type": "string"
+                },
+                "From": {
+                    "type": "string"
+                },
+                "HTML": {
+                    "type": "string"
+                },
+                "Outbound-Caller-ID-Name": {
+                    "type": "string"
+                },
+                "Outbound-Caller-ID-Number": {
+                    "type": "string"
+                },
+                "Owner-ID": {
+                    "type": "string"
+                },
+                "Preview": {
+                    "type": "boolean"
+                },
+                "Realm": {
+                    "type": "string"
+                },
+                "Reply-To": {
+                    "type": "string"
+                },
+                "Subject": {
+                    "type": "string"
+                },
+                "Text": {
+                    "type": "string"
+                },
+                "To": {
+                    "type": "string"
+                },
+                "User-Email": {
+                    "type": "string"
+                },
+                "User-First-Name": {
+                    "type": "string"
+                },
+                "User-Last-Name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Account-ID",
+                "Call-ID"
+            ],
+            "type": "object"
+        },
         "kapi.notifications.first_occurrence": {
             "description": "AMQP API for notifications.first_occurrence",
             "properties": {
@@ -26813,6 +26862,15 @@
                             "description": "The e911 provisioning system calculated service address longitude",
                             "type": "string"
                         },
+                        "notification_contact_emails": {
+                            "default": [],
+                            "description": "A list of email addresses to receive notification when this number places an emergency call",
+                            "items": {
+                                "format": "email",
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
                         "plus_four": {
                             "description": "The extended zip/postal code where the number is in service",
                             "type": "string"
@@ -28464,6 +28522,14 @@
                     },
                     "type": "array"
                 },
+                "rules_test": {
+                    "default": [],
+                    "description": "A list of regular expressions of which if matched denotes a test rule",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
                 "weight_cost": {
                     "default": 50,
                     "description": "A value between 0 and 100 that determines the order of resources when multiple can be used",
@@ -29723,6 +29789,11 @@
                 "interdigit_timeout": {
                     "default": 2000,
                     "description": "call_command interdigit timeout",
+                    "type": "integer"
+                },
+                "max_wait_ms": {
+                    "default": 86400000,
+                    "description": "call_command max_wait_ms",
                     "type": "integer"
                 },
                 "message_timeout": {
@@ -33947,7 +34018,7 @@
                         "emergency": {
                             "emergency": true,
                             "friendly_name": "Emergency Dispatcher",
-                            "regex": "^(911|922|933|833|811|711|999)$"
+                            "regex": "^(911|922|933|988|833|811|711|999)$"
                         },
                         "international": {
                             "friendly_name": "International",
@@ -35235,6 +35306,35 @@
             ],
             "type": "object"
         },
+        "system_config.speech.ibm": {
+            "description": "Schema for speech.ibm system_config",
+            "properties": {
+                "asr_api_key": {
+                    "description": "speech ibm asr_api_key",
+                    "type": "string"
+                },
+                "asr_model": {
+                    "default": "en-US_NarrowbandModel",
+                    "description": "speech ibm asr_model",
+                    "type": "string"
+                },
+                "asr_profanity_filter": {
+                    "default": true,
+                    "description": "speech ibm asr_profanity_filter",
+                    "type": "boolean"
+                },
+                "asr_smart_formatting": {
+                    "default": true,
+                    "description": "speech ibm asr_smart_formatting",
+                    "type": "boolean"
+                },
+                "asr_url": {
+                    "description": "speech ibm asr_url",
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
         "system_config.stepswitch": {
             "description": "Schema for stepswitch system_config",
             "properties": {
@@ -35629,6 +35729,37 @@
                     "default": false,
                     "description": "Controls whether we should send bill reminder for the accounts a few days before due date",
                     "type": "boolean"
+                }
+            },
+            "type": "object"
+        },
+        "system_config.tasks.cleanup": {
+            "description": "Schema for tasks.cleanup system_config",
+            "properties": {
+                "cleanup_dbs": {
+                    "default": {
+                        "classifications": [
+                            "account",
+                            "modb",
+                            "yodb",
+                            "ratedeck",
+                            "resource_selectors"
+                        ],
+                        "databases": [
+                            "alerts",
+                            "accounts",
+                            "system_config",
+                            "system_data",
+                            "functions",
+                            "system_media",
+                            "offnet",
+                            "port_requests",
+                            "sip_auth",
+                            "webhooks"
+                        ]
+                    },
+                    "description": "tasks cleanup cleanup_dbs",
+                    "type": "object"
                 }
             },
             "type": "object"

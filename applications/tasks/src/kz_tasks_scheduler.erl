@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2016-2020, 2600Hz
+%%% @copyright (C) 2016-2021, 2600Hz
 %%% @doc Schedule one-off tasks
 %%% @author Pierre Fenoll
 %%% @end

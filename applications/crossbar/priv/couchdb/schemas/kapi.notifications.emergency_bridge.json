@@ -1,0 +1,135 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.notifications.emergency_bridge",
+    "description": "AMQP API for notifications.emergency_bridge",
+    "properties": {
+        "Account-DB": {
+            "type": "string"
+        },
+        "Account-ID": {
+            "type": "string"
+        },
+        "Account-Name": {
+            "type": "string"
+        },
+        "Attachment-URL": {
+            "type": "string"
+        },
+        "Authorizing-ID": {
+            "type": "string"
+        },
+        "Bcc": {
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Cc": {
+            "type": "string"
+        },
+        "Device-ID": {
+            "type": "string"
+        },
+        "Device-Name": {
+            "type": "string"
+        },
+        "Device-Owner-ID": {
+            "type": "string"
+        },
+        "Emergency-Address-City": {
+            "type": "string"
+        },
+        "Emergency-Address-Latitude": {
+            "type": "string"
+        },
+        "Emergency-Address-Longitude": {
+            "type": "string"
+        },
+        "Emergency-Address-Postal-Code": {
+            "type": "string"
+        },
+        "Emergency-Address-Region": {
+            "type": "string"
+        },
+        "Emergency-Address-Street-1": {
+            "type": "string"
+        },
+        "Emergency-Address-Street-2": {
+            "type": "string"
+        },
+        "Emergency-Caller-ID-Name": {
+            "type": "string"
+        },
+        "Emergency-Caller-ID-Number": {
+            "type": "string"
+        },
+        "Emergency-Notfication-Contact-Emails": {
+            "type": "string"
+        },
+        "Emergency-Test-Call": {
+            "type": "string"
+        },
+        "Emergency-To-DID": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "notification"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "emergency_bridge"
+            ],
+            "type": "string"
+        },
+        "From": {
+            "type": "string"
+        },
+        "HTML": {
+            "type": "string"
+        },
+        "Outbound-Caller-ID-Name": {
+            "type": "string"
+        },
+        "Outbound-Caller-ID-Number": {
+            "type": "string"
+        },
+        "Owner-ID": {
+            "type": "string"
+        },
+        "Preview": {
+            "type": "boolean"
+        },
+        "Realm": {
+            "type": "string"
+        },
+        "Reply-To": {
+            "type": "string"
+        },
+        "Subject": {
+            "type": "string"
+        },
+        "Text": {
+            "type": "string"
+        },
+        "To": {
+            "type": "string"
+        },
+        "User-Email": {
+            "type": "string"
+        },
+        "User-First-Name": {
+            "type": "string"
+        },
+        "User-Last-Name": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Account-ID",
+        "Call-ID"
+    ],
+    "type": "object"
+}

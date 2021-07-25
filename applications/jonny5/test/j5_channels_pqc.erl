@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2020, 2600Hz
+%%% @copyright (C) 2011-2021, 2600Hz
 %%% @author James Aimonetti
 %%% @doc PropEr testing of the j5_channels cache
 %%% jonny5 instances can recv authz_req, CHANNEL_CREATE,
