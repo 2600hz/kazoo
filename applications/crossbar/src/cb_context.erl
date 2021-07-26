@@ -957,9 +957,9 @@ failed_error(Error, Context) ->
 
 -spec passed(context()) -> context().
 passed(Context) ->
-    Context1 = case error =:= resp_status(Context) of
-                   true -> Context;
-                   false -> set_resp_status(Context, success)
+    Context1 = case 'error' =:= resp_status(Context) of
+                   'true' -> Context;
+                   'false' -> set_resp_status(Context, 'success')
                end,
     case kz_doc:id(req_data(Context1)) of
         'undefined' -> Context1;
@@ -1214,4 +1214,4 @@ update_successfully_validated_request(Context, Doc) ->
               ,{fun set_doc/2, Doc}
               ,{fun set_resp_status/2, 'success'}
               ],
-    setters(Context, Updates).
+    passed(setters(Context, Updates)).
