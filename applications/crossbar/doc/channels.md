@@ -105,7 +105,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/channels/{UUID}
 ```
 
-Available `action` values are `transfer`, `hangup`, `break`, `callflow`, and `intercept`.
+Available `action` values are `transfer`, `hangup`, `break`, `callflow`, `move` and `intercept`.
 
 ### Transfer
 

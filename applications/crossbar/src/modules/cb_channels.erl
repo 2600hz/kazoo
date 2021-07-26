@@ -219,6 +219,8 @@ maybe_execute_command(Context, CallId, <<"callflow">>) ->
     maybe_callflow(Context, CallId);
 maybe_execute_command(Context, CallId, <<"intercept">>) ->
     maybe_intercept(Context, CallId);
+maybe_execute_command(Context, CallId, <<"move">>) ->
+    maybe_move(Context, CallId);
 maybe_execute_command(Context, _CallId, _Command) ->
     lager:debug("unknown command: ~s", [_Command]),
     crossbar_util:response_invalid_data(cb_context:doc(Context), Context).
@@ -542,6 +544,17 @@ maybe_intercept(Context, CallId, TargetType, TargetId) ->
     lager:debug("attempting to move ~s to ~s(~s)", [CallId, TargetId, TargetType]),
     kz_amqp_worker:cast(API, fun kapi_metaflow:publish_action/1),
     crossbar_util:response_202(<<"intercept initiated">>, Context).
+
+-spec maybe_move(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
+maybe_move(Context, CallId) ->
+    API = [{<<"Call-ID">>, CallId}
+          ,{<<"Action">>, <<"move">>}
+          ,{<<"Data">>, kz_json:new()}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    lager:debug("attempting to move ~s", [CallId]),
+    _ = kz_amqp_worker:cast(API, fun kapi_metaflow:publish_action/1),
+    crossbar_util:response_202(<<"move initiated">>, Context).
 
 -spec get_account_id(cb_context:context()) -> kz_term:ne_binary().
 get_account_id(Context) ->
