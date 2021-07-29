@@ -2357,10 +2357,11 @@ find_max_message_length([JObj | T]) ->
 
 -spec is_owner(kapps_call:call(), kz_term:ne_binary()) -> boolean().
 is_owner(Call, OwnerId) ->
+    IsCallForward = kapps_call:is_call_forward(Call),
     case kapps_call:owner_id(Call) of
         <<>> -> 'false';
         'undefined' -> 'false';
-        OwnerId -> 'true';
+        OwnerId when not IsCallForward -> 'true';
         _Else -> 'false'
     end.
 
