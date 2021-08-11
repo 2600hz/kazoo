@@ -36765,10 +36765,6 @@
                     },
                     "type": "object"
                 },
-                "create_caller_id_name_if_undefined": {
-                    "description": "Create the users caller id name from the first and last name fields if no caller id is defined",
-                    "type": "boolean"
-                },
                 "dial_plan": {
                     "$ref": "#/definitions/dialplans",
                     "description": "A list of rules used to modify dialed numbers"
@@ -36936,6 +36932,10 @@
                         }
                     },
                     "type": "object"
+                },
+                "should_create_caller_id_name_if_undefined": {
+                    "description": "Create the users caller id name from the first and last name fields if no caller id is defined",
+                    "type": "boolean"
                 },
                 "timezone": {
                     "description": "User's timezone",
