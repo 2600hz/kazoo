@@ -354,7 +354,6 @@
                         "rfc2833",
                         "info"
                     ],
-                    "support_level": "supported",
                     "type": "string"
                 },
                 "expire_seconds": {
