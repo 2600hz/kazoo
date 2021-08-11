@@ -545,11 +545,23 @@ maybe_intercept(Context, CallId, TargetType, TargetId) ->
     kz_amqp_worker:cast(API, fun kapi_metaflow:publish_action/1),
     crossbar_util:response_202(<<"intercept initiated">>, Context).
 
+%%------------------------------------------------------------------------------
+%% @doc API action for moving a channel.
+%% Kazoo dials `device_id'(or all devices for `owner_id') and if a device answers the call
+%% it will be bridged with a remote channel instead of the original.
+%% All params are optional.
+%% @end
+%%------------------------------------------------------------------------------
 -spec maybe_move(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 maybe_move(Context, CallId) ->
     API = [{<<"Call-ID">>, CallId}
           ,{<<"Action">>, <<"move">>}
-          ,{<<"Data">>, kz_json:new()}
+          ,{<<"Data">>, kz_json:from_list([{<<"auto_answer">>, cb_context:req_value(Context, <<"auto_answer">>, 'false')}
+                                          ,{<<"can_call_self">>, cb_context:req_value(Context, <<"can_call_self">>, 'true')}
+                                          ,{<<"device_id">>, cb_context:req_value(Context, <<"device_id">>)}
+                                          ,{<<"dial_strategy">>, cb_context:req_value(Context, <<"dial_strategy">>, <<"simultaneous">>)}
+                                          ,{<<"owner_id">>, cb_context:req_value(Context, <<"owner_id">>)}
+                                          ])}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("attempting to move ~s", [CallId]),
