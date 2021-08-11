@@ -491,7 +491,7 @@ check_dtmf_type(Props) ->
 %% @doc Set the FS `dtmf_type' value if `DTMF-Type' is defined in the CCV.
 %% @end
 %%------------------------------------------------------------------------------
--spec maybe_set_dtmf_type(kz_term:proplist()) -> 'undefined' | kz_types:xml_el().
+-spec maybe_set_dtmf_type(kz_json:object()) -> 'undefined' | kz_types:xml_el().
 maybe_set_dtmf_type(JObj) ->
     case kz_json:get_binary_value([<<"Custom-Channel-Vars">>, <<"DTMF-Type">>], JObj) of
         'undefined' -> 'undefined';
