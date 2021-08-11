@@ -310,6 +310,7 @@ route_resp_xml(<<"park">>, _Routes, JObj, Props) ->
             ,route_resp_transfer_ringback(JObj)
             ,route_resp_pre_park_action(JObj)
             ,maybe_start_dtmf_action(Props)
+            ,maybe_set_dtmf_type(JObj)
              | route_resp_ccvs(JObj)
              ++ route_resp_cavs(JObj)
              ++ unset_custom_sip_headers(Props)
@@ -486,6 +487,17 @@ check_dtmf_type(Props) ->
         _ -> action_el(<<"start_dtmf">>)
     end.
 
+%%------------------------------------------------------------------------------
+%% @doc Set the FS `dtmf_type' value if `DTMF-Type' is defined in the CCV.
+%% @end
+%%------------------------------------------------------------------------------
+-spec maybe_set_dtmf_type(kz_term:proplist()) -> 'undefined' | kz_types:xml_el().
+maybe_set_dtmf_type(JObj) ->
+    case kz_json:get_binary_value([<<"Custom-Channel-Vars">>, <<"DTMF-Type">>], JObj) of
+        'undefined' -> 'undefined';
+        DTMFType -> action_el(<<"set">>, <<"dtmf_type=", DTMFType/binary>>)
+    end.
+
 -spec build_leg_vars(kz_json:object() | kz_term:proplist()) -> kz_term:ne_binaries().
 build_leg_vars([]) -> [];
 build_leg_vars([_|_]=Prop) ->
@@ -622,6 +634,9 @@ kazoo_var_to_fs_var({<<"Caller-ID-Type">>, <<"rpid">>}, Vars) ->
     [ <<"sip_cid_type=rpid">> | Vars];
 kazoo_var_to_fs_var({<<"Caller-ID-Type">>, <<"pid">>}, Vars) ->
     [ <<"sip_cid_type=pid">> | Vars];
+
+kazoo_var_to_fs_var({<<"DTMF-Type">>, DTMFType}, Vars) ->
+    [encode_fs_val("dtmf_type", DTMFType) | Vars];
 
 kazoo_var_to_fs_var({<<"origination_uuid">> = K, UUID}, Vars) ->
     [encode_fs_val(K, UUID) | Vars];
