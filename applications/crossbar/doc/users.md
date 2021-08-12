@@ -62,7 +62,7 @@ Key | Description | Type | Default | Required | Support Level
 `ringtones.external` | The alert info SIP header added when the call is from internal sources | `string(0..256)` |   | `false` |  
 `ringtones.internal` | The alert info SIP header added when the call is from external sources | `string(0..256)` |   | `false` |  
 `ringtones` | Ringtone Parameters | `object()` | `{}` | `false` |  
-`should_create_caller_id_name_if_undefined` | Create the users caller id name from the first and last name fields if no caller id is defined | `boolean()` |   | `false` |  
+`should_create_caller_id` | Create the users caller id name from the first and last name fields if no caller id is defined | `boolean()` |   | `false` |  
 `timezone` | User's timezone | `string()` |   | `false` | `supported`
 `username` | The GUI login username - alpha-numeric, dashes, at symbol, periods, plusses, and underscores allowed | `string(1..256)` |   | `false` | `supported`
 `verified` | Determines if the user has been verified | `boolean()` | `false` | `false` |  

@@ -84,7 +84,7 @@
 
 -define(RECORDING_ARGS(Call, Data), [kapps_call:clear_helpers(Call), Data]).
 
--define(SHOULD_CREATE_CALLER_ID_NAME_IF_UNDEFINED(UserJObj), kzd_users:should_create_caller_id_name_if_undefined(UserJObj, 'true')).
+-define(SHOULD_CREATE_CALLER_ID(UserJObj), kzd_users:should_create_caller_id(UserJObj, 'true')).
 
 -type sms_route() :: {binary(), kz_term:proplist()}.
 -type sms_routes() :: [sms_route(), ...].
@@ -502,7 +502,7 @@ merge_value(Key, Account, Endpoint, Owner) ->
 caller_id_owner_attr(Owner) ->
     OwnerAttr = kz_json:get_json_value(<<"caller_id">>, Owner, kz_json:new()),
     L = [<<"internal">>, <<"name">>],
-    case ?SHOULD_CREATE_CALLER_ID_NAME_IF_UNDEFINED(Owner)
+    case ?SHOULD_CREATE_CALLER_ID(Owner)
         andalso not kz_json:is_defined(L, OwnerAttr) of
         'true' ->
             lager:debug("creating caller id name from users first and last name"),
