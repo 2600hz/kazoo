@@ -1671,10 +1671,7 @@ close_chunk_json_envelope(Req, Context) ->
         ,{<<"revision">>, kz_term:to_api_binary(cb_context:resp_etag(Context))}
         ,{<<"auth_token">>, cb_context:auth_token(Context)}
         ],
-    Encoded = [<<"\"", K/binary, "\":\"", (kz_term:to_binary(V))/binary, "\"">>
-                   || {K, V} <- Trailer,
-                      kz_term:is_not_empty(V)
-              ],
+    Encoded = encode_trailer(Trailer),
     'ok' = cowboy_req:stream_body(<<"], ", (kz_binary:join(Encoded))/binary, "}">>, 'fin', Req).
 
 -spec encode_start_keys(kz_json:object(), boolean()) -> kz_json:object().
@@ -1701,6 +1698,35 @@ encode_start_key(StartKey) ->
 decode_start_key(Encoded) ->
     try erlang:binary_to_term(kz_base64url:decode(Encoded))
     catch _:_ -> Encoded
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc Take a proplist and return a list of binaries suitable for joining to
+%% make a json object. This is used when doing chunked http with json encoding.
+%% The calling function should take the result of this, join it with commas,
+%% and add the surrounding curly brackets to make a json object.
+%% @end
+%%------------------------------------------------------------------------------
+-spec encode_trailer(kz_term:proplist_kv(kz_term:ne_binary(), kz_term:ne_binary() | number())) -> kz_term:ne_binaries().
+encode_trailer(Trailer) ->
+    [<<"\"", K/binary, "\":", (encode_json_naively(V))/binary>>
+         || {K, V} <- Trailer,
+            kz_term:is_not_empty(V)
+    ].
+
+%%------------------------------------------------------------------------------
+%% @doc Encode a term to the closest json representation it has. The tightness
+%% of the spec is because this is used solely in `encode_trailer/1', so we're
+%% only getting binaries and numbers.
+%% @end
+%%------------------------------------------------------------------------------
+-spec encode_json_naively(kz_term:ne_binary() | number()) -> kz_json:json_term().
+encode_json_naively(Term) ->
+    case kz_json:is_json_term(Term) of
+        false ->
+            kz_json:encode(kz_term:to_binary(Term));
+        true ->
+            kz_json:encode(Term)
     end.
 
 %%------------------------------------------------------------------------------
