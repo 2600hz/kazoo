@@ -12,6 +12,7 @@
         ,register_views/0
         ]).
 -export([save_cdr/2]).
+-export([check_media_names/1]).
 
 -include("cdr.hrl").
 
@@ -43,7 +44,13 @@ save_cdr(AccountMOD, Doc) ->
 
 -spec do_save_cdr(kz_term:api_binary(), kz_json:object()) -> 'ok' | {'error', 'max_save_retries'}.
 do_save_cdr(AccountMODb, Doc) ->
-    case kazoo_modb:save_doc(AccountMODb, Doc, [{'max_retries', 3}]) of
+    MediaNames =  check_media_names(kz_json:get_value([<<"custom_channel_vars">>, <<"media_names">>], Doc)),
+    MediaRecordings = check_media_names(kz_json:get_value([<<"custom_channel_vars">>, <<"media_recordings">>], Doc)),
+
+    NewDoc = kz_json:set_values([{[<<"custom_channel_vars">>, <<"media_names">>], MediaNames}
+                                ,{[<<"custom_channel_vars">>, <<"media_recordings">>], MediaRecordings}], Doc),
+
+    case kazoo_modb:save_doc(AccountMODb, NewDoc, [{'max_retres', 3}]) of
         {'ok', _}-> 'ok';
         {'error', 'conflict'} -> 'ok';
         {'error', _E} ->
@@ -54,3 +61,18 @@ do_save_cdr(AccountMODb, Doc) ->
 -spec register_views() -> 'ok'.
 register_views() ->
     kz_datamgr:register_views_from_folder('cdr').
+
+-spec check_media_names(list()|kz_term:api_binary()| 'undefined') -> list() | 'undefined'.
+check_media_names([HeadMN | TailMN]) ->
+    re:split(HeadMN, ",") ++ check_last_media_name(TailMN);
+check_media_names('undefined') ->
+    'undefined';
+check_media_names(MediaNames) ->
+    re:split(MediaNames, ",").
+
+
+-spec check_last_media_name(list())->list().
+check_last_media_name([FirstMediaName])->
+    re:split(FirstMediaName, ",");
+check_last_media_name([FirstMediaName | LasttMediaName])->
+    re:split(FirstMediaName, ",") ++ check_media_names(re:split(LasttMediaName, ",")).

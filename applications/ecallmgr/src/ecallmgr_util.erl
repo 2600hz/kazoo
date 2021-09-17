@@ -664,6 +664,10 @@ get_fs_kv(<<"Hold-Media">>, Media, UUID) ->
     list_to_binary(["hold_music=", MediaPath]);
 get_fs_kv(?CCV(Key), Val, UUID) ->
     get_fs_kv(Key, Val, UUID);
+get_fs_kv(<<"Media-Names">>, [FileName1 | []], _) ->
+    list_to_binary([get_fs_key(<<"Media-Names">>), "=", maybe_sanitize_fs_value(<<"Media-Names">>, FileName1)]);
+get_fs_kv(<<"Media-Recordings">>, [FileName1 | []], _) ->
+    list_to_binary([get_fs_key(<<"Media-Recordings">>), "=", maybe_sanitize_fs_value(<<"Media-Recordings">>, FileName1)]);
 get_fs_kv(Key, Val, _) ->
     list_to_binary([get_fs_key(Key), "=", maybe_sanitize_fs_value(Key, Val)]).
 
@@ -731,9 +735,22 @@ maybe_sanitize_fs_value(<<"Export-Variables">>, Val) ->
     kz_binary:join(Val, <<",">>);
 maybe_sanitize_fs_value(Key, Val) when not is_binary(Key) ->
     maybe_sanitize_fs_value(kz_term:to_binary(Key), Val);
+maybe_sanitize_fs_value(<<"Media-Names">>, Val) when not is_binary(Val) ->
+    maybe_sanitize_fs_value(<<"Media-Names">>, checking_list_media_name(Val));
+maybe_sanitize_fs_value(<<"Media-Recordings">>, Val) when not is_binary(Val) ->
+    maybe_sanitize_fs_value(<<"Media-Recordings">>, checking_list_media_name(Val));
 maybe_sanitize_fs_value(Key, Val) when not is_binary(Val) ->
     maybe_sanitize_fs_value(Key, kz_term:to_binary(Val));
 maybe_sanitize_fs_value(_, Val) -> Val.
+
+-spec checking_list_media_name(list()) -> binary().
+checking_list_media_name([])->
+    <<>>;
+checking_list_media_name([MediaName1 | []]) ->
+    <<MediaName1/binary>>;
+checking_list_media_name([MediaName1 | MediaName2])->
+    Next = checking_list_media_name(MediaName2),
+    <<MediaName1/binary, ",", Next/binary>>.
 
 %%------------------------------------------------------------------------------
 %% @doc takes endpoints (/sofia/foo/bar), and optionally a caller id name/num
