@@ -141,7 +141,7 @@ jobs:
           at: .
       - restore_cache:
           keys:
-            - deps-v1-{{ checksum "make/deps.mk" }}-{{ checksum "/usr/local/lib/erlang/releases/RELEASES" }}
+            - deps-v2-{{ checksum "make/deps.mk" }}-{{ checksum "/usr/local/lib/erlang/releases/RELEASES" }}
       - run:
           name: Calculating dependency hash for CircleCI cache
           command: |
@@ -156,7 +156,7 @@ jobs:
           name: Making dependencies
           command: make deps
       - save_cache:
-          key: deps-v1-{{ checksum "make/deps.mk" }}-{{ checksum "/usr/local/lib/erlang/releases/RELEASES" }}
+          key: deps-v2-{{ checksum "make/deps.mk" }}-{{ checksum "/usr/local/lib/erlang/releases/RELEASES" }}
           paths:
             - deps/
       - persist_to_workspace:
@@ -171,7 +171,7 @@ jobs:
           at: .
       - restore_cache:
           keys:
-            - deps-v1-{{ checksum "make/deps.mk" }}-{{ checksum "/usr/local/lib/erlang/releases/RELEASES" }}
+            - deps-v2-{{ checksum "make/deps.mk" }}-{{ checksum "/usr/local/lib/erlang/releases/RELEASES" }}
       - run:
           name: Compiling the project
           command: JOBS="2" make
@@ -187,7 +187,7 @@ jobs:
           at: .
       - restore_cache:
           keys:
-            - deps-v1-{{ checksum "make/deps.mk" }}-{{ checksum "/usr/local/lib/erlang/releases/RELEASES" }}
+            - deps-v2-{{ checksum "make/deps.mk" }}-{{ checksum "/usr/local/lib/erlang/releases/RELEASES" }}
       - run:
           name: Compiling for unit test enviornment
           command: ERLC_OPTS='-DPROPER' make compile-test
@@ -260,7 +260,7 @@ jobs:
           at: .
       - restore_cache:
           keys:
-            - plt-v1-{{ checksum "make/deps.mk" }}-{{ checksum "/usr/local/lib/erlang/releases/RELEASES" }}
+            - plt-v2-{{ checksum "make/deps.mk" }}-{{ checksum "/usr/local/lib/erlang/releases/RELEASES" }}
       - run:
           name: Building plt file
           command: make build-plt
@@ -268,7 +268,7 @@ jobs:
           name: Dailyzing changed Erlang files
           command: make dialyze-changed
       - save_cache:
-          key: plt-v1-{{ checksum "make/deps.mk" }}-{{ checksum "/usr/local/lib/erlang/releases/RELEASES" }}
+          key: plt-v2-{{ checksum "make/deps.mk" }}-{{ checksum "/usr/local/lib/erlang/releases/RELEASES" }}
           paths:
             - .kazoo.plt
 
@@ -331,7 +331,7 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - deps-centos7-v3.2-{{ checksum "make/deps.mk" }}-{{ checksum "/usr/local/lib/erlang/releases/RELEASES" }}
+            - deps-v1-{{ checksum "make/deps.mk" }}-{{ checksum "/usr/local/lib/erlang/releases/RELEASES" }}
       - run:
           name: Making dependencies
           command: |
@@ -339,7 +339,7 @@ jobs:
             ls -al make || true
             make deps
       - save_cache:
-          key: deps-centos7-v3.2-{{ checksum "make/deps.mk" }}-{{ checksum "/usr/local/lib/erlang/releases/RELEASES" }}
+          key: deps-v1-{{ checksum "make/deps.mk" }}-{{ checksum "/usr/local/lib/erlang/releases/RELEASES" }}
           paths:
             - deps/
             - .git/.kz_deps_hash
