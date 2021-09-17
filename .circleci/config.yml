@@ -331,7 +331,7 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - deps-v1-{{ checksum "make/deps.mk" }}-{{ checksum "/usr/local/lib/erlang/releases/RELEASES" }}
+            - deps-packager-v1-{{ checksum "make/deps.mk" }}-{{ checksum "/usr/local/lib/erlang/releases/RELEASES" }}
       - run:
           name: Making dependencies
           command: |
@@ -339,7 +339,7 @@ jobs:
             ls -al make || true
             make deps
       - save_cache:
-          key: deps-v1-{{ checksum "make/deps.mk" }}-{{ checksum "/usr/local/lib/erlang/releases/RELEASES" }}
+          key: deps-packager-v1-{{ checksum "make/deps.mk" }}-{{ checksum "/usr/local/lib/erlang/releases/RELEASES" }}
           paths:
             - deps/
             - .git/.kz_deps_hash
