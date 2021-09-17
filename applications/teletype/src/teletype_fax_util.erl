@@ -243,4 +243,5 @@ get_file_name(Macros, Ext) ->
     LocalDateTime = props:get_value([<<"date_called">>, <<"local">>], Macros, <<"0000-00-00_00-00-00">>),
     FName = list_to_binary([CallerID, "_", kz_time:pretty_print_datetime(LocalDateTime), ".", Ext]),
     ReOpts = [{'return', 'binary'}, 'global'],
-    re:replace(re:replace(kz_term:to_lower_binary(FName), <<"\\s+">>, <<"_">>, ReOpts), <<":">>, <<"-">>, ReOpts).
+    NoSpaces = re:replace(kz_term:to_lower_binary(FName), <<"\\s+">>, <<"_">>, ReOpts),
+    re:replace(NoSpaces, <<":">>, <<"-">>, ReOpts).
