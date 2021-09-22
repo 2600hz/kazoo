@@ -105,7 +105,25 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/channels/{UUID}
 ```
 
-Available `action` values are `transfer`, `hangup`, `break`, `callflow`, and `intercept`.
+Available `action` values are `transfer`, `hangup`, `break`, `callflow`, `move` and `intercept`.
+
+### Move
+
+```shell
+curl -v -x POST \
+    -H "Content-Type: application/json" \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data": {"action": "move", "owner_id": "2e04e3205b36b6291f854995e80985b0", "device_id": "c27b0a86c5e7b0f2a5999967fd8bbf09", "auto_answer": true, "can_call_self": true, "dial_strategy": "simultaneous"}}' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/channels/{UUID}
+```
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`auto_answer` | Whether to auto-answer the new leg | `boolean()` | `false` | `false`
+`can_call_self` | Can intercept devices of the same targeted user | `boolean()` | `true` | `false`
+`device_id` | Move the call to a specific device | `string()` |   | `false`
+`dial_strategy` | How to ring the endpoints, if multiple | `string()` | `simultaneous` | `false`
+`owner_id` | User ID to use for finding endpoints | `string()` |   | `false`
 
 ### Transfer
 
