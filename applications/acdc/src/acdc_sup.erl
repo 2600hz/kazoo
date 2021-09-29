@@ -28,6 +28,7 @@
                   ,?WORKER('acdc_agent_manager')
                   ,?WORKER('acdc_init')
                   ,?WORKER('acdc_listener')
+                  ,?WORKER('acdc_recordings_map_srv')
                   ]).
 
 %%==============================================================================
