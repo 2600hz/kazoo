@@ -302,7 +302,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/whitelabel/domains
 ```
 
-Where `{DOMAINS_OBJECT}` is the JSON. If you look at the [default domains fixture](https://github.com/2600hz/kazoo/branch/master/core/kazoo_documents/priv/fixtures/domains.json) for a good base JSON object to modify to your needs.
+Where `{DOMAINS_OBJECT}` is the JSON. If you look at the [default domains fixture](https://github.com/2600hz/kazoo/blob/4.3/core/kazoo_documents/priv/fixtures/domains.json) for a good base JSON object to modify to your needs.
 
 If you receive a 400 when POSTing with a response like:
 
