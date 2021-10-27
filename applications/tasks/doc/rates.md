@@ -2,8 +2,7 @@
 
 Background job to manage `ratedeck` DB.
 
-!!! note
-    Only super admin can use this module.
+> NOTE: Only super admin can use this module.
 
 ## About rates
 
@@ -36,11 +35,9 @@ Name | Description | Required
 
 CSV files for all actions use the same list of fields. Names of fields match the names of keys in the CouchDB [rate document](../../crossbar/doc/rates.md#schema).
 
-!!! note
-    For `import` and `delete` actions, value of `account_id` from CSV file will be ignored, value for this field is taken from task Account-ID .
+> NOTE: For `import` and `delete` actions, value of `account_id` from CSV file will be ignored, value for this field is taken from task Account-ID .
 
-!!! note
-    `options` field can not be defined via CSV file (because its values are lists).
+> NOTE: `options` field can not be defined via CSV file (because its values are lists).
 
 `routes` is automatically generated from `prefix` as the default or the json decode fails to parse the json array. Example: `prefix` 380 generates `routes` - `["^\\+?380.+$"]`.
 
@@ -100,8 +97,7 @@ curl -v \
 
 You can see `prefix` and `rate_cost` are mandatory fields and must be in the CSV header line. You can also name columns after the optional fields.
 
-!!! note
-    The `direction` field defaults to both `inbound` and `outbound`, meaning calls in and out will be rated accordingly. Alternatively, you can create a `direction` column in your CSV to specify the direction.
+> NOTE: The `direction` field defaults to both `inbound` and `outbound`, meaning calls in and out will be rated accordingly. Alternatively, you can create a `direction` column in your CSV to specify the direction.
 
 * Create the task (upload the ratedeck):
 
@@ -169,8 +165,7 @@ curl -v -X PATCH \
 }
 ```
 
-!!! note
-    If the rate exists already (based on `prefix`, `iso_country_code`, and `rate_suffix` if present), it will be updated with the new value(s) in the CSV.
+> NOTE: If the rate exists already (based on `prefix`, `iso_country_code`, and `rate_suffix` if present), it will be updated with the new value(s) in the CSV.
 
 * Query the task's status:
 
@@ -184,8 +179,7 @@ When `data.status` changes from `executing`, the task is completed.
 
 Once the rate import is done, check out the [rates API](../../crossbar/doc/rates.md) to see how to rate a DID via the API.
 
-!!! note
-    By default, there is a generous pause built into the system to avoid overloading the system. You can speed up task processing by decreasing the pause, in milliseconds (at the expense of more database load): `sup kapps_config set_default tasks wait_after_row_ms 100`
+> NOTE: By default, there is a generous pause built into the system to avoid overloading the system. You can speed up task processing by decreasing the pause, in milliseconds (at the expense of more database load): `sup kapps_config set_default tasks wait_after_row_ms 100`
 
 #### Sample CSV
 
