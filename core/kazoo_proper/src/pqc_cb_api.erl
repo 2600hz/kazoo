@@ -61,7 +61,7 @@
              ,expectations/0
              ]).
 
--spec cleanup(state()) -> any().
+-spec cleanup(state()) -> {'ok', file:filename_all()} | {'error', kz_data_tracing:trace_error()}.
 cleanup(#{'trace_file' := Trace
          ,'start' := Start
          }) ->
