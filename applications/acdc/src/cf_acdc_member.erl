@@ -196,6 +196,7 @@ cancel_member_call(Call, Reason) ->
     kapi_acdc_queue:publish_member_call_cancel(Req).
 
 stop_hold_music(Call) ->
+    _ = kapps_call_command:b_flush(Call),
     Cmd = [{<<"Application-Name">>, <<"play">>}
           ,{<<"Call-ID">>, kapps_call:call_id(Call)}
           ,{<<"Media-Name">>, <<"silence_stream://50">>}

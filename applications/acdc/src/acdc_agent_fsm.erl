@@ -196,6 +196,8 @@ call_event(ServerRef, <<"error">>, <<"dialplan">>, JObj) ->
     gen_statem:cast(ServerRef, {'dialplan_error', kz_json:get_value(<<"Application-Name">>, Req)});
 call_event(ServerRef, <<"call_event">>, <<"CHANNEL_REPLACED">>, JObj) ->
     gen_statem:cast(ServerRef, {'channel_replaced', JObj});
+call_event(ServerRef, <<"call_event">>, <<"CHANNEL_INTERCEPTED">>, JObj) ->
+    gen_statem:cast(ServerRef, {'channel_intercepted', JObj});
 call_event(ServerRef, <<"call_event">>, <<"CHANNEL_TRANSFEREE">>, JObj) ->
     Transferor = kz_call_event:other_leg_call_id(JObj),
     Transferee = kz_call_event:call_id(JObj),
@@ -896,6 +898,30 @@ ringing('cast', {'leg_destroyed', _CallId}, State) ->
     {'next_state', 'ringing', State};
 ringing('cast', {'usurp_control', _CallId}, State) ->
     {'next_state', 'ringing', State};
+
+ringing('cast', {'channel_intercepted', JObj}, #state{agent_listener=AgentListener
+                                                      ,account_id=AccountId
+                                                      ,agent_id=AgentId
+                                                      ,member_call_id=CallId
+                                                      ,queue_notifications=Ns
+                                                      ,member_call_queue_id=QueueId
+                                                      }=State) ->
+    ACallId = kz_json:get_value(<<"Other-Leg-Call-ID">>, JObj),
+    lager:debug("channel_intercepted: ~s", [ACallId]),
+
+    acdc_agent_listener:hangup_call(AgentListener),
+    acdc_util:unbind_from_call_events(ACallId),
+    lager:debug("stopping ringing agent in order to intercept"),
+    acdc_stats:call_missed(AccountId, QueueId, AgentId, CallId, <<"call intercepted">>),
+
+    acdc_agent_listener:presence_update(AgentListener, ?PRESENCE_GREEN),
+
+    apply_state_updates(clear_call(State, 'ready')),
+
+    maybe_notify(Ns, ?NOTIFY_PICKUP, State),
+
+    {'next_state', 'wrapup', State#state{wrapup_ref=hangup_call(State, 'agent')}};
+
 ringing('cast', Evt, State) ->
     handle_event(Evt, 'ringing', State);
 ringing({'call', From}, 'status', #state{member_call_id=MemberCallId

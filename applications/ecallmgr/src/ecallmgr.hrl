@@ -325,6 +325,7 @@
                               ,{<<"sip_rh_X-Redirect-Server">>, <<"sip_rh_X-Redirect-Server">>}
                               ,{<<"tts_engine">>, <<"tts_engine">>}
                               ,{<<"tts_voice">>, <<"tts_voice">>}
+                              ,{<<"originate_signal_bond">>, <<"originate_signal_bond">>}
                               ]).
 
 %% [{FreeSWITCH-App-Name, Kazoo-App-Name}] Dialplan-related

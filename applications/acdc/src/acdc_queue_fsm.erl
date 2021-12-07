@@ -330,6 +330,10 @@ connect_req('cast', {'accepted', AcceptJObj}=Accept, #state{member_call=Call}=St
             lager:debug("received (and ignoring) acceptance payload"),
             {'next_state', 'connect_req', State}
     end;
+
+connect_req('cast', {'channel_bridged', _BridgeJObj}=Accept, State) ->
+            connecting('cast', Accept, State);
+
 connect_req('cast', {'retry', _RetryJObj}, State) ->
     lager:debug("recv retry response before win sent"),
     {'next_state', 'connect_req', State};
@@ -446,6 +450,22 @@ connecting('cast', {'accepted', AcceptJObj}, #state{listener_proc=ListenerSrv
             lager:debug("ignoring accepted message"),
             {'next_state', 'connecting', State}
     end;
+
+connecting('cast', {'channel_bridged', _BridgeJObj}, #state{listener_proc=ListenerSrv
+                                                            ,member_call=Call
+                                                            ,agent_ring_timer_ref=AgentRef
+                                                            ,collect_ref=CollectRef
+                                                            }=State) ->
+    lager:debug("recv channel_bridged from agent"),
+    CallId = kapps_call:call_id(Call),
+    webseq:evt(?WSD_ID, self(), CallId, <<"member call - agent acceptance">>),
+
+    _ = kapps_call_command:b_flush(Call),
+    maybe_stop_timer(CollectRef),
+    maybe_stop_timer(AgentRef),
+
+    acdc_queue_listener:finish_member_call(ListenerSrv),
+    {'next_state', 'ready', clear_member_call(State), 'hibernate'};
 
 connecting('cast', {'retry', RetryJObj}, #state{agent_ring_timer_ref=AgentRef
                                                ,collect_ref=CollectRef

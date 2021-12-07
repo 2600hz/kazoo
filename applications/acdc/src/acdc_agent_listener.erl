@@ -647,6 +647,7 @@ handle_cast({'member_connect_accepted', ACallId}, #state{msg_queue_id=AmqpQueue
                                                         ,agent_call_ids=ACallIds
                                                         }=State) ->
     lager:debug("member bridged to agent!"),
+    _ = kapps_call_command:b_flush(Call),
     maybe_start_recording(Call, ShouldRecord, RecordingUrl),
 
     ACallIds1 = filter_agent_calls(ACallIds, ACallId),
@@ -1032,6 +1033,7 @@ maybe_connect_to_agent(MyQ, EPs, Call, Timeout, AgentId, _CdrUrl) ->
                                   ,{<<"Retain-CID">>, <<"true">>}
                                   ,{<<"Agent-ID">>, AgentId}
                                   ,{<<"Member-Call-ID">>, MCallId}
+                                  ,{<<"originate_signal_bond">>, MCallId}
                                   ,{<<"Original-Caller-ID-Name">>, OriginalCIDName}
                                   ,{<<"Original-Caller-ID-Number">>, OriginalCIDNumber}
                                   ]),
@@ -1058,6 +1060,7 @@ maybe_connect_to_agent(MyQ, EPs, Call, Timeout, AgentId, _CdrUrl) ->
                                                  ,<<"Retain-CID">>
                                                  ,<<"Authorizing-ID">>
                                                  ,<<"Authorizing-Type">>
+                                                 ,<<"originate_signal_bond">>
                                                  ]}
              ,{<<"Account-ID">>, AcctId}
              ,{<<"Resource-Type">>, <<"originate">>}

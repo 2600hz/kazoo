@@ -185,17 +185,37 @@ start_queue_call(JObj, Props, Call) ->
     lager:debug("answering call"),
     kapps_call_command:answer_now(Call),
 
-    case kz_media_util:media_path(props:get_value('moh', Props)
+    Media = case kz_media_util:media_path(props:get_value('moh', Props)
                                  ,kapps_call:account_id(Call)
                                  )
     of
         'undefined' ->
             lager:debug("using default moh"),
-            kapps_call_command:hold(Call);
+            [<<"${hold_music}">>];
         MOH ->
             lager:debug("using MOH ~s (~p)", [MOH, Props]),
-            kapps_call_command:hold(MOH, Call)
+            [MOH]
     end,
+
+    {'ok', QueueJObj} = kz_datamgr:open_cache_doc(kapps_call:account_db(Call), QueueId),
+    NoopId = kapps_call_command:noop_id(),
+    Commands = [kz_json:from_list([{<<"Application-Name">>, <<"noop">>}
+                                  ,{<<"Call-ID">>, kapps_call:call_id(Call)}
+                                  ,{<<"Msg-ID">>, NoopId}
+                                  ])
+               ,kz_json:from_list([{<<"Application-Name">>, <<"play">>}
+                                  ,{<<"Call-ID">>, kapps_call:call_id(Call)}
+                                  ,{<<"Media-Name">>, Media}
+                                  ,{<<"Insert-At">>, <<"now">>}
+                                  ,{<<"Endless-Playback">>, <<"true">>}
+                                  ,{<<"Terminators">>, [kz_json:get_value(<<"caller_exit_key">>, QueueJObj, <<"#">>)]}
+                                  ])
+               ],
+    Command = [{<<"Application-Name">>, <<"queue">>}
+              ,{<<"Commands">>, Commands}
+              ],
+
+    kapps_call_command:send_command(Command, Call),
 
     JObj2 = kz_json:set_value([<<"Call">>, <<"Custom-Channel-Vars">>, <<"Queue-ID">>], QueueId, JObj),
 
