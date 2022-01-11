@@ -1033,7 +1033,7 @@ maybe_connect_to_agent(MyQ, EPs, Call, Timeout, AgentId, _CdrUrl) ->
                                   ,{<<"Retain-CID">>, <<"true">>}
                                   ,{<<"Agent-ID">>, AgentId}
                                   ,{<<"Member-Call-ID">>, MCallId}
-                                  ,{<<"originate_signal_bond">>, MCallId}
+                                  ,{<<"Originate-Signal-Bond">>, MCallId}
                                   ,{<<"Original-Caller-ID-Name">>, OriginalCIDName}
                                   ,{<<"Original-Caller-ID-Number">>, OriginalCIDNumber}
                                   ]),
@@ -1060,7 +1060,7 @@ maybe_connect_to_agent(MyQ, EPs, Call, Timeout, AgentId, _CdrUrl) ->
                                                  ,<<"Retain-CID">>
                                                  ,<<"Authorizing-ID">>
                                                  ,<<"Authorizing-Type">>
-                                                 ,<<"originate_signal_bond">>
+                                                 ,<<"Originate-Signal-Bond">>
                                                  ]}
              ,{<<"Account-ID">>, AcctId}
              ,{<<"Resource-Type">>, <<"originate">>}

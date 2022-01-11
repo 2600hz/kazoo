@@ -293,7 +293,10 @@ ready({'call', From}, Event, State) ->
     handle_sync_event(Event, From, ready, State);
 
 ready('info', {'timeout', _, ?COLLECT_RESP_MESSAGE}, State) ->
-    {'next_state', 'ready', State}.
+    {'next_state', 'ready', State};
+
+ready('info', Event, State) ->
+    handle_event(Event, ready, State).
 
 %%------------------------------------------------------------------------------
 %% @doc

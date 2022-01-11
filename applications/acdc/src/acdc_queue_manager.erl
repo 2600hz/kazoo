@@ -983,7 +983,7 @@ sort_agent(A, B) ->
 %% Otherwise CRs will never be empty
 -spec remove_unknown_agents(pid(), kz_json:objects()) -> kz_json:objects().
 remove_unknown_agents(Mgr, CRs) ->
-    case gen_listener:call(Mgr, 'current_agents') of
+    case gen_listener:call(Mgr, 'agents') of
         [] -> [];
         Agents ->
             [CR || CR <- CRs,
