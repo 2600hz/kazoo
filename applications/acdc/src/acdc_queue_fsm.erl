@@ -463,7 +463,6 @@ connecting('cast', {'channel_bridged', _BridgeJObj}, #state{listener_proc=Listen
     CallId = kapps_call:call_id(Call),
     webseq:evt(?WSD_ID, self(), CallId, <<"member call - agent acceptance">>),
 
-    _ = kapps_call_command:b_flush(Call),
     maybe_stop_timer(CollectRef),
     maybe_stop_timer(AgentRef),
 

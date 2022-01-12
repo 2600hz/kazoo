@@ -647,7 +647,6 @@ handle_cast({'member_connect_accepted', ACallId}, #state{msg_queue_id=AmqpQueue
                                                         ,agent_call_ids=ACallIds
                                                         }=State) ->
     lager:debug("member bridged to agent!"),
-    _ = kapps_call_command:b_flush(Call),
     maybe_start_recording(Call, ShouldRecord, RecordingUrl),
 
     ACallIds1 = filter_agent_calls(ACallIds, ACallId),
