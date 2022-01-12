@@ -16,11 +16,18 @@
             "map": [
                 "function(doc) {",
                 "  if (doc.pvt_type != 'blacklist' || doc.pvt_deleted) return;",
-                "  for (var i in doc.numbers) {",
-                "    emit(doc.numbers[i], {",
-                "      'should_block_anonymous' : doc.should_block_anonymous",
-                "    });",
+                "  for (var num in doc.numbers) {",
+                "    if (!doc.numbers.hasOwnProperty(num)) continue;",
+                "    emit(num, doc.should_block_anonymous);",
                 "  }",
+                "}"
+            ]
+        },
+        "should_block_anonymous": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'blacklist' || doc.pvt_deleted) return;",
+                "  emit(doc.should_block_anonymous);",
                 "}"
             ]
         }
