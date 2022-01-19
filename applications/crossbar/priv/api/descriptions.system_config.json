@@ -295,6 +295,7 @@
     "ecallmgr.recording_software_name": "ecallmgr recording software name",
     "ecallmgr.redirect_via_proxy": "ecallmgr redirect via proxy",
     "ecallmgr.restrict_channel_state_publisher": "ecallmgr restrict channel state publisher",
+    "ecallmgr.restrict_presence_event_publisher": "ecallmgr restrict presence event publisher",
     "ecallmgr.should_detect_inband_dtmf": "ecallmgr should detect inband dtmf",
     "ecallmgr.sofia_conf": "ecallmgr sofia conf",
     "ecallmgr.tcp_packet_type": "ecallmgr tcp packet type",

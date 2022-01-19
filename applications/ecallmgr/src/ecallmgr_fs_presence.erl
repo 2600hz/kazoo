@@ -155,8 +155,27 @@ maybe_build_presence_event(Node, UUID, FSProps) ->
                ,fun check_publish_state/3
                ],
     case lists:all(fun(F) -> F(Node, UUID, FSProps) end, Routines) of
-        'true' -> build_presence_event(Node, UUID, FSProps);
-        'false' -> 'ok'
+        'false' -> 'ok';
+        'true' ->
+            case kapps_config:get_boolean(?APP_NAME, <<"restrict_presence_event_publisher">>, 'false') of
+                'false' -> build_presence_event(Node, UUID, FSProps);
+                'true' -> maybe_build_restricted(Node, UUID, FSProps)
+            end
+    end.
+
+-spec maybe_build_restricted(atom(), kz_term:api_binary(), kzd_freeswitch:data()) -> 'ok'.
+maybe_build_restricted(Node, UUID, FSProps) ->
+    EcallmgrNode = kz_term:to_binary(node()),
+    State = presence_status(FSProps),
+    {FromUser, Realm} = get_user_realm(FSProps),
+    ToUser =  to_user(FSProps),
+
+    case props:get_value(?GET_CCV(<<"Ecallmgr-Node">>), FSProps) of
+        'undefined' ->
+            lager:debug("presence ~s to ~s/~s in realm ~s not assigned an ecallmgr, not sending", [State, FromUser, ToUser, Realm]);
+        EcallmgrNode -> build_presence_event(Node, UUID, FSProps);
+        _EventEcallmgr ->
+            lager:debug("presence ~s to ~s/~s in realm ~s handled by another ecallmgr(~s), not sending", [State, FromUser, ToUser, Realm, _EventEcallmgr])
     end.
 
 -spec check_proto(atom(), kz_term:api_binary(), kzd_freeswitch:data()) -> boolean().
