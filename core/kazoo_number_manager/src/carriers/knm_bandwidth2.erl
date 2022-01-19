@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2021, 2600Hz
+%%% @copyright (C) 2010-2022, 2600Hz
 %%% @doc Handle client requests for phone_number documents using new bandwidth api
 %%% @author Karl Anderson
 %%% @author Mark Magnusson

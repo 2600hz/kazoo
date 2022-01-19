@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2021, 2600Hz
+%%% @copyright (C) 2011-2022, 2600Hz
 %%% @doc
 %%% @author Karl Anderson <karl@2600hz.org>
 %%% @end
@@ -45,4 +45,3 @@ refresh(_Account) ->
 -spec flush() -> 'ok'.
 flush() ->
     kz_cache:flush_local(?CACHE_NAME).
-

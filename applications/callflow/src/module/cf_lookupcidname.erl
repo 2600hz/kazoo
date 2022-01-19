@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2021, 2600Hz
+%%% @copyright (C) 2010-2022, 2600Hz
 %%% @doc This module looks up the Caller ID Name by matching
 %%% numbers/patters with the provided lists.
 %%%

@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2014-2021, 2600Hz
+%%% @copyright (C) 2014-2022, 2600Hz
 %%% @doc Handle client requests for phone_number documents
 %%% @author James Aimonetti
 %%% @author Pierre Fenoll

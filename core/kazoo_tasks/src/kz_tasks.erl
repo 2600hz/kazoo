@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2016-2021, 2600Hz
+%%% @copyright (C) 2016-2022, 2600Hz
 %%% @doc Utilities for tasks validation and stuff.
 %%% @author Pierre Fenoll
 %%% @end

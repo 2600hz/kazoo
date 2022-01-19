@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2014-2021, 2600Hz
+%%% @copyright (C) 2014-2022, 2600Hz
 %%% @doc Fax document manipulation
 %%% @author Luis Azedo
 %%% @end

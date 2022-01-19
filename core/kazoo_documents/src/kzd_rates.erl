@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2021, 2600Hz
+%%% @copyright (C) 2010-2022, 2600Hz
 %%% @doc Rates import/export/delete task.
 %%%
 %%% This Source Code Form is subject to the terms of the Mozilla Public

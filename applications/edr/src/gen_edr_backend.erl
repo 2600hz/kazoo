@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2021, 2600Hz
+%%% @copyright (C) 2010-2022, 2600Hz
 %%% @doc Behaviour of backend modules
 %%% @author SIPLABS, LLC (Vorontsov Nikita) <info@siplabs.ru>
 %%% @author Conversant Ltd (Max Lay)

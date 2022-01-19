@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2021, 2600Hz
+%%% @copyright (C) 2010-2022, 2600Hz
 %%% @doc Collect DTMF into an optional key for later retrieval.
 %%%
 %%% <h4>Data options:</h4>

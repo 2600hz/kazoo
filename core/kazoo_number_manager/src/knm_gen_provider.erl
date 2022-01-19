@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2021, 2600Hz
+%%% @copyright (C) 2011-2022, 2600Hz
 %%% @doc When implementing provider modules, these callbacks are a must!
 %%% @author Pierre Fenoll
 %%% @end

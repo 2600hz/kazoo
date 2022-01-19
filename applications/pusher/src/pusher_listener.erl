@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2021, 2600Hz
+%%% @copyright (C) 2013-2022, 2600Hz
 %%% @doc
 %%% @author Luis Azedo
 %%% @end
@@ -271,4 +271,3 @@ app_enabled(App, TokenType) ->
 -spec push(kz_json:object()) -> ok.
 push(JObj) ->
     gen_listener:cast(?MODULE, {'push', JObj}).
-

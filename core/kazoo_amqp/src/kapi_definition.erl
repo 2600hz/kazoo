@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2017-2021, 2600Hz
+%%% @copyright (C) 2017-2022, 2600Hz
 %%% @doc Kazoo API Definition Helpers.
 %%% @author Hesaam Farhang
 %%% @end

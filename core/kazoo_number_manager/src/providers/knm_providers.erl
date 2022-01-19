@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2016-2021, 2600Hz
+%%% @copyright (C) 2016-2022, 2600Hz
 %%% @doc Handle prepend feature
 %%% @author Peter Defebvre
 %%% @author Pierre Fenoll

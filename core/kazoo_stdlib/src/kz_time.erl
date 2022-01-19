@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2021, 2600Hz
+%%% @copyright (C) 2010-2022, 2600Hz
 %%% @doc Various utilities to work with time.
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -739,4 +739,3 @@ format_datetime(Timestamp) when is_integer(Timestamp) ->
 -spec start_time() -> start_time().
 start_time() ->
     {'start_time', erlang:monotonic_time()}.
-

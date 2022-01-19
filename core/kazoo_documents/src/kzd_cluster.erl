@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2021-, 2600Hz
+%%% @copyright (C) 2021-2022, 2600Hz
 %%% @doc Accessors for cluster document
 %%% @author Kalyan Krause
 %%% @end
