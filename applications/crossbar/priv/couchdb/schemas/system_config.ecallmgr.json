@@ -377,6 +377,11 @@
             "description": "ecallmgr restrict channel state publisher",
             "type": "boolean"
         },
+        "restrict_presence_event_publisher": {
+            "default": false,
+            "description": "ecallmgr restrict presence event publisher",
+            "type": "boolean"
+        },
         "sanitize_fs_value_regex": {
             "default": "[^0-9\\w\\s-]",
             "description": "ecallmgr sanitize_fs_value_regex",
