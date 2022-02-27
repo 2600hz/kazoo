@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2021, 2600Hz
+%%% @copyright (C) 2010-2022, 2600Hz
 %%% @doc Supervisor for Kazoo Token Bucket Servers
 %%% @author James Aimonetti
 %%% @end

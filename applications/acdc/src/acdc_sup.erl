@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2021, 2600Hz
+%%% @copyright (C) 2012-2022, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
 %%% @end
@@ -28,6 +28,7 @@
                   ,?WORKER('acdc_agent_manager')
                   ,?WORKER('acdc_init')
                   ,?WORKER('acdc_listener')
+                  ,?WORKER('acdc_recordings_map_srv')
                   ]).
 
 %%==============================================================================

@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2021, 2600Hz
+%%% @copyright (C) 2010-2022, 2600Hz
 %%% @doc This Source Code Form is subject to the terms of the Mozilla Public
 %%% License, v. 2.0. If a copy of the MPL was not distributed with this
 %%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -219,4 +219,3 @@ maybe_stop_responders(_State, 'false') -> 'ok';
 maybe_stop_responders(#state{responders=Responders}, _) ->
     lists:foldl(fun(R, _) -> (kz_term:to_atom(R)):stop() end, [], Responders),
     'ok'.
-

@@ -62,6 +62,7 @@ Key | Description | Type | Default | Required | Support Level
 `recording_software_name` | ecallmgr recording software name | `string()` | `2600Hz, Inc.'s Kazoo` | `false` |
 `redirect_via_proxy` | ecallmgr redirect via proxy | `boolean()` | `true` | `false` |
 `restrict_channel_state_publisher` | ecallmgr restrict channel state publisher | `boolean()` | `false` | `false` |
+`restrict_presence_event_publisher` | ecallmgr restrict presence event publisher | `boolean()` | `false` | `false` |
 `sanitize_fs_value_regex` | ecallmgr sanitize_fs_value_regex | `string()` | `[^0-9\w\s-]` | `false` |
 `should_detect_inband_dtmf` | ecallmgr should detect inband dtmf | `boolean()` | `false` | `false` |
 `sofia_conf` | ecallmgr sofia conf | `boolean()` |   | `false` |

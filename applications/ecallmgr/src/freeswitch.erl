@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2021, 2600Hz
+%%% @copyright (C) 2010-2022, 2600Hz
 %%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -197,4 +197,3 @@ get_option(Node, Option) ->
 
 -spec async_api(atom(), atom(), string() | binary()) -> fs_api_return().
 async_api(Node, Cmd, Args) -> ?FS_MODULE:async_api(Node, Cmd, Args).
-

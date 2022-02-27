@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2021-, 2600Hz
+%%% @copyright (C) 2021-2022, 2600Hz
 %%% @doc Collect and save/store compaction job's information for jobs started via sup commands,
 %%% CSV JOBS app, or auto compaction trigger.
 %%%

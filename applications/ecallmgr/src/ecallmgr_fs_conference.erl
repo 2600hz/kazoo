@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2021, 2600Hz
+%%% @copyright (C) 2011-2022, 2600Hz
 %%% @doc Execute conference commands
 %%% @author Karl Anderson <karl@2600hz.org>
 %%% @author Roman Galeev

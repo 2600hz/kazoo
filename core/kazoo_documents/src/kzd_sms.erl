@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2021, 2600Hz
+%%% @copyright (C) 2010-2022, 2600Hz
 %%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -260,4 +260,3 @@ exchange_id(Doc, Default) ->
 -spec set_exchange_id(doc(), kz_term:ne_binary()) -> doc().
 set_exchange_id(Doc, ExhangeId) ->
     kz_json:set_value(<<"Exchange-ID">>, ExhangeId, Doc).
-

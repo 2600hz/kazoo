@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2021, 2600Hz
+%%% @copyright (C) 2011-2022, 2600Hz
 %%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -956,4 +956,3 @@ release_consumer(Consumer, Channel, Tags) ->
     amqp_channel:unregister_flow_handler(Channel),
     _ = [amqp_channel:cast( Channel, #'basic.cancel'{consumer_tag=Tag}) || Tag <- Tags],
     gen_server:cast(?SERVER, {'release_assignments', Consumer}).
-

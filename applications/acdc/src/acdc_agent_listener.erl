@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2021, 2600Hz
+%%% @copyright (C) 2012-2022, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
 %%% @author Daniel Finke
@@ -1188,10 +1188,10 @@ maybe_start_recording(Call, 'true', Url) ->
           ,{<<"url">>, Url}
           ]),
     lager:debug("starting recording listener for ~s", [Url]),
-    case acdc_recordings_sup:new(Call, RecordingJObj) of
-        {'ok', _P} ->
-            lager:debug("recording tracked in ~p", [_P]);
-        _E -> lager:debug("failed to start recording: ~p", [_E])
+    try acdc_recordings_map_srv:register(Call, RecordingJObj) of
+        _P -> lager:debug("recording tracked in ~p", [_P])
+    catch
+        'exit':_E -> lager:debug("failed to start recording: ~p", [_E])
     end.
 
 recording_format() ->

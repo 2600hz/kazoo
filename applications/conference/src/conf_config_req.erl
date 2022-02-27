@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2021, 2600Hz
+%%% @copyright (C) 2011-2022, 2600Hz
 %%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -259,4 +259,3 @@ conference_controls(Conference) ->
                                ,kapps_conference:moderator_controls(Conference)
                                ]),
     kz_json:from_list([{Name, kapps_conference:controls(Conference, Name)} || Name <- ControlNames]).
-

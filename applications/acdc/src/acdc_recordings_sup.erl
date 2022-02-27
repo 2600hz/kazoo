@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2021, 2600Hz
+%%% @copyright (C) 2010-2022, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
 %%% @end
@@ -20,7 +20,7 @@
 
 -define(SERVER, ?MODULE).
 
--define(CHILDREN, [?WORKER_TYPE('kz_media_recording', 'transient')]).
+-define(CHILDREN, [?WORKER_TYPE('kzc_recording', 'transient')]).
 
 %%%=============================================================================
 %%% API functions
