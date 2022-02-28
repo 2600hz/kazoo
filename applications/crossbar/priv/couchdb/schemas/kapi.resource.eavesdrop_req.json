@@ -110,10 +110,10 @@
         "Export-Bridge-Variables": {
             "type": "string"
         },
-        "Export-Custom-Channel-Vars": {
+        "Export-Custom-Application-Vars": {
             "type": "object"
         },
-        "Export-Custom-Application-Vars": {
+        "Export-Custom-Channel-Vars": {
             "type": "object"
         },
         "Export-Variables": {
