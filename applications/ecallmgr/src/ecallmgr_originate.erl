@@ -634,7 +634,7 @@ get_unset_vars(JObj) ->
     case ["unset:" ++ K
           || KV <- lists:foldr(fun ecallmgr_fs_xml:kazoo_var_to_fs_var/2, [], kz_json:to_proplist(JObj)),
              not lists:member(begin [K, _] = string:tokens(binary_to_list(KV), "="), K end, Export),
-             not lists:member(begin [K, _] = string:tokens(binary_to_list(KV), "="), K end, ExportCAV) 
+             not lists:member(begin [K, _] = string:tokens(binary_to_list(KV), "="), K end, ExportCAV)
          ]
     of
         [] -> "";
