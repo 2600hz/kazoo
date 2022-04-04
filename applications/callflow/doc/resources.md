@@ -55,6 +55,8 @@ Adding the value `"zone"` to the `dynamic_flags` array will result in a flag set
 ### Custom Channel Vars
 Adding the value `"custom_channel_vars."` appended with a normalized variable name will add the value (if present) to the flags array.  For example, `"custom_channel_vars.owner_id"`.
 
+PLEASE NOTE: Developers can expect that custom channel variables (CCVs) will be an available field. They can further expect that any variables they have placed there will always be available. However, developers should not assume that all variables offered in CCVs will always be available. Internal KAZOO applications also add CCVs to channels, however they may not always continue to add those variables or add them in a consistent way. Should you need to utilize a CCV added by an internal KAZOO app, we advise completing QA on all KAZOO versions to ensure these values are still present and in the format you are expecting before installing those versions on your or your customers' clusters.
+
 ## Examples
 
 ### Route to the system carriers
