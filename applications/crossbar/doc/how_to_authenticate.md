@@ -45,7 +45,7 @@ In this method, you provide the credentials of your user just for login and cros
 User credentials is MD5 hash of `USERNAME:PASSWORD`. So for example if the username is `john@example.com` and the password is `m32c6NfqYEt` MD5 hash of `john@example.com:m32c6NfqYEt` (note the colon `:` which separates the username and password) is `82a2dc91686ec828a67152d45a5c5ef7`.
 
 !!! note
-    `accept=csv` is retained for backwards-compatibility but it is encouraged to use a proper media type going forward.
+    When hashing, the username must be converted to all lowercase characters before computing the hash.
 
 For generating MD5 of a text in terminal you can use `md5sum` (in Linux) or `md5` (in macOS) as follow:
 
