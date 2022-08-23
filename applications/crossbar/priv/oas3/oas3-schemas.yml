@@ -916,7 +916,7 @@
       'description': settings for calls from onnet networks
   'type': object
 'call_recordings':
-  'additionalProperties': false
+  'additionalProperties': true
   'description': endpoint recording settings
   'properties':
     'call_id':
