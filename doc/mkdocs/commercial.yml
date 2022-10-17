@@ -6,7 +6,7 @@ site_name: Kazoo API Reference
 site_description: 'REST API Reference for Kazoo Crossbar API'
 
 pages:
-- 'index.md'
+- 'doc/intro.md'
 - 'The Basics':
   - 'Quick Start':
     - 'applications/crossbar/doc/basics.md'
@@ -42,26 +42,10 @@ pages:
     - 'applications/crossbar/doc/allotments.md' ##
     - 'applications/crossbar/doc/limits.md' ##
 
-#BUILD  - 'Common Tasks':
-#BUILD    - 'applications/crossbar/doc/your_first_subaccount.md'
-#BUILD    - 'Billing Users, Devices and DIDs' : 'tutorial/count_devices.md'
-#BUILD    - 'Processing CDRs' : 'tutorial/count_devices.md'
-#BUILD    - 'Generating Stats' : 'tutorial/call_stats.md'
-#BUILD    - 'Bulk Provisioning' : 'tutorial/bulk_provision.md'
-#BUILD    - 'Building a User Portal' : 'tutorial/user_portal.md'
-#BUILD    - 'Event Notification' : 'tutorial/webhooks.md'
-#BUILD    - 'Streaming Live Activity' : 'tutorial/stream_events.md'
-#BUILD    - 'Controlling Calls' : 'tutorial/call_control.md'
-#BUILD    - 'Integrating Mobile Services' : 'tutorial/mobile_services.md'
-
 - 'Configuration APIs':
   - 'Users and Devices':
     - 'applications/crossbar/doc/devices.md'
     - 'applications/crossbar/doc/users.md'
-
-#BUILD  - 'Basic Phone Number Setup':
-#BUILD    - 'Buying a Number': 'applications/crossbar/doc/phone_numbers_buy.md'
-#BUILD    - 'Routing a Number to a Callflow': 'applications/crossbar/doc/callflows_basic.md'  # (Basic callflow)
 
   - 'Features':
     - 'Conference Bridges':
@@ -294,6 +278,7 @@ pages:
 #  - 'Bypass Media Mode': 'doc/blog/bypass_media.md'
 #  - 'Introduction to Rating and Limits': 'doc/reference/routing.md'
 #  - 'Call Recording': 'doc/user_guides/call_recording.md'
+#  - 'A First App": '/doc/user_guides/first_app_forward_voicemail.md'
 
 ############ Doc Status Key #################
 # | ##  : Incomplete
