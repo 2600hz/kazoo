@@ -16,12 +16,13 @@ KAZOO runs an API server that we call **Crossbar**. By default, Crossbar listens
 
 ---
 
-The most convenient way to make API requests with KAZOO across different interfaces like cURL, SDKs, or Postman, is by generating an access token. Once this is complete, authenticating requests is as easy as adding the `X-AUTH-TOKEN` HTTP header to your requests. Most KAZOO SDKs will allow you to create a persistent client that takes in a token in order to instantiate.
+The most convenient way to make API requests with KAZOO across different interfaces like cURL, SDKs, or Postman, is by generating an access token. Once this is complete, authenticating requests is as easy as adding the `X-AUTH-TOKEN` HTTP header to your requests. Most KAZOO SDKs will allow you to create a persistent client that takes in an access token in order to instantiate.
 
+DID YOU KNOW?: You can obtain an access token by logging into your KAZOO’s MonsterUI portal. When you’re logged in, pressing the ‘**d**’ key will bring up debug fields. One of them is a valid access token for your account. It’s the one your MonsterUI is using to make requests to KAZOO! You can copy this to be used for your own API requests.
 
-DID YOU KNOW?: You can obtain an access token by logging into your KAZOO’s MonsterUI portal. When you’re logged in, pressing the ‘**d**’ key will bring up debug fields. One of them is a valid access token for your account. It’s the one your MonsterUI is using to make requests to KAZOO!
+You can also obtain an access token by making a request to the API using [HTTP Basic Authentication](https://developer.mozilla.org/en-US/docs/Web/HTTP/Authentication#basic_authentication_scheme), authenticated with your Account ID, which is the 32-character  and Password, to first get your API key.
 
-You can also obtain an access token by making a request to the API using [HTTP Basic Authentication](https://developer.mozilla.org/en-US/docs/Web/HTTP/Authentication#basic_authentication_scheme), authenticated with your Account ID and Password, to first get your API key. Once you have an API key, you can use it to get the access token. For example, if you were to use cURL, you could do the following.
+Once you have an API key, you can use it to get the access token. For example, if you were to use cURL, you could do the following.
 
 ---
 

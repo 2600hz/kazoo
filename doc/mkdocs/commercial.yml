@@ -13,7 +13,6 @@ pages:
     - 'applications/crossbar/doc/api_authentication.md'
     - 'applications/crossbar/doc/sdks.md'
   - 'Common Tasks':
-#BUILD Intro to accounts (what they are for, when to use them, encourage the user to do this last)
     - 'Account Management' : 'applications/crossbar/doc/accounts.md'
 #    - 'Billing Users, Devices and DIDs' : 'tutorial/count_devices.md'
 #    - 'Processing CDRs' : 'tutorial/count_devices.md'
@@ -36,7 +35,6 @@ pages:
 - 'System Preparation':
   - 'Branding':
     - 'applications/crossbar/doc/whitelabeling.md' ##
-# Email notifications? Macros? Templates?
 
   - 'Limits and Rating':
     - 'applications/crossbar/doc/allotments.md' ##

@@ -19,7 +19,7 @@ This guide assumes that you have:
 1. A KAZOO account
 2. A created user
 3. A registered device that can make outbound calls
-4. An auth token (see [The KAZOO API Primer](https://www.notion.so/The-KAZOO-API-Primer-36a4326eabd74e8c94b24c39e5b859ca) for how to get one)
+4. An auth token (see [The KAZOO API Primer](../user_guides/first_app_forward_voicemail.md) for how to get one)
 
 If you need help with any of the prerequisites, you can check out our [Community](https://forums.2600hz.com/forums) for guides and discussions about troubleshooting issues.
 
@@ -38,6 +38,7 @@ Provided is an HTML file to render the SMS that we receive from the KAZOO API, a
     .mockphone-row { height: 100px; display: flex; flex-direction: column; }
 		.mockphone-save-btn { height: 50%; width: 50%; border-style: solid; border-color: green;}
 		.mockphone-del-btn { height: 50%; width: 50%; border-style: solid; border-color: red; }
+    .mockphone-error-container { color: red; }
   </style>
 </head>
 <body>
@@ -50,31 +51,34 @@ The HTML code isn’t important to the API, and gets mutated by our `api.js` scr
 
 ## The Starter KAZOO API Code
 
-We’re using the simplest, most widely-supported approach to this application in order to get you upstarted quickly. In future guides, we’ll likely be using different programming languages and runtime environments to make more complex applications. Because our script only needs to make a few calls to the API, we’re going to use the most barebones JavaScript code possible and then talk through what it’s doing in relation to KAZOO.
+We’re using the simplest, most widely-supported approach to this application in order to get you upstarted quickly. In future guides, we’ll likely be using different programming languages, frameworks, and runtime environments to build more complex applications. Because our script only needs to make a few calls to the API to work, we’re going to use the most barebones JavaScript code possible and then talk through what it’s doing in relation to KAZOO.
 
 - **api.js**
-    
+
     ```javascript
     var serverURL = "your_server:port"; // fill this in
     var accountId = "your-32-char-account-id"; // this too
     var authToken = "your-auth-token"; // this too!
-    
+
+    // It will be helpful to have our container element hanging around to access :-)
+    var container = document.getElementById("mockphone-container");
+
     function sendKazooRequest(method, url) {
       var req = new XMLHttpRequest();
     	req.open(method, url, false);
     	req.setRequestHeader('Content-Type', 'application/json');
     	req.setRequestHeader('X-Auth-Token', authToken);
     	req.send();
-    
+
     	return req;
     }
-    
+
     function saveHandler(id) {
     	var url = `${serverURL}/v2/accounts/${accountId}/vmboxes/${id}`
     	var data = sendKazooRequest("GET", url);
     	var downloadUrl = URL.createObjectURL(data.response);
     	// This is a very quick-and-dirty way to download from click.
-      // Only useful for 
+      // Only useful for personal use
       var a = document.createElement("a");
       a.style = "display: none";
       document.body.appendChild(a);
@@ -82,31 +86,34 @@ We’re using the simplest, most widely-supported approach to this application i
       a.download = "id";
       a.click();
     }
-    
+
     function deleteHandler(idx, id) {
     	var url = `${serverURL}/v2/accounts/${accountId}/vmboxes/${id}`
     	sendKazooRequest("DELETE", url);
     	var row = document.getElementById(`row-${idx}`).remove();
     }
-    
+
     // Our first request to Crossbar, where we query all the account's VM boxes
     var allBoxesURL = `${serverURL}/v2/accounts/${accountId}/vmboxes`;
     var boxes = sendKazooRequest("GET", allBoxesURL);
-    
+
     // We need to get the box's ID that we want to actually query messages from
     var boxId = null;
     if (boxes.length > 0) {
       boxId = boxes[0].id; // We use the first box, you can change this as needed
     } else {
-    	
+    	container.innerHTML = `
+        <div class="mockphone-error-container">
+          <h1>No voicemail boxes found for accound ${accountId}.
+        </div>
+      `;
     }
     
     // Now that we have the VM box's ID, let's get the VM box's messages
     var messagesURL = `${allBoxesURL}/${boxId}/messages`;
     var vmData = sendKazooRequest("GET", messagesURL);
     
-    // For each message, let's give it a row in our user interface
-    var container = document.getElementById("mockphone-container");
+    // For each message, let's give it a row inside our app's container
     for (var i = 0; i < data.length; i++) {
     	var idx = i + 1; // just a nice way to do row 1, 2, 3, etc for ids
       var vmObj = data[i]; // the actual message object
@@ -122,19 +129,21 @@ We’re using the simplest, most widely-supported approach to this application i
     		<div id="del-btn${idx}" class="mockphone-del-btn"></div>
     	`;
     
+      // Once we've created our row, let's append it to our container
+      container.appendChild(dv);
+
     	// Give each row a save and delete button, where by clicking, it fires off
     	// a call to the API to either download the message or delete it.
     	saveBtn = document.getElementById(`save-btn${idx}`);
-    	saveBtn.onclick = function() { forwardHandler(vmObj.media_id) };
+    	saveBtn.onclick = function() { saveHandler(vmObj.media_id) };
     	delBtn = document.getElementById(`del-btn${idx}`);
     	delBtn.onclick = function() { deleteHandler(vmObj.media_id) };
     }
     ```
-    
 
 You can save the two files above (make sure they’re in the same directory!) and then open `index.html` in a browser. Depending on the KAZOO server that you’re requesting, it may take a few seconds for your browser to render our app. This is due to the script using `XMLHttpRequest`'s synchronous mode.
 
-![vm_ex.png](https://s3-us-west-2.amazonaws.com/secure.notion-static.com/dc3928a0-5d04-49c0-a8a3-d8bf0467282a/vm_ex.png)
+![vm_ex.png](https://appex-server-public-us-west-1.s3.us-west-1.amazonaws.com/public/vm_ex_b228e780a3.png?updated_at=2022-11-04T17:20:02.817Z)
 
 ## The Explanation
 
@@ -287,4 +296,8 @@ function saveHandler(id) {
 	var downloadUrl = URL.createObjectURL(data.response);
 ```
 
-The omitted part of the function is simply [borrowed](https://stackoverflow.com/questions/20830309/download-file-using-an-ajax-request) code meant to add the download feature to this example app in the least amount of code. You may need to modify it to fit your browser needs.
+The omitted part of the `saveHandler` function is simply [borrowed](https://stackoverflow.com/questions/20830309/download-file-using-an-ajax-request) code meant to add the download feature to this example app in the least amount of code. You may need to modify it to fit your browser needs.
+
+## Conclusion
+
+In this guide, we've constructed a simple application that can download and delete voicemails from a voicemail box associated with any KAZOO account. By creating an `index.html` file, as well as an `api.js` file in the same directory furnished with the code above (and the addition of your own KAZOO account credentials and authorization token), opening `index.html` in the web browser will then display the application.
