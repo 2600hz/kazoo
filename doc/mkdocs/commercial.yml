@@ -139,9 +139,6 @@ pages:
     - 'applications/crossbar/doc/notifications.md'
 
 
-
-#### STARTS "STILL NEEDS SORTING" SECTION - please pair with configuration APIs as applicable, in the right section
-
 - 'Advanced API Usage':
   - 'Global API Features':
     - 'applications/crossbar/doc/filters.md'
@@ -271,12 +268,12 @@ pages:
 #    - 'applications/crossbar/doc/about.md'
 #    - 'applications/crossbar/doc/acls.md' ##
 
-#- 'Articles':
+- 'Articles':
 #  - 'Introduction to Storage Plans - S3': 'doc/blog/storage.md'
 #  - 'Bypass Media Mode': 'doc/blog/bypass_media.md'
 #  - 'Introduction to Rating and Limits': 'doc/reference/routing.md'
 #  - 'Call Recording': 'doc/user_guides/call_recording.md'
-#  - 'A First App": '/doc/user_guides/first_app_forward_voicemail.md'
+  - 'A First App: Voicemail Example": '/doc/user_guides/first_app_forward_voicemail.md'
 
 ############ Doc Status Key #################
 # | ##  : Incomplete

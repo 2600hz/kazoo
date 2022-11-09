@@ -1,6 +1,6 @@
 # A First App: Let’s Forward Voicemail
 
-One of the things that we at 2600Hz pride ourselves on is the fact that the open core means we are use the same APIs to develop applications. One of our longtime engineers, James Aimonetti, had this to say once about building on KAZOO versus other platforms:
+One of the things that we at 2600Hz pride ourselves on is the fact that KAZOO's open core means everyone, including us, uses the same APIs to develop applications. One of our longtime engineers, James Aimonetti, had this to say once about building on KAZOO versus other platforms:
 
 > KAZOO offers the [open core](https://en.wikipedia.org/wiki/Open_core) model, so the majority of typical APIs are built into the open source project. Some of the MonsterUI applications are closed [source], true, but the APIs they build on are open for you to build on as well. Nothing in KAZOO checks whether it’s MonsterUI making the API call vs another client. So anything you might see demoed [by 2600Hz] is possible.
 
@@ -19,7 +19,7 @@ This guide assumes that you have:
 1. A KAZOO account
 2. A created user
 3. A registered device that can make outbound calls
-4. An auth token (see [The KAZOO API Primer](../user_guides/first_app_forward_voicemail.md) for how to get one)
+4. An auth token (see [API Basics](../../applications/crossbar/basics.md) for how to get one)
 
 If you need help with any of the prerequisites, you can check out our [Community](https://forums.2600hz.com/forums) for guides and discussions about troubleshooting issues.
 
@@ -36,8 +36,8 @@ Provided is an HTML file to render the SMS that we receive from the KAZOO API, a
 		body { font-family: Arial; }
     .mockphone-container { display: flex; }
     .mockphone-row { height: 100px; display: flex; flex-direction: column; }
-		.mockphone-save-btn { height: 50%; width: 50%; border-style: solid; border-color: green;}
-		.mockphone-del-btn { height: 50%; width: 50%; border-style: solid; border-color: red; }
+		.mockphone-save-btn { height: 50%; width: 50%;}
+		.mockphone-del-btn { height: 50%; width: 50%; }
     .mockphone-error-container { color: red; }
   </style>
 </head>

@@ -1,6 +1,6 @@
-# The KAZOO API Primer
+# A KAZOO API Primer
 
-KAZOO’s REST API is big. We have over 100 supported endpoints, all that can be used to create, retrieve, update, or delete resources. That’s a lot of CRUD!
+KAZOO’s REST API is big. We have tons of available endpoints, all that can be used to create, retrieve, update, or delete resources. That’s a lot of CRUD!
 
 All of these endpoints work to provide you with a robust toolset for building applications, programmatically controlling your KAZOO accounts, or otherwise retrieving telephony data from KAZOO. This article lists information that you may find helpful in making your first API requests on the platform.
 
@@ -20,7 +20,7 @@ The most convenient way to make API requests with KAZOO across different interfa
 
 DID YOU KNOW?: You can obtain an access token by logging into your KAZOO’s MonsterUI portal. When you’re logged in, pressing the ‘**d**’ key will bring up debug fields. One of them is a valid access token for your account. It’s the one your MonsterUI is using to make requests to KAZOO! You can copy this to be used for your own API requests.
 
-You can also obtain an access token by making a request to the API using [HTTP Basic Authentication](https://developer.mozilla.org/en-US/docs/Web/HTTP/Authentication#basic_authentication_scheme), authenticated with your Account ID, which is the 32-character  and Password, to first get your API key.
+You can also obtain an access token by making a request to the API using [HTTP Basic Authentication](https://developer.mozilla.org/en-US/docs/Web/HTTP/Authentication#basic_authentication_scheme), authenticated with your Account ID (which is the 32-character account identifier string, NOT your username) and password, to first get your API key. The format of this is `${accountId}:${password}`.
 
 Once you have an API key, you can use it to get the access token. For example, if you were to use cURL, you could do the following.
 
@@ -100,8 +100,6 @@ This is pretty much all you need to know to be authenticated to make requests! Y
 
 ## An Example API Request
 
----
-
 Now that we have an auth token, let’s make a request to fetch data from a KAZOO account. Let’s try sending a `GET` request a simple (but important) endpoint `/v2/accounts/{account_id}`. Don’t forget to include the authorization token as a header, with a key of `X-Auth-Token`.
 
 **Request**
@@ -147,8 +145,6 @@ As you can see, this account endpoint will contain configurations related to you
 
 ## KAZOO URI Structure
 
----
-
 When you make a request to KAZOO, the majority of requests you’ll want to make act upon a couple of important identifiers.
 
 Let’s break down the following URI structure:
@@ -168,8 +164,6 @@ The components of this URI are:
     - The ID of the resource, usually also hex-encoded identifier.
 
 ## Helpful Information About KAZOO’s API
-
----
 
 This section lists additional information that you may find helpful about navigating KAZOO’s numerous APIs.
 
