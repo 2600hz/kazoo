@@ -92,7 +92,7 @@ dep_lager = git https://github.com/erlang-lager/lager 3.5.2
 dep_trie = git https://github.com/okeuday/trie v1.5.4
 dep_fs_event = git https://github.com/jamhed/fs_event 783400da08c2b55c295dbec81df0d926960c0346
 dep_fs_sync = git https://github.com/jamhed/fs_sync 2cf85cf5861221128f020c453604d509fd37cd53
-dep_inet_cidr = git https://github.com/icehess/inet_cidr.git
+dep_inet_cidr = git https://github.com/2600hz/erlang-inet_cidr.git 1.0.2
 ### PR opened upstream ###
 dep_erlang_localtime = git https://github.com/2600hz/erlang-localtime 2600hz
 
