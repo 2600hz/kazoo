@@ -14,7 +14,7 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/2, start_link/3
+-export([start_link/3
         ,handle_member_call/2
         ,handle_member_call_success/2
         ,handle_member_call_cancel/2
@@ -121,18 +121,6 @@
 %% @doc Starts the server.
 %% @end
 %%------------------------------------------------------------------------------
--spec start_link(pid(), kz_json:object()) -> kz_types:startlink_ret().
-start_link(Super, QueueJObj) ->
-    AccountId = kz_doc:account_id(QueueJObj),
-    QueueId = kz_doc:id(QueueJObj),
-
-    gen_listener:start_link(?SERVER
-                           ,[{'bindings', ?BINDINGS(AccountId, QueueId)}
-                            ,{'responders', ?RESPONDERS}
-                            ]
-                           ,[Super, QueueJObj]
-                           ).
-
 -spec start_link(pid(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_types:startlink_ret().
 start_link(Super, AccountId, QueueId) ->
     gen_listener:start_link(?SERVER
@@ -314,28 +302,12 @@ remove_diagnostics_receiver(Srv, Receiver) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec init([pid() | kz_json:object() | kz_term:ne_binary()]) -> {'ok', mgr_state()}.
-init([Super, QueueJObj]) ->
-    AccountId = kz_doc:account_id(QueueJObj),
-    QueueId = kz_doc:id(QueueJObj),
-
-    kz_util:put_callid(<<"mgr_", QueueId/binary>>),
-
-    init(Super, AccountId, QueueId, QueueJObj);
-
 init([Super, AccountId, QueueId]) ->
     kz_util:put_callid(<<"mgr_", QueueId/binary>>),
     put(?KEY_DIAGNOSTICS_PIDS, []),
 
     AcctDb = kz_util:format_account_id(AccountId, 'encoded'),
     {'ok', QueueJObj} = kz_datamgr:open_cache_doc(AcctDb, QueueId),
-
-    init(Super, AccountId, QueueId, QueueJObj).
-
-init(Super, AccountId, QueueId, QueueJObj) ->
-    process_flag('trap_exit', 'false'),
-
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
-    _ = kz_datamgr:add_to_doc_cache(AccountDb, QueueId, QueueJObj),
 
     _ = start_secondary_queue(AccountId, QueueId),
 
