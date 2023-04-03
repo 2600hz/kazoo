@@ -454,11 +454,11 @@ allotments(Doc) ->
 
 -spec allotments(doc(), Default) -> kz_json:object() | Default.
 allotments(Doc, Default) ->
-    kz_json:get_ne_json_value(<<"allotments">>, Doc, Default).
+    kz_json:get_ne_json_value(<<"pvt_allotments">>, Doc, Default).
 
 -spec set_allotments(doc(), kz_json:object()) -> doc().
 set_allotments(Doc, Allotments) ->
-    kz_json:set_value(<<"allotments">>, Allotments, Doc).
+    kz_json:set_value(<<"pvt_allotments">>, Allotments, Doc).
 
 %%------------------------------------------------------------------------------
 %% @doc
