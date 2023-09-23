@@ -31,7 +31,7 @@ DEPS ?= amqp_client \
 	syslog \
 	yamerl \
 	zucchini \
-	fcm
+	git https://github.com/softwarejoint/fcm-erlang.git 1.2.1
 
 # BUILD_DEPS = parse_trans
 IGNORE_DEPS = hamcrest
