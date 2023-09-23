@@ -30,7 +30,8 @@ DEPS ?= amqp_client \
 	reloader \
 	syslog \
 	yamerl \
-	zucchini
+	zucchini \
+	fcm
 
 # BUILD_DEPS = parse_trans
 IGNORE_DEPS = hamcrest
