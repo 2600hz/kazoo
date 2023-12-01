@@ -25,7 +25,9 @@
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     Collection = collection_name(Data),
-    cf_exe:continue(kapps_call:set_dtmf_collection('undefined', Collection, Call)).
+    Call1 = kapps_call:set_dtmf_collection('undefined', Collection, Call),
+    cf_exe:set_call(Call1),
+    cf_exe:continue(Call1).
 
 -spec collection_name(kz_json:object()) -> kz_term:ne_binary().
 collection_name(Data) ->
