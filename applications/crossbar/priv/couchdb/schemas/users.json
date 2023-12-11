@@ -284,6 +284,10 @@
             },
             "type": "object"
         },
+        "should_create_caller_id": {
+            "description": "Create the users caller id name from the first and last name fields if no caller id is defined",
+            "type": "boolean"
+        },
         "timezone": {
             "description": "User's timezone",
             "support_level": "supported",

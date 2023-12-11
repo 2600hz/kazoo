@@ -55,6 +55,7 @@
 -export([ringtones/1, ringtones/2, set_ringtones/2]).
 -export([ringtones_external/1, ringtones_external/2, set_ringtones_external/2]).
 -export([ringtones_internal/1, ringtones_internal/2, set_ringtones_internal/2]).
+-export([should_create_caller_id/1, should_create_caller_id/2, set_should_create_caller_id/2]).
 -export([timezone/1, timezone/2, set_timezone/2]).
 -export([username/1, username/2, set_username/2]).
 -export([verified/1, verified/2, set_verified/2]).
@@ -662,6 +663,18 @@ ringtones_internal(Doc, Default) ->
 -spec set_ringtones_internal(doc(), binary()) -> doc().
 set_ringtones_internal(Doc, RingtonesInternal) ->
     kz_json:set_value([<<"ringtones">>, <<"internal">>], RingtonesInternal, Doc).
+
+-spec should_create_caller_id(doc()) -> kz_term:api_boolean().
+should_create_caller_id(Doc) ->
+    should_create_caller_id(Doc, 'undefined').
+
+-spec should_create_caller_id(doc(), Default) -> boolean() | Default.
+should_create_caller_id(Doc, Default) ->
+    kz_json:get_boolean_value([<<"should_create_caller_id">>], Doc, Default).
+
+-spec set_should_create_caller_id(doc(), boolean()) -> doc().
+set_should_create_caller_id(Doc, ShouldCreateCallerId) ->
+    kz_json:set_value([<<"should_create_caller_id">>], ShouldCreateCallerId, Doc).
 
 -spec timezone(doc()) -> kz_term:api_binary().
 timezone(Doc) ->
