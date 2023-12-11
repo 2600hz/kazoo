@@ -22396,6 +22396,9 @@
                 "Export-Bridge-Variables": {
                     "type": "string"
                 },
+                "Export-Custom-Application-Vars": {
+                    "type": "object"
+                },
                 "Export-Custom-Channel-Vars": {
                     "type": "object"
                 },
@@ -22657,6 +22660,9 @@
                 },
                 "Export-Bridge-Variables": {
                     "type": "string"
+                },
+                "Export-Custom-Application-Vars": {
+                    "type": "object"
                 },
                 "Export-Custom-Channel-Vars": {
                     "type": "object"

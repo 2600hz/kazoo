@@ -623,9 +623,18 @@ get_unset_vars(JObj) ->
     Export = [K || KV <- FSVars,
                    ([K, _] = string:tokens(binary_to_list(KV), "=")) =/= 'undefined'
              ],
+    ExportCAVProps = [{K, <<>>} || K <- kz_json:get_value(<<"Export-Custom-Application-Vars">>, JObj, [])],
+    FSCAVVars = lists:foldr(fun ecallmgr_fs_xml:kazoo_var_to_fs_var/2
+                           ,[]
+                           ,[{<<"Custom-Application-Vars">>, kz_json:from_list(ExportCAVProps)}]
+                           ),
+    ExportCAV = [K || KV <- FSCAVVars,
+                      ([K, _] = string:tokens(binary_to_list(KV), "=")) =/= 'undefined'
+                ],
     case ["unset:" ++ K
           || KV <- lists:foldr(fun ecallmgr_fs_xml:kazoo_var_to_fs_var/2, [], kz_json:to_proplist(JObj)),
-             not lists:member(begin [K, _] = string:tokens(binary_to_list(KV), "="), K end, Export)
+             not lists:member(begin [K, _] = string:tokens(binary_to_list(KV), "="), K end, Export),
+             not lists:member(begin [K, _] = string:tokens(binary_to_list(KV), "="), K end, ExportCAV)
          ]
     of
         [] -> "";
