@@ -66,7 +66,7 @@ user_doc() ->
      ,kzd_users:new()
      ).
 
--spec seq() -> 'ok'.
+-spec seq() -> {'ok', file:filename_all()} | {'error', kz_data_tracing:trace_error()}.
 seq() ->
     _ = init(),
     Model = initial_state(),
