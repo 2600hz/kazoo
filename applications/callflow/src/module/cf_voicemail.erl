@@ -817,8 +817,7 @@ main_menu(#mailbox{keys=#keys{hear_new=HearNew
                 'ok' -> 'ok';
                 {'error', 'channel_hungup'}=E ->
                     lager:debug("channel has hungup, done trying to setup mailbox"),
-                    E;
-                #mailbox{}=Box1 -> main_menu(Box1, Call)
+                    E
             end;
         _ ->
             main_menu(Box, Call, Loop + 1)
@@ -1338,14 +1337,12 @@ config_prompt(_) ->
     <<"vm-settings_menu">>.
 
 -spec config_menu(mailbox(), kapps_call:call()) ->
-          'ok' | mailbox() |
-          {'error', 'channel_hungup'}.
+          'ok' | {'error', 'channel_hungup'}.
 config_menu(Box, Call) ->
     config_menu(Box, Call, 1).
 
 -spec config_menu(mailbox(), kapps_call:call(), pos_integer()) ->
-          'ok' | mailbox() |
-          {'error', 'channel_hungup'}.
+          'ok' | {'error', 'channel_hungup'}.
 config_menu(#mailbox{interdigit_timeout=Interdigit}=Box
            ,Call
            ,Loop
@@ -1371,8 +1368,7 @@ config_menu(_Box, _Call, Loop) when Loop > ?MAX_CONFIG_MENU_LOOPS ->
     lager:debug("not config menu option selected after ~p tries", [Loop - 1]).
 
 -spec handle_config_selection(mailbox(), kapps_call:call(), pos_integer(), binary()) ->
-          'ok' | mailbox() |
-          {'error', 'channel_hungup'}.
+          'ok' | {'error', 'channel_hungup'}.
 handle_config_selection(#mailbox{keys=#keys{rec_unavailable=Selection}
                                 ,media_extension=Ext
                                 }=Box
@@ -1431,7 +1427,8 @@ handle_config_selection(#mailbox{keys=#keys{del_temporary_unavailable=Selection}
                        ,Selection
                        ) ->
     lager:info("caller chose to delete their temporary unavailable greeting"),
-    delete_temporary_unavailable_greeting(Box, Call);
+    Box1 = delete_temporary_unavailable_greeting(Box, Call),
+    config_menu(Box1, Call);
 handle_config_selection(#mailbox{keys=#keys{return_main=Selection}}=Box
                        ,Call
                        ,_Loop
