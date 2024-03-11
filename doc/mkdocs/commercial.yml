@@ -24,9 +24,9 @@ pages:
 #    - 'Controlling Calls' : 'tutorial/call_control.md'
 
   - 'Authentication':
-    - 'applications/crossbar/doc/how_to_authenticate.md'
+    - 'Authenticating Rest Requests': 'applications/crossbar/doc/how_to_authenticate.md'
 #    - 'applications/crossbar/doc/auth.md'
-    - 'applications/crossbar/doc/basic_auth.md' ##
+    - 'Basic Auth': 'applications/crossbar/doc/basic_auth.md' ##
 #    - 'applications/crossbar/doc/ip_auth.md' ##
 #    - 'Adding Multi-factor': 'applications/crossbar/doc/multi_factor.md'
 #    - 'applications/crossbar/doc/security.md'
@@ -35,12 +35,12 @@ pages:
 
 - 'System Preparation':
   - 'Branding':
-    - 'applications/crossbar/doc/whitelabeling.md' ##
+    - 'Whitelabeling': 'applications/crossbar/doc/whitelabeling.md' ##
 # Email notifications? Macros? Templates?
 
   - 'Limits and Rating':
-    - 'applications/crossbar/doc/allotments.md' ##
-    - 'applications/crossbar/doc/limits.md' ##
+    - 'Alottments': 'applications/crossbar/doc/allotments.md' ##
+    - 'Limits': 'applications/crossbar/doc/limits.md' ##
 
 #BUILD  - 'Common Tasks':
 #BUILD    - 'applications/crossbar/doc/your_first_subaccount.md'
