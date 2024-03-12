@@ -26,7 +26,7 @@ After on-boarding is completed an account with default setting is setup and read
 
 Before you begin you need to know the main URL path to the API which is usually provided to you by e-mail during on-boarding process. If you don't have this URL you can ask a your reseller salesperson to give you the URL.
 
-Crossbar API requires the request to be authenticated, so you have to first get an authentication token before making any HTTP request to the API. The are various way to get this authentication token, you can learn more about them in [Authenticate your REST requests](/applications/crossbar/doc/how_to_authenticate.md).
+Crossbar API requires the request to be authenticated, so you have to first get an authentication token before making any HTTP request to the API. The are various way to get this authentication token, you can learn more about them in [Authenticate your REST requests](./applications/crossbar/doc/how_to_authenticate.md).
 
 ### Accessing to REST API resources
 
@@ -36,7 +36,7 @@ API resources are available at below location:
 /{VERSION}/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}
 ```
 
-To learn about URL structure read [REST API Basics](/applications/crossbar/doc/basics.md#basic-uri-structure).
+To learn about URL structure read [REST API Basics](./applications/crossbar/doc/basics.md#basic-uri-structure).
 
 But for now we assume we want to get out own account settings. For doing this we can simply use this cURL command:
 
@@ -102,8 +102,8 @@ Your response maybe be different from this example, since it depends on your acc
 
 Learn more about Crossbar APIs:
 
-* Read [REST API Basics](/applications/crossbar/doc/basics.md) to know more about Crossbar REST API.
-* How to [Authenticate your REST requests](/applications/crossbar/doc/how_to_authenticate.md).
+* Read [REST API Basics](./applications/crossbar/doc/basics.md) to know more about Crossbar REST API.
+* How to [Authenticate your REST requests](./applications/crossbar/doc/how_to_authenticate.md).
 * Explore resources provided by REST APIs from this documentation.
 
 Most of the resources are expected to have input (and some don't, read their documentation carefully to know how to work with them) which are explained in JSON-Schema form. In each resource documentation there is section explaining their schema.
