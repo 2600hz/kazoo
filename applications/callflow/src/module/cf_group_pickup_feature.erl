@@ -134,6 +134,6 @@ params_from_data('undefined', _, _) ->
 params_from_data(_Other, _, Flow) ->
     lager:debug("skipping module ~p, looking at children", [_Other]),
     Child = kz_json:get_json_value([<<"children">>, <<"_">>], Flow),
-    Data = kz_json:get_json_value([<<"data">>], Child),
-    Module = kz_json:get_ne_binary_value([<<"module">>], Child),
+    Data = kz_json:get_json_value([<<"data">>], Flow),
+    Module = kz_json:get_ne_binary_value([<<"module">>], Flow),
     params_from_data(Module, Data, Child).
