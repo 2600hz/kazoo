@@ -73,7 +73,7 @@ $ echo -n 'john@example.com:m32c6NfqYEt' | sha1sum
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/user_auth/{AUTH_TOKEN}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/user_auth/{AUTH_TOKEN}
 ```
 
 ```json
