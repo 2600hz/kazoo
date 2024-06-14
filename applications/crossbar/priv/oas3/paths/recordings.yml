@@ -11,6 +11,18 @@ paths:
       summary: Get all recordings
       tags:
         - recordings
+  /accounts/{ACCOUNT_ID}/recordings/collection:
+    patch:
+      operationId: PatchAccountsAccountIdRecordingsCollection
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Patch specific fields of recordings
+      tags:
+        - recordings
   /accounts/{ACCOUNT_ID}/recordings/{RECORDING_ID}:
     delete:
       operationId: DeleteAccountsAccountIdRecordingsRecordingId
@@ -34,5 +46,17 @@ paths:
         200:
           description: Successful operation
       summary: Get a recordings by ID
+      tags:
+        - recordings
+    patch:
+      operationId: PatchAccountsAccountIdRecordingsRecordingId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/RECORDING_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Patch specific fields of recordings
       tags:
         - recordings

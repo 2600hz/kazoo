@@ -430,6 +430,9 @@
     '$ref': 'paths/rate_limits.yml#/paths/~1accounts~1{ACCOUNT_ID}~1rate_limits'
   '/accounts/{ACCOUNT_ID}/recordings':
     '$ref': 'paths/recordings.yml#/paths/~1accounts~1{ACCOUNT_ID}~1recordings'
+  '/accounts/{ACCOUNT_ID}/recordings/collection':
+    '$ref': >-
+      paths/recordings.yml#/paths/~1accounts~1{ACCOUNT_ID}~1recordings~1collection
   '/accounts/{ACCOUNT_ID}/recordings/{RECORDING_ID}':
     '$ref': >-
       paths/recordings.yml#/paths/~1accounts~1{ACCOUNT_ID}~1recordings~1{RECORDING_ID}
