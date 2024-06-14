@@ -2823,6 +2823,7 @@
       'enum':
         - start
         - stop
+        - start_on_b_leg
       'type': string
     'format':
       'description': What format to store the recording on disk

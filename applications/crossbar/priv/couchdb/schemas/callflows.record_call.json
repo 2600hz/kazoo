@@ -8,7 +8,8 @@
             "description": "Whether to start or stop the recording",
             "enum": [
                 "start",
-                "stop"
+                "stop",
+                "start_on_b_leg"
             ],
             "type": "string"
         },
