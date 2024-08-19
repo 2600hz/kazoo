@@ -603,7 +603,7 @@ Key | Type | Description
 > PUT /v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}
 
 ```shell
-curl -v -X POST \
+curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/json" \
     -d '{"action": "notify",
