@@ -19,7 +19,7 @@
 
 -include("services.hrl").
 
--opaque invoices() :: [kz_services_invoice:invoice()].
+-type invoices() :: [kz_services_invoice:invoice()].
 -type fold_fun() :: fun((kz_services_invoice:invoice(), Acc) -> Acc).
 -export_type([invoices/0
              ,fold_fun/0
