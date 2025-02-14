@@ -247,6 +247,7 @@ originate_quickcall(Endpoints, Call, Context) ->
           ,{<<"Continue-On-Fail">>, 'false'}
           ,{<<"Custom-Application-Vars">>, kz_json:from_list(CAVs)}
           ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
+          ,{<<"Export-Custom-Application-Vars">>, kz_json:get_keys(kz_json:from_list(CAVs))}
           ,{<<"Dial-Endpoint-Method">>, <<"simultaneous">>}
           ,{<<"Endpoints">>, update_quickcall_endpoints(AutoAnswer, Endpoints)}
           ,{<<"Existing-Call-ID">>, cb_context:req_value(Context, <<"target_call_id">>)}
