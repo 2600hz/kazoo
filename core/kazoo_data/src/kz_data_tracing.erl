@@ -49,6 +49,7 @@
 
 -export_type([filter/0, filters/0
              ,trace_result/0, trace_results/0
+             ,trace_error/0
 
              ]).
 
