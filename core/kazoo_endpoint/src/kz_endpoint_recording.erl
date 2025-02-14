@@ -532,7 +532,8 @@ maybe_record_inbound(FromNetwork, Endpoint, Call) ->
           {'true', {kz_json:path(), kz_json:object()}} | 'false'.
 maybe_record_inbound(_FromNetwork, _Endpoint, _Call, 'undefined') -> 'false';
 maybe_record_inbound(FromNetwork, Endpoint, Call, Data) ->
-    case kz_json:is_true(<<"enabled">>, Data) of
+    case kz_json:is_true(<<"enabled">>, Data)
+        andalso not kapps_call:should_skip_feature_calls_recording(Call, Data) of
         'false' -> 'false';
         'true' ->
             Values = [{<<"origin">>, <<"inbound from ", FromNetwork/binary, " to endpoint">>}],
@@ -551,7 +552,8 @@ maybe_record_outbound(ToNetwork, Endpoint, Call) ->
           {'true', kapps_call:call()} | 'false'.
 maybe_record_outbound(_ToNetwork, _Endpoint, _Call, 'undefined') -> 'false';
 maybe_record_outbound(ToNetwork, _Endpoint, Call, Data) ->
-    case kz_json:is_true(<<"enabled">>, Data) of
+    case kz_json:is_true(<<"enabled">>, Data)
+        andalso not kapps_call:should_skip_feature_calls_recording(Call, Data) of
         'false' -> 'false';
         'true' ->
             LabeledData = kz_json:set_value(<<"origin">>, ?ENDPOINT_OUTBOUND_RECORDING_LABEL(ToNetwork), Data),

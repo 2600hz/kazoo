@@ -15,6 +15,11 @@
             ],
             "type": "string"
         },
+        "record_feature_code_calls": {
+            "default": true,
+            "description": "Record calls to feature codes",
+            "type": "boolean"
+        },
         "record_min_sec": {
             "description": "The minimum length, in seconds, the recording must be to be considered successful. Otherwise it is deleted",
             "type": "integer"
