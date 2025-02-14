@@ -303,13 +303,14 @@ sip_headers(L) when is_list(L) ->
           kz_term:api_object().
 %% cascade from DID to Srv to Account
 failover(L) ->
-    case simple_extract(L) of
-        B when is_binary(B) -> 'undefined';
-        Other -> Other
+    Failover = simple_extract(L),
+    case kz_json:is_json_object(Failover) of
+        'false' -> 'undefined';
+        'true' -> Failover
     end.
 
--spec progress_timeout(kz_json:objects() | kz_term:api_binaries()) ->
-          kz_json:object() | kz_term:api_binary().
+-spec progress_timeout(kz_json:objects() | [kz_term:api_binary() | kz_term:api_integer()]) ->
+          kz_json:object() | kz_term:api_binary() | kz_term:api_integer().
 progress_timeout(L) -> simple_extract(L).
 
 -spec bypass_media(kz_json:objects() | kz_term:api_binaries()) -> kz_term:ne_binary().
@@ -319,16 +320,16 @@ bypass_media(L) ->
         _ -> <<"true">>
     end.
 
--spec delay(kz_json:objects() | kz_term:api_binaries()) ->
-          kz_json:object() | kz_term:api_binary().
+-spec delay(kz_json:objects() | [kz_term:api_binary() | kz_term:api_integer()]) ->
+          kz_json:object() | kz_term:api_binary() | kz_term:api_integer().
 delay(L) -> simple_extract(L).
 
 -spec ignore_early_media(kz_json:objects() | kz_term:api_binaries()) ->
           kz_json:object() | kz_term:api_binary().
 ignore_early_media(L) -> simple_extract(L).
 
--spec ep_timeout(kz_json:objects() | kz_term:api_binaries()) ->
-          kz_json:object() | kz_term:api_binary().
+-spec ep_timeout(kz_json:objects() | [kz_term:api_binary() | kz_term:api_integer()]) ->
+          kz_json:object() | kz_term:api_binary() | kz_term:api_integer().
 ep_timeout(L) -> simple_extract(L).
 
 -spec offnet_flags(list()) -> 'undefined' | list().
@@ -336,12 +337,13 @@ offnet_flags([]) -> 'undefined';
 offnet_flags([H|_]) when is_list(H) -> H;
 offnet_flags([_|T]) -> offnet_flags(T).
 
--spec simple_extract(kz_json:objects() | kz_term:api_binaries()) ->
-          kz_json:object() | kz_term:api_binary().
+-spec simple_extract(kz_json:objects() | [kz_term:api_binary() | kz_term:api_integer()]) ->
+          kz_json:object() | kz_term:api_binary() | kz_term:api_integer().
 simple_extract([]) -> 'undefined';
 simple_extract(['undefined'|T]) -> simple_extract(T);
 simple_extract([<<>> | T]) -> simple_extract(T);
 simple_extract([B | _T]) when is_binary(B) -> B;
+simple_extract([I | _T]) when is_integer(I) -> I;
 simple_extract([JObj | T]) ->
     case kz_json:is_json_object(JObj)
         andalso (not kz_json:is_empty(JObj))
