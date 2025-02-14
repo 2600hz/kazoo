@@ -120,6 +120,7 @@
         ,<<"Custom-Application-Vars">>
         ,<<"Custom-Channel-Vars">>
         ,<<"Custom-SIP-Headers">>
+        ,<<"DTMF-Type">>
         ,<<"Enable-T38-Fax">>
         ,<<"Enable-T38-Fax-Request">>
         ,<<"Enable-T38-Gateway">>

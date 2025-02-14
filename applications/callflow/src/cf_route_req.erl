@@ -216,7 +216,9 @@ response_ccvs(Call, _Id, _Type) ->
     default_response_ccvs(Call).
 
 response_ccvs_from_device(Call, {'ok', DeviceJObj}) ->
-    kz_json:set_values([{<<"Presence-ID">>, kzd_devices:calculate_presence_id(DeviceJObj)}]
+    kz_json:set_values([{<<"Presence-ID">>, kzd_devices:calculate_presence_id(DeviceJObj)}
+                       ,{<<"DTMF-Type">>, kzd_devices:sip_dtmf_type(DeviceJObj)}
+                       ]
                       ,default_response_ccvs(Call)
                       );
 response_ccvs_from_device(Call, _E) ->

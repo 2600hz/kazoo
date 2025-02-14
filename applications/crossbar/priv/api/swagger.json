@@ -5651,6 +5651,15 @@
                             "description": "A property list of SIP headers",
                             "type": "object"
                         },
+                        "dtmf_type": {
+                            "description": "The SIP request DTMF format",
+                            "enum": [
+                                "none",
+                                "rfc2833",
+                                "info"
+                            ],
+                            "type": "string"
+                        },
                         "expire_seconds": {
                             "default": 300,
                             "description": "The time, in seconds, sent to the provisioner for the registration period that the device should be configured with.",
@@ -12583,6 +12592,9 @@
                 },
                 "Custom-SIP-Headers": {
                     "type": "object"
+                },
+                "DTMF-Type": {
+                    "type": "string"
                 },
                 "Enable-T38-Fax": {
                     "type": "string"
@@ -22838,6 +22850,9 @@
                 },
                 "Custom-SIP-Headers": {
                     "type": "object"
+                },
+                "DTMF-Type": {
+                    "type": "string"
                 },
                 "Enable-T38-Fax": {
                     "type": "string"

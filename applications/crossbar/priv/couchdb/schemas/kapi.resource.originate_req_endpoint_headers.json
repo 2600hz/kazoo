@@ -39,6 +39,9 @@
         "Custom-SIP-Headers": {
             "type": "object"
         },
+        "DTMF-Type": {
+            "type": "string"
+        },
         "Enable-T38-Fax": {
             "type": "string"
         },

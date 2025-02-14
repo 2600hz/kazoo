@@ -60,6 +60,7 @@
 -export([ringtones_internal/1, ringtones_internal/2, set_ringtones_internal/2]).
 -export([sip/1, sip/2, set_sip/2]).
 -export([sip_custom_sip_headers/1, sip_custom_sip_headers/2, set_sip_custom_sip_headers/2]).
+-export([sip_dtmf_type/1, sip_dtmf_type/2, set_sip_dtmf_type/2]).
 -export([sip_expire_seconds/1, sip_expire_seconds/2, set_sip_expire_seconds/2]).
 -export([sip_ignore_completed_elsewhere/1, sip_ignore_completed_elsewhere/2, set_sip_ignore_completed_elsewhere/2]).
 -export([sip_invite_format/1, sip_invite_format/2, set_sip_invite_format/2]).
@@ -807,6 +808,18 @@ sip_custom_sip_headers(Doc, Default) ->
 -spec set_sip_custom_sip_headers(doc(), kz_json:object()) -> doc().
 set_sip_custom_sip_headers(Doc, SipCustomSipHeaders) ->
     kz_json:set_value([<<"sip">>, <<"custom_sip_headers">>], SipCustomSipHeaders, Doc).
+
+-spec sip_dtmf_type(doc()) -> kz_term:api_binary().
+sip_dtmf_type(Doc) ->
+    sip_dtmf_type(Doc, 'undefined').
+
+-spec sip_dtmf_type(doc(), Default) -> binary() | Default.
+sip_dtmf_type(Doc, Default) ->
+    kz_json:get_binary_value([<<"sip">>, <<"dtmf_type">>], Doc, Default).
+
+-spec set_sip_dtmf_type(doc(), binary()) -> doc().
+set_sip_dtmf_type(Doc, SipDtmfType) ->
+    kz_json:set_value([<<"sip">>, <<"dtmf_type">>], SipDtmfType, Doc).
 
 -spec sip_expire_seconds(doc()) -> integer().
 sip_expire_seconds(Doc) ->
