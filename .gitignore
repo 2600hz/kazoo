@@ -82,6 +82,9 @@ compile_commands.json
 
 /out/
 /node_modules/
+/_evo-output/
+/_evo/_memory/
+/{output_folder}/
 
 /doc/mkdocs/*.local
 

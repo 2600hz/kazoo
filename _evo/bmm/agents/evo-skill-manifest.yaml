@@ -1,0 +1,39 @@
+analyst.agent.yaml:
+  canonicalId: evo-analyst
+  type: agent
+  description: "Business Analyst for market research, competitive analysis, and requirements elicitation"
+
+architect.agent.yaml:
+  canonicalId: evo-architect
+  type: agent
+  description: "Architect for distributed systems, cloud infrastructure, and API design"
+
+dev.agent.yaml:
+  canonicalId: evo-dev
+  type: agent
+  description: "Developer Agent for story execution, test-driven development, and code implementation"
+
+pm.agent.yaml:
+  canonicalId: evo-pm
+  type: agent
+  description: "Product Manager for PRD creation, requirements discovery, and stakeholder alignment"
+
+qa.agent.yaml:
+  canonicalId: evo-qa
+  type: agent
+  description: "QA Engineer for test automation, API testing, and E2E testing"
+
+quick-flow-solo-dev.agent.yaml:
+  canonicalId: evo-quick-flow-solo-dev
+  type: agent
+  description: "Quick Flow Solo Dev for rapid spec creation and lean implementation"
+
+sm.agent.yaml:
+  canonicalId: evo-sm
+  type: agent
+  description: "Scrum Master for sprint planning, story preparation, and agile ceremonies"
+
+ux-designer.agent.yaml:
+  canonicalId: evo-ux-designer
+  type: agent
+  description: "UX Designer for user research, interaction design, and UI patterns"
