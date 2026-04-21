@@ -1,0 +1,6 @@
+name,displayName,description,module,path,standalone,canonicalId
+"editorial-review-prose","Editorial Review - Prose","Clinical copy-editor that reviews text for communication issues. Use when user says review for prose or improve the prose","core","_evo/core/tasks/editorial-review-prose.xml","true","evo-editorial-review-prose"
+"editorial-review-structure","Editorial Review - Structure","Structural editor that proposes cuts, reorganization, and simplification while preserving comprehension. Use when user requests structural review or editorial review of structure","core","_evo/core/tasks/editorial-review-structure.xml","true","evo-editorial-review-structure"
+"help","help","Analyzes what is done and the users query and offers advice on what to do next. Use if user says what should I do next or what do I do now","core","_evo/core/tasks/help.md","true","evo-help"
+"index-docs","Index Docs","Generates or updates an index.md to reference all docs in the folder. Use if user requests to create or update an index of all files in a specific folder","core","_evo/core/tasks/index-docs.xml","true","evo-index-docs"
+"shard-doc","Shard Document","Splits large markdown documents into smaller, organized files based on level 2 (default) sections. Use if the user says perform shard document","core","_evo/core/tasks/shard-doc.xml","true","evo-shard-doc"

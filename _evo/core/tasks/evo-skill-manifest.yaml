@@ -1,0 +1,24 @@
+editorial-review-prose.xml:
+  canonicalId: evo-editorial-review-prose
+  type: task
+  description: "Clinical copy-editor that reviews text for communication issues"
+
+editorial-review-structure.xml:
+  canonicalId: evo-editorial-review-structure
+  type: task
+  description: "Structural editor that proposes cuts, reorganization, and simplification while preserving comprehension"
+
+help.md:
+  canonicalId: evo-help
+  type: task
+  description: "Analyzes what is done and the users query and offers advice on what to do next"
+
+index-docs.xml:
+  canonicalId: evo-index-docs
+  type: task
+  description: "Generates or updates an index.md to reference all docs in the folder"
+
+shard-doc.xml:
+  canonicalId: evo-shard-doc
+  type: task
+  description: "Splits large markdown documents into smaller, organized files based on sections"
