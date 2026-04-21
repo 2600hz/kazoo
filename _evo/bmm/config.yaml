@@ -3,8 +3,8 @@
 # Version: 1.0.6
 # Date: 2026-04-21T00:45:38.060Z
 
-active_feature: "{value}"
-project_name: app
+active_feature: "kazoo-core-evolution"
+project_name: kazoo
 user_skill_level: intermediate
 planning_artifacts: "{project-root}/{output_folder}/planning-artifacts"
 implementation_artifacts: "{project-root}/{output_folder}/implementation-artifacts"
