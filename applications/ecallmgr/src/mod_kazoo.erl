@@ -48,6 +48,10 @@
 
 -export([async_api/3]).
 
+-ifdef(TEST).
+-export([api_result/2]).
+-endif.
+
 -include("ecallmgr.hrl").
 
 -define(TIMEOUT, 5 * ?MILLISECONDS_IN_SECOND).
@@ -141,6 +145,7 @@ fetch_reply(Node, FetchID, Section, Reply, Timeout) ->
     end.
 
 api_result(Result, 'undefined') -> Result;
+api_result('error', Reason) when is_atom(Reason) -> {'error', Reason};
 api_result(Result, Bin) ->
     case kz_binary:strip_left(kz_binary:strip_right(Bin, <<"\n">>), $\s) of
         <<>> when Result =:= 'error' -> {error, 'failed'};
